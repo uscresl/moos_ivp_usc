@@ -1,0 +1,193 @@
+// MOOS community specs
+ServerHost = 192.168.1.11
+ServerPort = 9000
+Community  = ecomapper
+NoNetwork = true
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = 1
+
+// Location: Puddingstone full
+//TODO add to file setup
+LatOrigin  = 34.0784000000111
+LongOrigin = -117.815
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = false
+  Run = uProcessWatch @ NewConsole = false
+
+  // behaviors
+  Run = pHelmIvP      @ NewConsole = false
+
+  // add the frontseat interface
+//  #ifdef runtime
+  Run = iOceanServerComms @ NewConsole = false
+//  #endif
+  
+  // node report
+  Run = pNodeReporter @ NewConsole = false
+  
+  // pShare for pMarineViewer
+  Run = pShare @ NewConsole = false
+}
+
+//----------------------------------------------------------------------------
+// Log what we do
+ProcessConfig = pLogger
+{
+  AppTick   = 8
+  CommsTick = 8
+
+  Path = ./
+  AsyncLog = true
+  FileTimeStamp = true
+
+  BridgeFrequency = 0
+  // For variables that are published in a bundle on their first post,
+  // explicitly declare their logging request
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
+  Log = APPCASE @ 0 NOSYNC
+
+  // Log everything
+  LogAuxSrc = true
+  WildCardLogging = true
+  //WildCardOmitPattern = *_STATUS
+  WildCardExclusionLog = true
+}
+
+// pHelmIvP (ivp): behavior-based autonomy 'helm'. Behaviors spec in .bhv file.
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+ProcessConfig = pHelmIvP
+{
+  AppTick    = 4
+  CommsTick  = 4
+  
+  Behaviors    = ecomapper.bhv
+  Verbose      = false
+
+  //             domain:min:max:steps
+  Domain       = course:0:359:360
+  Domain       = speed:0:5:26
+  Domain       = depth:0:100:100
+}
+
+
+//----------------------------------------------------------------------------
+ProcessConfig = iOceanServerComms
+{
+  AppTick   = 1
+  CommsTick = 5
+
+  //Frontseat Serial Port Configuration
+  port        = /dev/ttyS12
+  BaudRate    = 57600
+  handshaking = false
+  streaming   = false
+
+  //Use Local UTM coordinate system?
+  UTM = true
+
+  //Request data from DVL?
+  DVL = true
+
+  //Request general CTD data?
+  CTD = false
+
+  //Request data string from YSI Sonde?
+  YSI = false
+
+  //Are we in salt water?  (Used for YSI sound velocity calculation.)
+  SaltWater = false
+
+  //Post NAV_* variables?
+  PostNav = true
+
+  //Constraints
+  CommTimeout =  2 //seconds (for backseat commands)
+  ServoFilter =  0 //ticks
+
+  //Choose what to command (for bench test)
+  CommandSpeed = true
+  CommandHeading = true
+  CommandDepth = true
+}
+
+//----------------------------------------------------------------------------
+// pNodeReporter (ivp): generates 'node-report' (proxy for AIS) for pMarineViewer
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-tools.pdf
+ProcessConfig = pNodeReporter
+{
+  AppTick     = 10
+  CommsTick   = 10
+  
+  PLATFORM_TYPE = auv // (uuv, auv, ship, kayak)
+  PLATFORM_LENGTH = 3 // (meters)
+}
+
+//----------------------------------------------------------------------------
+// pShare Config Block  (Created from Plugin)
+
+ProcessConfig = pShare
+{
+  AppTick    = 4
+  CommsTick  = 4
+
+  input = route =  192.168.1.11:9300
+      //& multicast_1
+
+//  input = route =  localhost:$(SHARE_LISTEN) & multicast_1 & multicast_2
+//  input = route =  127.0.0.1:$(SHARE_LISTEN) & multicast_1 & multicast_2
+
+  // =======================================================
+  // Usage Info below
+  // =======================================================
+
+  // Simple forward of X to A on channel 8
+  // output = src_name = X,dest_name=A, route=multicast_8
+ 
+  // Simple forward of Y to B on a udp address
+  // output = src_name=Y, dest_name=B, route=localhost:9300
+ 
+  // Simple forward of Z to Z on a named address (no renaming)
+  // output = src_name = Z, route = oceanai.mit.edu:9020
+
+  // Setting up an input
+  // input = route = multicast_9
+  // input = route = localhost:$(SHARE_LISTEN) & multicast_9
+
+  // Setting up lots of inputs at once
+  // input = route = "localhost:9069 & multicast_19 & multicast_65"
+
+  // if in simulation, we want to pass the node_reports to pMarineViewer,
+  // purely for visualization, then add this:
+  //CHECK ip address shoreside laptop
+  //TODO add to script
+  output = NODE_REPORT_LOCAL->NODE_REPORT:192.168.0.206:9400
+  output = VIEW_*->192.168.0.206:9400
+  
+  // temporary until acomms set up
+  // share positions vehicles between one another
+//  output = NODE_REPORT_LOCAL->NODE_REPORT:multicast_2
+  // share allowable width with underwater vehicles
+//  output = ALLOWABLE_WIDTH_FORM->ALLOWABLE_WIDTH:multicast_2
+}
+
+//----------------------------------------------------------------------------
+ProcessConfig = uProcessWatch
+{
+    AppTick   = 2
+    CommsTick = 2
+
+    WATCH = pLogger
+    WATCH = pHelmIvP
+//    #ifdef runtime
+    WATCH = iOceanServerComms
+//    #endif
+    WATCH = pNodeReporter
+    WATCH = pShare
+}
