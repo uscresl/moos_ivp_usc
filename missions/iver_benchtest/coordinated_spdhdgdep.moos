@@ -7,8 +7,8 @@ Community  = ecomapper
 MOOSTimeWarp = 1
 
 // Location
-LatOrigin  = 36.729529
-LongOrigin = -122.026634
+LatOrigin  = 34.0784000000111 
+LongOrigin = -117.815
 
 
 //****************************************************************************//
@@ -116,7 +116,7 @@ ProcessConfig = iOceanServerComms
     streaming   = false
 
     //Use Local UTM coordinate system?
-    UTM = false
+    UTM = true
 
     //Request data from DVL?
     DVL = true
@@ -128,13 +128,13 @@ ProcessConfig = iOceanServerComms
     YSI = false
 
     //Are we in salt water?  (Used for YSI sound velocity calculation.)
-    SaltWater = true
+    SaltWater = false
 
     //Post NAV_* variables?
     PostNav = true
 
     //Constraints
-    CommTimeout =  2 //seconds
+    CommTimeout =  10 //seconds
     ServoFilter =  0 //ticks
 
     //Choose what to command (for bench test)
