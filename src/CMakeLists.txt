@@ -32,8 +32,13 @@ ADD_SUBDIRECTORY(uFldHazardMgr)
 ADD_SUBDIRECTORY(pHazardPath)
 
 # CS599 Coord Mob Rob '14 class project Stephanie
+find_package( PkgConfig)
+pkg_check_modules( EIGEN3 eigen3)
+if (EIGEN3_FOUND)
+INCLUDE_DIRECTORIES( $(EIGEN3_INCLUDE_DIRS) )
 ADD_SUBDIRECTORY(pSelectFormation)
 ADD_SUBDIRECTORY(pPositionInFormation)
+endif()
 ADD_SUBDIRECTORY(pFormationWptUpdater)
 ADD_SUBDIRECTORY(pNumVehicles)
 
@@ -43,9 +48,11 @@ SET(BOOST_LIBRARYDIR /usr/local/lib)
 #SET(Boost_USE_STATIC_LIBS ON)
 #SET(Boost_USE_STATIC_RUNTIME ON)
 SET(Boost_DEBUG ON)
-find_package(Boost 1.54 REQUIRED)# COMPONENTS geometry)
+find_package(Boost 1.54)# REQUIRED)# COMPONENTS geometry)
 if (Boost_FOUND)
-  ADD_SUBDIRECTORY(pMaxFormationWidth)
+  if (Boost_VERSION 1.54)
+    ADD_SUBDIRECTORY(pMaxFormationWidth)
+  endif()
 endif()
 
 
