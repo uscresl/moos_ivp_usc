@@ -1,0 +1,223 @@
+// MOOS community specs
+ServerHost = localhost
+ServerPort = 9000
+Community  = ecomapper
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = 1
+
+// Location
+LatOrigin  = 36.729529
+LongOrigin = -122.026634
+
+
+//****************************************************************************//
+// Base Processes
+//
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = true
+  Run = uSimMarine    @ NewConsole = true
+  Run = pMarinePID    @ NewConsole = true
+  Run = pHelmIvP      @ NewConsole = true
+  Run = pMarineViewer @ NewConsole = true
+  Run = pNodeReporter @ NewConsole = true
+}
+
+// Logging tool (MOOSEssentials)
+ProcessConfig = pLogger
+{
+  AppTick   = 8
+  CommsTick = 8
+
+  Path = ./
+  AsyncLog = true
+  FileTimeStamp = true
+
+  BridgeFrequency = 0
+  // For variables that are published in a bundle on their first post,
+  // explicitly declare their logging request
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
+  Log = APPCASE @ 0 NOSYNC
+
+  // Log everything
+  LogAuxSrc = true
+  WildCardLogging = true
+  //WildCardOmitPattern = *_STATUS
+  WildCardExclusionLog = true
+}
+
+
+//****************************************************************************//
+// AUV simulation 
+//
+
+// uSimMarine (ivp): very simple 3D vehicle simulator that considers the current
+//        vehicle pose and actuator commands and produces a new vehicle pose
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-tools.pdf
+ProcessConfig = uSimMarine
+{
+  AppTick   = 4
+  CommsTick = 4
+
+  prefix = NAV
+
+  // specify start position
+  start_x       = 0
+  start_y       = 0
+  start_heading = 0
+  start_speed   = 0
+  start_depth   = 0
+  // or via:
+//  start_pos     = x=0, y=0, speed=0, heading=0, depth=0
+
+//  // external forces
+//  force_x       = 0
+//  force_y       = 0
+//  force_theta   = 0
+//  force_vector  = 0,0 // heading, magnitude
+
+//  // vehicle dynamics
+//  buoyancy_rate        = 0.025 // meters/sec
+//  max_acceleration     = 0     // meters/sec^2
+//  max_deceleration     = 0.5   // meters/sec^2
+//  max_depth_rate       = 0.5   // meters/sec
+//  max_depth_rate_speed = 2.0   // meters/sec
+
+//  sim_pause            = false // or {true}
+//  dual_state           = false // or {true}
+//  thrust_reflect       = false // or {true}
+//  thrust_factor        = 20    // range [0,inf)
+//  turn_rate            = 70    // range [0,100]
+//  thrust_map           = 0:0, 20:1, 40:2, 60:3, 80:5, 100:5
+}
+
+// pMarinePID (ivp): simple PID controller which produces values suitable for
+//        actuator control based on inputs from the helm. In simulation the
+//        output is consumed by the vehicle simulator rather than the vehicle
+//        actuators.
+// documentation: none currently
+ProcessConfig = pMarinePID
+{
+  AppTick   = 20          // Default MOOS AppTick=4
+  CommsTick = 20          // Default MOOS CommsTick=4
+
+  verbose = terse    // or {verbose, quiet}
+  active_start = false
+
+  sim_instability = 0     // Range [0,inf)
+  tardy_helm_threshold = 2.0
+  tardy_nav_threshold  = 2.0
+
+  // Yaw control configuration
+  yaw_pid_kp  = 0.4
+  yaw_pid_kd  = 0.1
+  yaw_pid_ki  = 0.0
+  yaw_pid_integral_limit = 0.07
+  maxrudder  = 100
+
+  // Speed control configuration
+  speed_pid_kp = 1.0
+  speed_pid_kd = 0.0
+  speed_pid_ki = 0.0
+  speed_pid_integral_limit = 0.07
+  maxthrust   = 100
+  // A non-zero SPEED_FACTOR overrides use of SPEED_PID
+  // Will set DESIRED_THRUST = DESIRED_SPEED * SPEED_FACTOR
+  speed_factor    = 20    // Range [0,inf)
+
+  // Depth control configuration
+  depth_control      = true   // or {false}
+  z_to_pitch_pid_kp  = 0.12
+  z_to_pitch_pid_kd  = 1.0
+  z_to_pitch_pid_ki  = 0.004
+  z_to_pitch_pid_integral_limit = 0.05
+  maxpitch          = 15
+
+  // Depth control configuration
+  pitch_pid_kp       = 0.5
+  pitch_pid_kd       = 1.0
+  pitch_pid_ki       = 0 
+  pitch_pid_integral_limit = 0
+  maxelevator       = 13
+}
+
+// pHelmIvP (ivp): behavior-based autonomy 'helm'. Behaviors spec in .bhv file.
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+ProcessConfig = pHelmIvP
+{
+  AppTick    = 4
+  CommsTick  = 4
+  
+  Behaviors    = simple-auv.bhv
+  Verbose      = false
+
+  //             domain:min:max:steps
+  Domain       = course:0:359:360
+  Domain       = speed:0:5:26
+  Domain       = depth:0:100:100
+}
+
+
+//****************************************************************************//
+// Visualization 
+//
+
+// pMarineViewer (ivp): to render vehicles, history & info during sim & ops
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+ProcessConfig = pMarineViewer
+{
+  AppTick    = 4
+  CommsTick  = 4
+
+  // tiff img background?
+  tiff_view = false
+//  TIFF_FILE            = forrest19.tif
+
+  // where to focus
+  set_pan_x            = 0
+  set_pan_y            = 0
+  zoom                 = 2
+
+  vehicles_shape_scale = 1.5
+  vehicles_name_viewable = names
+  stale_vehicles_viewable = true
+
+  appcast_viewable = false // true
+  appcast_color_scheme = indigo
+
+  // scope variables
+//  SCOPE = NODE_BROKER_PING
+//  SCOPE = DEPLOY_ALL
+//  SCOPE = CONTACT_INFO
+
+  // define actions
+//  ACTION = PERMUTING = true
+//  ACTION = PERMUTING = false
+//  ACTION = WIND_GUSTS = true
+//  ACTION = WIND_GUSTS = false
+//  ACTION = STATION_ALL = false
+//  ACTION = STATION_ALL = true
+
+  // define buttons
+  BUTTON_ONE   = DEPLOY # DEPLOY=true
+  BUTTON_THREE = WPT_CONTROL # INPUT=waypoints
+  BUTTON_FOUR  = HSD_CONTROL # INPUT=hsd
+}
+
+// pNodeReporter (ivp): generates 'node-report' (proxy for AIS) for pMarineViewer
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-tools.pdf
+ProcessConfig = pNodeReporter
+{
+  AppTick     = 10
+  CommsTick   = 10
+  
+  PLATFORM_TYPE = auv // (uuv, auv, ship, kayak)
+  PLATFORM_LENGTH = 3 // (meters)
+}
+
