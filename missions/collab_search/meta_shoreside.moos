@@ -72,10 +72,10 @@ ProcessConfig = uFldNodeComms
   AppTick       = 2
   CommsTick     = 2
 
-  comms_range          = 100
-  critical_range       = 25
-  min_msg_interval     = 20
-  max_msg_length       = 1000
+  comms_range          = 250
+  critical_range       = 25  // safety: always communicate own position in this range
+  min_msg_interval     = 0   // 0: unlimited
+  max_msg_length       = 0   // 0: unlimited
   groups               = true
   view_node_rpt_pulses = true
 }

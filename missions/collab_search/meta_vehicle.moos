@@ -17,13 +17,16 @@ Processconfig = ANTLER
   Run = pLogger            @ NewConsole = false
   Run = pNodeReporter      @ NewConsole = false
   Run = pMarinePID         @ NewConsole = false
-  Run = pHelmIvP           @ NewConsole = false
+  Run = pHelmIvP           @ NewConsole = true
   Run = uProcessWatch      @ NewConsole = false
+
+  // collision avoidance
+  Run = pBasicContactMgr @ NewConsole = false
 
   Run = pShare             @ NewConsole = false
   Run = pHostInfo          @ NewConsole = false
   Run = uFldNodeBroker     @ NewConsole = false
-  Run = uFldMessageHandler @ NewConsole = false
+  Run = uFldMessageHandler @ NewConsole = true
   Run = uFldHazardMgr      @ NewConsole = false
 }
   
@@ -32,6 +35,10 @@ Processconfig = ANTLER
 #include plug_pHostInfo.moos
 #include plug_uFldMessageHandler.moos
 #include plug_uFldHazardMgr.moos
+
+// collision avoidance
+// node_reports are passed via uFldNodeBroker and pShare through shoreside
+#include plug_pBasicContactMgr.moos
 
 #include plug_uSimMarine.moos
 #include plug_pHelmIvP.moos
