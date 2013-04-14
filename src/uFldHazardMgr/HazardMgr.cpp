@@ -4,6 +4,11 @@
 /*    FILE: HazardMgr.cpp                                        */
 /*    DATE: Oct 26th 2012                                        */
 /*                                                               */
+/*    Adapted by:                                                */
+/*    NAME: Supreeth Subbaraya, Stephanie Kemna                  */
+/*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
+/*    DATE: Apr, 2013                                            */
+/*                                                               */
 /* This program is free software; you can redistribute it and/or */
 /* modify it under the terms of the GNU General Public License   */
 /* as published by the Free Software Foundation; either version  */
@@ -84,6 +89,9 @@ bool HazardMgr::OnNewMail(MOOSMSG_LIST &NewMail)
 
     else if(key == "HAZARDSET_REQUEST") 
       handleMailReportRequest();
+      
+    else if(key == "VIEW_MARKER") 
+      handleMailReportResemblanceFactor(sval);
 
     else 
       reportRunWarning("Unhandled Mail: " + key);
@@ -114,6 +122,9 @@ bool HazardMgr::Iterate()
 
   if(m_sensor_config_set)
     postSensorInfoRequest();
+    
+  if(m_new_resemblance_factor || m_new_detection || m_new_classification)
+  {}
 
   AppCastingMOOSApp::PostReport();
   return(true);
@@ -153,7 +164,6 @@ bool HazardMgr::OnStartUp()
       m_report_name = value;
       handled = true;
     }
-
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
@@ -171,10 +181,11 @@ bool HazardMgr::OnStartUp()
 void HazardMgr::registerVariables()
 {
   AppCastingMOOSApp::RegisterVariables();
-  m_Comms.Register("UHZ_DETECTION_REPORT", 0);
+  m_Comms.Register("UHZ_DETECpostSensorConfigRequestTION_REPORT", 0);
   m_Comms.Register("UHZ_CONFIG_ACK", 0);
   m_Comms.Register("UHZ_OPTIONS_SUMMARY", 0);
   m_Comms.Register("HAZARDSET_REQUEST", 0);
+  m_Comms.Register("VIEW_MARKER", 0);
 }
 
 //---------------------------------------------------------
@@ -205,7 +216,6 @@ void HazardMgr::postSensorInfoRequest()
 
 //---------------------------------------------------------
 // Procedure: handleMailSensorConfigAck
-
 bool HazardMgr::handleMailSensorConfigAck(string str)
 {
   // Expected ack parameters:
@@ -249,6 +259,8 @@ bool HazardMgr::handleMailSensorConfigAck(string str)
     m_sensor_config_acks++;
     m_swath_width_granted = atof(width.c_str());
     m_pd_granted = atof(pd.c_str());
+    m_pfa = atof(pfa.c_str());
+    m_pclass = atof(pclass.c_str());
   }
 
   return(valid_msg);
@@ -261,12 +273,12 @@ bool HazardMgr::handleMailSensorConfigAck(string str)
 
 bool HazardMgr::handleMailDetectionReport(string str)
 {
+  // handle detection
   m_detection_reports++;
 
   XYHazard new_hazard = string2Hazard(str);
 
   string hazlabel = new_hazard.getLabel();
-  
   if(hazlabel == "") {
     reportRunWarning("Detection report received for hazard w/out label");
     return(false);
@@ -278,11 +290,14 @@ bool HazardMgr::handleMailDetectionReport(string str)
   else
     m_hazard_set.setHazard(ix, new_hazard);
 
+// pfa(i) = ( m_pfa + fill_transparency ) / 2 
   string event = "New Detection, label=" + new_hazard.getLabel();
   event += ", x=" + doubleToString(new_hazard.getX(),1);
   event += ", y=" + doubleToString(new_hazard.getY(),1);
-
   reportEvent(event);
+
+
+  // requesting classification
 
   string req = "vname=" + m_host_community + ",label=" + hazlabel;
 
@@ -304,6 +319,27 @@ void HazardMgr::handleMailReportRequest()
   Notify("HAZARDSET_REPORT", summary_report);
 }
 
+//------------------------------------------------------------
+
+void HazardMgr::handleMailReportResemblanceFactor( string str )
+{
+  int label;
+  double fill_transparency;
+  
+  vector<string> svector = parseString(str, ',');
+  unsigned int i, vsize = svector.size();
+  for(i=0; i<vsize; i++) 
+  {
+    string field = biteStringX(svector[i], '=');
+    string value = svector[i];
+
+    if(field == "label")
+      label = atoi(value.c_str());
+    else if(field == "fill_transparency")
+      fill_transparency = atof(value.c_str());
+  }    
+   m_resemblance_factor.insert( std::pair<int,double>(label,fill_transparency) );
+}
 
 //------------------------------------------------------------
 // Procedure: buildReport()
@@ -331,8 +367,3 @@ bool HazardMgr::buildReport()
 
   return(true);
 }
-
-
-
-
-
