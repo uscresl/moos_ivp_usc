@@ -13,6 +13,7 @@ Behavior = BHV_Waypoint
   condition = (DEPLOY = true)
   endflag   = RETURN = true
   perpetual = true
+  updates = WAYPOINT_UPDATES
 
          speed = 2   // meters per second
         radius = 5.0
