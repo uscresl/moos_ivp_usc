@@ -27,7 +27,4 @@ ProcessConfig = pShare
 
   // Setting up lots of inputs at once
   // input = route = "localhost:9069 & multicast_19 & multicast_65"
-  
-  // our stuff
-  output = src_name=NODE_MESSAGE_LOCAL, dest_name=NODE_MESSAGE, route=localhost:9000
 }

@@ -7,4 +7,7 @@ ProcessConfig = pNodeReporter
   CommsTick   = 2
   
   VESSEL_TYPE = $(VTYPE)
+  
+  // use a group to enable group broadcast in inter-vehicle messaging
+  group = survey
 }

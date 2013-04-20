@@ -25,5 +25,6 @@ ProcessConfig = uTimerScript
 //  randvar        = varname=ANG, min=0, max=359, key=at_reset
 
   // test uFldMessageHandler by generating some node messages
-  event = var=NODE_MESSAGE_LOCAL,val="src_node=tim,dest_node=ben,var_name=TEST_2,string_val=bla",time=20:40
+  randvar = varname=VAL, min=0, max=500, key=at_reset
+  event = var=NODE_MESSAGE_LOCAL,val="src_node=tim,dest_group=survey,var_name=TEST_2,double_val=$[VAL]",time=20:40
 }

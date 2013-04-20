@@ -90,8 +90,8 @@ bool HazardMgr::OnNewMail(MOOSMSG_LIST &NewMail)
     else if(key == "HAZARDSET_REQUEST") 
       handleMailReportRequest();
       
-    else if(key == "VIEW_MARKER") 
-      handleMailReportResemblanceFactor(sval);
+    else if(key == "NODE_REPORT_LOCAL")
+      handleMailOwnNodeReport(sval);
 
     else 
       reportRunWarning("Unhandled Mail: " + key);
@@ -185,7 +185,7 @@ void HazardMgr::registerVariables()
   m_Comms.Register("UHZ_CONFIG_ACK", 0);
   m_Comms.Register("UHZ_OPTIONS_SUMMARY", 0);
   m_Comms.Register("HAZARDSET_REQUEST", 0);
-  m_Comms.Register("VIEW_MARKER", 0);
+  m_Comms.Register("NODE_REPORT_LOCAL", 0);
 }
 
 //---------------------------------------------------------
@@ -296,13 +296,17 @@ bool HazardMgr::handleMailDetectionReport(string str)
   event += ", y=" + doubleToString(new_hazard.getY(),1);
   reportEvent(event);
 
+  // test publish NODE_MESSAGE_LOCAL to share detection with other vehicle
+  // via uFldMessageHandler
+  string detection = "x=" + doubleToString(new_hazard.getX(),1) + 
+                     ",y=" + doubleToString(new_hazard.getY(),1);
+  string detect = "src_node=" + m_host_community + ",dest_group=" + m_group_name
+                  + ",var_name=DETECTION_REPORT,string_val=" + detection;
+  Notify("NODE_MESSAGE_LOCAL",detect);
 
   // requesting classification
-
   string req = "vname=" + m_host_community + ",label=" + hazlabel;
-
   Notify("UHZ_CLASSIFY_REQUEST", req);
-
 
   return(true);
 }
@@ -320,25 +324,20 @@ void HazardMgr::handleMailReportRequest()
 }
 
 //------------------------------------------------------------
+// Procedure: handleMailOwnNodeReport
 
-void HazardMgr::handleMailReportResemblanceFactor( string str )
+void HazardMgr::handleMailOwnNodeReport(string sval)
 {
-  int label;
-  double fill_transparency;
-  
-  vector<string> svector = parseString(str, ',');
+  vector<string> svector = parseString(sval, ',');
   unsigned int i, vsize = svector.size();
   for(i=0; i<vsize; i++) 
   {
     string field = biteStringX(svector[i], '=');
     string value = svector[i];
 
-    if(field == "label")
-      label = atoi(value.c_str());
-    else if(field == "fill_transparency")
-      fill_transparency = atof(value.c_str());
-  }    
-   m_resemblance_factor.insert( std::pair<int,double>(label,fill_transparency) );
+    if( tolower(field) == "group")
+      m_group_name = value;
+  }
 }
 
 //------------------------------------------------------------

@@ -48,7 +48,7 @@ class HazardMgr : public AppCastingMOOSApp
    bool handleMailDetectionReport(std::string);
    bool handleMailHazardReport(std::string) {return(true);};
    void handleMailReportRequest();
-   void handleMailReportResemblanceFactor( std::string str );
+   void handleMailOwnNodeReport(std::string sval);
    
  protected: 
    void postSensorConfigRequest();
@@ -80,9 +80,9 @@ class HazardMgr : public AppCastingMOOSApp
    double m_pfa;
    double m_pclass;
 
-   std::map<int, double>  m_resemblance_factor;
-   XYHazardSet m_hazard_set;
+   std::string m_group_name;
 
+   XYHazardSet m_hazard_set;
 };
 
 #endif 
