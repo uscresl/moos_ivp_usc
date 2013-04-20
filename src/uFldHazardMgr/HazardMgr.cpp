@@ -301,7 +301,7 @@ bool HazardMgr::handleMailDetectionReport(string str)
   string detection = "x=" + doubleToString(new_hazard.getX(),1) + 
                      ",y=" + doubleToString(new_hazard.getY(),1);
   string detect = "src_node=" + m_host_community + ",dest_group=" + m_group_name
-                  + ",var_name=DETECTION_REPORT,string_val=" + detection;
+                  + ",var_name=DETECTION_REPORT,string_val=\"" + detection + "\"";
   Notify("NODE_MESSAGE_LOCAL",detect);
 
   // requesting classification
