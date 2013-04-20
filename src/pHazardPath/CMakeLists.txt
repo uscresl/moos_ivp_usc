@@ -1,17 +1,16 @@
 #--------------------------------------------------------
-# The CMakeLists.txt for:                       uFldHazardMgr
+# The CMakeLists.txt for:                       pHazardPath
 # Author(s):                              
 #--------------------------------------------------------
 
 SET(SRC
-  HazardMgr.cpp
-  HazardMgr_Info.cpp
+  HazardPath.cpp
   main.cpp
 )
 
-ADD_EXECUTABLE(uFldHazardMgr ${SRC})
+ADD_EXECUTABLE(pHazardPath ${SRC})
 
-TARGET_LINK_LIBRARIES(uFldHazardMgr
+TARGET_LINK_LIBRARIES(pHazardPath
    ${MOOS_LIBRARIES}
    ufld_hazards
    geometry

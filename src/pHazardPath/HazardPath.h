@@ -23,10 +23,10 @@
 #ifndef UFLD_HAZARD_PATH_HEADER
 #define UFLD_HAZARD_PATH_HEADER
 
-// #include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
-#include "XYHazardSet.h"
+#include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
 
-class HazardMgr : public AppCastingMOOSApp
+
+class HazardPath : public AppCastingMOOSApp
 {
  public:
    HazardPath();
@@ -38,50 +38,34 @@ class HazardMgr : public AppCastingMOOSApp
    bool OnConnectToServer();
    bool OnStartUp();
 
-//  protected: // Standard AppCastingMOOSApp function to overload 
-//    bool buildReport();
-
  protected: // Registration, Configuration, Mail handling utils
    void registerVariables();
+   void calculateSurveyArea();
    bool handleMailSensorConfigAck(std::string);
-   bool handleMailSensorOptionsSummary(std::string) {return(true);};
-   bool handleMailDetectionReport(std::string);
-   bool handleMailHazardReport(std::string) {return(true);};
-   void handleMailReportRequest();
-   void handleMailReportResemblanceFactor( std::string str );
+
    
  protected: 
-   void postSensorConfigRequest();
-   void postSensorInfoRequest();
-   void postHazardSetReport();
+   void postWaypointUpdate();
    
  private: // Configuration variables
-   double      m_swath_width_desired;
-   double      m_pd_desired;
-   std::string m_report_name;
-
+   double m_number_of_vehicles;
+   double m_coordinate_1x , m_coordinate_1y;
+   double m_coordinate_2x , m_coordinate_2y;
+   double m_coordinate_3x , m_coordinate_3y;
+   double m_coordinate_4x , m_coordinate_4y;
+   double m_lane_width_overlap;
+   double m_survey_area_x , m_survey_area_y;
+   double m_survey_area_width;
+   double m_survey_area_height;
+   double m_survey_lane_width;
+   
  private: // State variables
-   bool   m_sensor_config_requested;
-   bool   m_sensor_config_set;
-   bool   m_new_resemblance_factor;
-   bool   m_new_detection;
-   bool   m_new_classification;
 
-   unsigned int m_sensor_config_reqs;
-   unsigned int m_sensor_config_acks;
-
-   unsigned int m_sensor_report_reqs;
-   unsigned int m_detection_reports;
-
-   unsigned int m_summary_reports;
 
    double m_swath_width_granted;
    double m_pd_granted;
    double m_pfa;
    double m_pclass;
-
-   std::map<int, double>  m_resemblance_factor;
-   XYHazardSet m_hazard_set;
 
 };
 

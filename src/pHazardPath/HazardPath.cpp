@@ -27,39 +27,28 @@
 
 #include <iterator>
 #include "MBUtils.h"
-#include "HazardMgr.h"
+#include "HazardPath.h"
 #include "XYFormatUtilsHazard.h"
 #include "ACTable.h"
+#include "math.h"
 
 using namespace std;
 
 //---------------------------------------------------------
 // Constructor
 
-HazardMgr::HazardMgr()
+HazardPath::HazardPath()
 {
   // Config variables
-  m_swath_width_desired = 25;
-  m_pd_desired          = 0.9;
+  m_number_of_vehicles = 1;
 
   // State Variables 
-  m_sensor_config_requested = false;
-  m_sensor_config_set   = false;
-  m_swath_width_granted = 0;
-  m_pd_granted          = 0;
-
-  m_sensor_config_reqs = 0;
-  m_sensor_config_acks = 0;
-  m_sensor_report_reqs = 0;
-  m_detection_reports  = 0;
-
-  m_summary_reports = 0;
 }
 
 //---------------------------------------------------------
 // Procedure: OnNewMail
 
-bool HazardMgr::OnNewMail(MOOSMSG_LIST &NewMail)
+bool HazardPath::OnNewMail(MOOSMSG_LIST &NewMail)
 {
   AppCastingMOOSApp::OnNewMail(NewMail);
 
@@ -81,29 +70,18 @@ bool HazardMgr::OnNewMail(MOOSMSG_LIST &NewMail)
     if(key == "UHZ_CONFIG_ACK") 
       handleMailSensorConfigAck(sval);
 
-    else if(key == "UHZ_OPTIONS_SUMMARY") 
-      handleMailSensorOptionsSummary(sval);
-
-    else if(key == "UHZ_DETECTION_REPORT") 
-      handleMailDetectionReport(sval);
-
-    else if(key == "HAZARDSET_REQUEST") 
-      handleMailReportRequest();
-      
-    else if(key == "VIEW_MARKER") 
-      handleMailReportResemblanceFactor(sval);
-
     else 
       reportRunWarning("Unhandled Mail: " + key);
   }
-	
+
+   calculateSurveyArea();
    return(true);
 }
 
 //---------------------------------------------------------
 // Procedure: OnConnectToServer
 
-bool HazardMgr::OnConnectToServer()
+bool HazardPath::OnConnectToServer()
 {
    registerVariables();
    return(true);
@@ -113,20 +91,8 @@ bool HazardMgr::OnConnectToServer()
 // Procedure: Iterate()
 //            happens AppTick times per second
 
-bool HazardMgr::Iterate()
+bool HazardPath::Iterate()
 {
-  AppCastingMOOSApp::Iterate();
-
-  if(!m_sensor_config_requested)
-    postSensorConfigRequest();
-
-  if(m_sensor_config_set)
-    postSensorInfoRequest();
-    
-  if(m_new_resemblance_factor || m_new_detection || m_new_classification)
-  {}
-
-  AppCastingMOOSApp::PostReport();
   return(true);
 }
 
@@ -134,9 +100,8 @@ bool HazardMgr::Iterate()
 // Procedure: OnStartUp()
 //            happens before connection is open
 
-bool HazardMgr::OnStartUp()
+bool HazardPath::OnStartUp()
 {
-  AppCastingMOOSApp::OnStartUp();
 
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
@@ -144,33 +109,67 @@ bool HazardMgr::OnStartUp()
     reportConfigWarning("No config block found for " + GetAppName());
 
   STRING_LIST::iterator p;
-  for(p=sParams.begin(); p!=sParams.end(); p++) {
+  for(p=sParams.begin(); p!=sParams.end(); p++) 
+  {
     string orig  = *p;
     string line  = *p;
     string param = tolower(biteStringX(line, '='));
     string value = line;
 
     bool handled = false;
-    if((param == "swath_width") && isNumber(value)) {
-      m_swath_width_desired = atof(value.c_str());
+    if((param == "number_of_vehicles") && isNumber(value)) 
+    {
+      m_number_of_vehicles = atof(value.c_str());
       handled = true;
     }
-    else if(((param == "sensor_pd") || (param == "pd")) && isNumber(value)) {
-      m_pd_desired = atof(value.c_str());
+    
+    else if( (param == "coordinate_1") ) 
+    {
+      string xValue = tolower(biteString(value, ','));
+      string yValue = value;
+      m_coordinate_1x = atof(xValue.c_str());
+      m_coordinate_1y = atof(yValue.c_str());
       handled = true;
     }
-    else if(param == "report_name") {
-      value = stripQuotes(value);
-      m_report_name = value;
+    
+    else if( (param == "coordinate_2") ) 
+    {
+      string xValue = tolower(biteStringX(value, ','));
+      string yValue = value;
+      m_coordinate_2x = atof(xValue.c_str());
+      m_coordinate_2y = atof(yValue.c_str());
       handled = true;
     }
+    
+    else if( (param == "coordinate_3") ) 
+    {
+      string xValue = tolower(biteStringX(value, ','));
+      string yValue = value;
+      m_coordinate_3x = atof(xValue.c_str());
+      m_coordinate_3y = atof(yValue.c_str());
+      handled = true;
+    }
+    
+    else if( (param == "coordinate_4") ) 
+    {
+      string xValue = tolower(biteStringX(value, ','));
+      string yValue = value;
+      m_coordinate_4x = atof(xValue.c_str());
+      m_coordinate_4y = atof(yValue.c_str());
+      handled = true;
+    }
+    
+    else if( (param == "lane_width_overlap") && isNumber(value) ) 
+    {
+      m_lane_width_overlap = atof(value.c_str());
+      handled = true;
+    }
+    
+  
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
-  
-  m_hazard_set.setSource(m_host_community);
-  m_hazard_set.setName(m_report_name);
-  
+ 
   registerVariables();	
   return(true);
 }
@@ -178,45 +177,17 @@ bool HazardMgr::OnStartUp()
 //---------------------------------------------------------
 // Procedure: registerVariables
 
-void HazardMgr::registerVariables()
+void HazardPath::registerVariables()
 {
-  AppCastingMOOSApp::RegisterVariables();
-  m_Comms.Register("UHZ_DETECpostSensorConfigRequestTION_REPORT", 0);
   m_Comms.Register("UHZ_CONFIG_ACK", 0);
-  m_Comms.Register("UHZ_OPTIONS_SUMMARY", 0);
-  m_Comms.Register("HAZARDSET_REQUEST", 0);
-  m_Comms.Register("VIEW_MARKER", 0);
 }
 
-//---------------------------------------------------------
-// Procedure: postSensorConfigRequest
 
-void HazardMgr::postSensorConfigRequest()
-{
-  string request = "vname=" + m_host_community;
-  
-  request += ",width=" + doubleToStringX(m_swath_width_desired,2);
-  request += ",pd="    + doubleToStringX(m_pd_desired,2);
-
-  m_sensor_config_requested = true;
-  m_sensor_config_reqs++;
-  Notify("UHZ_CONFIG_REQUEST", request);
-}
-
-//---------------------------------------------------------
-// Procedure: postSensorInfoRequest
-
-void HazardMgr::postSensorInfoRequest()
-{
-  string request = "vname=" + m_host_community;
-
-  m_sensor_report_reqs++;
-  Notify("UHZ_SENSOR_REQUEST", request);
-}
 
 //---------------------------------------------------------
 // Procedure: handleMailSensorConfigAck
-bool HazardMgr::handleMailSensorConfigAck(string str)
+
+bool HazardPath::handleMailSensorConfigAck(string str)
 {
   // Expected ack parameters:
   string vname, width, pd, pfa, pclass;
@@ -243,9 +214,7 @@ bool HazardMgr::handleMailSensorConfigAck(string str)
       pclass = value;
     else
       valid_msg = false;       
-
   }
-
 
   if((vname=="")||(width=="")||(pd=="")||(pfa=="")||(pclass==""))
     valid_msg = false;
@@ -254,116 +223,41 @@ bool HazardMgr::handleMailSensorConfigAck(string str)
     reportRunWarning("Unhandled Sensor Config Ack:" + original_msg);
 
   
-  if(valid_msg) {
-    m_sensor_config_set = true;
-    m_sensor_config_acks++;
+  if(valid_msg) 
+  {
     m_swath_width_granted = atof(width.c_str());
     m_pd_granted = atof(pd.c_str());
-    m_pfa = atof(pfa.c_str());
-    m_pclass = atof(pclass.c_str());
   }
 
   return(valid_msg);
 }
 
-//---------------------------------------------------------
-// Procedure: handleMailDetectionReport
-//      Note: The detection report should look something like:
-//            UHZ_DETECTION_REPORT = vname=betty,x=51,y=11.3,label=12 
-
-bool HazardMgr::handleMailDetectionReport(string str)
+void HazardPath::calculateSurveyArea()
 {
-  // handle detection
-  m_detection_reports++;
-
-  XYHazard new_hazard = string2Hazard(str);
-
-  string hazlabel = new_hazard.getLabel();
-  if(hazlabel == "") {
-    reportRunWarning("Detection report received for hazard w/out label");
-    return(false);
-  }
-
-  int ix = m_hazard_set.findHazard(hazlabel);
-  if(ix == -1)
-    m_hazard_set.addHazard(new_hazard);
-  else
-    m_hazard_set.setHazard(ix, new_hazard);
-
-// pfa(i) = ( m_pfa + fill_transparency ) / 2 
-  string event = "New Detection, label=" + new_hazard.getLabel();
-  event += ", x=" + doubleToString(new_hazard.getX(),1);
-  event += ", y=" + doubleToString(new_hazard.getY(),1);
-  reportEvent(event);
-
-
-  // requesting classification
-
-  string req = "vname=" + m_host_community + ",label=" + hazlabel;
-
-  Notify("UHZ_CLASSIFY_REQUEST", req);
-
-
-  return(true);
-}
-
-
-//---------------------------------------------------------
-// Procedure: handleMailReportRequest
-
-void HazardMgr::handleMailReportRequest()
-{
-  m_summary_reports++;
-
-  string summary_report = m_hazard_set.getSpec("final_report");
-  Notify("HAZARDSET_REPORT", summary_report);
-}
-
-//------------------------------------------------------------
-
-void HazardMgr::handleMailReportResemblanceFactor( string str )
-{
-  int label;
-  double fill_transparency;
+  m_survey_area_x = ( ( m_coordinate_4x - m_coordinate_1x ) / 2 ) + m_coordinate_1x ;
+  m_survey_area_y = ( ( m_coordinate_2y - m_coordinate_1y ) / 2 ) + m_coordinate_1y ;
+  m_survey_area_width = fabs( m_coordinate_4x - m_coordinate_1x );
+  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );
+  m_survey_lane_width = m_swath_width_granted * 2 - m_lane_width_overlap;
   
-  vector<string> svector = parseString(str, ',');
-  unsigned int i, vsize = svector.size();
-  for(i=0; i<vsize; i++) 
-  {
-    string field = biteStringX(svector[i], '=');
-    string value = svector[i];
+//   cout << m_survey_lane_width << "," << m_swath_width_granted << endl;
+  postWaypointUpdate();
+} 
 
-    if(field == "label")
-      label = atoi(value.c_str());
-    else if(field == "fill_transparency")
-      fill_transparency = atof(value.c_str());
-  }    
-   m_resemblance_factor.insert( std::pair<int,double>(label,fill_transparency) );
-}
-
-//------------------------------------------------------------
-// Procedure: buildReport()
-
-bool HazardMgr::buildReport() 
+void HazardPath::postWaypointUpdate()
 {
-  m_msgs << "Config Requested:"                                  << endl;
-  m_msgs << "    swath_width_desired: " << m_swath_width_desired << endl;
-  m_msgs << "             pd_desired: " << m_pd_desired          << endl;
-  m_msgs << "   config requests sent: " << m_sensor_config_reqs  << endl;
-  m_msgs << "                  acked: " << m_sensor_config_acks  << endl;
-  m_msgs << "------------------------ "                          << endl;
-  m_msgs << "Config Result:"                                     << endl;
-  m_msgs << "       config confirmed: " << boolToString(m_sensor_config_set) << endl;
-  m_msgs << "    swath_width_granted: " << m_swath_width_granted << endl;
-  m_msgs << "             pd_granted: " << m_pd_granted          << endl << endl;
-  m_msgs << "--------------------------------------------" << endl << endl;
-
-  m_msgs << "               sensor requests: " << m_sensor_report_reqs << endl;
-  m_msgs << "             detection reports: " << m_detection_reports  << endl << endl; 
-
-  m_msgs << "   Hazardset Reports Requested: " << m_summary_reports << endl;
-  m_msgs << "      Hazardset Reports Posted: " << m_summary_reports << endl;
-  m_msgs << "                   Report Name: " << m_report_name << endl;
-
-  return(true);
+  string request = "points=" ;
+  
+  request += "format=lawnmower" ;
+  request += ",label=collab_search";
+  
+  request += ",x=" + doubleToStringX(m_survey_area_x,2);
+  request += ",y=" + doubleToStringX(m_survey_area_y,2);
+  request += ",width=" + doubleToStringX(m_survey_area_width,2);
+  request += ",height=" + doubleToStringX(m_survey_area_height,2);
+  request += ",lane_width=" + doubleToStringX(m_survey_lane_width,2);
+  request += ",rows=north-south" ;
+  request += ",degs=0";
+  
+  Notify("WAYPOINT_UPDATES", request);
 }
