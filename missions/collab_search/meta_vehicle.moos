@@ -31,6 +31,10 @@ Processconfig = ANTLER
   
   // temporary; test messaging in sim
   Run = uTimerScript       @ NewConsole = true
+  
+  //pHazardPath
+  Run = pHazardPath	    @ NewConsole = false
+  
 }
   
 #include plug_uFldNodeBroker.moos
@@ -38,6 +42,7 @@ Processconfig = ANTLER
 #include plug_pHostInfo.moos
 #include plug_uFldMessageHandler.moos
 #include plug_uFldHazardMgr_$(VNAME).moos
+#include plug_pHazardPath.moos
 
 // collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside
