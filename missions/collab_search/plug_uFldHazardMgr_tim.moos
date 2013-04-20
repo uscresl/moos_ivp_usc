@@ -6,7 +6,7 @@ ProcessConfig = uFldHazardMgr
   AppTick   = 2
   CommsTick = 2
 
-  swath_width = 38
-  sensor_pd   = 0.80
-  report_name = Sarah
+  swath_width = 5
+  sensor_pd   = 0.95
+  report_name = tim
 }

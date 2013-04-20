@@ -37,7 +37,7 @@ Processconfig = ANTLER
 #include plug_pShare.moos
 #include plug_pHostInfo.moos
 #include plug_uFldMessageHandler.moos
-#include plug_uFldHazardMgr.moos
+#include plug_uFldHazardMgr_$(VNAME).moos
 
 // collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside

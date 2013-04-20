@@ -7,7 +7,7 @@ ProcessConfig = uTimerScript
   verbose = true     // or {false}
 
   // Seconds added to each event time, on each script pass
-  delay_reset = 60
+  delay_reset = 10
   // Seconds added to each event time, on first pass only
   delay_start = 0
 
