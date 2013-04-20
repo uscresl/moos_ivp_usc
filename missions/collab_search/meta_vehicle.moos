@@ -21,13 +21,16 @@ Processconfig = ANTLER
   Run = uProcessWatch      @ NewConsole = false
 
   // collision avoidance
-  Run = pBasicContactMgr @ NewConsole = false
+  Run = pBasicContactMgr   @ NewConsole = false
 
   Run = pShare             @ NewConsole = false
   Run = pHostInfo          @ NewConsole = false
   Run = uFldNodeBroker     @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = true
   Run = uFldHazardMgr      @ NewConsole = false
+  
+  // temporary; test messaging in sim
+  Run = uTimerScript       @ NewConsole = true
 }
   
 #include plug_uFldNodeBroker.moos
@@ -46,3 +49,7 @@ Processconfig = ANTLER
 #include plug_pLogger.moos
 #include plug_pNodeReporter.moos
 #include plug_uProcessWatch.moos
+
+// vehicle specific timer script to test messaging
+#include plug_uTimerScript_$(VNAME).moos
+

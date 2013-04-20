@@ -1,0 +1,29 @@
+ProcessConfig = uTimerScript
+{
+  AppTick   = 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose = true     // or {false}
+
+  // Seconds added to each event time, on each script pass
+  delay_reset = 60
+  // Seconds added to each event time, on first pass only
+  delay_start = 0
+
+  // when to reset the uTimerScript
+  reset_time = 60
+  reset_max = nolimit
+
+//  // Rate at which time is accelerated in execuing the script
+//  time_warp      = 1
+
+// Examples
+//  // Event(s) are the key components of the script
+//  event          = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
+//  // Declaration of random var macro expanded in event values
+//  randvar        = varname=ANG, min=0, max=359, key=at_reset
+
+  // test uFldMessageHandler by generating some node messages
+  event = var=NODE_MESSAGE_LOCAL,val="src_node=tim,dest_node=ben,var_name=TEST_2,string_val=bla",time=20:40
+}
