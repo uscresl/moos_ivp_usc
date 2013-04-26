@@ -255,12 +255,17 @@ void HazardPath::calculateSurveyArea()
     m_survey_area_x = ( total_box_x ) + ( total_box_width / 2 );
   }
   
+  if( m_survey_area_x < 0 )
+    m_survey_order = 0; //reverse order
+  else
+    m_survey_order = 1;
+  
   m_survey_area_y =  total_box_y;
   m_survey_area_width = fabs(total_box_width);
   m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );
   m_survey_lane_width = m_swath_width_granted * 2 - m_lane_width_overlap;
   
-  cout << m_survey_area_x << "," << m_survey_area_y << "," << m_survey_area_width << ","<< m_survey_lane_width<<endl;
+//   cout << m_survey_area_x << "," << m_survey_area_y << "," << m_survey_area_width << ","<< m_survey_order<<endl;
   postWaypointUpdate();
 } 
 
@@ -278,6 +283,11 @@ void HazardPath::postWaypointUpdate()
   request += ",lane_width=" + doubleToStringX(m_survey_lane_width,2);
   request += ",rows=north-south" ;
   request += ",degs=0";
+  
+  if( m_survey_order )
+      request += "#order=normal";
+  else
+      request += "#order=reverse";
   
   Notify("WAYPOINT_UPDATES", request);
 }
