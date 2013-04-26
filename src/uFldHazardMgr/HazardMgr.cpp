@@ -92,6 +92,9 @@ bool HazardMgr::OnNewMail(MOOSMSG_LIST &NewMail)
       
     else if(key == "NODE_REPORT_LOCAL")
       handleMailOwnNodeReport(sval);
+    
+    else if(key == "UHZ_HAZARD_REPORT")
+      handleMailHazardReport(sval);
 
     else 
       reportRunWarning("Unhandled Mail: " + key);
@@ -181,11 +184,15 @@ bool HazardMgr::OnStartUp()
 void HazardMgr::registerVariables()
 {
   AppCastingMOOSApp::RegisterVariables();
-  m_Comms.Register("UHZ_DETECTION_REPORT", 0);
-  m_Comms.Register("UHZ_CONFIG_ACK", 0);
-  m_Comms.Register("UHZ_OPTIONS_SUMMARY", 0);
-  m_Comms.Register("HAZARDSET_REQUEST", 0);
-  m_Comms.Register("NODE_REPORT_LOCAL", 0);
+  m_Comms.Register("NODE_REPORT_LOCAL", 0); // to get vehicle group name
+
+  m_Comms.Register("UHZ_DETECTION_REPORT", 0); // detected object
+  m_Comms.Register("UHZ_HAZARD_REPORT", 0); // classified object
+
+  m_Comms.Register("UHZ_OPTIONS_SUMMARY", 0); // all sensor options
+  m_Comms.Register("UHZ_CONFIG_ACK", 0); // swath width etc
+
+  m_Comms.Register("HAZARDSET_REQUEST", 0); // need to create hazardset
 }
 
 //---------------------------------------------------------
@@ -300,8 +307,8 @@ bool HazardMgr::handleMailDetectionReport(string str)
   // via uFldMessageHandler
   string detection = "x=" + doubleToString(new_hazard.getX(),1) + 
                      ",y=" + doubleToString(new_hazard.getY(),1);
-  string detect = "src_node=" + m_host_community + ",dest_group=" + m_group_name
-                  + ",var_name=DETECTION_REPORT,string_val=\"" + detection + "\"";
+  string detect = "src_node=" + m_host_community + ",dest_group=" + m_group_name +
+                  ",var_name=DETECTION_REPORT,string_val=\"" + detection + "\"";
   Notify("NODE_MESSAGE_LOCAL",detect);
 
   // requesting classification
@@ -311,6 +318,21 @@ bool HazardMgr::handleMailDetectionReport(string str)
   return(true);
 }
 
+//---------------------------------------------------------
+// Procedure: handleMailHazardReport
+// Note: The hazard report should look something like:
+//  UHZ_HAZARD_REPORT = x=-59.8,y=-294.1,label=13,type=benign,color=orange,hr=0.5 
+//  UHZ_HAZARD_REPORT = x=-14.2,y=-293.6,label=08,type=hazard
+void HazardMgr::handleMailHazardReport(std::string str)
+{
+  // TODO: extend, for now, just pass on to the other vehicle
+  string object_class = str;
+  // test publish NODE_MESSAGE_LOCAL to share classification with other vehicle
+  // via uFldMessageHandler
+  string report = "src_node=" + m_host_community + ",dest_group=" + m_group_name +
+                  ",var_name=HAZARD_REPORT,string_val=\"" + object_class + "\"";
+  Notify("NODE_MESSAGE_LOCAL",report);
+}
 
 //---------------------------------------------------------
 // Procedure: handleMailReportRequest
