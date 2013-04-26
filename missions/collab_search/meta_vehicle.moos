@@ -33,7 +33,7 @@ Processconfig = ANTLER
   Run = uTimerScript       @ NewConsole = true
   
   //pHazardPath
-  Run = pHazardPath	    @ NewConsole = false
+  Run = pHazardPath	    @ NewConsole = true
   
 }
   
@@ -42,7 +42,7 @@ Processconfig = ANTLER
 #include plug_pHostInfo.moos
 #include plug_uFldMessageHandler.moos
 #include plug_uFldHazardMgr_$(VNAME).moos
-#include plug_pHazardPath.moos
+#include plug_pHazardPath_$(VNAME).moos
 
 // collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside

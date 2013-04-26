@@ -15,4 +15,6 @@ ProcessConfig = pHazardPath
   coordinate_4 =  400,-75
   
   lane_width_overlap = 1
+  
+  survey_area_location = left
 }

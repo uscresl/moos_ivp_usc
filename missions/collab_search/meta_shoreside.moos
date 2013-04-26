@@ -108,7 +108,7 @@ ProcessConfig = uFldHazardSensor
   //max_appcast_events = 20
   MAX_APPcAST_EVENTS = 20
 
-  sensor_config = width=5,  exp=8, pclass=0.98, max=1
+  sensor_config = width=5,  exp=8, pclass=0.98
   sensor_config = width=10, exp=6, pclass=0.93
   sensor_config = width=25, exp=4, pclass=0.80
   sensor_config = width=50, exp=2, pclass=0.60

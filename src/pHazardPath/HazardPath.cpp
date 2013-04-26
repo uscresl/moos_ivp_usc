@@ -164,7 +164,15 @@ bool HazardPath::OnStartUp()
       m_lane_width_overlap = atof(value.c_str());
       handled = true;
     }
-    
+    else if( (param == "survey_area_location") ) 
+    {
+      if( value == "left" )
+	m_survey_area_location = 0;
+      else if( value == "right")
+	m_survey_area_location = 1;
+      
+      handled = true;
+    }    
   
     if(!handled)
       reportUnhandledConfigWarning(orig);
@@ -234,13 +242,25 @@ bool HazardPath::handleMailSensorConfigAck(string str)
 
 void HazardPath::calculateSurveyArea()
 {
-  m_survey_area_x = ( ( m_coordinate_4x - m_coordinate_1x ) / 2 ) + m_coordinate_1x ;
-  m_survey_area_y = ( ( m_coordinate_2y - m_coordinate_1y ) / 2 ) + m_coordinate_1y ;
-  m_survey_area_width = fabs( m_coordinate_4x - m_coordinate_1x );
+  double total_box_x = ( ( m_coordinate_4x - m_coordinate_1x ) / 2 ) + m_coordinate_1x ;
+  double total_box_y = ( ( m_coordinate_2y - m_coordinate_1y ) / 2 ) + m_coordinate_1y ;
+  double total_box_width = fabs( ( m_coordinate_4x - m_coordinate_1x ) / 2 );
+  
+  if( !m_survey_area_location )
+  {
+    m_survey_area_x = m_coordinate_1x + (total_box_width/2);
+  }
+  else
+  {
+    m_survey_area_x = ( total_box_x ) + ( total_box_width / 2 );
+  }
+  
+  m_survey_area_y =  total_box_y;
+  m_survey_area_width = fabs(total_box_width);
   m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );
   m_survey_lane_width = m_swath_width_granted * 2 - m_lane_width_overlap;
   
-//   cout << m_survey_lane_width << "," << m_swath_width_granted << endl;
+  cout << m_survey_area_x << "," << m_survey_area_y << "," << m_survey_area_width << ","<< m_survey_lane_width<<endl;
   postWaypointUpdate();
 } 
 
