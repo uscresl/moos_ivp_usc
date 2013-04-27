@@ -11,7 +11,8 @@ Behavior = BHV_Waypoint
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
-  endflag   = RETURN = true
+  //endflag   = RETURN = true
+  endflag   = SURVEY_DONE = true
   perpetual = true
   updates = WAYPOINT_UPDATES
 

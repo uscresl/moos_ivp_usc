@@ -43,6 +43,7 @@ HazardPath::HazardPath()
   m_number_of_vehicles = 1;
 
   // State Variables 
+  m_first = true;
 }
 
 //---------------------------------------------------------
@@ -69,6 +70,14 @@ bool HazardPath::OnNewMail(MOOSMSG_LIST &NewMail)
     
     if(key == "UHZ_CONFIG_ACK") 
       handleMailSensorConfigAck(sval);
+    
+    else if ( key == "SURVEY_DONE" )
+    {
+      if ( sval == "true" && m_first )
+        m_first = false;
+      else if ( sval == "true" && !m_first )
+       Notify("RETURN", "true"); // 2 surveys done, time to return
+    }
 
     else 
       reportRunWarning("Unhandled Mail: " + key);
@@ -167,18 +176,18 @@ bool HazardPath::OnStartUp()
     else if( (param == "survey_area_location") ) 
     {
       if( value == "left" )
-	m_survey_area_location = 0;
+        m_survey_area_location = 0;
       else if( value == "right")
-	m_survey_area_location = 1;
+        m_survey_area_location = 1;
       
       handled = true;
-    }    
+    }
   
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
  
-  registerVariables();	
+  registerVariables();
   return(true);
 }
 
@@ -188,6 +197,7 @@ bool HazardPath::OnStartUp()
 void HazardPath::registerVariables()
 {
   m_Comms.Register("UHZ_CONFIG_ACK", 0);
+  m_Comms.Register("SURVEY_DONE", 0);
 }
 
 
@@ -281,7 +291,7 @@ void HazardPath::postWaypointUpdate()
   request += ",width=" + doubleToStringX(m_survey_area_width,2);
   request += ",height=" + doubleToStringX(m_survey_area_height,2);
   request += ",lane_width=" + doubleToStringX(m_survey_lane_width,2);
-  request += ",rows=north-south" ;
+  request =  request + ",rows=" + ( m_first ? "north-south" : "east-west" ) ;
   request += ",degs=0";
   
   if( m_survey_order )

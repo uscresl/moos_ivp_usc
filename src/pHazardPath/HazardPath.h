@@ -62,12 +62,12 @@ class HazardPath : public AppCastingMOOSApp
    bool m_survey_order;
  private: // State variables
 
-
    double m_swath_width_granted;
    double m_pd_granted;
    double m_pfa;
    double m_pclass;
 
+   bool m_first;
 };
 
 #endif 
