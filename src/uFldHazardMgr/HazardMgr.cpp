@@ -332,7 +332,7 @@ bool HazardMgr::handleMailDetectionReport(string str)
 void HazardMgr::handleMailOwnHazardReport(std::string str)
 {
   string classified_object = str;
-  classified_object = classified_object + ",src=" + m_host_community; // add ourself as source
+//  classified_object = classified_object + ",src=" + m_host_community; // add ourself as source
 
   // test publish NODE_MESSAGE_LOCAL to share classification with other vehicle
   // via uFldMessageHandler
@@ -348,7 +348,7 @@ void HazardMgr::handleMailOwnHazardReport(std::string str)
 // Procedure: handleMailHazardReport
 //            handles the received hazard report from other vehicle(s)
 // Note: The hazard report should look something like:
-//  x=-146,y=-174,label=68,type=benign,hr=0.07473,src=ben
+//  x=-146,y=-174,label=68,type=benign,hr=0.07473
 void HazardMgr::handleMailOtherHazardReport(std::string str)
 {
   string received_hazard = str;
