@@ -50,6 +50,7 @@ class HazardMgr : public AppCastingMOOSApp
    void handleMailOtherHazardReport(std::string);
    void handleMailReportRequest();
    void handleMailOwnNodeReport(std::string sval);
+   void buildHazardSet(std::string sval);
    
  protected: 
    void postSensorConfigRequest();
@@ -84,6 +85,7 @@ class HazardMgr : public AppCastingMOOSApp
    std::string m_group_name;
 
    XYHazardSet m_hazard_set;
+   XYHazardSet m_classification_hazard_set;
 };
 
 #endif 

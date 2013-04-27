@@ -341,7 +341,7 @@ void HazardMgr::handleMailOwnHazardReport(std::string str)
   Notify("NODE_MESSAGE_LOCAL",report);
   
   // add to the final hazardset
-  //buildHazardSet(classified_object);
+  buildHazardSet(classified_object);
 }
 
 //---------------------------------------------------------
@@ -353,7 +353,7 @@ void HazardMgr::handleMailOtherHazardReport(std::string str)
 {
   string received_hazard = str;
   // add to the final hazardset
-  //buildHazardSet(received_hazard);
+  buildHazardSet(received_hazard);
 }
 
 //---------------------------------------------------------
@@ -363,7 +363,7 @@ void HazardMgr::handleMailReportRequest()
 {
   m_summary_reports++;
 
-  string summary_report = m_hazard_set.getSpec("final_report");
+  string summary_report = m_classification_hazard_set.getSpec("final_report");
   Notify("HAZARDSET_REPORT", summary_report);
 }
 
@@ -383,6 +383,46 @@ void HazardMgr::handleMailOwnNodeReport(string sval)
       m_group_name = value;
   }
 }
+
+//------------------------------------------------------------
+//Procedure: buildHazardSet
+void HazardMgr::buildHazardSet(std::string sval)
+{
+    string xString, yString, labelString, typeString, hrString, srcNodeString;
+    bool   valid_msg = true;
+    vector<string> svector = parseString(sval, ',');
+    unsigned int i, vsize = svector.size();
+    for(i=0; i<vsize; i++)
+    {
+	string param = biteStringX(svector[i], '=');
+	string value = svector[i];
+
+	if(param == "x")
+	  xString = value;
+	else if(param == "y")
+	  yString = value;
+	else if(param == "label")
+	  labelString = value;
+	else if(param == "type")
+	  typeString = value;
+	else if(param == "hr")
+	  hrString = value;
+	else
+	  valid_msg = false;       
+    }
+    
+    XYHazard hazard;
+    
+    hazard.setX(atoi(xString.c_str()));
+    hazard.setY(atoi(yString.c_str()));
+    hazard.setLabel(labelString);
+    hazard.setType(typeString);
+    
+    m_classification_hazard_set.setSource(m_host_community);
+    m_classification_hazard_set.addHazard(hazard);
+}
+
+
 
 //------------------------------------------------------------
 // Procedure: buildReport()
