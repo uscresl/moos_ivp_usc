@@ -46,7 +46,8 @@ class HazardMgr : public AppCastingMOOSApp
    bool handleMailSensorConfigAck(std::string);
    bool handleMailSensorOptionsSummary(std::string) {return(true);};
    bool handleMailDetectionReport(std::string);
-   void handleMailHazardReport(std::string);
+   void handleMailOwnHazardReport(std::string);
+   void handleMailOtherHazardReport(std::string);
    void handleMailReportRequest();
    void handleMailOwnNodeReport(std::string sval);
    

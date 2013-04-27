@@ -17,7 +17,7 @@ Processconfig = ANTLER
   Run = pLogger            @ NewConsole = false
   Run = pNodeReporter      @ NewConsole = false
   Run = pMarinePID         @ NewConsole = false
-  Run = pHelmIvP           @ NewConsole = true
+  Run = pHelmIvP           @ NewConsole = false
   Run = uProcessWatch      @ NewConsole = false
 
   // collision avoidance
@@ -26,14 +26,14 @@ Processconfig = ANTLER
   Run = pShare             @ NewConsole = false
   Run = pHostInfo          @ NewConsole = false
   Run = uFldNodeBroker     @ NewConsole = false
-  Run = uFldMessageHandler @ NewConsole = true
+  Run = uFldMessageHandler @ NewConsole = false
   Run = uFldHazardMgr      @ NewConsole = false
   
   // temporary; test messaging in sim
-  Run = uTimerScript       @ NewConsole = true
+  Run = uTimerScript       @ NewConsole = false
   
   //pHazardPath
-  Run = pHazardPath	    @ NewConsole = true
+  Run = pHazardPath        @ NewConsole = false
   
 }
   

@@ -72,7 +72,8 @@ ProcessConfig = uFldNodeComms
   AppTick       = 2
   CommsTick     = 2
 
-  comms_range          = 250
+  // TODO: reset to competition values
+  comms_range          = 1000 //250 
   critical_range       = 25  // safety: always communicate own position in this range
   min_msg_interval     = 0   // 0: unlimited
   max_msg_length       = 0   // 0: unlimited
@@ -89,9 +90,9 @@ ProcessConfig = uFldHazardMetric
   CommsTick = 4
  
   penalty_missed_hazard = 150
-  penalty_false_alarm   = 25     
-  max_time              = 9000 
-  penalty_max_time_over = 300    
+  penalty_false_alarm   = 25
+  max_time              = 9000
+  penalty_max_time_over = 300
   penalty_max_time_rate = 0.5 
 
   hazard_file   = $(HAZARD_FILE)
