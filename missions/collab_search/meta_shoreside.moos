@@ -164,5 +164,12 @@ ProcessConfig = pMarineViewer
   button_two   = RETURN_ALL  # RETURN_ALL=true
 
   button_three   = REQ_REPORT  # HAZARDSET_REQUEST_ALL=true
+  
+
+  marker = type=efield,x=-150,y=-75,label=alpha,color=red,width=10
+  marker = type=efield,x=-150,y=-400,label=beta,color=red,width=10
+  marker = type=efield,x=400,y=-400,label=gama,color=red,width=10
+  marker = type=efield,x=400,y=-75,label=theta,color=red,width=10
+
 }
 

@@ -272,7 +272,7 @@ void HazardPath::calculateSurveyArea()
   
   m_survey_area_y =  total_box_y;
   m_survey_area_width = fabs(total_box_width);
-  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );
+  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y ) + 32;
   m_survey_lane_width = m_swath_width_granted * 2 - m_lane_width_overlap;
   
 //   cout << m_survey_area_x << "," << m_survey_area_y << "," << m_survey_area_width << ","<< m_survey_order<<endl;

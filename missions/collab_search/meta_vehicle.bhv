@@ -97,7 +97,7 @@ Behavior = BHV_OpRegion
   pwt        = 200
   condition  = DEPLOY = true
 
-  polygon = -305,-125:390,120:610,-340:-100,-600
+  polygon = -305,-110:350,160:620,-350:-90,-610
   trigger_entry_time = 1
   trigger_exit_time  = 1
   visual_hints = vertex_color=yellow,vertex_size=5,edge_color=red,edge_size=2
