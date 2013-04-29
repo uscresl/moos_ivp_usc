@@ -40,12 +40,11 @@ class HazardPath : public AppCastingMOOSApp
 
  protected: // Registration, Configuration, Mail handling utils
    void registerVariables();
-   void calculateSurveyArea();
    bool handleMailSensorConfigAck(std::string);
 
-   
- protected: 
+ private: // Own functions
    void postWaypointUpdate();
+   void calculateSurveyArea();
    
  private: // Configuration variables
    double m_number_of_vehicles;
@@ -60,14 +59,15 @@ class HazardPath : public AppCastingMOOSApp
    double m_survey_lane_width;
    bool m_survey_area_location;
    bool m_survey_order;
- private: // State variables
 
+ private: // State variables
    double m_swath_width_granted;
    double m_pd_granted;
    double m_pfa;
    double m_pclass;
 
-   bool m_first;
+   size_t m_num_surveys;
+   size_t m_surveys_done;
 };
 
 #endif 

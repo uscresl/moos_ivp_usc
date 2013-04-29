@@ -43,7 +43,8 @@ HazardPath::HazardPath()
   m_number_of_vehicles = 1;
 
   // State Variables 
-  m_first = true;
+  m_num_surveys = 1;
+  m_surveys_done = 0;
 }
 
 //---------------------------------------------------------
@@ -69,21 +70,22 @@ bool HazardPath::OnNewMail(MOOSMSG_LIST &NewMail)
 #endif
     
     if(key == "UHZ_CONFIG_ACK") 
-      handleMailSensorConfigAck(sval);
-    
-    else if ( key == "SURVEY_DONE" )
     {
-      if ( sval == "true" && m_first )
-        m_first = false;
-      else if ( sval == "true" && !m_first )
-       Notify("RETURN", "true"); // 2 surveys done, time to return
+      handleMailSensorConfigAck(sval);
+      calculateSurveyArea();
     }
-
+    else if( key == "SURVEY_DONE" )
+    {
+      m_surveys_done++;
+      if( sval == "true" && (m_surveys_done == m_num_surveys) )
+        Notify("RETURN", "true"); // all requested surveys done, time to return
+      else
+        postWaypointUpdate();
+    }
     else 
       reportRunWarning("Unhandled Mail: " + key);
   }
 
-   calculateSurveyArea();
    return(true);
 }
 
@@ -131,7 +133,6 @@ bool HazardPath::OnStartUp()
       m_number_of_vehicles = atof(value.c_str());
       handled = true;
     }
-    
     else if( (param == "coordinate_1") ) 
     {
       string xValue = tolower(biteString(value, ','));
@@ -140,7 +141,6 @@ bool HazardPath::OnStartUp()
       m_coordinate_1y = atof(yValue.c_str());
       handled = true;
     }
-    
     else if( (param == "coordinate_2") ) 
     {
       string xValue = tolower(biteStringX(value, ','));
@@ -149,7 +149,6 @@ bool HazardPath::OnStartUp()
       m_coordinate_2y = atof(yValue.c_str());
       handled = true;
     }
-    
     else if( (param == "coordinate_3") ) 
     {
       string xValue = tolower(biteStringX(value, ','));
@@ -158,7 +157,6 @@ bool HazardPath::OnStartUp()
       m_coordinate_3y = atof(yValue.c_str());
       handled = true;
     }
-    
     else if( (param == "coordinate_4") ) 
     {
       string xValue = tolower(biteStringX(value, ','));
@@ -170,11 +168,13 @@ bool HazardPath::OnStartUp()
     
     else if( (param == "lane_width_overlap") && isNumber(value) ) 
     {
+      // how much lanes should overlap
       m_lane_width_overlap = atof(value.c_str());
       handled = true;
     }
     else if( (param == "survey_area_location") ) 
     {
+      // which of the two survey areas to take // TODO: fix for more vehicles
       if( value == "left" )
         m_survey_area_location = 0;
       else if( value == "right")
@@ -199,8 +199,6 @@ void HazardPath::registerVariables()
   m_Comms.Register("UHZ_CONFIG_ACK", 0);
   m_Comms.Register("SURVEY_DONE", 0);
 }
-
-
 
 //---------------------------------------------------------
 // Procedure: handleMailSensorConfigAck
@@ -240,7 +238,6 @@ bool HazardPath::handleMailSensorConfigAck(string str)
   if(!valid_msg)
     reportRunWarning("Unhandled Sensor Config Ack:" + original_msg);
 
-  
   if(valid_msg) 
   {
     m_swath_width_granted = atof(width.c_str());
@@ -266,38 +263,54 @@ void HazardPath::calculateSurveyArea()
   }
   
   if( m_survey_area_x < 0 )
-    m_survey_order = 0; //reverse order
+    m_survey_order = 0; // reverse order
   else
     m_survey_order = 1;
   
   m_survey_area_y =  total_box_y;
   m_survey_area_width = fabs(total_box_width);
-  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y ) + 32;
+  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );// + 32;
   m_survey_lane_width = m_swath_width_granted * 2 - m_lane_width_overlap;
+  
+  switch((int)round(m_swath_width_granted))
+  {
+    case 5:
+      m_num_surveys = 1;
+      break;
+    case 10:
+      m_num_surveys = 2;
+      break;
+    case 25:
+      m_num_surveys = 4;
+      break;
+    case 50:
+      m_num_surveys = 8;
+      break;
+    default:
+      m_num_surveys = 1;
+  }
   
 //   cout << m_survey_area_x << "," << m_survey_area_y << "," << m_survey_area_width << ","<< m_survey_order<<endl;
   postWaypointUpdate();
-} 
+}
 
 void HazardPath::postWaypointUpdate()
 {
   string request = "points=" ;
-  
   request += "format=lawnmower" ;
   request += ",label=collab_search";
-  
   request += ",x=" + doubleToStringX(m_survey_area_x,2);
   request += ",y=" + doubleToStringX(m_survey_area_y,2);
-  request += ",width=" + doubleToStringX(m_survey_area_width,2);
-  request += ",height=" + doubleToStringX(m_survey_area_height,2);
+  // adding lead for survey area to avoid turning in survey area
+  double survey_height = m_survey_area_height;
+  double survey_width = m_survey_area_width;
+  ( (m_surveys_done % 2 == 0) ? survey_height += 32 : survey_width += 32 );
+  request += ",width=" + doubleToStringX(survey_width,2);
+  request += ",height=" + doubleToStringX(survey_height,2);
   request += ",lane_width=" + doubleToStringX(m_survey_lane_width,2);
-  request =  request + ",rows=" + ( m_first ? "north-south" : "east-west" ) ;
+  request =  request + ",rows=" + ( (m_surveys_done % 2 == 0) ? "north-south" : "east-west" ) ;
   request += ",degs=0";
-  
-  if( m_survey_order )
-      request += "#order=normal";
-  else
-      request += "#order=reverse";
+  request =  request + "#order=" + (( m_survey_order ) ? "normal" : "reverse");
   
   Notify("WAYPOINT_UPDATES", request);
 }
