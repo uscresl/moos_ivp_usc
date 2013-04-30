@@ -45,6 +45,9 @@ HazardPath::HazardPath()
   // State Variables 
   m_num_surveys = 1;
   m_surveys_done = 0;
+  m_swath_width_granted = 0;
+
+  m_survey_mode = "lawnmower";
 }
 
 //---------------------------------------------------------
@@ -69,18 +72,23 @@ bool HazardPath::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-    if(key == "UHZ_CONFIG_ACK") 
+    if( key == "UHZ_CONFIG_ACK" ) 
     {
       handleMailSensorConfigAck(sval);
-      calculateSurveyArea();
+      if (m_survey_mode == "lawnmower")
+        calculateSurveyArea();
     }
-    else if( key == "SURVEY_DONE" )
+    else if( (key == "SURVEY_DONE") && (m_survey_mode == "lawnmower") )
     {
       m_surveys_done++;
       if( sval == "true" && (m_surveys_done == m_num_surveys) )
         Notify("RETURN", "true"); // all requested surveys done, time to return
       else
         postWaypointUpdate();
+    }
+    else if ( (key == "HAZARD_REPORT") && (m_survey_mode == "follow") )
+    {
+      postWaypointFollow(sval);
     }
     else 
       reportRunWarning("Unhandled Mail: " + key);
@@ -182,6 +190,12 @@ bool HazardPath::OnStartUp()
       
       handled = true;
     }
+    else if ( param == "survey_mode" )
+    {
+      if ( value == "follow" )
+        m_survey_mode = value;
+      // default is lawnmower
+    }
   
     if(!handled)
       reportUnhandledConfigWarning(orig);
@@ -198,6 +212,7 @@ void HazardPath::registerVariables()
 {
   m_Comms.Register("UHZ_CONFIG_ACK", 0);
   m_Comms.Register("SURVEY_DONE", 0);
+  m_Comms.Register("HAZARD_REPORT", 0);
 }
 
 //---------------------------------------------------------
@@ -251,15 +266,15 @@ void HazardPath::calculateSurveyArea()
 {
   double total_box_x = ( ( m_coordinate_4x - m_coordinate_1x ) / 2 ) + m_coordinate_1x ;
   double total_box_y = ( ( m_coordinate_2y - m_coordinate_1y ) / 2 ) + m_coordinate_1y ;
-  double total_box_width = fabs( ( m_coordinate_4x - m_coordinate_1x ) / 2 );
+  double total_box_width = fabs( ( m_coordinate_4x - m_coordinate_1x ) / m_number_of_vehicles );
   
   if( !m_survey_area_location )
   {
-    m_survey_area_x = m_coordinate_1x + (total_box_width/2);
+    m_survey_area_x = m_coordinate_1x + (total_box_width / 2);
   }
   else
   {
-    m_survey_area_x = ( total_box_x ) + ( total_box_width / 2 );
+    m_survey_area_x = ( total_box_x ) + ( total_box_width / 2);
   }
   
   if( m_survey_area_x < 0 )
@@ -313,4 +328,43 @@ void HazardPath::postWaypointUpdate()
   request =  request + "#order=" + (( m_survey_order ) ? "normal" : "reverse");
   
   Notify("WAYPOINT_UPDATES", request);
+}
+
+void HazardPath::postWaypointFollow(std::string sval)
+{
+  // HAZARD_REPORT = x=-14.2,y=-293.6,label=08,type=hazard
+  string xString, yString, typeString;
+  bool valid_msg = true;
+  vector<string> svector = parseString(sval, ',');
+  unsigned int i, vsize = svector.size();
+  for(i=0; i<vsize; i++)
+  {
+    string param = biteStringX(svector[i], '=');
+    string value = svector[i];
+    if(param == "x")
+      xString = value;
+    else if(param == "y")
+      yString = value;
+    else if(param == "type")
+      typeString = value;
+    else
+      valid_msg = false;
+  }
+
+  double xMin = atof(xString.c_str()) - (m_swath_width_granted-1);
+  double xMax = atof(xString.c_str()) + (m_swath_width_granted*2);
+  double yMin = atof(yString.c_str()) - 20; // turning takes up 16y
+  double yMax = atof(yString.c_str()) + 20;
+
+  if ( typeString == "hazard" )
+  {
+    std::string update;
+    //update = "points=" + xString + "," + yString;
+    //update = "points=radial::x=" + xString + ",y=" + yString + ",radius=4,pts=4,label=hazard_loiter";
+    update = "points=" + doubleToStringX(xMin) + "," + doubleToStringX(yMin) + ":" 
+                       + doubleToStringX(xMin) + "," + doubleToStringX(yMax) + ":"
+                       + doubleToStringX(xMax) + "," + doubleToStringX(yMax) + ":"
+                       + doubleToStringX(xMax) + "," + doubleToStringX(yMin);
+    Notify("WAYPOINT_UPDATES", update);
+  }
 }

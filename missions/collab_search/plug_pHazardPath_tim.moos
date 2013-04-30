@@ -7,7 +7,7 @@ ProcessConfig = pHazardPath
   CommsTick = 2
   
   // number of vehicles doing surveys ( area will be split in num_vehicles parts)
-  number_of_vehicles = 2
+  number_of_vehicles = 1
   
   // Enter the coordinates in Anticlockwise Order
   coordinate_1 = -150,-75
@@ -20,4 +20,6 @@ ProcessConfig = pHazardPath
   
   // which survey area to take (assuming split in 2)
   survey_area_location = right
+  
+  survey_mode = follow
 }

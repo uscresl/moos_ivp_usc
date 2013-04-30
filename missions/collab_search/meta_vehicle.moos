@@ -33,7 +33,7 @@ Processconfig = ANTLER
   Run = uTimerScript       @ NewConsole = false
   
   //pHazardPath
-  Run = pHazardPath        @ NewConsole = false
+  Run = pHazardPath        @ NewConsole = true //false
   
 }
   

@@ -45,6 +45,7 @@ class HazardPath : public AppCastingMOOSApp
  private: // Own functions
    void postWaypointUpdate();
    void calculateSurveyArea();
+   void postWaypointFollow(std::string val);
    
  private: // Configuration variables
    double m_number_of_vehicles;
@@ -68,6 +69,8 @@ class HazardPath : public AppCastingMOOSApp
 
    size_t m_num_surveys;
    size_t m_surveys_done;
+   
+   std::string m_survey_mode;
 };
 
 #endif 
