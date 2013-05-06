@@ -30,7 +30,7 @@ Processconfig = ANTLER
   Run = uFldHazardMgr      @ NewConsole = false
   
   // temporary; test messaging in sim
-  Run = uTimerScript       @ NewConsole = false
+//  Run = uTimerScript       @ NewConsole = false
   
   //pHazardPath
   Run = pHazardPath        @ NewConsole = true //false
@@ -56,5 +56,5 @@ Processconfig = ANTLER
 #include plug_uProcessWatch.moos
 
 // vehicle specific timer script to test messaging
-#include plug_uTimerScript_$(VNAME).moos
+//#include plug_uTimerScript_$(VNAME).moos
 
