@@ -1,0 +1,25 @@
+//--------------------------------------------------
+// pHazardPath configuration block
+//
+ProcessConfig = pHazardPath
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  // number of vehicles doing surveys ( area will be split in num_vehicles parts)
+  number_of_vehicles = 3
+  
+  // Enter the coordinates in Anticlockwise Order
+  coordinate_1 = -150,-75
+  coordinate_2 = -150,-400
+  coordinate_3 =  400,-400
+  coordinate_4 =  400,-75
+  
+  // how much lanes should overlap
+  lane_width_overlap = 1
+  
+  // which survey area to take
+  survey_area_location = 0
+
+  survey_mode = lawnmower
+}
