@@ -18,6 +18,9 @@ ProcessConfig = pHazardPath
   // how much lanes should overlap
   lane_width_overlap = 1
   
-  // which survey area to take (assuming split in 2)
-  survey_area_location = left
+  // which survey area to take (indexed from left, [0,...>)
+  survey_area_location = 0
+  
+  // "lawnmower" or "follow"
+  survey_mode = lawnmower
 }

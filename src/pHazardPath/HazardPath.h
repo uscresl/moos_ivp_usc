@@ -58,7 +58,8 @@ class HazardPath : public AppCastingMOOSApp
    double m_survey_area_width;
    double m_survey_area_height;
    double m_survey_lane_width;
-   bool m_survey_area_location;
+   //bool m_survey_area_location;
+   size_t m_survey_area_location;
    bool m_survey_order;
 
  private: // State variables

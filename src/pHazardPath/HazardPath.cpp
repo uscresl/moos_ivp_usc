@@ -173,7 +173,6 @@ bool HazardPath::OnStartUp()
       m_coordinate_4y = atof(yValue.c_str());
       handled = true;
     }
-    
     else if( (param == "lane_width_overlap") && isNumber(value) ) 
     {
       // how much lanes should overlap
@@ -182,12 +181,8 @@ bool HazardPath::OnStartUp()
     }
     else if( (param == "survey_area_location") ) 
     {
-      // which of the two survey areas to take // TODO: fix for more vehicles
-      if( value == "left" )
-        m_survey_area_location = 0;
-      else if( value == "right")
-        m_survey_area_location = 1;
-      
+      // which of the survey areas to take, [0,..> index
+      m_survey_area_location = atoi(value.c_str());
       handled = true;
     }
     else if ( param == "survey_mode" )
@@ -196,11 +191,23 @@ bool HazardPath::OnStartUp()
         m_survey_mode = value;
       // default is lawnmower
     }
-  
+
     if(!handled)
       reportUnhandledConfigWarning(orig);
   }
- 
+
+  // let's show the area on pMarineViewer
+  std::string poly = "pts={" + doubleToStringX(m_coordinate_1x,2) + "," 
+                             + doubleToStringX(m_coordinate_1y,2) + ":"
+                             + doubleToStringX(m_coordinate_2x,2) + "," 
+                             + doubleToStringX(m_coordinate_2y,2) + ":"
+                             + doubleToStringX(m_coordinate_3x,2) + "," 
+                             + doubleToStringX(m_coordinate_3y,2) + ":"
+                             + doubleToStringX(m_coordinate_4x,2) + "," 
+                             + doubleToStringX(m_coordinate_4y,2)
+                             + ",edge_color=yellow,vertex_color=green,vertex_size=3,edge_size=2";
+  Notify("VIEW_POLYGON",poly);
+
   registerVariables();
   return(true);
 }
@@ -264,31 +271,30 @@ bool HazardPath::handleMailSensorConfigAck(string str)
 
 void HazardPath::calculateSurveyArea()
 {
+  // full survey box
   double total_box_x = ( ( m_coordinate_4x - m_coordinate_1x ) / 2 ) + m_coordinate_1x ;
   double total_box_y = ( ( m_coordinate_2y - m_coordinate_1y ) / 2 ) + m_coordinate_1y ;
-  double total_box_width = fabs( ( m_coordinate_4x - m_coordinate_1x ) / m_number_of_vehicles );
+  double total_box_width = fabs( m_coordinate_4x - m_coordinate_1x );
   
-  if( !m_survey_area_location )
-  {
-    m_survey_area_x = m_coordinate_1x + (total_box_width / 2);
-  }
-  else
-  {
-    m_survey_area_x = ( total_box_x ) + ( total_box_width / 2);
-  }
-  
+  // calculate specific box for each vehicle
+  m_survey_area_width = fabs(total_box_width) / m_number_of_vehicles;
+  m_survey_area_x = m_coordinate_1x 
+                    + ((m_survey_area_location+1) * (m_survey_area_width))
+                    - (m_survey_area_width/2);
+
   if( m_survey_area_x < 0 )
-    m_survey_order = 0; // reverse order
+    m_survey_order = ( (m_survey_area_location % 2) == 0 ? 0 : 1);
   else
-    m_survey_order = 1;
-  
+    m_survey_order = ( (m_survey_area_location % 2) == 0 ? 1 : 0);
+
   m_survey_area_y =  total_box_y;
-  m_survey_area_width = fabs(total_box_width);
-  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );// + 32;
+  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );
   m_survey_lane_width = m_swath_width_granted * 2 - m_lane_width_overlap;
   
   switch((int)round(m_swath_width_granted))
   {
+    // based on the knowledge we have for time it takes to survey area, and
+    // 9000sec time limit on full survey
     case 5:
       m_num_surveys = 1;
       break;
@@ -305,7 +311,6 @@ void HazardPath::calculateSurveyArea()
       m_num_surveys = 1;
   }
   
-//   cout << m_survey_area_x << "," << m_survey_area_y << "," << m_survey_area_width << ","<< m_survey_order<<endl;
   postWaypointUpdate();
 }
 
@@ -356,11 +361,10 @@ void HazardPath::postWaypointFollow(std::string sval)
   double yMin = atof(yString.c_str()) - 20; // turning takes up 16y
   double yMax = atof(yString.c_str()) + 20;
 
+  // currently; only inspect objects classified as hazard
   if ( typeString == "hazard" )
   {
     std::string update;
-    //update = "points=" + xString + "," + yString;
-    //update = "points=radial::x=" + xString + ",y=" + yString + ",radius=4,pts=4,label=hazard_loiter";
     update = "points=" + doubleToStringX(xMin) + "," + doubleToStringX(yMin) + ":" 
                        + doubleToStringX(xMin) + "," + doubleToStringX(yMax) + ":"
                        + doubleToStringX(xMax) + "," + doubleToStringX(yMax) + ":"
