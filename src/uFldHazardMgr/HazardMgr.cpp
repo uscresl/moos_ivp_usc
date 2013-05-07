@@ -30,6 +30,7 @@
 #include "HazardMgr.h"
 #include "XYFormatUtilsHazard.h"
 #include "ACTable.h"
+#include <vector>
 
 using namespace std;
 
@@ -332,7 +333,7 @@ bool HazardMgr::handleMailDetectionReport(string str)
 void HazardMgr::handleMailOwnHazardReport(std::string str)
 {
   string classified_object = str;
-//  classified_object = classified_object + ",src=" + m_host_community; // add ourself as source
+  classified_object = classified_object + ",pclass=" + doubleToStringX(m_pclass); // add ourself as source
 
   // test publish NODE_MESSAGE_LOCAL to share classification with other vehicle
   // via uFldMessageHandler
@@ -356,11 +357,36 @@ void HazardMgr::handleMailOtherHazardReport(std::string str)
   buildHazardSet(received_hazard);
 }
 
+void HazardMgr::getClassifiedHazardReport()
+{
+   double probHazard, probBenign;
+   
+   for( int i = 0 ; i < m_classified_set.size(); i++ )
+   {
+     if( m_count[i] != 0 )
+     {
+       probHazard = m_hazard_prob[i] / (double)m_count[i];
+       probBenign = m_benign_prob[i] / (double)m_count[i];
+     }
+     
+     XYHazard hazard = m_classified_set.getHazard(i);
+     
+     if( probHazard >= probBenign )
+     {
+       hazard.setType("hazard");
+       	m_classification_hazard_set.setSource(m_host_community);
+       m_classification_hazard_set.addHazard(hazard);
+     }
+   }
+   
+}
+
 //---------------------------------------------------------
 // Procedure: handleMailReportRequest
 
 void HazardMgr::handleMailReportRequest()
 {
+  getClassifiedHazardReport();
   m_summary_reports++;
 
   string summary_report = m_classification_hazard_set.getSpec("final_report");
@@ -388,7 +414,7 @@ void HazardMgr::handleMailOwnNodeReport(string sval)
 //Procedure: buildHazardSet
 void HazardMgr::buildHazardSet(std::string sval)
 {
-    string xString, yString, labelString, typeString, hrString, srcNodeString;
+    string xString, yString, labelString, typeString, hrString, srcNodeString, pclassString;
     bool   valid_msg = true;
     vector<string> svector = parseString(sval, ',');
     unsigned int i, vsize = svector.size();
@@ -407,19 +433,56 @@ void HazardMgr::buildHazardSet(std::string sval)
 	  typeString = value;
 	else if(param == "hr")
 	  hrString = value;
+	else if(param == "pclass" )
+	  pclassString = value;
 	else
 	  valid_msg = false;       
     }
     
     XYHazard hazard;
+
+    int index = m_classified_set.findHazard(labelString);
+    double classProb = atof( pclassString.c_str() );
     
-    hazard.setX(atoi(xString.c_str()));
-    hazard.setY(atoi(yString.c_str()));
-    hazard.setLabel(labelString);
-    hazard.setType(typeString);
+    if( index == -1 )
+    {
+	hazard.setX(atoi(xString.c_str()));
+	hazard.setY(atoi(yString.c_str()));
+	hazard.setLabel(labelString);
+	hazard.setType(typeString);
+	m_classified_set.setSource(m_host_community);
+	m_classified_set.addHazard(hazard);
     
-    m_classification_hazard_set.setSource(m_host_community);
-    m_classification_hazard_set.addHazard(hazard);
+	
+	if( typeString == "hazard" )
+	{
+	  m_hazard_prob.push_back(classProb);
+	  m_benign_prob.push_back(1.0 - classProb);
+	  m_count.push_back(1);
+	}
+	else
+	{
+	  m_benign_prob.push_back(classProb);
+	  m_hazard_prob.push_back(1.0 - classProb);
+	  m_count.push_back(1);
+	}
+    }
+    
+    else
+    {
+	if( typeString == "hazard" )
+	{
+	  m_hazard_prob[index] += classProb;
+	  m_benign_prob[index] += 1.0 - classProb;
+	  m_count[index]++;
+	}
+	else
+	{
+	  m_benign_prob[index] += classProb;
+	  m_hazard_prob[index] += 1.0 - classProb;
+	  m_count[index]++;
+	}
+    }
 }
 
 

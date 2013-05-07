@@ -25,6 +25,9 @@
 
 #include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
 #include "XYHazardSet.h"
+#include <vector>
+
+using namespace std;
 
 class HazardMgr : public AppCastingMOOSApp
 {
@@ -86,6 +89,15 @@ class HazardMgr : public AppCastingMOOSApp
 
    XYHazardSet m_hazard_set;
    XYHazardSet m_classification_hazard_set;
+   XYHazardSet m_classified_set;
+   
+   vector<double> m_class_prob;
+   vector<double> m_hazard_prob;
+   vector<double> m_benign_prob;
+   vector<int> m_count;
+
+
+   void getClassifiedHazardReport();
 };
 
 #endif 
