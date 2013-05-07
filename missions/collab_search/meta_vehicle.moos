@@ -28,13 +28,10 @@ Processconfig = ANTLER
   Run = uFldNodeBroker     @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
   Run = uFldHazardMgr      @ NewConsole = false
-  
+  Run = pHazardPath        @ NewConsole = true
+
   // temporary; test messaging in sim
-//  Run = uTimerScript       @ NewConsole = false
-  
-  //pHazardPath
-  Run = pHazardPath        @ NewConsole = true //false
-  
+//  Run = uTimerScript       @ NewConsole = false  
 }
   
 #include plug_uFldNodeBroker.moos
