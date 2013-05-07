@@ -32,6 +32,8 @@
 #include "ACTable.h"
 #include "math.h"
 
+#include <limits>
+
 using namespace std;
 
 //---------------------------------------------------------
@@ -47,7 +49,17 @@ HazardPath::HazardPath()
   m_surveys_done = 0;
   m_swath_width_granted = 0;
 
+  // survey modes and waypoints
   m_survey_mode = "lawnmower";
+  m_first_wpt = true;
+  m_previous_wpt = std::pair<double,double>(0,0);
+  
+  // time check
+  m_start_x = std::numeric_limits<double>::min();
+  m_start_y = std::numeric_limits<double>::min();
+  m_mission_time = 9000;
+  m_return_threshold = 120;
+  m_speed = 0;
 }
 
 //---------------------------------------------------------
@@ -61,7 +73,9 @@ bool HazardPath::OnNewMail(MOOSMSG_LIST &NewMail)
   for(p=NewMail.begin(); p!=NewMail.end(); p++) {
     CMOOSMsg &msg = *p;
     string key   = msg.GetKey();
-    string sval  = msg.GetString(); 
+    string sval  = msg.GetString();
+    // separate way for getting the double val (sval was not working for DB_UPTIME) 
+    double dval  = msg.GetDouble();
 
 #if 0 // Keep these around just for template
     string comm  = msg.GetCommunity();
@@ -78,19 +92,48 @@ bool HazardPath::OnNewMail(MOOSMSG_LIST &NewMail)
       if (m_survey_mode == "lawnmower")
         calculateSurveyArea();
     }
-    else if( (key == "SURVEY_DONE") && (m_survey_mode == "lawnmower") )
+    else if( (key == "SURVEY_DONE") )
     {
-      m_surveys_done++;
-      if( sval == "true" && (m_surveys_done == m_num_surveys) )
-        Notify("RETURN", "true"); // all requested surveys done, time to return
-      else
-        postWaypointUpdate();
+      if ( m_survey_mode == "lawnmower" )
+      {
+        m_surveys_done++;
+        if( sval == "true" && (m_surveys_done == m_num_surveys) )
+          Notify("RETURN", "true"); // all requested surveys done, time to return
+        else
+          postWaypointUpdate();
+      }
+      else if ( m_survey_mode == "follow" )
+        postWaypointFollow();
     }
     else if ( (key == "HAZARD_REPORT") && (m_survey_mode == "follow") )
     {
-      postWaypointFollow(sval);
+      std::cout << "got a hazard report" << std::endl;
+      handleHazardReport(sval);
     }
-    else 
+    else if ( key == "DB_UPTIME" )
+    { // have both vehicles return in time to report
+      double dbtime = dval;
+      // check whether to return to be back at start pos within mission time
+      double distance_to_start = sqrt( pow(m_start_x - m_x, 2) + pow(m_start_y - m_y, 2) );
+      double time_to_return = distance_to_start / m_speed;
+      if ( (m_mission_time - dbtime - time_to_return) <= m_return_threshold )
+        Notify("RETURN","true");
+    }
+    else if ( key == "NAV_X" )
+    {
+      m_x = dval;
+      if ( m_start_x == std::numeric_limits<double>::min() )
+        m_start_x = dval;
+    }
+    else if ( key == "NAV_Y" )
+    {
+      m_y = dval;
+      if ( m_start_y == std::numeric_limits<double>::min() )
+        m_start_y = dval;
+    }
+    else if ( key == "NAV_SPEED" )
+      m_speed = dval;
+    else
       reportRunWarning("Unhandled Mail: " + key);
   }
 
@@ -147,6 +190,7 @@ bool HazardPath::OnStartUp()
       string yValue = value;
       m_coordinate_1x = atof(xValue.c_str());
       m_coordinate_1y = atof(yValue.c_str());
+      m_previous_wpt = std::pair<double,double>(m_coordinate_1x,m_coordinate_1y);
       handled = true;
     }
     else if( (param == "coordinate_2") ) 
@@ -190,6 +234,19 @@ bool HazardPath::OnStartUp()
       if ( value == "follow" )
         m_survey_mode = value;
       // default is lawnmower
+      std::cout << "survey mode: " << m_survey_mode << std::endl;
+    }
+    else if ( param == "mission_time" )
+    {
+      m_mission_time = atof(value.c_str());
+      handled = true;
+      std::cout << "mission time: " << m_mission_time << std::endl;
+    }
+    else if ( param == "time_at_end" )
+    {
+      m_return_threshold = atof(value.c_str());
+      handled = true;
+      std::cout << "time at end: " << m_return_threshold << std::endl;
     }
 
     if(!handled)
@@ -220,6 +277,10 @@ void HazardPath::registerVariables()
   m_Comms.Register("UHZ_CONFIG_ACK", 0);
   m_Comms.Register("SURVEY_DONE", 0);
   m_Comms.Register("HAZARD_REPORT", 0);
+  m_Comms.Register("DB_UPTIME", 0);
+  m_Comms.Register("NAV_X", 0);
+  m_Comms.Register("NAV_Y", 0);
+  m_Comms.Register("NAV_SPEED", 0);
 }
 
 //---------------------------------------------------------
@@ -335,7 +396,7 @@ void HazardPath::postWaypointUpdate()
   Notify("WAYPOINT_UPDATES", request);
 }
 
-void HazardPath::postWaypointFollow(std::string sval)
+void HazardPath::handleHazardReport(std::string sval)
 {
   // HAZARD_REPORT = x=-14.2,y=-293.6,label=08,type=hazard
   string xString, yString, typeString;
@@ -355,20 +416,63 @@ void HazardPath::postWaypointFollow(std::string sval)
     else
       valid_msg = false;
   }
-
-  double xMin = atof(xString.c_str()) - (m_swath_width_granted-1);
-  double xMax = atof(xString.c_str()) + (m_swath_width_granted*2);
-  double yMin = atof(yString.c_str()) - 20; // turning takes up 16y
-  double yMax = atof(yString.c_str()) + 20;
-
+  // push back
   // currently; only inspect objects classified as hazard
   if ( typeString == "hazard" )
   {
-    std::string update;
-    update = "points=" + doubleToStringX(xMin) + "," + doubleToStringX(yMin) + ":" 
-                       + doubleToStringX(xMin) + "," + doubleToStringX(yMax) + ":"
-                       + doubleToStringX(xMax) + "," + doubleToStringX(yMax) + ":"
-                       + doubleToStringX(xMax) + "," + doubleToStringX(yMin);
-    Notify("WAYPOINT_UPDATES", update);
+    m_survey_waypoints.push_back( std::pair<double,double>(atof(xString.c_str()),atof(yString.c_str())) );
+    std::cout << "pushed back: " << xString << "," << yString << std::endl;
+    if ( m_first_wpt )
+    {
+      postWaypointFollow();
+      m_first_wpt = false;
+    }
   }
+}
+
+void HazardPath::postWaypointFollow()
+{
+  bool north_south = true;
+  if ( m_survey_waypoints.size() > 0 )
+  { // take a new wpt if possible
+    m_previous_wpt = m_survey_waypoints.front();
+    m_survey_waypoints.pop_front();
+    m_survey_waypoints_second.push_back(m_previous_wpt);
+  }
+  else if ( m_survey_waypoints_second.size() > 0 )
+  { // if no new wpt, resurvey previous ones in orthogonal orientation
+    m_previous_wpt = m_survey_waypoints_second.front();
+    m_survey_waypoints_second.pop_front();
+    north_south = false;
+  }
+  // else, if still nothing new, survey previous point again. 
+  // TODO: we could do something smarter here, like random exploration?
+
+  double xval = m_previous_wpt.first;
+  double yval = m_previous_wpt.second;
+
+  // go straight over the hazard; these simulated vehicles don't suffer from
+  // not being able to sense right underneath themselves
+  double xMin, xMax, yMin, yMax;
+  if ( north_south )
+  {
+    xMin = xval; 
+    xMax = xval + (m_swath_width_granted*2);
+    yMin = yval - 20; // turning takes up 16y
+    yMax = yval + 20;
+  }
+  else
+  {
+    xMin = xval - 20; // turning takes up 16y
+    xMax = xval + 20;
+    yMin = yval; 
+    yMax = yval + (m_swath_width_granted*2);
+  }
+
+  std::string update;
+  update = "points=" + doubleToStringX(xMin) + "," + doubleToStringX(yMin) + ":" 
+                     + doubleToStringX(xMin) + "," + doubleToStringX(yMax) + ":"
+                     + doubleToStringX(xMax) + "," + doubleToStringX(yMax) + ":"
+                     + doubleToStringX(xMax) + "," + doubleToStringX(yMin);
+  Notify("WAYPOINT_UPDATES", update);
 }

@@ -7,7 +7,7 @@ ProcessConfig = pHazardPath
   CommsTick = 2
   
   // number of vehicles doing surveys ( area will be split in num_vehicles parts)
-  number_of_vehicles = 2
+  number_of_vehicles = 1
   
   // Enter the coordinates in Anticlockwise Order
   coordinate_1 = -150,-75
@@ -18,9 +18,16 @@ ProcessConfig = pHazardPath
   // how much lanes should overlap
   lane_width_overlap = 1
   
-  // which survey area to take
+  // which survey area to take (indexed from left, [0,...>)
   survey_area_location = 0
 
   // "lawnmower" or "follow"
   survey_mode = lawnmower
+
+  // total time allowed for this mission
+  mission_time = 800
+
+  // delta_t (s) at end of the mission for which vehicle should be back & 
+  // resting at start location
+  time_at_end = 300
 }

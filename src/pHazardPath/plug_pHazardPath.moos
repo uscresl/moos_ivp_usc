@@ -23,4 +23,11 @@ ProcessConfig = pHazardPath
   
   // "lawnmower" or "follow"
   survey_mode = lawnmower
+  
+  // total time allowed for this mission
+  mission_time = 600
+
+  // delta_t (s) at end of the mission for which vehicle should be back & 
+  // resting at start location
+  time_at_end = 120
 }
