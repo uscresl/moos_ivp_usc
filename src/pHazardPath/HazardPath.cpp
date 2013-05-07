@@ -1,28 +1,9 @@
 /*****************************************************************/
-/*    NAME: Michael Benjamin, Henrik Schmidt, and John Leonard   */
-/*    ORGN: Dept of Mechanical Eng / CSAIL, MIT Cambridge MA     */
-/*    FILE: HazardMgr.cpp                                        */
-/*    DATE: Oct 26th 2012                                        */
-/*                                                               */
-/*    Adapted by:                                                */
 /*    NAME: Supreeth Subbaraya, Stephanie Kemna                  */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
-/*    DATE: Apr, 2013                                            */
+/*    FILE: HazardPath.cpp                                       */
+/*    DATE: Apr/May, 2013                                        */
 /*                                                               */
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License   */
-/* as published by the Free Software Foundation; either version  */
-/* 2 of the License, or (at your option) any later version.      */
-/*                                                               */
-/* This program is distributed in the hope that it will be       */
-/* useful, but WITHOUT ANY WARRANTY; without even the implied    */
-/* warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR       */
-/* PURPOSE. See the GNU General Public License for more details. */
-/*                                                               */
-/* You should have received a copy of the GNU General Public     */
-/* License along with this program; if not, write to the Free    */
-/* Software Foundation, Inc., 59 Temple Place - Suite 330,       */
-/* Boston, MA 02111-1307, USA.                                   */
 /*****************************************************************/
 
 #include <iterator>
@@ -53,7 +34,9 @@ HazardPath::HazardPath()
   m_survey_mode = "lawnmower";
   m_first_wpt = true;
   m_previous_wpt = std::pair<double,double>(0,0);
-  
+  m_start_lm_x = 0;
+  m_start_lm_y = 0;
+
   // time check
   m_start_x = std::numeric_limits<double>::min();
   m_start_y = std::numeric_limits<double>::min();
@@ -343,14 +326,14 @@ void HazardPath::calculateSurveyArea()
                     + ((m_survey_area_location+1) * (m_survey_area_width))
                     - (m_survey_area_width/2);
 
-  if( m_survey_area_x < 0 )
-    m_survey_order = ( (m_survey_area_location % 2) == 0 ? 0 : 1);
-  else
-    m_survey_order = ( (m_survey_area_location % 2) == 0 ? 1 : 0);
+  m_survey_order = 1; // normal
 
   m_survey_area_y =  total_box_y;
   m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );
   m_survey_lane_width = m_swath_width_granted * 2 - m_lane_width_overlap;
+  
+  m_start_lm_x = m_survey_area_x - (m_survey_area_width/2);
+  m_start_lm_y = m_survey_area_y + (m_survey_area_height/2);
   
   switch((int)round(m_swath_width_granted))
   {
@@ -391,6 +374,8 @@ void HazardPath::postWaypointUpdate()
   request += ",lane_width=" + doubleToStringX(m_survey_lane_width,2);
   request =  request + ",rows=" + ( (m_surveys_done % 2 == 0) ? "north-south" : "east-west" ) ;
   request += ",degs=0";
+  request += ",startx=" + doubleToStringX(m_start_lm_x);
+  request += ",starty=" + doubleToStringX(m_start_lm_y);
   request =  request + "#order=" + (( m_survey_order ) ? "normal" : "reverse");
   
   Notify("WAYPOINT_UPDATES", request);

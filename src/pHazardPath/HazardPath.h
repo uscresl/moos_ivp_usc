@@ -1,30 +1,15 @@
 /*****************************************************************/
-/*    NAME: Stephanie Kemna and Supreeth Subbaraya   */
-/*    ORGN: Dept of Computer Science, USC     */
-/*    FILE: HazardPath.h                                          */
+/*    NAME: Stephanie Kemna and Supreeth Subbaraya               */
+/*    ORGN: Dept of Computer Science, USC                        */
+/*    FILE: HazardPath.h                                         */
 /*    DATE: Apr 19th 2013                                        */
 /*                                                               */
-/* This program is free software; you can redistribute it and/or */
-/* modify it under the terms of the GNU General Public License   */
-/* as published by the Free Software Foundation; either version  */
-/* 2 of the License, or (at your option) any later version.      */
-/*                                                               */
-/* This program is distributed in the hope that it will be       */
-/* useful, but WITHOUT ANY WARRANTY; without even the implied    */
-/* warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR       */
-/* PURPOSE. See the GNU General Public License for more details. */
-/*                                                               */
-/* You should have received a copy of the GNU General Public     */
-/* License along with this program; if not, write to the Free    */
-/* Software Foundation, Inc., 59 Temple Place - Suite 330,       */
-/* Boston, MA 02111-1307, USA.                                   */
 /*****************************************************************/
 
 #ifndef UFLD_HAZARD_PATH_HEADER
 #define UFLD_HAZARD_PATH_HEADER
 
 #include "MOOS/libMOOS/Thirdparty/AppCasting/AppCastingMOOSApp.h"
-
 
 class HazardPath : public AppCastingMOOSApp
 {
@@ -64,16 +49,20 @@ class HazardPath : public AppCastingMOOSApp
    bool m_survey_order;
 
  private: // State variables
+   // sensor params
    double m_swath_width_granted;
    double m_pd_granted;
    double m_pfa;
    double m_pclass;
 
+   // survey - general
    std::string m_survey_mode;
    size_t m_surveys_done;
    
    // if the mode is lawnmower, nr of surveys to do
    size_t m_num_surveys;
+   double m_start_lm_x;
+   double m_start_lm_y;
    
    // if the mode is follow, calculate waypoints
    std::list< std::pair<double,double> > m_survey_waypoints;
@@ -94,4 +83,3 @@ class HazardPath : public AppCastingMOOSApp
 };
 
 #endif 
-
