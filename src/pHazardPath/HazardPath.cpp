@@ -83,7 +83,10 @@ bool HazardPath::OnNewMail(MOOSMSG_LIST &NewMail)
         if( sval == "true" && (m_surveys_done == m_num_surveys) )
           Notify("RETURN", "true"); // all requested surveys done, time to return
         else
+        {
+          calculateSurveyArea();
           postWaypointUpdate();
+        }
       }
       else if ( m_survey_mode == "follow" )
         postWaypointFollow();
@@ -318,23 +321,60 @@ void HazardPath::calculateSurveyArea()
   // full survey box
   double total_box_x = ( ( m_coordinate_4x - m_coordinate_1x ) / 2 ) + m_coordinate_1x ;
   double total_box_y = ( ( m_coordinate_2y - m_coordinate_1y ) / 2 ) + m_coordinate_1y ;
-  double total_box_width = fabs( m_coordinate_4x - m_coordinate_1x );
+  m_survey_area_width = fabs( m_coordinate_4x - m_coordinate_1x );
+  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );
   
-  // calculate specific box for each vehicle
-  m_survey_area_width = fabs(total_box_width) / m_number_of_vehicles;
-  m_survey_area_x = m_coordinate_1x 
-                    + ((m_survey_area_location+1) * (m_survey_area_width))
-                    - (m_survey_area_width/2);
+  bool vertical = ( m_survey_area_height > m_survey_area_width ) ? true : false;
+
+  // calculate box for each vehicle
+  if ( vertical )
+  { // vertical
+    m_survey_area_height /= m_number_of_vehicles;
+    m_survey_area_x = total_box_x;
+    // TODO fix the coordinate reading to be generic..
+    m_survey_area_y = m_coordinate_2y                                           // bottom of whole area
+                      + ((m_survey_area_location+1) * (m_survey_area_height))   // offset for each vehicle
+                      - (m_survey_area_height/2);                               // middle of box
+  }
+  else
+  { // horizontal or square
+    m_survey_area_width  /= m_number_of_vehicles;
+    m_survey_area_x = m_coordinate_1x                                             // left side whole area
+                      + ((m_survey_area_location+1) * (m_survey_area_width))      // offset for each vehicle
+                      - (m_survey_area_width/2);                                  // middle of box
+    m_survey_area_y =  total_box_y;
+  }
+  
+  // calculate max given/allowed lane width
+  double lane_width = (2.0 * m_swath_width_granted) - m_lane_width_overlap;
+
+  // calculate how big to make the survey
+  // if north-south, then horizontal space needs to be divided into lanes
+  // if east-west, then vertical space needs to be divided into lanes
+  double survey_size = ( m_surveys_done % 2 == 0 ) ? m_survey_area_width : m_survey_area_height;
+  
+  // calculate min amount lanes needed to cover whole area
+  double lanes_needed = ceil( survey_size / lane_width );
+  // recalculate lane_width, given min amount lanes needed,
+  //                         to optimally survey area (don't survey outside area)
+  m_survey_lane_width = survey_size / lanes_needed;
+
+  // reduce area width/height by 1 lane, such that we don't survey over the
+  // outer edges
+  survey_size -= m_survey_lane_width;
+  // overwrite initial values by newly calculated survey area size
+  if ( m_surveys_done % 2 == 0 )
+    m_survey_area_width = survey_size;
+  else
+    m_survey_area_height = survey_size;
 
   m_survey_order = 1; // normal
-
-  m_survey_area_y =  total_box_y;
-  m_survey_area_height = fabs( m_coordinate_2y - m_coordinate_1y );
-  m_survey_lane_width = m_swath_width_granted * 2 - m_lane_width_overlap;
   
-  m_start_lm_x = m_survey_area_x - (m_survey_area_width/2);
-  m_start_lm_y = m_survey_area_y + (m_survey_area_height/2);
+  // start from North-West
+  m_start_lm_x = m_survey_area_x - (m_survey_area_width/2.0);
+  m_start_lm_y = m_survey_area_y;
   
+  // TODO: check, this should not be necessary, given time limit?
   switch((int)round(m_swath_width_granted))
   {
     // based on the knowledge we have for time it takes to survey area, and
@@ -431,7 +471,6 @@ void HazardPath::postWaypointFollow()
     north_south = false;
   }
   // else, if still nothing new, survey previous point again. 
-  // TODO: we could do something smarter here, like random exploration?
 
   double xval = m_previous_wpt.first;
   double yval = m_previous_wpt.second;

@@ -19,7 +19,6 @@ ADD_SUBDIRECTORY(pXRelayTest)
 ADD_SUBDIRECTORY(uFldHazardMgr)
 ADD_SUBDIRECTORY(pHazardPath)
 
-
 ##############################################################################
 #                           END of CMakeLists.txt
 ##############################################################################

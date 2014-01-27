@@ -4,7 +4,7 @@
 /*    FILE: HazardMgr.cpp                                        */
 /*    DATE: Oct 26th 2012                                        */
 /*                                                               */
-/*    Adapted by:                                                */
+/*    Extended by:                                               */
 /*    NAME: Supreeth Subbaraya, Stephanie Kemna                  */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    DATE: Apr, 2013                                            */
@@ -308,7 +308,6 @@ bool HazardMgr::handleMailDetectionReport(string str)
   event += ", y=" + doubleToString(new_hazard.getY(),1);
   reportEvent(event);
 
-  // TODO: check if we ever need to send a detection report to the other vehicle, not for now.
 //  // test publish NODE_MESSAGE_LOCAL to share detection with other vehicle
 //  // via uFldMessageHandler
 //  string detection = "x=" + doubleToString(new_hazard.getX(),1) + 
@@ -484,8 +483,6 @@ void HazardMgr::buildHazardSet(std::string sval)
 	}
     }
 }
-
-
 
 //------------------------------------------------------------
 // Procedure: buildReport()
