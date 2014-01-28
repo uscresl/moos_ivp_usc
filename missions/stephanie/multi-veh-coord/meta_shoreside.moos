@@ -1,0 +1,101 @@
+//*******************************************************
+// ShoreSide Configuration File
+
+ServerHost = localhost
+ServerPort = 9000
+Community  = shoreside
+
+#include plug_origin_warp.moos
+  
+//--------------------------------------------------------
+Processconfig = ANTLER
+{
+  MSBetweenLaunches = 400
+
+  Run = MOOSDB           @ NewConsole = false
+  Run = pMarineViewer    @ NewConsole = false
+  Run = pLogger          @ NewConsole = false
+
+  Run = pShare           @ NewConsole = false
+  Run = pHostInfo        @ NewConsole = false
+  Run = uFldShoreBroker  @ NewConsole = false
+  Run = uFldNodeComms    @ NewConsole = false
+}
+
+#include plug_pHostInfo.moos
+#include plug_pLogger.moos
+
+//---------------------------------------------------------
+// pShare Config Block
+
+ProcessConfig = pShare
+{
+  AppTick    = 2
+  CommsTick  = 2
+
+  input = route = localhost:9300 & multicast_9
+}
+
+
+//--------------------------------------------------
+// uFldShoreBroker Configuration Block
+
+ProcessConfig = uFldShoreBroker
+{
+  AppTick       = 1
+  CommsTick     = 1
+
+  // Note: [qbridge = FOO]  is shorthand for                    
+  //       [bridge = src=FOO_$V,  alias=FOO] and                
+  //       [bridge = src=FOO_ALL, alias=FOO]
+
+  bridge   = src=UHZ_OPTIONS_SUMMARY
+
+  qbridge  = DEPLOY, RETURN, NODE_REPORT, NODE_MESSAGE
+  qbridge  = MOOS_MANUAL_OVERIDE
+
+  bridge   = src=APPCAST_REQ 
+}
+
+//--------------------------------------------------
+// uFldNodeComms Configuration Block
+
+ProcessConfig = uFldNodeComms
+{
+  AppTick       = 2
+  CommsTick     = 2
+
+  comms_range          = 250 // meters
+  critical_range       = 25  // safety: always communicate own position in this range
+  min_msg_interval     = 0   // 0: unlimited
+  max_msg_length       = 0   // 0: unlimited
+  groups               = true
+  view_node_rpt_pulses = true
+}
+
+//--------------------------------------------------------
+ProcessConfig = pMarineViewer
+{
+  AppTick    = 4
+  CommsTick  = 4
+
+  tiff_file            = AerialMIT.tif
+  set_pan_x            = -32
+  set_pan_y            = 200
+  zoom                 = 1.3
+  vehicles_shape_scale = 1.5
+  vehicles_name_mode   = names+shortmode
+
+  marker_viewable_labels = false
+  hash_viewable = true
+
+  appcast_width = 30
+  appcast_viewable     = false //true
+  appcast_color_scheme = indigo
+
+  button_one   = DEPLOY_ALL  # DEPLOY_ALL=true 
+  button_one   = MOOS_MANUAL_OVERIDE_ALL=false 
+  button_one   = RETURN_ALL=false
+  button_two   = RETURN_ALL  # RETURN_ALL=true
+}
+
