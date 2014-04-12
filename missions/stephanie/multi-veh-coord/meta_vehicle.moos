@@ -13,42 +13,57 @@ Processconfig = ANTLER
 {
   MSBetweenLaunches = 100
 
+  // moos db, moos util apps
   Run = MOOSDB             @ NewConsole = false
-
-  Run = pHelmIvP           @ NewConsole = false
-  Run = pNodeReporter      @ NewConsole = false
   Run = pLogger            @ NewConsole = false
   Run = uProcessWatch      @ NewConsole = false
+  // check own IP and publish to MOOSDB
+  Run = pHostInfo          @ NewConsole = false
+
+  // vehicle sim
+  Run = uSimMarine         @ NewConsole = false
+  Run = pMarinePID         @ NewConsole = false
+
+  // behaviors
+  Run = pHelmIvP           @ NewConsole = false
+
+  // generate 'node reports'
+  Run = pNodeReporter      @ NewConsole = false
 
   // collision avoidance
   Run = pBasicContactMgr   @ NewConsole = false
 
+//  // inter-vehicle comms via shoreside
   Run = pShare             @ NewConsole = false
-  Run = pHostInfo          @ NewConsole = false
-  Run = uFldNodeBroker     @ NewConsole = false
-  Run = uFldMessageHandler @ NewConsole = false
+//  Run = uFldNodeBroker     @ NewConsole = false
+//  Run = uFldMessageHandler @ NewConsole = false
 
-  Run = uSimMarine         @ NewConsole = false
-  Run = pMarinePID         @ NewConsole = false
+  // need to add acomms
 }
 //------------------------------------------------------------
 
-// basics
-#include plug_pHelmIvP.moos
-#include plug_pNodeReporter.moos
+// utils
 #include plug_pLogger.moos
 #include plug_uProcessWatch.moos
-
-// uFld stuff
-#include plug_pShare.moos
 #include plug_pHostInfo.moos
-#include plug_uFldNodeBroker.moos
-#include plug_uFldMessageHandler.moos
+
+// vehicle simulation
+#include plug_uSimMarine.moos
+#include plug_pMarinePID.moos
+
+// behaviors
+#include plug_pHelmIvP.moos
+
+// generate 'node reports'
+#include plug_pNodeReporter.moos
+
+//// inter-vehicle comms via shoreside
+#include plug_pShare.moos
+//#include plug_uFldNodeBroker.moos
+//#include plug_uFldMessageHandler.moos
 
 // collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside
 #include plug_pBasicContactMgr.moos
 
-// simulation processes
-#include plug_uSimMarine.moos
-#include plug_pMarinePID.moos
+

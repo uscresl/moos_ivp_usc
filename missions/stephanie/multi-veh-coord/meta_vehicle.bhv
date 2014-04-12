@@ -81,6 +81,7 @@ Behavior = BHV_Waypoint
   points = $(START_POS)
 }
 
+#ifdef VTYPE UUV
 //----------------------------------------------
 Behavior = BHV_ConstantDepth
 {
@@ -89,8 +90,9 @@ Behavior = BHV_ConstantDepth
   duration  = no-time-limit
   condition = DEPLOY = true
 
-  depth = 10        // m
+  depth = $(START_DEPTH)  // m
   peakwidth = 3     // m
   basewidth = 2     // m
   summitdelta = 20  // m
 }
+#endif

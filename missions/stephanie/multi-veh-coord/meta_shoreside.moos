@@ -12,66 +12,67 @@ Processconfig = ANTLER
 {
   MSBetweenLaunches = 400
 
+  // moosdb, moos util apps
   Run = MOOSDB           @ NewConsole = false
-  Run = pMarineViewer    @ NewConsole = false
   Run = pLogger          @ NewConsole = false
-
-  Run = pShare           @ NewConsole = false
+  // check own IP and publish to MOOSDB
   Run = pHostInfo        @ NewConsole = false
-  Run = uFldShoreBroker  @ NewConsole = false
-  Run = uFldNodeComms    @ NewConsole = false
+
+  // shoreside visualization
+  Run = pMarineViewer    @ NewConsole = true
+
+//  // test closing app
+//  Run = pTemplate        @ NewConsole = true
+
+//  // inter-vehicle comms via shoreside
+  Run = pShare           @ NewConsole = true
+//  Run = uFldShoreBroker  @ NewConsole = false
+//  Run = uFldNodeComms    @ NewConsole = false
 }
 
-#include plug_pHostInfo.moos
+// utils
 #include plug_pLogger.moos
 
-//---------------------------------------------------------
-// pShare Config Block
+#include plug_pHostInfo.moos
 
-ProcessConfig = pShare
-{
-  AppTick    = 2
-  CommsTick  = 2
-
-  input = route = localhost:9300 & multicast_9
-}
+#include plug_pShare_shoreside.moos
 
 
-//--------------------------------------------------
-// uFldShoreBroker Configuration Block
+////--------------------------------------------------
+//// uFldShoreBroker Configuration Block
 
-ProcessConfig = uFldShoreBroker
-{
-  AppTick       = 1
-  CommsTick     = 1
+//ProcessConfig = uFldShoreBroker
+//{
+//  AppTick       = 1
+//  CommsTick     = 1
 
-  // Note: [qbridge = FOO]  is shorthand for                    
-  //       [bridge = src=FOO_$V,  alias=FOO] and                
-  //       [bridge = src=FOO_ALL, alias=FOO]
+//  // Note: [qbridge = FOO]  is shorthand for                    
+//  //       [bridge = src=FOO_$V,  alias=FOO] and                
+//  //       [bridge = src=FOO_ALL, alias=FOO]
 
-  bridge   = src=UHZ_OPTIONS_SUMMARY
+//  bridge   = src=UHZ_OPTIONS_SUMMARY
 
-  qbridge  = DEPLOY, RETURN, NODE_REPORT, NODE_MESSAGE
-  qbridge  = MOOS_MANUAL_OVERIDE
+//  qbridge  = DEPLOY, RETURN, NODE_REPORT, NODE_MESSAGE
+//  qbridge  = MOOS_MANUAL_OVERIDE
 
-  bridge   = src=APPCAST_REQ 
-}
+//  bridge   = src=APPCAST_REQ 
+//}
 
-//--------------------------------------------------
-// uFldNodeComms Configuration Block
+////--------------------------------------------------
+//// uFldNodeComms Configuration Block
 
-ProcessConfig = uFldNodeComms
-{
-  AppTick       = 2
-  CommsTick     = 2
+//ProcessConfig = uFldNodeComms
+//{
+//  AppTick       = 2
+//  CommsTick     = 2
 
-  comms_range          = 250 // meters
-  critical_range       = 25  // safety: always communicate own position in this range
-  min_msg_interval     = 0   // 0: unlimited
-  max_msg_length       = 0   // 0: unlimited
-  groups               = true
-  view_node_rpt_pulses = true
-}
+//  comms_range          = 250 // meters
+//  critical_range       = 25  // safety: always communicate own position in this range
+//  min_msg_interval     = 0   // 0: unlimited
+//  max_msg_length       = 0   // 0: unlimited
+//  groups               = true
+//  view_node_rpt_pulses = true
+//}
 
 //--------------------------------------------------------
 ProcessConfig = pMarineViewer
@@ -79,7 +80,11 @@ ProcessConfig = pMarineViewer
   AppTick    = 4
   CommsTick  = 4
 
-  tiff_file            = AerialMIT.tif
+  tiff_viewable = true
+  tiff_file     = $(USC_DATA_DIR)/maps/puddingstone_all_square.tif
+//  AerialMIT.tif
+
+  // pan, zoom to be set for puddingstone file
   set_pan_x            = -32
   set_pan_y            = 200
   zoom                 = 1.3
@@ -89,9 +94,9 @@ ProcessConfig = pMarineViewer
   marker_viewable_labels = false
   hash_viewable = true
 
-  appcast_width = 30
   appcast_viewable     = false //true
-  appcast_color_scheme = indigo
+//  appcast_width = 30
+//  appcast_color_scheme = indigo
 
   button_one   = DEPLOY_ALL  # DEPLOY_ALL=true 
   button_one   = MOOS_MANUAL_OVERIDE_ALL=false 
@@ -99,3 +104,13 @@ ProcessConfig = pMarineViewer
   button_two   = RETURN_ALL  # RETURN_ALL=true
 }
 
+//--------------------------------------------------
+// pTemplate, testing for shutting down app
+ProcessConfig = pTemplate
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  example1 = yes
+  example2 = 100
+}

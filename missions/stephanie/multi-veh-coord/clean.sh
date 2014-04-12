@@ -40,7 +40,9 @@ fi
 #-------------------------------------------------------
 
 rm -rf  $VERBOSE   LOG_*
+rm -f   $VERBOSE   log_*.log
 rm -f   $VERBOSE   *~
 rm -f   $VERBOSE   targ_*
 rm -f   $VERBOSE   .LastOpenedMOOSLogDirectory
+rm -rf  $VERBOSE   .phostinfo
 
