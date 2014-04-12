@@ -4,7 +4,6 @@
 # DESCRIPTION: CMakeLists.txt file for the moos-ivp-extend source directory
 ##############################################################################
 
-
 #============================================================================
 # Add the libraries in the current directory to the include path
 #============================================================================
@@ -14,8 +13,14 @@ INCLUDE_DIRECTORIES(${LOCAL_LIBRARY_DIRS})
 #============================================================================
 # List the subdirectories to build...
 #============================================================================
+# standard dirs
 ADD_SUBDIRECTORY(lib_behaviors-test)
 ADD_SUBDIRECTORY(pXRelayTest)
+
+# template dir
+ADD_SUBDIRECTORY(pTemplate)
+
+# Robotics '13 class project Supreeth & Stephanie
 ADD_SUBDIRECTORY(uFldHazardMgr)
 ADD_SUBDIRECTORY(pHazardPath)
 

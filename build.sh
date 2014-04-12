@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PWD=`pwd`
+test -d ./build || mkdir build
 BUILD_DIR=./build
 HELP="no"
 CLEAN="no"
