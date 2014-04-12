@@ -34,5 +34,5 @@ ProcessConfig = pShare
   output = VIEW_*->localhost:9300
   
   // TEMPORARY! share positions vehicles between one another, until acomms set up
-  output = NODE_REPORT_LOCAL->NODE_REPORT:localhost:multicast_2
+  output = NODE_REPORT_LOCAL->NODE_REPORT:multicast_2
 }

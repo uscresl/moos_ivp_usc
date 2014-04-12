@@ -3,6 +3,7 @@
 initialize   DEPLOY = false
 initialize   RETURN = false
 initialize   AVOID = true
+initialize   TRAIL = false
 
 //---------   Safety behaviors   -------------
 Behavior = BHV_AvoidCollision
@@ -48,10 +49,11 @@ Behavior = BHV_Waypoint
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
+  condition  = TRAIL = false
   endflag   = SURVEY_DONE = true
   updates = WAYPOINT_UPDATES
 
-  speed = 2           // m/s
+  speed = 1.5         // m/s
   radius = 5.0        // m
   slip_radius = 15.0  // m
   lead = 15           // m
@@ -76,7 +78,7 @@ Behavior = BHV_Waypoint
   endflag    = DEPLOY = false
   endflag    = HAZARDSET_REQUEST = true
 
-  speed = 2.0
+  speed = 1.5
   radius = 2.0
   nm_radius = 8.0
   points = $(START_POS)
@@ -95,5 +97,17 @@ Behavior = BHV_ConstantDepth
   peakwidth = 3     // m
   basewidth = 2     // m
   summitdelta = 20  // m
+}
+
+Behavior = BHV_Trail
+{
+  name = bhv_trail
+  pwt  = 100
+  condition = TRAIL = true
+  updates = TRAIL_UPDATES
+  
+  trail_angle = 180
+  trail_range = 50
+  contact = anton
 }
 #endif
