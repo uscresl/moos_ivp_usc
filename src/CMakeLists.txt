@@ -20,6 +20,9 @@ ADD_SUBDIRECTORY(pXRelayTest)
 # template dir
 ADD_SUBDIRECTORY(pTemplate)
 
+# for all behaviors
+ADD_SUBDIRECTORY(lib_behaviors)
+
 # Robotics '13 class project Supreeth & Stephanie
 ADD_SUBDIRECTORY(uFldHazardMgr)
 ADD_SUBDIRECTORY(pHazardPath)

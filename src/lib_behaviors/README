@@ -1,0 +1,8 @@
+To use the dynamic loading of these behaviors, you need to add them to the
+IVP_BEHAVIOR_DIRS environment variable:
+
+for bashrc:
+export IVP_BEHAVIOR_DIRS=${MOOSIVP_USC_HOME}/src/lib_behaviors:${IVP_BEHAVIOR_DIRS}
+
+This assumes you already set the MOOSIVP_USC_HOME environment variable when
+installing (after building) your moos-ivp-usc tree.
