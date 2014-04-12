@@ -6,7 +6,7 @@ ProcessConfig = pShare
   AppTick    = 2
   CommsTick  = 2
 
-  input = route =  localhost:$(SHARE_LISTEN) & multicast_1
+  input = route =  localhost:$(SHARE_LISTEN) & multicast_1 & multicast_2
 
   // =======================================================
   // Usage Info below
@@ -32,4 +32,7 @@ ProcessConfig = pShare
   // purely for visualization, then add this:
   output = NODE_REPORT_LOCAL->NODE_REPORT:localhost:9300 //9300 is shoreside
   output = VIEW_*->localhost:9300
+  
+  // TEMPORARY! share positions vehicles between one another, until acomms set up
+  output = NODE_REPORT_LOCAL->NODE_REPORT:localhost:multicast_2
 }

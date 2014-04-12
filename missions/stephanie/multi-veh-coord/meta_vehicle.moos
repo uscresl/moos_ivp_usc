@@ -58,9 +58,14 @@ Processconfig = ANTLER
 #include plug_pNodeReporter.moos
 
 //// inter-vehicle comms via shoreside
-#include plug_pShare.moos
 //#include plug_uFldNodeBroker.moos
 //#include plug_uFldMessageHandler.moos
+
+// for simulation, to display vehicle positions and markers
+#include plug_pShare.moos
+
+// inter-vehicle comms via acomms
+// goby?
 
 // collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside

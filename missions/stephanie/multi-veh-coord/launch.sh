@@ -25,18 +25,19 @@ done
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
 VNAME1="anton"        # The first  vehicle community
-START_POS1="100,30"
-START_DEPTH1="10"
-WAYPOINTS1="100,0:200,0:200,-100:100,-100"
+START_POS1="2750,1900"
+START_DEPTH1="0"
+WAYPOINTS1="2630,1960:2600,2090:2760,2100:2850,2000"
 
 VNAME2="bernard"      # The second vehicle community
-START_POS2="200,70"
+START_POS2="2800,1900"
 START_DEPTH2="10"
-WAYPOINTS2="200,0:300,0:300,-100:200,-100"
+WAYPOINTS2="2570,1800:2700,1750:2650,1700:2510,1725"
 
 VNAME3="cornelis"     # The third vehicle community
-START_POS3="0,0"
-WAYPOINTS3="100,-100:200,-100:200,-200:100,-200"
+START_POS3="2850,1900"
+START_DEPTH2="10"
+WAYPOINTS3="3010,1800:3150,1750:3170,1650:3010,1700"
 
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"     \
@@ -45,7 +46,7 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME1      START_POS=$START_POS1                    \
    VPORT="9001"       SHARE_LISTEN="9301"                      \
-   VTYPE=UUV
+   VTYPE=SHIP
 
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME2      START_POS=$START_POS2                    \
@@ -55,16 +56,16 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
 nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME3      START_POS=$START_POS3                    \
    VPORT="9003"       SHARE_LISTEN="9303"                      \
-   VTYPE=SHIP
+   VTYPE=UUV
 
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
-    START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1 START_DEPTH=$START_DEPTH1 VTYPE=UUV
+    START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1 START_DEPTH=$START_DEPTH1 VTYPE=SHIP
 
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2 START_DEPTH=$START_DEPTH2 VTYPE=UUV
 
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
-    START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3 VTYPE=SHIP
+    START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3 START_DEPTH=$START_DEPTH2 VTYPE=UUV
 
 if [ ${JUST_MAKE} = "yes" ] ; then
     exit 0

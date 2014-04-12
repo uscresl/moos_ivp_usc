@@ -1,7 +1,9 @@
 MOOSTimeWarp = $(WARP)
-//LatOrigin  = 43.825300 
-//LongOrigin = -70.330400 
-//LatOrigin  = 42.3584
-//LongOrigin = -71.08745
-LatOrigin = 34.0784000000111
-LongOrigin = -117.815
+
+//// Puddingstone
+//LatOrigin = 34.0784000000111
+//LongOrigin = -117.815
+
+// Lake Arrowhead
+LatOrigin = 34.246545
+LongOrigin = -117.204077

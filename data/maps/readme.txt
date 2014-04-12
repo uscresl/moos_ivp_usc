@@ -11,3 +11,6 @@ How to add a map:
    These specify the 'origin' (0,0 in x,y) for your simulation.
    If you have no preference, you can set it to the bottom left coords.
 
+4) if you include it in a simulation, make sure you set the MOOS lat/long origin
+   to reasonable values (preferably the same as the datum_lat/lon)
+
