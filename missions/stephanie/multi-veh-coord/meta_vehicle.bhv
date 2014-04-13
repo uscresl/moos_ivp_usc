@@ -43,7 +43,7 @@ Behavior = BHV_AvoidCollision
 //}
 Behavior = BHV_OpRegionBounce
 {
-  name = BHV_OpRegionBounce
+  name = bhv_opregion_bounce
   pwt = 200
   duration = no-time-limit
   condition = (SAFETY = true)
@@ -62,7 +62,7 @@ Behavior = BHV_OpRegionBounce
 }
 Behavior = BHV_OpRegionBounceDepth
 {
-  name = BHV_OpRegionBounceDepth
+  name = bhv_opregion_depth_bounce
   pwt = 200
   duration = no-time-limit
   condition = (SAFETY = true)
