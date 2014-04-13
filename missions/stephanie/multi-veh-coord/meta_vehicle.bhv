@@ -29,18 +29,52 @@ Behavior = BHV_AvoidCollision
    bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
 }
 
-Behavior = BHV_OpRegion
-{
-  name       = bhv_opregion
-  pwt        = 200 // higher weight
-  condition  = DEPLOY = true
+//Behavior = BHV_OpRegion
+//{
+//  name       = bhv_opregion
+//  pwt        = 200 // higher weight
+//  condition  = DEPLOY = true
 
-  polygon = 2100,1200:2100,2500:3400,2500:3400,1200
-  
-  trigger_entry_time = 1
-  trigger_exit_time  = 1
-  visual_hints = vertex_color=yellow,vertex_size=5,edge_color=red,edge_size=2
+//  polygon = 2100,1200:2100,2500:3400,2500:3400,1200
+//  
+//  trigger_entry_time = 1
+//  trigger_exit_time  = 1
+//  visual_hints = vertex_color=yellow,vertex_size=5,edge_color=red,edge_size=2
+//}
+Behavior = BHV_OpRegionBounce
+{
+  name = BHV_OpRegionBounce
+  pwt = 200
+  duration = no-time-limit
+  condition = (SAFETY = true)
+  polygon = label,OpBox: 2100,1200:2100,2500:3400,2500:3400,1200
+  polygon = label,OpBox2: -50,7530 : 150,7755 : 545,7935 : 1010,7500 : 285,7140 // test 2 polygons
+  max_depth = 50 // match with BHV_OpRegionBounceDepth
+  min_altitude = 10
+  max_time = 23400
+  trigger_entry_time = 1.0
+  trigger_exit_time = 1.0
+  visual_hints = edge_size=2.0,vertex_size=2.0
+  // bounce additions
+  bounce_buffer = 20 // meters, when to start bouncing
+  bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
+  no_zone_factor = .2
 }
+Behavior = BHV_OpRegionBounceDepth
+{
+  name = BHV_OpRegionBounceDepth
+  pwt = 200
+  duration = no-time-limit
+  condition = (SAFETY = true)
+  max_depth = 50  // set to the max depth of the lake?
+  min_altitude = 10
+  // if buffer is not set, it is set to 0, which is in fact inactive
+  // bounce_buffer_depth: size of the buffer for depth bouncing
+  bounce_buffer_depth = 5
+  // no_zone_factor: used for: no_zone = buffer * no_zone_factor
+  no_zone_factor = .2
+}
+
 
 //---------   Control behaviors   -------------
 Behavior = BHV_Waypoint
