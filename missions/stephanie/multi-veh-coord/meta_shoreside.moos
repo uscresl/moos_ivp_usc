@@ -103,6 +103,7 @@ ProcessConfig = pMarineViewer
   button_one   = MOOS_MANUAL_OVERIDE_ALL=false 
   button_one   = RETURN_ALL=false
   button_two   = RETURN_ALL  # RETURN_ALL=true
+  button_three = TRAIL_ALL   # TRAIL_ALL=true
 }
 
 //--------------------------------------------------

@@ -148,8 +148,9 @@ BHV_OpRegionBounce::BHV_OpRegionBounce(IvPDomain gdomain) : IvPBehavior(gdomain)
   m_perimeter_emergency = false;
 
   // Declare the variables we will need from the info_buffer
-  addInfoVars("NAV_X, NAV_Y, NAV_HEADING");
-  addInfoVars("NAV_SPEED, NAV_DEPTH, NAV_ALTITUDE");
+  addInfoVars("NAV_X, NAV_Y, NAV_HEADING, NAV_SPEED");
+  if(m_couple)
+    addInfoVars("NAV_DEPTH, NAV_ALTITUDE");
 
   // 2011-03 SK: debugging output?
   m_debug = false;
@@ -315,10 +316,10 @@ IvPFunction *BHV_OpRegionBounce::onRunState()
   setTimeStamps();
   polygonVerify();
   postPolyStatus();
-  depthVerify();
-  altitudeVerify();
 
   if(m_couple) {
+    depthVerify();
+    altitudeVerify();
     // SK: ** 2011-05-11 Coupler not working properly, putting depth in separate bhv **
     // 2011-04 SK: if depth change necessary, create objective function(s)
     if(m_depth_emergency)

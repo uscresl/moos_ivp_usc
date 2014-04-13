@@ -71,6 +71,9 @@ BHV_OpRegionBounceDepth::BHV_OpRegionBounceDepth(IvPDomain gdomain) : IvPBehavio
 
   // debugging output?
   m_debug = false;
+
+  // Declare the variables we will need from the info_buffer
+  addInfoVars("NAV_DEPTH, NAV_ALTITUDE");
 }
 
 //-----------------------------------------------------------

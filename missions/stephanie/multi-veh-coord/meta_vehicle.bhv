@@ -5,6 +5,11 @@ initialize   RETURN = false
 initialize   AVOID = true
 initialize   TRAIL = false
 
+// quick fix opregion altitude requirement
+#ifdef VTYPE UUV
+initialize   NAV_ALTITUDE=100
+#endif
+
 //---------   Safety behaviors   -------------
 Behavior = BHV_AvoidCollision
 {
@@ -46,9 +51,15 @@ Behavior = BHV_OpRegionBounce
   name = bhv_opregion_bounce
   pwt = 200
   duration = no-time-limit
-  condition = (SAFETY = true)
+  condition = DEPLOY = true
+#ifdef VTYPE UUV
   polygon = label,OpBox: 2100,1200:2100,2500:3400,2500:3400,1200
-  polygon = label,OpBox2: -50,7530 : 150,7755 : 545,7935 : 1010,7500 : 285,7140 // test 2 polygons
+#endif
+#ifdef VTYPE SHIP
+  polygon = label,lake_outline:2465,1719:2460,1840:2485,1896:2622,1896:2622,1711
+  polygon = label,lake_outline2:2485,1800:2485,2030:2925,2030:2925,1800
+  polygon = label,lake_outline3:2400,2030:2400,2185:2620,2185:2620,1965:2500,1965
+#endif
   max_depth = 50 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
   max_time = 23400
@@ -60,12 +71,13 @@ Behavior = BHV_OpRegionBounce
   bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
   no_zone_factor = .2
 }
+#ifdef VTYPE UUV
 Behavior = BHV_OpRegionBounceDepth
 {
   name = bhv_opregion_depth_bounce
   pwt = 200
   duration = no-time-limit
-  condition = (SAFETY = true)
+  condition = DEPLOY = true
   max_depth = 50  // set to the max depth of the lake?
   min_altitude = 10
   // if buffer is not set, it is set to 0, which is in fact inactive
@@ -74,6 +86,7 @@ Behavior = BHV_OpRegionBounceDepth
   // no_zone_factor: used for: no_zone = buffer * no_zone_factor
   no_zone_factor = .2
 }
+#endif
 
 
 //---------   Control behaviors   -------------
@@ -83,7 +96,9 @@ Behavior = BHV_Waypoint
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
+#ifdef VTYPE UUV
   condition  = TRAIL = false
+#endif
   endflag   = SURVEY_DONE = true
   updates = WAYPOINT_UPDATES
 
@@ -142,6 +157,6 @@ Behavior = BHV_Trail
   
   trail_angle = 180
   trail_range = 50
-  contact = anton
+  contact = anton // ship
 }
 #endif

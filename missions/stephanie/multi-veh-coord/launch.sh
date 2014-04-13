@@ -27,7 +27,7 @@ done
 VNAME1="anton"        # The first  vehicle community
 START_POS1="2700,1900"
 START_DEPTH1="0"
-WAYPOINTS1="format=lawnmower,label=science_survey,x=2700,y=1900,width=400,height=500,lane_width=50,rows=north-south,degs=0" #,startx=2750,starty=1900
+WAYPOINTS1="format=lawnmower,label=science_survey,x=2700,y=1900,width=450,height=500,lane_width=50,rows=north-south,degs=0" #,startx=2750,starty=1900
 
 VNAME2="bernard"      # The second vehicle community
 START_POS2="2800,1900"

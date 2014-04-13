@@ -35,4 +35,5 @@ ProcessConfig = pShare
   output = DEPLOY_ALL->DEPLOY:multicast_1
   output = MOOS_MANUAL_OVERIDE_ALL->MOOS_MANUAL_OVERIDE:multicast_1
   output = RETURN_ALL->RETURN:multicast_1
+  output = TRAIL_ALL->TRAIL:multicast_1
 }
