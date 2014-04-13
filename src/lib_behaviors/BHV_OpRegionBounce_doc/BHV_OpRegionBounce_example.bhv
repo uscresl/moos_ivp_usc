@@ -1,0 +1,61 @@
+//***************************************************************//
+//    Name: Stephanie Kemna (SK) <kemna@nurc.nato.int>           //
+//    Organization: NATO Undersea Research Centre, La Spezia, IT //
+//    File: example.bhv                                          //
+//    Date: August 10th, 2011                                    //
+//                                                               //
+//    Copyright (C) 2011  NURC                                   //
+//                                                               //
+// This program is free software; you can redistribute it and/or //
+// modify it under the terms of the GNU General Public License   //
+// as published by the Free Software Foundation; either version  //
+// 3 of the License, or (at your option) any later version.      //
+//                                                               //
+// This program is distributed in the hope that it will be       //
+// useful, but WITHOUT ANY WARRANTY; without even the implied    //
+// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR       //
+// PURPOSE. See the GNU General Public License for more details. //
+//                                                               //
+// You should have received a copy of the GNU General Public     //
+// License along with this program.                              //
+// If not, see <http://www.gnu.org/licenses/                     //
+//                                                               //
+//***************************************************************//
+//                                                               //
+// Parts out of generated .bhv file for                          //
+//  BHV_OpRegionBounce and BHV_OpRegionBounceDepth:              //
+//                                                               //
+//***************************************************************//
+Behavior = BHV_OpRegionBounce
+{
+  name = BHV_OpRegionBounce
+  pwt = 200
+  duration = no-time-limit
+  condition = (SAFETY = true)
+  polygon = label,OpBox: 6150,100 : 100,7700 : 5300,11300 : 11400,3600
+  polygon = label,OpBox2: -50,7530 : 150,7755 : 545,7935 : 1010,7500 : 285,7140 // test 2 polygons
+  max_depth = 30
+  min_altitude = 10
+  max_time = 23400
+  trigger_entry_time = 1.0
+  trigger_exit_time = 1.0
+  visual_hints = edge_size=2.0,vertex_size=2.0
+  // bounce additions
+  bounce_buffer = 100
+  bounce_buffer_depth = 5
+  no_zone_factor = .2
+}
+Behavior = BHV_OpRegionBounceDepth
+{
+  name = BHV_OpRegionBounceDepth
+  pwt = 200
+  duration = no-time-limit
+  condition = (SAFETY = true)
+  max_depth = 30
+  min_altitude = 10
+  // if buffer is not set, it is set to 0, which is in fact inactive
+  // bounce_buffer_depth: size of the buffer for depth bouncing
+  bounce_buffer_depth = 5
+  // no_zone_factor: used for: no_zone = buffer * no_zone_factor
+  no_zone_factor = .2
+}
