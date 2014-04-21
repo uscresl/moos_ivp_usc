@@ -25,11 +25,11 @@ Behavior = BHV_AvoidCollision
          extrapolate = true
                decay = 30,60
 
-        pwt_outer_dist = 50
-        pwt_inner_dist = 20
-        completed_dist = 75
-     min_util_cpa_dist = 8
-     max_util_cpa_dist = 25
+        pwt_outer_dist = 15
+        pwt_inner_dist = 10
+        completed_dist = 16
+     min_util_cpa_dist = 5
+     max_util_cpa_dist = 15
              pwt_grade = linear
    bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
 }
@@ -53,12 +53,14 @@ Behavior = BHV_OpRegionBounce
   duration = no-time-limit
   condition = DEPLOY = true
 #ifdef VTYPE UUV
-  polygon = label,OpBox: 2100,1200:2100,2500:3400,2500:3400,1200
+//  polygon = label,OpBox: 2100,1200:2100,2500:3400,2500:3400,1200
+  polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
 #endif
 #ifdef VTYPE SHIP
-  polygon = label,lake_outline:2465,1719:2460,1840:2485,1896:2622,1896:2622,1711
-  polygon = label,lake_outline2:2485,1800:2485,2030:2925,2030:2925,1800
-  polygon = label,lake_outline3:2400,2030:2400,2185:2620,2185:2620,1965:2500,1965
+//  polygon = label,lake_outline:2465,1719:2460,1840:2485,1896:2622,1896:2622,1711
+//  polygon = label,lake_outline2:2485,1800:2485,2030:2925,2030:2925,1800
+//  polygon = label,lake_outline3:2400,2030:2400,2185:2620,2185:2620,1965:2500,1965
+    polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
 #endif
   max_depth = 50 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
@@ -156,7 +158,7 @@ Behavior = BHV_Trail
   updates = TRAIL_UPDATES
   
   trail_angle = 180
-  trail_range = 50
+  trail_range = 30
   contact = anton // ship
 }
 #endif

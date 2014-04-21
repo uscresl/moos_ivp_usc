@@ -5,6 +5,9 @@ ServerHost = localhost
 ServerPort = 9000
 Community  = shoreside
 
+modem_id_lookup_path = ../../cruise/current/data/modemidlookup.txt
+modem_id = $(MODEMID)
+
 #include plug_origin_warp.moos
   
 //--------------------------------------------------------
@@ -28,6 +31,10 @@ Processconfig = ANTLER
   Run = pShare           @ NewConsole = false
 //  Run = uFldShoreBroker  @ NewConsole = false
 //  Run = uFldNodeComms    @ NewConsole = false
+
+//  // toby, acomms
+//  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+//  pAcommsHandlerConfig = -geometry,179x100+0+20
 }
 
 // utils
@@ -37,82 +44,11 @@ Processconfig = ANTLER
 
 #include plug_pShare_shoreside.moos
 
+//#include plug_uFld_shoreside.moos
 
-////--------------------------------------------------
-//// uFldShoreBroker Configuration Block
+#include plug_pMarineViewer.moos
 
-//ProcessConfig = uFldShoreBroker
-//{
-//  AppTick       = 1
-//  CommsTick     = 1
+//#include plug_pTemplate.moos
 
-//  // Note: [qbridge = FOO]  is shorthand for                    
-//  //       [bridge = src=FOO_$V,  alias=FOO] and                
-//  //       [bridge = src=FOO_ALL, alias=FOO]
-
-//  bridge   = src=UHZ_OPTIONS_SUMMARY
-
-//  qbridge  = DEPLOY, RETURN, NODE_REPORT, NODE_MESSAGE
-//  qbridge  = MOOS_MANUAL_OVERIDE
-
-//  bridge   = src=APPCAST_REQ 
-//}
-
-////--------------------------------------------------
-//// uFldNodeComms Configuration Block
-
-//ProcessConfig = uFldNodeComms
-//{
-//  AppTick       = 2
-//  CommsTick     = 2
-
-//  comms_range          = 250 // meters
-//  critical_range       = 25  // safety: always communicate own position in this range
-//  min_msg_interval     = 0   // 0: unlimited
-//  max_msg_length       = 0   // 0: unlimited
-//  groups               = true
-//  view_node_rpt_pulses = true
-//}
-
-//--------------------------------------------------------
-ProcessConfig = pMarineViewer
-{
-  AppTick    = 4
-  CommsTick  = 4
-
-  tiff_viewable = true
-  tiff_file     = $(USC_DATA_DIR)/maps/lake_arrowhead17.tif
-  // puddingstone_all.tif
-//  AerialMIT.tif
-
-  // pan, zoom to be set for puddingstone file
-  set_pan_x            = -500
-  set_pan_y            = -550
-  zoom                 = 0.5
-  vehicles_shape_scale = 1.5
-  vehicles_name_mode   = names+shortmode
-
-  marker_viewable_labels = false
-  hash_viewable = true
-
-  appcast_viewable     = false //true
-//  appcast_width = 30
-//  appcast_color_scheme = indigo
-
-  button_one   = DEPLOY_ALL  # DEPLOY_ALL=true 
-  button_one   = MOOS_MANUAL_OVERIDE_ALL=false 
-  button_one   = RETURN_ALL=false
-  button_two   = RETURN_ALL  # RETURN_ALL=true
-  button_three = TRAIL_ALL   # TRAIL_ALL=true
-}
-
-//--------------------------------------------------
-// pTemplate, testing for shutting down app
-ProcessConfig = pTemplate
-{
-  AppTick   = 2
-  CommsTick = 2
-  
-  example1 = yes
-  example2 = 100
-}
+//// acomms, via Toby -- goby2 & pAcommsHandler
+//#include plug_pAcommsHandler_shoreside.moos

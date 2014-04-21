@@ -1,6 +1,10 @@
+NoNetwork = true
 ServerHost = localhost
 ServerPort = $(VPORT)
 Simulator  = true
+
+modem_id_lookup_path = ../../cruise/current/data/modemidlookup.txt
+modem_id = $(MODEMID)
 
 // Community name IS the vehicle name
 Community  = $(VNAME)
@@ -38,7 +42,9 @@ Processconfig = ANTLER
 //  Run = uFldNodeBroker     @ NewConsole = false
 //  Run = uFldMessageHandler @ NewConsole = false
 
-  // need to add acomms
+//  // need to add acomms
+//  pAcommsHandlerConfig = -geometry,179x100+0+20
+//  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
 }
 //------------------------------------------------------------
 
@@ -71,4 +77,5 @@ Processconfig = ANTLER
 // node_reports are passed via uFldNodeBroker and pShare through shoreside
 #include plug_pBasicContactMgr.moos
 
-
+//// acomms, via Toby -- goby2 & pAcommsHandler
+//#include plug_pAcommsHandler.moos
