@@ -50,6 +50,8 @@ class SelectFormation : public CMOOSApp
     double m_allowable_width, m_allowable_height;
     size_t m_num_vehicles;
     double m_follow_center_x, m_follow_center_y;
+    std::string m_shape;
+    std::string m_prev_shape;
 };
 
 #endif 

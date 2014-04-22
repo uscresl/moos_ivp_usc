@@ -214,6 +214,7 @@ void SelectFormation::updateFollowCenter(double lead_x, double lead_y)
 //
 void SelectFormation::calculateFormation()
 {
+  m_prev_shape = m_shape;
   // for now, only X/Y
   std::ostringstream formation_string;
   switch ( m_num_vehicles )
@@ -221,6 +222,7 @@ void SelectFormation::calculateFormation()
     case 1:
       // stringify
       formation_string << m_follow_center_x << "," << m_follow_center_y;
+      m_shape = "1AUV";
       break;
     case 2:
       // 2 AUVs, 2 formations
@@ -231,6 +233,7 @@ void SelectFormation::calculateFormation()
         x2 = m_follow_center_x + m_inter_vehicle_distance/2;
         y1 = m_follow_center_y;
         y2 = y1;
+        m_shape = "2AUVh";
       }
       else
       { // vertical: 2 vehicles behind one another
@@ -238,6 +241,7 @@ void SelectFormation::calculateFormation()
         x2 = x1;
         y1 = m_follow_center_y;
         y2 = m_follow_center_y + m_inter_vehicle_distance;
+        m_shape = "2AUVv";
       }
       // stringify
       formation_string << x1 << "," << y1 << ":" 
@@ -254,6 +258,7 @@ void SelectFormation::calculateFormation()
         y1 = m_follow_center_y;
         y2 = y1;
         y3 = y1;
+        m_shape = "3AUVh";
       }
       else if ( m_allowable_width > m_inter_vehicle_distance )
       { // 1 front, 2 back
@@ -263,6 +268,7 @@ void SelectFormation::calculateFormation()
         y2 = m_follow_center_y - m_inter_vehicle_distance;
         x3 = m_follow_center_x + m_inter_vehicle_distance;
         y3 = y2;
+        m_shape = "3AUVv";
       }
       else
       { // vertical
@@ -272,6 +278,7 @@ void SelectFormation::calculateFormation()
         y2 = m_follow_center_y + m_inter_vehicle_distance;
         x3 = x1;
         y3 = m_follow_center_y + 2*m_inter_vehicle_distance;
+        m_shape = "3AUVm";
       }
       // stringify
       formation_string << x1 << "," << y1 << ":" 
@@ -281,6 +288,8 @@ void SelectFormation::calculateFormation()
   }
   // notify
   Notify("DESIRED_FORMATION",formation_string.str());
+  if ( m_prev_shape != m_shape )
+    Notify("FORMATION_SHAPE",m_shape);
 }
 
 //---------------------------------------------------------
