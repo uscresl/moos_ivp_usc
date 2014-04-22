@@ -27,7 +27,10 @@ ADD_SUBDIRECTORY(lib_behaviors)
 ADD_SUBDIRECTORY(uFldHazardMgr)
 ADD_SUBDIRECTORY(pHazardPath)
 
+# CS599 Coord Mob Rob '14 class project Stephanie
+ADD_SUBDIRECTORY(pSelectFormation)
+ADD_SUBDIRECTORY(pPositionInFormation)
+
 ##############################################################################
 #                           END of CMakeLists.txt
 ##############################################################################
-

@@ -45,6 +45,13 @@ Processconfig = ANTLER
 //  // need to add acomms
 //  pAcommsHandlerConfig = -geometry,179x100+0+20
 //  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+
+  // formation control
+  Run = pSelectFormation   @ NewConsole = true
+  Run = pPositionInFormation @ NewConsole = true
+
+  // temp publish some vars so I don't have to poke them
+  Run = uTimerScript @ NewConsole = true
 }
 //------------------------------------------------------------
 
@@ -79,3 +86,10 @@ Processconfig = ANTLER
 
 //// acomms, via Toby -- goby2 & pAcommsHandler
 //#include plug_pAcommsHandler.moos
+
+// formation control
+#include plug_pSelectFormation.moos
+#include plug_pPositionInFormation.moos
+
+// temp publish some vars so I don't have to poke them
+#include plug_uTimerScript.moos

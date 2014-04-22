@@ -1,0 +1,10 @@
+//--------------------------------------------------
+// pPositionInFormation configuration block
+//
+ProcessConfig = pPositionInFormation
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  // potential process parameters would go here
+}

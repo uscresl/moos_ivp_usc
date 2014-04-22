@@ -99,7 +99,7 @@ bool Template::Iterate()
 
 bool Template::OnStartUp()
 {
-  CMOOSApp:OnStartUp();
+  CMOOSApp::OnStartUp();
   
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
