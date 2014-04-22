@@ -149,13 +149,13 @@ void FormationWptUpdater::sendWaypoint( std::string formation_string )
   vector<string> svector = parseString(formation_string, ':');
   unsigned int vsize = svector.size();
   if ( m_position > vsize )
-    std::cout << "hm .. what to do?" << std::endl; // TODO
+    std::cout << "hm .. what to do?" << std::endl; // TODO?
   else
   {
     if ( m_position >= 1 ) // avoid sending something before valid position
     {
       std::ostringstream output;
-      output << svector[m_position-1];
+      output << "points=" << svector[m_position-1];
       Notify("FORMATION_WAYPOINT_UPDATE",output.str());
     }
   }

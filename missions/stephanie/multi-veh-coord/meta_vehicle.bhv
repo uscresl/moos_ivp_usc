@@ -100,9 +100,12 @@ Behavior = BHV_Waypoint
   condition = (DEPLOY = true)
 #ifdef VTYPE UUV
   condition  = TRAIL = false
+  updates = FORMATION_WAYPOINT_UPDATE
 #endif
   endflag   = SURVEY_DONE = true
+#ifdef VTYPE SHIP
   updates = WAYPOINT_UPDATES
+#endif
 
   speed = 1.5         // m/s
   radius = 5.0        // m
