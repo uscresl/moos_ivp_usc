@@ -49,6 +49,7 @@ Processconfig = ANTLER
   // formation control
   Run = pSelectFormation   @ NewConsole = true
   Run = pPositionInFormation @ NewConsole = true
+  Run = pFormationWptUpdater @ NewConsole = true
 
   // temp publish some vars so I don't have to poke them
   Run = uTimerScript @ NewConsole = true
@@ -90,6 +91,7 @@ Processconfig = ANTLER
 // formation control
 #include plug_pSelectFormation.moos
 #include plug_pPositionInFormation.moos
+#include plug_pFormationWptUpdater.moos
 
 // temp publish some vars so I don't have to poke them
 #include plug_uTimerScript.moos

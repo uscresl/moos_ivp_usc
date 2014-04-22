@@ -30,6 +30,7 @@ ADD_SUBDIRECTORY(pHazardPath)
 # CS599 Coord Mob Rob '14 class project Stephanie
 ADD_SUBDIRECTORY(pSelectFormation)
 ADD_SUBDIRECTORY(pPositionInFormation)
+ADD_SUBDIRECTORY(pFormationWptUpdater)
 
 ##############################################################################
 #                           END of CMakeLists.txt

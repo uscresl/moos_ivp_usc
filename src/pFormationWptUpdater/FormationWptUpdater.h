@@ -1,27 +1,24 @@
 /*****************************************************************/
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
-/*    FILE: PositionInFormation.cpp                              */
-/*    DATE: Apr 21, 2014                                         */
+/*    FILE: FormationWptUpdater.h                                           */
+/*    DATE: Mar 29, 2014                                         */
 /*                                                               */
-/*                                                               */
-/*    This process will choose what position in the formation    */
-/*    the vehicles should take, based on which one is closest.   */
-/*                                                               */
-/*    Nb. this is not an AppCastMOOSApp                          */
+/*    Note: this is a template dir, so you can copy to start     */
+/*          making your MOOSApp                                  */
 /*                                                               */
 /*****************************************************************/
 
-#ifndef PPOSITION_IN_FORMATION_HEADER
-#define PPOSITION_IN_FORMATION_HEADER
+#ifndef PFORMATION_WPT_UPDATER_HEADER
+#define PFORMATION_WPT_UPDATER_HEADER
 
 #include "MOOS/libMOOS/MOOSLib.h"
 
-class PositionInFormation : public CMOOSApp
+class FormationWptUpdater : public CMOOSApp
 {
   public:
-    PositionInFormation();
-    ~PositionInFormation() {};
+    FormationWptUpdater();
+    ~FormationWptUpdater() {};
 
   protected: 
     // Standard MOOSApp functions to overload
@@ -35,13 +32,13 @@ class PositionInFormation : public CMOOSApp
 
   private: 
     // Own functions
-    void findPosition();
+    void sendWaypoint( std::string formation_string );
 
     // Configuration variables
 
     // State variables
-    double m_x, m_y, m_z;
-    std::string m_formation;
+    size_t m_position;
+
 };
 
 #endif 

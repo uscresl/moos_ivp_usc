@@ -7,7 +7,7 @@ ProcessConfig = pHelmIvP
   CommsTick  = 2
   
   Behaviors    = targ_$(VNAME).bhv  
-  Verbose      = verbose // verbose, terse, quiet
+  Verbose      = quiet // verbose, terse, quiet
   
   Domain       = course:0:359:360
 

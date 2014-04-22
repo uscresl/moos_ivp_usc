@@ -1,0 +1,10 @@
+//--------------------------------------------------
+// pFormationWptUpdater configuration block
+//
+ProcessConfig = pFormationWptUpdater
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  // potential process parameters would go here
+}
