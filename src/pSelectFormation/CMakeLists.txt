@@ -5,6 +5,7 @@
 
 SET(SRC
   SelectFormation.cpp
+  SelectFormation_utils.cpp
   main.cpp
 )
 

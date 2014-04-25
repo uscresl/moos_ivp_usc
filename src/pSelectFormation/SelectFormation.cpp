@@ -17,7 +17,6 @@
 
 #include <iterator>
 #include "MBUtils.h"
-#include "math.h"
 #include <limits>
 
 using namespace std;
@@ -91,10 +90,11 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       std::string veh_name = getStringFromNodeReport(sval, "NAME");
       if ( veh_name == m_lead_vehicle )
       {
-        double lead_x, lead_y;
+        double lead_x, lead_y, lead_hdg;
         // need contact thingy to extract position of any name from node report
         lead_x = getDoubleFromNodeReport(sval, "X");
         lead_y = getDoubleFromNodeReport(sval, "Y");
+        m_lead_hdg = getDoubleFromNodeReport(sval, "HDG");
         // update the formation center/reference point 
         updateFollowCenter(lead_x, lead_y);
         new_info = true;
@@ -202,15 +202,30 @@ void SelectFormation::registerVariables()
 
 void SelectFormation::updateFollowCenter(double lead_x, double lead_y)
 {
+  double trig_angle;
+  double delta_x, delta_y;
+  bool pos_x = true, pos_y = true;
+  calcDxDyOperatorsStd(m_follow_range, delta_x, delta_y, pos_x, pos_y);
+  
   // calculate new follow center
-  m_follow_center_x = lead_x;
-  m_follow_center_y = lead_y - m_follow_range;
+  // need to m_follow_range behind, given hdg
+  m_follow_center_x = ( pos_x ? lead_x + delta_x : lead_x - delta_x );
+  m_follow_center_y = ( pos_y ? lead_y + delta_y : lead_y - delta_y );
+
+  // show on pMarineViewer
+  std::ostringstream ctr_pt;
+  ctr_pt << "x=" << m_follow_center_x << ",y=" << m_follow_center_y 
+         << ",label=follow_center";
+  Notify("VIEW_POINT",ctr_pt.str());
 }
 
 //---------------------------------------------------------
 // Procedure: calculateFormation
 //            calculate which formation possible given
 //            allowable width/height and nr vehicles
+//
+//            for now, kind of link a bank of options, but
+//            it would be nice to generate these..
 //
 void SelectFormation::calculateFormation()
 {
@@ -229,19 +244,29 @@ void SelectFormation::calculateFormation()
       double x1, y1, x2, y2;
       if ( m_allowable_width > m_inter_vehicle_distance )
       { // horizontal: 2 vehicles parallel to each other
-        x1 = m_follow_center_x - m_inter_vehicle_distance/2;
-        x2 = m_follow_center_x + m_inter_vehicle_distance/2;
-        y1 = m_follow_center_y;
-        y2 = y1;
         m_shape = "2AUVh";
+
+        double delta_x, delta_y;
+        bool pos_x1 = true, pos_y1 = true; // for vehicle 2 is inverse
+        calcDxDyOperators2h(m_inter_vehicle_distance/2, delta_x, delta_y, pos_x1, pos_y1);
+
+        x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
+        x2 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
+        y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
+        y2 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
       }
       else
       { // vertical: 2 vehicles behind one another
-        x1 = m_follow_center_x;
-        x2 = x1;
-        y1 = m_follow_center_y;
-        y2 = m_follow_center_y + m_inter_vehicle_distance;
         m_shape = "2AUVv";
+
+        double delta_x, delta_y;
+        bool pos_x = true, pos_y = true; // only for 2nd vehicle
+        calcDxDyOperatorsStd(m_inter_vehicle_distance, delta_x, delta_y, pos_x, pos_y);
+
+        x1 = m_follow_center_x;
+        x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
+        y1 = m_follow_center_y;
+        y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
       }
       // stringify
       formation_string << x1 << "," << y1 << ":" 
@@ -252,33 +277,45 @@ void SelectFormation::calculateFormation()
       double x3, y3;
       if ( m_allowable_width > 2*m_inter_vehicle_distance )
       { // horizontal
-        x1 = m_follow_center_x - m_inter_vehicle_distance;
-        x2 = m_follow_center_x;
-        x3 = m_follow_center_x + m_inter_vehicle_distance;
-        y1 = m_follow_center_y;
-        y2 = y1;
-        y3 = y1;
         m_shape = "3AUVh";
+
+        // for the two outside vehicles, calculate offsets
+        double delta_x, delta_y;
+        bool pos_x1 = true, pos_y1 = true;
+        calcDxDyOperators2h(m_inter_vehicle_distance, delta_x, delta_y, pos_x1, pos_y1);
+
+        x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
+        x3 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
+        y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
+        y3 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
+        x2 = m_follow_center_x;
+        y2 = m_follow_center_y;
       }
       else if ( m_allowable_width > m_inter_vehicle_distance )
-      { // 1 front, 2 back
+      { // 1 front, 2 back TODO
+        m_shape = "3AUVm";
+
         x1 = m_follow_center_x;
         y1 = m_follow_center_y;
         x2 = m_follow_center_x - m_inter_vehicle_distance;
         y2 = m_follow_center_y - m_inter_vehicle_distance;
         x3 = m_follow_center_x + m_inter_vehicle_distance;
         y3 = y2;
-        m_shape = "3AUVv";
       }
       else
       { // vertical
+        m_shape = "3AUVv";
+
+        double delta_x, delta_y;
+        bool pos_x = true, pos_y = true; // only for 2nd vehicle
+        calcDxDyOperatorsStd(m_inter_vehicle_distance, delta_x, delta_y, pos_x, pos_y);
+
         x1 = m_follow_center_x;
         y1 = m_follow_center_y;
-        x2 = x1;
-        y2 = m_follow_center_y + m_inter_vehicle_distance;
-        x3 = x1;
-        y3 = m_follow_center_y + 2*m_inter_vehicle_distance;
-        m_shape = "3AUVm";
+        x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
+        y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
+        x3 = ( pos_x ? x1 + 2*delta_x : x1 - 2*delta_x );
+        y3 = ( pos_y ? y1 + 2*delta_y : y1 - 2*delta_y );
       }
       // stringify
       formation_string << x1 << "," << y1 << ":" 
@@ -333,4 +370,69 @@ std::string SelectFormation::getStringFromNodeReport(std::string full_string, st
     std::cout << GetAppName() << " :: Unhandled NODE_REPORT: " << full_string << std::endl;
 
   return output;
+}
+
+void SelectFormation::calcDxDyOperatorsStd(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y)
+{
+  double trig_angle;
+  double lead_hdg = m_lead_hdg;
+  // calculate the angle for trig, given AUV heading
+  switch ( quadrant(lead_hdg) )
+  {
+    case 1:
+      trig_angle = lead_hdg;
+      pos_x = false;
+      pos_y = false;
+      break;
+    case 2:
+      trig_angle = 180-lead_hdg;
+      pos_x = false;
+      break;
+    case 3:
+      trig_angle = lead_hdg-180;
+      break;
+    case 4:
+      trig_angle = 360-lead_hdg;
+      pos_y = false;
+      break;
+    default:
+      // shouldn't happen
+      break;
+  }
+  // calculate x/y displacement from trig_angle and follow range
+  // trig_angle connected edge y, opposite edge x, given above calculations
+  // cos trig_angle = dy / range
+  // sin trig_angle = dx / range
+  delta_x = dx(spacing, trig_angle);
+  delta_y = dy(spacing, trig_angle);
+}
+
+void SelectFormation::calcDxDyOperators2h(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y)
+{
+  double trig_angle;
+  double lead_hdg = m_lead_hdg;
+  switch ( quadrant(lead_hdg) )
+  {
+    case 1:
+      trig_angle = 90-lead_hdg;
+      pos_x = false;
+      break;
+    case 2:
+      trig_angle = lead_hdg-90;
+      break;
+    case 3:
+      trig_angle = 270-lead_hdg;
+      pos_y = false;
+      break;
+    case 4:
+      trig_angle = lead_hdg-270;
+      pos_x = false;
+      pos_y = false;
+      break;
+    default:
+      // shouldn't happen
+      break;
+  }
+  delta_x = dx(spacing, trig_angle);
+  delta_y = dy(spacing, trig_angle);
 }

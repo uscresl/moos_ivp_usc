@@ -107,7 +107,12 @@ Behavior = BHV_Waypoint
   updates = WAYPOINT_UPDATES
 #endif
 
+#ifdef VTYPE SHIP
   speed = 1.5         // m/s
+#endif
+#ifdef VTYPE UUV
+  speed = 1.6         // m/s
+#endif
   radius = 5.0        // m
   slip_radius = 15.0  // m
   lead = 15           // m
@@ -160,7 +165,13 @@ Behavior = BHV_Trail
   condition = TRAIL = true
   updates = TRAIL_UPDATES
   
-  trail_angle = 180
+  // bernard at 160, cornelis at 200 (40deg separation)
+#ifdef VNAME bernard
+  trail_angle = 160
+#endif
+#ifdef VNAME cornelis
+  trail_angle = 200
+#endif
   trail_range = 30
   contact = anton // ship
 }
