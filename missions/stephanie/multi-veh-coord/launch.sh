@@ -34,7 +34,7 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    SHARE_LISTEN="9300" MODEMID="1"
 
 # inter-vehicle distance for formation
-IVD="30"
+IVD="40"
 
 VNAME1="anton"        # The first  vehicle community
 START_POS1="2700,1900"

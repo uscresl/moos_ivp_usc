@@ -60,6 +60,7 @@ class MaxFormationWidth : public CMOOSApp
     void calcDxDyOperators2h(double const spacing, double const lead_hdg, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y);
     double getDoubleFromNodeReport(std::string full_string, std::string key);
     std::string getStringFromNodeReport(std::string full_string, std::string key);
+    void euclidDistance(double const x1, double const y1, double const x2, double const y2, double & euclid);
 
     // Configuration variables
     double m_time_horizon;

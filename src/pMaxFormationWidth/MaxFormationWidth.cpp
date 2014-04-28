@@ -26,7 +26,7 @@ using namespace std;
 MaxFormationWidth::MaxFormationWidth()
 {
   // class variable instantiations can go here
-  debug = true;
+  debug = false;
   
   m_ivd = 0;
   m_time_horizon = 0;
@@ -80,6 +80,7 @@ bool MaxFormationWidth::OnNewMail(MOOSMSG_LIST &NewMail)
         // evaluate the formation width for updated position
         double max_form_width;
         checkUpcomingLakeOutline(lead_x, lead_y, lead_hdg, max_form_width);
+        std::cout << "Publishing allowable width: " << max_form_width << std::endl;
         Notify("ALLOWABLE_WIDTH_FORM", max_form_width);
 //      }
     }
@@ -209,6 +210,7 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
   double horizon_x = 0.0, horizon_y = 0.0;
   horizon_x = ( !pos_x ? lead_x + delta_x : lead_x - delta_x );
   horizon_y = ( !pos_y ? lead_y + delta_y : lead_y - delta_y );
+  // visualize
   std::ostringstream hor_ctr;
   hor_ctr << "x=" << horizon_x << ",y=" << horizon_y << ",label=horizon_ctr";
   Notify("VIEW_POINT",hor_ctr.str());
@@ -222,13 +224,12 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
   double line_1y = (pos_y1 ? horizon_y + delta_y : horizon_y - delta_y );
   double line_2x = (!pos_x1 ? horizon_x + delta_x : horizon_x - delta_x );
   double line_2y = (!pos_y1 ? horizon_y + delta_y : horizon_y - delta_y );
-  if (debug)
-    std::cout << "line points: " << line_1x << "," << line_1y << ":" << line_2x << "," << line_2y << std::endl;
+  // visualize
   std::ostringstream pt1;
-  pt1 << "x=" << line_1x << ",y=" << line_1y << ",label=l1";
+  pt1 << "x=" << line_1x << ",y=" << line_1y << ",label=h1";
   Notify("VIEW_POINT",pt1.str());
   std::ostringstream pt2;
-  pt2 << "x=" << line_2x << ",y=" << line_2y << ",label=l2";
+  pt2 << "x=" << line_2x << ",y=" << line_2y << ",label=h2";
   Notify("VIEW_POINT",pt2.str());
 
   // make boost geometry linestring
@@ -252,19 +253,45 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
       std::cout << "\n length of first linestring returned: " << boost::geometry::length(output[0]) << std::endl;
   }
   
-  // set the max formation width to max width returned
-  // typically, we will only get 1 width returned anyway, 
-  // unless the vehicle were to head straight at a pier or something
-  // nb. we are not yet accounting for the fact that this measure can be skewed
-  //     as per the boat heading (eg. only space on one side of boat)
   std::vector<line_str>::iterator line_iter;
   max_form_width = 0;
+  double overallMin = std::numeric_limits<double>::max();
   for ( line_iter = output.begin(); line_iter != output.end(); line_iter++ )
   {
-    double length = boost::geometry::length(*line_iter);
-    if ( length > max_form_width )
-      max_form_width = length;
+//    // first test
+//    // set the max formation width to max width returned
+//    // typically, we will only get 1 width returned anyway, 
+//    // unless the vehicle were to head straight at a pier or something
+//    // nb. we are not yet accounting for the fact that this measure can be skewed
+//    //     as per the boat heading (eg. only space on one side of boat)
+//    double length = boost::geometry::length(*line_iter);
+//    if ( length > max_form_width )
+//      max_form_width = length;
+
+    // get endpoints linestring (linestring is a vector)
+    double x1, y1, x2, y2;
+    x1 = (*line_iter).at(0).x();
+    x2 = (*line_iter).at(1).x();
+    y1 = (*line_iter).at(0).y();
+    y2 = (*line_iter).at(1).x();
+    if (debug)
+    {
+      std::cout << "check size line string vector: " << (*line_iter).size() << std::endl; // should be 2
+      // line string elements are model::d2::point_xy
+      std::cout << "first element: " << x1 << "," << y1 << std::endl;
+      std::cout << "second element: " << x2 << "," << y2 << std::endl;
+    }
+    // calculate distance endpoints to line center
+    double euclidDistance1, euclidDistance2;
+    euclidDistance(x1, y1, horizon_x, horizon_y, euclidDistance1);
+    euclidDistance(x2, y2, horizon_x, horizon_y, euclidDistance2);
+    // take min distance endpts to line center as half formation width
+    double minDist = min(euclidDistance1, euclidDistance2)*2.0;
+    if ( minDist < overallMin )
+      overallMin = minDist;
   }
+  if ( overallMin < std::numeric_limits<double>::max() )
+    max_form_width = overallMin;
 }
 
 void MaxFormationWidth::publishToView(std::string const str)
