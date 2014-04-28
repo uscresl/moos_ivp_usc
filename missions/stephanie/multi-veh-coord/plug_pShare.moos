@@ -33,6 +33,9 @@ ProcessConfig = pShare
   output = NODE_REPORT_LOCAL->NODE_REPORT:localhost:9300 //9300 is shoreside
   output = VIEW_*->localhost:9300
   
-  // TEMPORARY! share positions vehicles between one another, until acomms set up
+  // temporary until acomms set up
+  // share positions vehicles between one another
   output = NODE_REPORT_LOCAL->NODE_REPORT:multicast_2
+  // share allowable width with underwater vehicles
+  output = ALLOWABLE_WIDTH_FORM->ALLOWABLE_WIDTH:multicast_2
 }

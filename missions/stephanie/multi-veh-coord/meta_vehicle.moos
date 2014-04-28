@@ -47,9 +47,14 @@ Processconfig = ANTLER
 //  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
 
   // formation control
-  Run = pSelectFormation   @ NewConsole = true
+#ifdef VTYPE UUV
+  Run = pSelectFormation @ NewConsole = true
   Run = pPositionInFormation @ NewConsole = true
   Run = pFormationWptUpdater @ NewConsole = true
+#endif
+#ifdef VTYPE SHIP
+  Run = pMaxFormationWidth @ NewConsole = true
+#endif
 
   // temp publish some vars so I don't have to poke them
   Run = uTimerScript @ NewConsole = true
@@ -89,9 +94,14 @@ Processconfig = ANTLER
 //#include plug_pAcommsHandler.moos
 
 // formation control
+#ifdef VTYPE UUV
 #include plug_pSelectFormation.moos
 #include plug_pPositionInFormation.moos
 #include plug_pFormationWptUpdater.moos
+#endif
+#ifdef VTYPE SHIP
+#include plug_pMaxFormationWidth.moos
+#endif
 
 // temp publish some vars so I don't have to poke them
 #include plug_uTimerScript.moos

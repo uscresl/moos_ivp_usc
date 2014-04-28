@@ -32,6 +32,18 @@ ADD_SUBDIRECTORY(pSelectFormation)
 ADD_SUBDIRECTORY(pPositionInFormation)
 ADD_SUBDIRECTORY(pFormationWptUpdater)
 
+# get boost 1.55
+SET(BOOST_ROOT /usr/local/include/boost)
+SET(BOOST_LIBRARYDIR /usr/local/lib)
+#SET(Boost_USE_STATIC_LIBS ON)
+#SET(Boost_USE_STATIC_RUNTIME ON)
+SET(Boost_DEBUG ON)
+find_package(Boost 1.55 REQUIRED)# COMPONENTS geometry)
+if (Boost_FOUND)
+  ADD_SUBDIRECTORY(pMaxFormationWidth)
+endif()
+
+
 ##############################################################################
 #                           END of CMakeLists.txt
 ##############################################################################

@@ -242,7 +242,7 @@ void SelectFormation::calculateFormation()
     case 2:
       // 2 AUVs, 2 formations
       double x1, y1, x2, y2;
-      if ( m_allowable_width > m_inter_vehicle_distance )
+      if ( m_allowable_width >= m_inter_vehicle_distance )
       { // horizontal: 2 vehicles parallel to each other
         m_shape = "2AUVh";
 
@@ -275,7 +275,7 @@ void SelectFormation::calculateFormation()
     case 3:
       // 3 AUVs, 3 formations
       double x3, y3;
-      if ( m_allowable_width > 2*m_inter_vehicle_distance )
+      if ( m_allowable_width >= 2*m_inter_vehicle_distance )
       { // horizontal
         m_shape = "3AUVh";
 
@@ -291,7 +291,7 @@ void SelectFormation::calculateFormation()
         x2 = m_follow_center_x;
         y2 = m_follow_center_y;
       }
-      else if ( m_allowable_width > m_inter_vehicle_distance )
+      else if ( m_allowable_width >= m_inter_vehicle_distance )
       { // 1 front, 2 back TODO
         m_shape = "3AUVm";
 

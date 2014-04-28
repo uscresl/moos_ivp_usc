@@ -19,4 +19,3 @@ TARGET_LINK_LIBRARIES(pSelectFormation
    ${SYSTEM_LIBS}
    # whatever other libs you need
 )
-
