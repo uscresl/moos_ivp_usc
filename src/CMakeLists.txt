@@ -9,10 +9,14 @@
 #============================================================================
 FILE(GLOB LOCAL_LIBRARY_DIRS ./lib_*)
 INCLUDE_DIRECTORIES(${LOCAL_LIBRARY_DIRS})
+INCLUDE_DIRECTORIES(./utils)
 
 #============================================================================
 # List the subdirectories to build...
 #============================================================================
+# utils dir
+ADD_SUBDIRECTORY(utils)
+
 # standard dirs
 ADD_SUBDIRECTORY(lib_behaviors-test)
 ADD_SUBDIRECTORY(pXRelayTest)

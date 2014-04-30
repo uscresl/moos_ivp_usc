@@ -207,7 +207,7 @@ void SelectFormation::updateFollowCenter(double lead_x, double lead_y)
   double trig_angle;
   double delta_x, delta_y;
   bool pos_x = true, pos_y = true;
-  calcDxDyOperatorsStd(m_follow_range, delta_x, delta_y, pos_x, pos_y);
+  calcDxDyOperatorsStd(m_follow_range, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
   
   // calculate new follow center
   // need to m_follow_range behind, given hdg
@@ -250,7 +250,7 @@ void SelectFormation::calculateFormation()
 
         double delta_x, delta_y;
         bool pos_x1 = true, pos_y1 = true; // for vehicle 2 is inverse
-        calcDxDyOperators2h(m_inter_vehicle_distance/2, delta_x, delta_y, pos_x1, pos_y1);
+        calcDxDyOperators2h(m_inter_vehicle_distance/2, m_lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
 
         x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
         x2 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
@@ -273,7 +273,7 @@ void SelectFormation::calculateFormation()
 
         double delta_x, delta_y;
         bool pos_x = true, pos_y = true; // only for 2nd vehicle
-        calcDxDyOperatorsStd(m_inter_vehicle_distance, delta_x, delta_y, pos_x, pos_y);
+        calcDxDyOperatorsStd(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
 
         x1 = m_follow_center_x;
         x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
@@ -304,7 +304,7 @@ void SelectFormation::calculateFormation()
         // for the two outside vehicles, calculate offsets
         double delta_x, delta_y;
         bool pos_x1 = true, pos_y1 = true;
-        calcDxDyOperators2h(m_inter_vehicle_distance, delta_x, delta_y, pos_x1, pos_y1);
+        calcDxDyOperators2h(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
 
         x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
         x3 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
@@ -330,7 +330,7 @@ void SelectFormation::calculateFormation()
 
         double delta_x, delta_y;
         bool pos_x = true, pos_y = true; // only for 2nd vehicle
-        calcDxDyOperatorsStd(m_inter_vehicle_distance, delta_x, delta_y, pos_x, pos_y);
+        calcDxDyOperatorsStd(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
 
         x1 = m_follow_center_x;
         y1 = m_follow_center_y;
@@ -351,110 +351,110 @@ void SelectFormation::calculateFormation()
     Notify("FORMATION_SHAPE",m_shape);
 }
 
-//---------------------------------------------------------
-// Procedure: getDoubleFromNodeReport
-//            retrieve any double value from node_report by name
-//
-double SelectFormation::getDoubleFromNodeReport(std::string full_string, std::string key)
-{
-  std::string output = getStringFromNodeReport(full_string, key);
-  return atof(output.c_str());
-}
+////---------------------------------------------------------
+//// Procedure: getDoubleFromNodeReport
+////            retrieve any double value from node_report by name
+////
+//double SelectFormation::getDoubleFromNodeReport(std::string full_string, std::string key)
+//{
+//  std::string output = getStringFromNodeReport(full_string, key);
+//  return atof(output.c_str());
+//}
 
-//---------------------------------------------------------
-// Procedure: getStringFromNodeReport
-//            retrieve any string value from node_report by name
-//
-std::string SelectFormation::getStringFromNodeReport(std::string full_string, std::string key)
-{
-  // example: NAME=anton,X=2676.17,Y=1908.45,SPD=1.48,HDG=316.19,DEP=0,
-  //   LAT=34.26380127,LON=-117.17504934,TYPE=SHIP,GROUP=survey,MODE=DRIVE,
-  //   ALLSTOP=clear,index=57,YAW=316.19,TIME=1398119728.44,LENGTH=8
+////---------------------------------------------------------
+//// Procedure: getStringFromNodeReport
+////            retrieve any string value from node_report by name
+////
+//std::string SelectFormation::getStringFromNodeReport(std::string full_string, std::string key)
+//{
+//  // example: NAME=anton,X=2676.17,Y=1908.45,SPD=1.48,HDG=316.19,DEP=0,
+//  //   LAT=34.26380127,LON=-117.17504934,TYPE=SHIP,GROUP=survey,MODE=DRIVE,
+//  //   ALLSTOP=clear,index=57,YAW=316.19,TIME=1398119728.44,LENGTH=8
 
-  // handle comma-separated string
-  std::string output;
-  bool valid_msg = true;
-  vector<string> svector = parseString(full_string, ',');
-  unsigned int i, vsize = svector.size();
-  for(i=0; i<vsize; i++) {
-    string param = biteStringX(svector[i], '=');
-    string value = svector[i];
-    if(param == key)
-      output = value;
-    else
-      valid_msg = false;
-  }
+//  // handle comma-separated string
+//  std::string output;
+//  bool valid_msg = true;
+//  vector<string> svector = parseString(full_string, ',');
+//  unsigned int i, vsize = svector.size();
+//  for(i=0; i<vsize; i++) {
+//    string param = biteStringX(svector[i], '=');
+//    string value = svector[i];
+//    if(param == key)
+//      output = value;
+//    else
+//      valid_msg = false;
+//  }
 
-  if( output == "" )
-    valid_msg = false;
+//  if( output == "" )
+//    valid_msg = false;
 
-  if(!valid_msg)
-    std::cout << GetAppName() << " :: Unhandled NODE_REPORT: " << full_string << std::endl;
+//  if(!valid_msg)
+//    std::cout << GetAppName() << " :: Unhandled NODE_REPORT: " << full_string << std::endl;
 
-  return output;
-}
+//  return output;
+//}
 
-void SelectFormation::calcDxDyOperatorsStd(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y)
-{
-  double trig_angle;
-  double lead_hdg = m_lead_hdg;
-  // calculate the angle for trig, given AUV heading
-  switch ( quadrant(lead_hdg) )
-  {
-    case 1:
-      trig_angle = lead_hdg;
-      pos_x = false;
-      pos_y = false;
-      break;
-    case 2:
-      trig_angle = 180-lead_hdg;
-      pos_x = false;
-      break;
-    case 3:
-      trig_angle = lead_hdg-180;
-      break;
-    case 4:
-      trig_angle = 360-lead_hdg;
-      pos_y = false;
-      break;
-    default:
-      // shouldn't happen
-      break;
-  }
-  // calculate x/y displacement from trig_angle and follow range
-  // trig_angle connected edge y, opposite edge x, given above calculations
-  // cos trig_angle = dy / range
-  // sin trig_angle = dx / range
-  delta_x = dx(spacing, trig_angle);
-  delta_y = dy(spacing, trig_angle);
-}
+//void SelectFormation::calcDxDyOperatorsStd(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y)
+//{
+//  double trig_angle;
+//  double lead_hdg = m_lead_hdg;
+//  // calculate the angle for trig, given AUV heading
+//  switch ( quadrant(lead_hdg) )
+//  {
+//    case 1:
+//      trig_angle = lead_hdg;
+//      pos_x = false;
+//      pos_y = false;
+//      break;
+//    case 2:
+//      trig_angle = 180-lead_hdg;
+//      pos_x = false;
+//      break;
+//    case 3:
+//      trig_angle = lead_hdg-180;
+//      break;
+//    case 4:
+//      trig_angle = 360-lead_hdg;
+//      pos_y = false;
+//      break;
+//    default:
+//      // shouldn't happen
+//      break;
+//  }
+//  // calculate x/y displacement from trig_angle and follow range
+//  // trig_angle connected edge y, opposite edge x, given above calculations
+//  // cos trig_angle = dy / range
+//  // sin trig_angle = dx / range
+//  delta_x = dx(spacing, trig_angle);
+//  delta_y = dy(spacing, trig_angle);
+//}
 
-void SelectFormation::calcDxDyOperators2h(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y)
-{
-  double trig_angle;
-  double lead_hdg = m_lead_hdg;
-  switch ( quadrant(lead_hdg) )
-  {
-    case 1:
-      trig_angle = 90-lead_hdg;
-      pos_x = false;
-      break;
-    case 2:
-      trig_angle = lead_hdg-90;
-      break;
-    case 3:
-      trig_angle = 270-lead_hdg;
-      pos_y = false;
-      break;
-    case 4:
-      trig_angle = lead_hdg-270;
-      pos_x = false;
-      pos_y = false;
-      break;
-    default:
-      // shouldn't happen
-      break;
-  }
-  delta_x = dx(spacing, trig_angle);
-  delta_y = dy(spacing, trig_angle);
-}
+//void SelectFormation::calcDxDyOperators2h(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y)
+//{
+//  double trig_angle;
+//  double lead_hdg = m_lead_hdg;
+//  switch ( quadrant(lead_hdg) )
+//  {
+//    case 1:
+//      trig_angle = 90-lead_hdg;
+//      pos_x = false;
+//      break;
+//    case 2:
+//      trig_angle = lead_hdg-90;
+//      break;
+//    case 3:
+//      trig_angle = 270-lead_hdg;
+//      pos_y = false;
+//      break;
+//    case 4:
+//      trig_angle = lead_hdg-270;
+//      pos_x = false;
+//      pos_y = false;
+//      break;
+//    default:
+//      // shouldn't happen
+//      break;
+//  }
+//  delta_x = dx(spacing, trig_angle);
+//  delta_y = dy(spacing, trig_angle);
+//}

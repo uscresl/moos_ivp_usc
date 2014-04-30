@@ -18,6 +18,7 @@
 #include "MOOS/libMOOS/MOOSLib.h"
 #include "MBUtils.h"
 #include "math.h"
+#include "USCutils.h"
 
 class PositionInFormation : public CMOOSApp
 {
@@ -38,11 +39,6 @@ class PositionInFormation : public CMOOSApp
   private: 
     // Own functions
     void findPosition();
-
-    // util funcs, TODO move to own library
-    double getDoubleFromNodeReport(std::string full_string, std::string key);
-    std::string getStringFromNodeReport(std::string full_string, std::string key);
-    void euclidDistance(double const x1, double const y1, double const x2, double const y2, double & euclid);
 
     // Configuration variables
     std::string m_lead_vehicle;

@@ -5,7 +5,6 @@
 
 SET(SRC
   SelectFormation.cpp
-  SelectFormation_utils.cpp
   main.cpp
 )
 
@@ -16,6 +15,7 @@ TARGET_LINK_LIBRARIES(pSelectFormation
    geometry
    apputil
    mbutil
+   uscutil
    ${SYSTEM_LIBS}
    # whatever other libs you need
 )

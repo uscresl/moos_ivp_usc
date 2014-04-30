@@ -6,7 +6,6 @@
 SET(SRC
   PositionInFormation.cpp
   main.cpp
-  PositionInFormation_utils.cpp
   hungarianmethod.cpp
 )
 
@@ -17,6 +16,7 @@ TARGET_LINK_LIBRARIES(pPositionInFormation
    geometry
    apputil
    mbutil
+   uscutil
    ${SYSTEM_LIBS}
    # whatever other libs you need
 )

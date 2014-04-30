@@ -19,6 +19,7 @@
 #include "MOOS/libMOOS/MOOSLib.h"
 
 #include "math.h"
+#include "USCutils.h"
 
 class SelectFormation : public CMOOSApp
 {
@@ -40,17 +41,6 @@ class SelectFormation : public CMOOSApp
     // Own functions
     void updateFollowCenter(double lead_x, double lead_y);
     void calculateFormation();
-    double getDoubleFromNodeReport(std::string full_string, std::string key);
-    std::string getStringFromNodeReport(std::string full_string, std::string key);
-    void calcDxDyOperatorsStd(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y);
-    void calcDxDyOperators2h(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y);
-
-    // Own util funcs
-    double deg2rad(double degrees);
-    double rad2deg(double radians);
-    double dx(double range, double trig_angle);
-    double dy(double range, double trig_angle);
-    size_t quadrant(double lead_heading);
 
     // Configuration variables
     double m_follow_range;

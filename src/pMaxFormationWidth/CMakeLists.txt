@@ -1,13 +1,10 @@
 #--------------------------------------------------------
-# The CMakeLists.txt for:                       pMaxFormationWidth
+# The CMakeLists.txt for:             pMaxFormationWidth
 # Author(s): Stephanie Kemna, USC
-# Note: this is a template dir, so you can copy to start
-#       making your MOOSApp
 #--------------------------------------------------------
 
 SET(SRC
   MaxFormationWidth.cpp
-  MaxFormationWidth_utils.cpp
   main.cpp
 )
 
@@ -20,6 +17,7 @@ TARGET_LINK_LIBRARIES(pMaxFormationWidth
    geometry
    apputil
    mbutil
+   uscutil
    ${SYSTEM_LIBS}
    ${Boost_LIBRARIES}
    # whatever other libs you need

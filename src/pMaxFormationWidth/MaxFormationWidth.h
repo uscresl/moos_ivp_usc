@@ -19,6 +19,7 @@
 #include <boost/geometry/geometries/linestring.hpp>
 
 #include "MBUtils.h"
+#include "USCutils.h"
 
 class MaxFormationWidth : public CMOOSApp
 {
@@ -50,26 +51,12 @@ class MaxFormationWidth : public CMOOSApp
     // util funcs
     void publishToView(std::string const str);
 
-    // util funcs, TODO: move to own util library
-    double deg2rad(double degrees);
-    double rad2deg(double radians);
-    double dx(double range, double trig_angle);
-    double dy(double range, double trig_angle);
-    size_t quadrant(double lead_heading);
-    void calcDxDyOperatorsStd(double const spacing, double const lead_hdg, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y);
-    void calcDxDyOperators2h(double const spacing, double const lead_hdg, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y);
-    double getDoubleFromNodeReport(std::string full_string, std::string key);
-    std::string getStringFromNodeReport(std::string full_string, std::string key);
-    void euclidDistance(double const x1, double const y1, double const x2, double const y2, double & euclid);
-
     // Configuration variables
     std::string m_lead_vehicle;
     double m_sensor_range;
     double m_sensor_width;
-//    double m_ivd;
 
     // State variables
-//    size_t m_num_vehicles;
     bool debug;
     b_polygon m_lake_outline;
 };
