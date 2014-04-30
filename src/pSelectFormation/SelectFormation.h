@@ -58,7 +58,6 @@ class SelectFormation : public CMOOSApp
     double m_lead_hdg;
     
     double m_prev_time;
-//    std::map<double,std::string> m_lead_history;
     
     struct LeadHistory {
       double timestamp;
