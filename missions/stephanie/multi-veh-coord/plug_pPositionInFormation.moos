@@ -7,4 +7,5 @@ ProcessConfig = pPositionInFormation
   CommsTick = 2
   
   // potential process parameters would go here
+  lead_vehicle_name = anton
 }

@@ -49,7 +49,7 @@ Processconfig = ANTLER
   // formation control
 #ifdef VTYPE UUV
   Run = pSelectFormation @ NewConsole = false
-  Run = pPositionInFormation @ NewConsole = false
+  Run = pPositionInFormation @ NewConsole = true
   Run = pFormationWptUpdater @ NewConsole = false
 #endif
 #ifdef VTYPE SHIP

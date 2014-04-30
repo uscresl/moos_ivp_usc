@@ -6,6 +6,8 @@
 SET(SRC
   PositionInFormation.cpp
   main.cpp
+  PositionInFormation_utils.cpp
+  hungarianmethod.cpp
 )
 
 ADD_EXECUTABLE(pPositionInFormation ${SRC})

@@ -15,9 +15,11 @@
 #include "PositionInFormation.h"
 
 #include <iterator>
-#include "MBUtils.h"
 #include "math.h"
 #include <limits>
+
+#include <Eigen/Dense>
+#include "hungarianmethod.h"
 
 using namespace std;
 
@@ -31,6 +33,7 @@ PositionInFormation::PositionInFormation()
   m_y = 0;
   m_z = 0;
   m_formation = "";
+  m_ownship = "";
 }
 
 //---------------------------------------------------------
@@ -71,6 +74,22 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       m_y = dval;
     else if ( key == "NAV_Z" )
       m_z = dval;
+    else if ( key == "NODE_REPORT" )
+    { // need to get all vehicle data for HM
+      // std::map<std::string,std::string> m_other_vehicles;
+      std::string veh_name = getStringFromNodeReport(sval, "NAME");
+      std::map<std::string,std::string>::iterator found_iterator = m_other_vehicles.find(veh_name);
+      if ( found_iterator != m_other_vehicles.end() )
+      { // update value
+        m_other_vehicles[veh_name] = sval;
+      }
+      else
+      { // maybe insert vehicle
+        // check not own name
+        if ( veh_name != m_ownship && veh_name != m_lead_vehicle)
+          m_other_vehicles.insert(std::pair<std::string, std::string>(veh_name, sval));
+      }
+    }
     else
       std::cout << "pPositionInFormation :: Unhandled Mail: " << key << std::endl;
       //reportRunWarning("Unhandled Mail: " + key);
@@ -111,6 +130,12 @@ bool PositionInFormation::OnStartUp()
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
     //reportConfigWarning("No config block found for " + GetAppName());
 
+  if(!m_MissionReader.GetValue("Community", m_ownship))
+  {
+    std::cout << "Vehicle Name (MOOS community) not provided" << std::endl;
+    return(false);
+  }
+
   STRING_LIST::iterator p;
   for(p=sParams.begin(); p!=sParams.end(); p++) 
   {
@@ -120,18 +145,11 @@ bool PositionInFormation::OnStartUp()
     string value = line;
 
     bool handled = false;
-//    if((param == "example2") && isNumber(value)) 
-//    {
-//      // assuming the atof works, store the val
-//      m_example2 = atof(value.c_str());
-//      handled = true;
-//    }
-//    else if( (param == "example1") ) 
-//    {
-//      // save string .. you might wanna check for format or something
-//      m_example1 = value;
-//      handled = true;
-//    }
+    if ( param == "lead_vehicle_name" )
+    {
+      m_lead_vehicle= value;
+      handled = true;
+    }
 
     if(!handled)
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
@@ -154,6 +172,7 @@ void PositionInFormation::registerVariables()
   m_Comms.Register("NAV_X",0);
   m_Comms.Register("NAV_Y",0);
   m_Comms.Register("NAV_Z",0);
+  m_Comms.Register("NODE_REPORT",0); // need to get all vehicle data for HM
 }
 
 void PositionInFormation::findPosition()
@@ -162,38 +181,73 @@ void PositionInFormation::findPosition()
   //           "2689.5,1880:2710.5,1880" or 
   //           "2700,1880:2679,1859:2721,1859"
 
-  // gotta get all positions from formation
+  // gotta get all positions from the formation
   vector<string> svector = parseString(m_formation, ':');
   unsigned int idx, vsize = svector.size();
-  double distances[vsize];
-  double xval, yval;
-  for (idx = 0; idx < vsize; idx++)
+
+  // only need to calculate if there are more than 1 vehicle following
+  if ( m_other_vehicles.size() >= 1 && vsize >= 1 )
   {
-    std::string xstr = biteStringX(svector[idx], ',');
-    std::string ystr = svector[idx];
-    xval = atof(xstr.c_str());
-    yval = atof(ystr.c_str());
-    // TODO make this 3D
-    
-    // check&store distance to position // TODO make this Hungarian method?
-    double dx, dy;
-    dx = xval - m_x;
-    dy = yval - m_y;
-    // TODO make this 3D
-    distances[idx] = sqrt(dx*dx + dy*dy);
-    std::cout << "calculated distance: " << distances[idx] << std::endl;
-  }
-  
-  // then publish identifier
-  double min_dist = std::numeric_limits<double>::max();
-  size_t min_dist_idx = 0;
-  for ( idx = 0; idx < vsize; idx++ )
-  {
-    if ( distances[idx] < min_dist )
-    {
-      min_dist = distances[idx];
-      min_dist_idx = idx+1;
+    // constract Eigen matrix (num_vehicles*num_positions)
+    Eigen::MatrixXd hm_matrix( m_other_vehicles.size()+1, vsize);
+
+    // need distances for Hungarian method cost matrix
+    double xval, yval; // TODO make this 3D
+    for (idx = 0; idx < vsize; idx++)
+    { // own vehicle calculations
+      std::cout << "dealing with: " << svector[idx] << std::endl;
+      size_t comma_at = svector[idx].find(',');
+      std::string xstr = svector[idx].substr(0,comma_at-1);
+      std::string ystr = svector[idx].substr(comma_at+1,svector[idx].length());
+      xval = atof(xstr.c_str());
+      yval = atof(ystr.c_str());
+      std::cout << "xval, yval of pt " << idx+1 << ": " << xval << "," << yval << std::endl;
+      std::cout << "vehicle at: " << m_x << "," << m_y << std::endl;
+      
+      // check&store distance to position
+      double euclidD;    // TODO make this 3D
+      euclidDistance(xval, yval, m_x, m_y, euclidD);
+      // store distance metric into matrix
+      hm_matrix(0,idx) = euclidD;
+      std::cout << "calculated distance: " << hm_matrix(0,idx) << std::endl;
     }
+    // for all other vehicles, calculate distance to all positions in formation
+    std::map<std::string,std::string>::iterator vehicle_iter;
+    size_t vnum = 1;
+    for ( vehicle_iter = m_other_vehicles.begin(); vehicle_iter != m_other_vehicles.end(); ++vehicle_iter )
+    { // for each vehicle
+      std::string sval = vehicle_iter->second;
+      double vx = getDoubleFromNodeReport(sval, "X");
+      double vy = getDoubleFromNodeReport(sval, "Y");
+      std::cout << "vehicle at: " << vx << "," << vy << std::endl;
+
+      for (idx = 0; idx < vsize; idx++)
+      { // for each point in formation
+        size_t comma_at = svector[idx].find(',');
+        std::string xstr = svector[idx].substr(0,comma_at-1);
+        std::string ystr = svector[idx].substr(comma_at+1,svector[idx].length());
+        xval = atof(xstr.c_str());
+        yval = atof(ystr.c_str());
+        std::cout << "xval, yval of pt " << idx+1 << ": " << xval << "," << yval << std::endl;
+
+        double euclidD;
+        euclidDistance(xval, yval, vx, vy, euclidD);
+        // store distance metric into matrix
+        hm_matrix(vnum, idx) = euclidD;
+        std::cout << "calculated distance for vehicle " << vnum << ": " << hm_matrix(vnum,idx) << std::endl;
+      }
+      vnum++;
+    }
+    std::cout << hm_matrix << std::endl;
+
+    // pass on matrix to hungarian method solve function for optimal assignment
+    HungarianMethod hu_method;
+    Eigen::VectorXi hu_optimal_assignment;
+    hu_optimal_assignment = hu_method.hungarian_solve(hm_matrix);
+    std::cout << "optimal assignment: " << hu_optimal_assignment << std::endl;
+    
+    // extract assignment for current vehicle & publish
+    size_t hm_optimal_position = hu_optimal_assignment[0]+1;
+    Notify("POSITION_IN_FORMATION",hm_optimal_position);
   }
-  Notify("POSITION_IN_FORMATION",min_dist_idx);
 }
