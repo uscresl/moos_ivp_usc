@@ -20,6 +20,7 @@
 
 #include "math.h"
 #include "USCutils.h"
+#include <vector>
 
 class SelectFormation : public CMOOSApp
 {
@@ -39,7 +40,7 @@ class SelectFormation : public CMOOSApp
 
   private:
     // Own functions
-    void updateFollowCenter(double lead_x, double lead_y);
+    void updateFollowCenter(double curr_time, double lead_spd); //double lead_x, double lead_y, double lead_spd);
     void calculateFormation();
 
     // Configuration variables
@@ -55,6 +56,16 @@ class SelectFormation : public CMOOSApp
     std::string m_shape;
     std::string m_prev_shape;
     double m_lead_hdg;
+    
+    double m_prev_time;
+//    std::map<double,std::string> m_lead_history;
+    
+    struct LeadHistory {
+      double timestamp;
+      std::string node_report;
+      bool operator<(const LeadHistory &other) const { return timestamp < other.timestamp; };
+    };
+    std::vector<LeadHistory> m_lead_history;
 };
 
 #endif 

@@ -18,6 +18,7 @@
 #include <iterator>
 #include "MBUtils.h"
 #include <limits>
+#include <algorithm>
 
 using namespace std;
 
@@ -43,6 +44,8 @@ SelectFormation::SelectFormation()
   m_follow_center_y = 0;
   
   debug = true;
+  
+  m_prev_time = 0;
 }
 
 //---------------------------------------------------------
@@ -92,13 +95,28 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       std::string veh_name = getStringFromNodeReport(sval, "NAME");
       if ( veh_name == m_lead_vehicle )
       {
-        double lead_x, lead_y, lead_hdg;
-        // need contact thingy to extract position of any name from node report
-        lead_x = getDoubleFromNodeReport(sval, "X");
-        lead_y = getDoubleFromNodeReport(sval, "Y");
-        m_lead_hdg = getDoubleFromNodeReport(sval, "HDG");
+        // need speed to calculate what time corresponds to follow_range
+        double lead_spd, update_time;
+        lead_spd = getDoubleFromNodeReport(sval, "SPD");
+        update_time = getDoubleFromNodeReport(sval, "TIME");
+
+        // store info: add with timestamp of message
+        // MOOSTime is warped, so should be ok as key (= DB_TIME)
+        LeadHistory update;
+        update.timestamp = update_time;
+        update.node_report = sval;
+        
+        if ( m_lead_history.size() == 0 || (m_lead_history.back().timestamp < update.timestamp ) )
+        { // just insert, assume rest is already sorted
+          m_lead_history.insert(m_lead_history.end(), update);
+        }
+        else
+        { // insert at lower_bound, keeps vector sorted
+          m_lead_history.insert(std::lower_bound(m_lead_history.begin(), m_lead_history.end(), update), update);
+        }
+
         // update the formation center/reference point 
-        updateFollowCenter(lead_x, lead_y);
+        updateFollowCenter(update_time, lead_spd);
         new_info = true;
       }
     }
@@ -202,17 +220,32 @@ void SelectFormation::registerVariables()
   m_Comms.Register("NODE_REPORT", 0);
 }
 
-void SelectFormation::updateFollowCenter(double lead_x, double lead_y)
+void SelectFormation::updateFollowCenter(double curr_time, double lead_spd)
 {
   double trig_angle;
   double delta_x, delta_y;
   bool pos_x = true, pos_y = true;
-  calcDxDyOperatorsStd(m_follow_range, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
-  
-  // calculate new follow center
-  // need to m_follow_range behind, given hdg
-  m_follow_center_x = ( pos_x ? lead_x + delta_x : lead_x - delta_x );
-  m_follow_center_y = ( pos_y ? lead_y + delta_y : lead_y - delta_y );
+
+  // convert range to time, to extract prev location lead from memory
+  double time_behind = m_follow_range / lead_spd;
+
+  // extract prev position lead from memory
+  double time_key = curr_time - time_behind;
+  std::vector<LeadHistory>::iterator lower_bound;
+  LeadHistory tmp;
+  tmp.timestamp = time_key;
+  lower_bound = std::lower_bound(m_lead_history.begin(), m_lead_history.end(), tmp);
+
+  // if valid data is available, update the follow center
+  if ( lower_bound != m_lead_history.end() )
+  { // only take data if element exists in vector
+    double timestamp = (*lower_bound).timestamp;
+    std::string node_report = (*lower_bound).node_report;
+    std::cout << "retrieved: " << timestamp << "   " << node_report << std::endl;
+
+    m_follow_center_x = getDoubleFromNodeReport(node_report,"X");
+    m_follow_center_y = getDoubleFromNodeReport(node_report,"Y");
+  }
 
   // show on pMarineViewer
   std::ostringstream ctr_pt;
@@ -350,111 +383,3 @@ void SelectFormation::calculateFormation()
   if ( m_prev_shape != m_shape )
     Notify("FORMATION_SHAPE",m_shape);
 }
-
-////---------------------------------------------------------
-//// Procedure: getDoubleFromNodeReport
-////            retrieve any double value from node_report by name
-////
-//double SelectFormation::getDoubleFromNodeReport(std::string full_string, std::string key)
-//{
-//  std::string output = getStringFromNodeReport(full_string, key);
-//  return atof(output.c_str());
-//}
-
-////---------------------------------------------------------
-//// Procedure: getStringFromNodeReport
-////            retrieve any string value from node_report by name
-////
-//std::string SelectFormation::getStringFromNodeReport(std::string full_string, std::string key)
-//{
-//  // example: NAME=anton,X=2676.17,Y=1908.45,SPD=1.48,HDG=316.19,DEP=0,
-//  //   LAT=34.26380127,LON=-117.17504934,TYPE=SHIP,GROUP=survey,MODE=DRIVE,
-//  //   ALLSTOP=clear,index=57,YAW=316.19,TIME=1398119728.44,LENGTH=8
-
-//  // handle comma-separated string
-//  std::string output;
-//  bool valid_msg = true;
-//  vector<string> svector = parseString(full_string, ',');
-//  unsigned int i, vsize = svector.size();
-//  for(i=0; i<vsize; i++) {
-//    string param = biteStringX(svector[i], '=');
-//    string value = svector[i];
-//    if(param == key)
-//      output = value;
-//    else
-//      valid_msg = false;
-//  }
-
-//  if( output == "" )
-//    valid_msg = false;
-
-//  if(!valid_msg)
-//    std::cout << GetAppName() << " :: Unhandled NODE_REPORT: " << full_string << std::endl;
-
-//  return output;
-//}
-
-//void SelectFormation::calcDxDyOperatorsStd(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y)
-//{
-//  double trig_angle;
-//  double lead_hdg = m_lead_hdg;
-//  // calculate the angle for trig, given AUV heading
-//  switch ( quadrant(lead_hdg) )
-//  {
-//    case 1:
-//      trig_angle = lead_hdg;
-//      pos_x = false;
-//      pos_y = false;
-//      break;
-//    case 2:
-//      trig_angle = 180-lead_hdg;
-//      pos_x = false;
-//      break;
-//    case 3:
-//      trig_angle = lead_hdg-180;
-//      break;
-//    case 4:
-//      trig_angle = 360-lead_hdg;
-//      pos_y = false;
-//      break;
-//    default:
-//      // shouldn't happen
-//      break;
-//  }
-//  // calculate x/y displacement from trig_angle and follow range
-//  // trig_angle connected edge y, opposite edge x, given above calculations
-//  // cos trig_angle = dy / range
-//  // sin trig_angle = dx / range
-//  delta_x = dx(spacing, trig_angle);
-//  delta_y = dy(spacing, trig_angle);
-//}
-
-//void SelectFormation::calcDxDyOperators2h(double const spacing, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y)
-//{
-//  double trig_angle;
-//  double lead_hdg = m_lead_hdg;
-//  switch ( quadrant(lead_hdg) )
-//  {
-//    case 1:
-//      trig_angle = 90-lead_hdg;
-//      pos_x = false;
-//      break;
-//    case 2:
-//      trig_angle = lead_hdg-90;
-//      break;
-//    case 3:
-//      trig_angle = 270-lead_hdg;
-//      pos_y = false;
-//      break;
-//    case 4:
-//      trig_angle = lead_hdg-270;
-//      pos_x = false;
-//      pos_y = false;
-//      break;
-//    default:
-//      // shouldn't happen
-//      break;
-//  }
-//  delta_x = dx(spacing, trig_angle);
-//  delta_y = dy(spacing, trig_angle);
-//}

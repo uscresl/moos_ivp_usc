@@ -30,4 +30,6 @@ ProcessConfig = pMarineViewer
   button_one   = RETURN_ALL=false
   button_two   = RETURN_ALL  # RETURN_ALL=true
   button_three = TRAIL_ALL   # TRAIL_ALL=true
+  
+//  scope = NODE_REPORT,DB_TIME
 }

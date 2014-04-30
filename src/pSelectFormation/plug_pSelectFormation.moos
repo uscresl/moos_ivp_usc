@@ -8,7 +8,7 @@ ProcessConfig = pSelectFormation
   
   // who to follow
   lead_vehicle_name = anton
-  // what distance to follow at
+  // what distance to follow at, in meters
   follow_range = 20
   // what distance the vehicles should keep apart in the formation
   inter_vehicle_distance = 21
