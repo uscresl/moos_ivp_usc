@@ -1,6 +1,7 @@
 //*******************************************************
 // ShoreSide Configuration File
 
+NoNetwork = true
 ServerHost = localhost
 ServerPort = 9000
 Community  = shoreside
