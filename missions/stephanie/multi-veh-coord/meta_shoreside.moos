@@ -22,7 +22,8 @@ Processconfig = ANTLER
   Run = pHostInfo        @ NewConsole = false
 
   // shoreside visualization
-  Run = pMarineViewer    @ NewConsole = true
+  Run = pMarineViewer    @ NewConsole = false
+  Run = uTimerScript     @ NewConsole = false
 
 //  // test closing app
 //  Run = pTemplate        @ NewConsole = true
@@ -47,6 +48,8 @@ Processconfig = ANTLER
 //#include plug_uFld_shoreside.moos
 
 #include plug_pMarineViewer.moos
+// show lake outline via uTimerScript
+#include plug_uTimerScript_shoreside.moos
 
 //#include plug_pTemplate.moos
 

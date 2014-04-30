@@ -28,11 +28,13 @@ MaxFormationWidth::MaxFormationWidth()
   // class variable instantiations can go here
   debug = false;
   
-  m_ivd = 0;
-  m_time_horizon = 0;
+  m_sensor_range = 0;
+  m_sensor_width = 0;
+
   m_lead_vehicle = "anton";
 
-  m_num_vehicles = 1;
+//  m_ivd = 0;
+//  m_num_vehicles = 1;
 }
 
 //---------------------------------------------------------
@@ -61,9 +63,10 @@ bool MaxFormationWidth::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-    if ( key == "NUM_VEHICLES" )
-      m_num_vehicles = (size_t)round(dval);
-    else if ( key == "NODE_REPORT_LOCAL" )
+//    if ( key == "NUM_VEHICLES" )
+//      m_num_vehicles = (size_t)round(dval);
+//    else 
+    if ( key == "NODE_REPORT_LOCAL" )
     {
 //      // check if right vehicle
 //      std::string veh_name = getStringFromNodeReport(sval, "NAME");
@@ -133,10 +136,10 @@ bool MaxFormationWidth::OnStartUp()
     string value = line;
 
     bool handled = false;
-    if ( (param == "time_horizon") && isNumber(value) )
+    if ( (param == "sensor_range") && isNumber(value) )
     {
       // assuming the atof works, store the val
-      m_time_horizon = atof(value.c_str());
+      m_sensor_range = atof(value.c_str());
       handled = true;
     }
     else if( (param == "lake_outline") )
@@ -151,12 +154,14 @@ bool MaxFormationWidth::OnStartUp()
     }
     else if ( param == "lead_vehicle_name" )
       m_lead_vehicle = value;
-    else if ( (param == "inter_vehicle_distance") && isNumber(value) )
-    {
-      // assuming the atof works, store the val
-      m_ivd = atof(value.c_str());
-      handled = true;
-    }
+//    else if ( (param == "inter_vehicle_distance") && isNumber(value) )
+//    {
+//      // assuming the atof works, store the val
+//      m_ivd = atof(value.c_str());
+//      handled = true;
+//    }
+    else if ( param == "sensor_width" && isNumber(value) )
+      m_sensor_width = atof(value.c_str());
 
     if(!handled)
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
@@ -175,7 +180,7 @@ bool MaxFormationWidth::OnStartUp()
 void MaxFormationWidth::registerVariables()
 {
   m_Comms.Register("NODE_REPORT_LOCAL", 0);
-  m_Comms.Register("NUM_VEHICLES", 0);
+//  m_Comms.Register("NUM_VEHICLES", 0);
 }
 
 void MaxFormationWidth::convertToWKT(std::string & str)
@@ -205,7 +210,7 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
   double delta_x, delta_y;
   bool pos_x = true, pos_y = true;
   // calculate new follow center
-  calcDxDyOperatorsStd(m_time_horizon, lead_hdg, delta_x, delta_y, pos_x, pos_y);
+  calcDxDyOperatorsStd(m_sensor_range, lead_hdg, delta_x, delta_y, pos_x, pos_y);
   // need to m_follow_range ahead, given hdg
   double horizon_x = 0.0, horizon_y = 0.0;
   horizon_x = ( !pos_x ? lead_x + delta_x : lead_x - delta_x );
@@ -215,8 +220,9 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
   hor_ctr << "x=" << horizon_x << ",y=" << horizon_y << ",label=horizon_ctr";
   Notify("VIEW_POINT",hor_ctr.str());
 
-  // construct a line, num_veh*ivd length, at time_horizon
-  double line_length = m_num_vehicles*m_ivd;
+  // construct a line at sensor_range
+  // old: m_num_vehicles*m_ivd; // num_veh*ivd length, at time_horizon
+  double line_length = m_sensor_width; 
   // propagate current position to time_horizon
   bool pos_x1 = true, pos_y1 = true;
   calcDxDyOperators2h(line_length/2.0, lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
@@ -225,12 +231,19 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
   double line_2x = (!pos_x1 ? horizon_x + delta_x : horizon_x - delta_x );
   double line_2y = (!pos_y1 ? horizon_y + delta_y : horizon_y - delta_y );
   // visualize
-  std::ostringstream pt1;
-  pt1 << "x=" << line_1x << ",y=" << line_1y << ",label=h1";
-  Notify("VIEW_POINT",pt1.str());
-  std::ostringstream pt2;
-  pt2 << "x=" << line_2x << ",y=" << line_2y << ",label=h2";
-  Notify("VIEW_POINT",pt2.str());
+  if (debug)
+  {
+    std::ostringstream pt1;
+    pt1 << "x=" << line_1x << ",y=" << line_1y << ",label=h1";
+    Notify("VIEW_POINT",pt1.str());
+    std::ostringstream pt2;
+    pt2 << "x=" << line_2x << ",y=" << line_2y << ",label=h2";
+    Notify("VIEW_POINT",pt2.str());
+  }
+  std::ostringstream segl;
+  segl << "pts={" << line_1x << "," << line_1y << ":" << line_2x << "," << line_2y 
+       << "},label=sensor_horizon,edge_color=darkseagreen,vertex_color=darkseagreen,vertex_size=1,edge_size=1";
+  Notify("VIEW_SEGLIST",segl.str());
 
   // make boost geometry linestring
   // eg. LINESTRING (30 10, 10 30, 40 40)

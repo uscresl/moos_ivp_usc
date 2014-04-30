@@ -48,16 +48,16 @@ Processconfig = ANTLER
 
   // formation control
 #ifdef VTYPE UUV
-  Run = pSelectFormation @ NewConsole = true
-  Run = pPositionInFormation @ NewConsole = true
-  Run = pFormationWptUpdater @ NewConsole = true
+  Run = pSelectFormation @ NewConsole = false
+  Run = pPositionInFormation @ NewConsole = false
+  Run = pFormationWptUpdater @ NewConsole = false
 #endif
 #ifdef VTYPE SHIP
   Run = pMaxFormationWidth @ NewConsole = true
 #endif
 
   // temp publish some vars so I don't have to poke them
-  Run = uTimerScript @ NewConsole = true
+  Run = uTimerScript @ NewConsole = false
 }
 //------------------------------------------------------------
 

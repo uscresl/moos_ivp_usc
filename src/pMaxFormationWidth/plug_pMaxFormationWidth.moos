@@ -1,16 +1,20 @@
 //--------------------------------------------------
-// pTemplate configuration block
+// pMaxFormationWidth configuration block
 //
 ProcessConfig = pMaxFormationWidth
 {
   AppTick   = 2
   CommsTick = 2
   
-  // potential process parameters would go here
-  time_horizon = 20 // meters // TODO: make time, incorporate speed?
+  // whose vehicle data to use (this is self for CS599 project)
   lead_vehicle_name = anton
-  // use WKT polygon for lake outline (assumed single polygon)
-  // eg. 30,10:40,40:20,40:10,20:30,10
+
+  // sensor model: line segment at given range
+  sensor_range = 20 // meters
+  sensor_width = 50 // meters
+
+  // use boost WKT polygon for lake outline (assumed single polygon)
+  // input format as MOOS polygons: 30,10:40,40:20,40:10,20:30,10
   // nb. end with first point!
   lake_outline = 30,10:40,40:20,40:10,20:30,10
 }

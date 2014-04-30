@@ -63,12 +63,13 @@ class MaxFormationWidth : public CMOOSApp
     void euclidDistance(double const x1, double const y1, double const x2, double const y2, double & euclid);
 
     // Configuration variables
-    double m_time_horizon;
     std::string m_lead_vehicle;
-    double m_ivd;
+    double m_sensor_range;
+    double m_sensor_width;
+//    double m_ivd;
 
     // State variables
-    size_t m_num_vehicles;
+//    size_t m_num_vehicles;
     bool debug;
     b_polygon m_lake_outline;
 };

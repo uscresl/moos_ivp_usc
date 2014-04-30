@@ -58,6 +58,7 @@ class SelectFormation : public CMOOSApp
     std::string m_lead_vehicle;
 
     // State variables
+    bool debug;
     double m_allowable_width, m_allowable_height;
     size_t m_num_vehicles;
     double m_follow_center_x, m_follow_center_y;

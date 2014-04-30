@@ -41,6 +41,8 @@ SelectFormation::SelectFormation()
   // algorithm variables
   m_follow_center_x = 0;
   m_follow_center_y = 0;
+  
+  debug = true;
 }
 
 //---------------------------------------------------------
@@ -254,6 +256,16 @@ void SelectFormation::calculateFormation()
         x2 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
         y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
         y2 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
+
+        if (debug)
+        {
+          std::ostringstream pt1;
+          pt1 << "x=" << x1 << ",y=" << y1 << ",label=p1";
+          Notify("VIEW_POINT",pt1.str());
+          std::ostringstream pt2;
+          pt2 << "x=" << x2 << ",y=" << y2 << ",label=p2";
+          Notify("VIEW_POINT",pt2.str());
+        }
       }
       else
       { // vertical: 2 vehicles behind one another
@@ -267,6 +279,16 @@ void SelectFormation::calculateFormation()
         x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
         y1 = m_follow_center_y;
         y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
+
+        if (debug)
+        {
+          std::ostringstream pt1;
+          pt1 << "x=" << x1 << ",y=" << y1 << ",label=p1";
+          Notify("VIEW_POINT",pt1.str());
+          std::ostringstream pt2;
+          pt2 << "x=" << x2 << ",y=" << y2 << ",label=p2";
+          Notify("VIEW_POINT",pt2.str());
+        }
       }
       // stringify
       formation_string << x1 << "," << y1 << ":" 
