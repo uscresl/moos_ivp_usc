@@ -34,6 +34,8 @@ PositionInFormation::PositionInFormation()
   m_z = 0;
   m_formation = "";
   m_ownship = "";
+
+  debug = true;
 }
 
 //---------------------------------------------------------
@@ -195,14 +197,21 @@ void PositionInFormation::findPosition()
     double xval, yval; // TODO make this 3D
     for (idx = 0; idx < vsize; idx++)
     { // own vehicle calculations
-      std::cout << "dealing with: " << svector[idx] << std::endl;
+      if (debug)
+      {
+        std::cout << "OWNSHIP CALC\n";
+        std::cout << "dealing with: " << svector[idx] << std::endl;
+      }
       size_t comma_at = svector[idx].find(',');
       std::string xstr = svector[idx].substr(0,comma_at-1);
       std::string ystr = svector[idx].substr(comma_at+1,svector[idx].length());
       xval = atof(xstr.c_str());
       yval = atof(ystr.c_str());
-      std::cout << "xval, yval of pt " << idx+1 << ": " << xval << "," << yval << std::endl;
-      std::cout << "vehicle at: " << m_x << "," << m_y << std::endl;
+      if (debug)
+      {
+        std::cout << "xval, yval of pt " << idx+1 << ": " << xval << "," << yval << std::endl;
+        std::cout << "vehicle at: " << m_x << "," << m_y << std::endl;
+      }
       
       // check&store distance to position
       double euclidD;    // TODO make this 3D
@@ -219,32 +228,43 @@ void PositionInFormation::findPosition()
       std::string sval = vehicle_iter->second;
       double vx = getDoubleFromNodeReport(sval, "X");
       double vy = getDoubleFromNodeReport(sval, "Y");
-      std::cout << "vehicle at: " << vx << "," << vy << std::endl;
 
       for (idx = 0; idx < vsize; idx++)
       { // for each point in formation
+        if (debug)
+        {
+          std::cout << "OTHER CALC\n";
+          std::cout << "dealing with: " << svector[idx] << std::endl;
+        }
         size_t comma_at = svector[idx].find(',');
         std::string xstr = svector[idx].substr(0,comma_at-1);
         std::string ystr = svector[idx].substr(comma_at+1,svector[idx].length());
         xval = atof(xstr.c_str());
         yval = atof(ystr.c_str());
-        std::cout << "xval, yval of pt " << idx+1 << ": " << xval << "," << yval << std::endl;
+        if (debug)
+        {
+          std::cout << "xval, yval of pt " << idx+1 << ": " << xval << "," << yval << std::endl;
+          std::cout << "other vehicle at: " << vx << "," << vy << std::endl;
+        }
 
         double euclidD;
         euclidDistance(xval, yval, vx, vy, euclidD);
         // store distance metric into matrix
         hm_matrix(vnum, idx) = euclidD;
-        std::cout << "calculated distance for vehicle " << vnum << ": " << hm_matrix(vnum,idx) << std::endl;
+        if (debug)
+          std::cout << "calculated distance for vehicle " << vnum+1 << ": " << hm_matrix(vnum,idx) << std::endl;
       }
       vnum++;
     }
-    std::cout << hm_matrix << std::endl;
+    if (debug)
+      std::cout << hm_matrix << std::endl;
 
     // pass on matrix to hungarian method solve function for optimal assignment
     HungarianMethod hu_method;
     Eigen::VectorXi hu_optimal_assignment;
     hu_optimal_assignment = hu_method.hungarian_solve(hm_matrix);
-    std::cout << "optimal assignment: " << hu_optimal_assignment << std::endl;
+    if (debug)
+      std::cout << "optimal assignment: " << hu_optimal_assignment << std::endl;
     
     // extract assignment for current vehicle & publish
     size_t hm_optimal_position = hu_optimal_assignment[0]+1;
