@@ -43,7 +43,7 @@ SelectFormation::SelectFormation()
   m_follow_center_x = 0;
   m_follow_center_y = 0;
   
-  debug = false;
+  debug = true;
   
   m_prev_time = 0;
 }
@@ -243,8 +243,6 @@ void SelectFormation::updateFollowCenter(double curr_time, double lead_spd)
   { // only take data if element exists in vector
     double timestamp = (*lower_bound).timestamp;
     std::string node_report = (*lower_bound).node_report;
-    if (debug)
-      std::cout << "retrieved: " << timestamp << "   " << node_report << std::endl;
 
     m_follow_center_x = getDoubleFromNodeReport(node_report,"X");
     m_follow_center_y = getDoubleFromNodeReport(node_report,"Y");
