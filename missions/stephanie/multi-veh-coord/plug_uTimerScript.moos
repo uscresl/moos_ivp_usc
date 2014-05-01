@@ -11,7 +11,7 @@ ProcessConfig = uTimerScript
 
   // Event(s) are the key components of the script
 //  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
-  event = var=NUM_VEHICLES, val=2, time=100
+  event = var=NUM_VEHICLES, val=2, time=0
 //  event = var=ALLOWABLE_WIDTH, val=25, time=100
   event = var=ALLOWABLE_HEIGHT, val=10, time=100
 

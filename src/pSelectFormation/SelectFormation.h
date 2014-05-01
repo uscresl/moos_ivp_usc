@@ -40,8 +40,10 @@ class SelectFormation : public CMOOSApp
 
   private:
     // Own functions
-    void updateFollowCenter(double curr_time, double lead_spd); //double lead_x, double lead_y, double lead_spd);
+    void updateFollowCenter(double const curr_time, double const lead_spd);
+    void updateFormationShape();
     void calculateFormation();
+    void processReceivedWidth(double const dval);
 
     // Configuration variables
     double m_follow_range;
@@ -50,12 +52,12 @@ class SelectFormation : public CMOOSApp
 
     // State variables
     bool debug;
-    double m_allowable_width;
-    std::map<size_t,double> m_allowable_width_map;
+    std::map<size_t,std::string> m_formation_shape_map;
     double m_allowable_height;
     size_t m_num_vehicles;
     double m_follow_center_x, m_follow_center_y;
     std::string m_shape;
+    std::string m_formation_shape;
     std::string m_prev_shape;
     double m_lead_hdg;
     double m_own_spd;
