@@ -43,7 +43,7 @@ SelectFormation::SelectFormation()
   m_follow_center_x = 0;
   m_follow_center_y = 0;
   
-  debug = true;
+  debug = false;
   
   m_prev_time = 0;
 }
@@ -76,13 +76,24 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     bool new_info = false;
     if( key == "ALLOWABLE_WIDTH" )
     {
-      m_allowable_width = dval;
+      // convert follow range to time, to know when to start changing
+      size_t add_lag = round(m_follow_range / m_own_spd);
+      // nb. time message received != time message sent. TODO fix when adding full acomms
+      size_t current_time = round(MOOSTime());
+      // store the width to grab in future
+      // put allowable_width at time current+lag
+      m_allowable_width_map.insert(std::pair<size_t,double>(current_time+add_lag,dval));
+      std::cout << "received new allowable width" << std::endl;
       new_info = true;
     }
     else if ( key == "ALLOWABLE_HEIGHT" )
     {
       m_allowable_height = dval;
       new_info = true;
+    }
+    else if ( key == "NAV_SPEED" )
+    {
+      m_own_spd = dval;
     }
     else if ( key == "NUM_VEHICLES" )
     {
@@ -218,6 +229,7 @@ void SelectFormation::registerVariables()
   m_Comms.Register("ALLOWABLE_HEIGHT", 0);
   m_Comms.Register("NUM_VEHICLES", 0);
   m_Comms.Register("NODE_REPORT", 0);
+  m_Comms.Register("NAV_SPEED", 0);
 }
 
 void SelectFormation::updateFollowCenter(double curr_time, double lead_spd)
@@ -241,10 +253,12 @@ void SelectFormation::updateFollowCenter(double curr_time, double lead_spd)
   { // only take data if element exists in vector
     double timestamp = (*lower_bound).timestamp;
     std::string node_report = (*lower_bound).node_report;
-    std::cout << "retrieved: " << timestamp << "   " << node_report << std::endl;
+    if (debug)
+      std::cout << "retrieved: " << timestamp << "   " << node_report << std::endl;
 
     m_follow_center_x = getDoubleFromNodeReport(node_report,"X");
     m_follow_center_y = getDoubleFromNodeReport(node_report,"Y");
+    m_lead_hdg = getDoubleFromNodeReport(node_report,"HDG");
   }
 
   // show on pMarineViewer
@@ -265,6 +279,17 @@ void SelectFormation::updateFollowCenter(double curr_time, double lead_spd)
 void SelectFormation::calculateFormation()
 {
   m_prev_shape = m_shape;
+
+  // retrieve width allowed
+  size_t curr_time = round(MOOSTime());
+  if ( m_allowable_width_map.find(curr_time) != m_allowable_width_map.end() )
+  {
+    // need to update the width
+    m_allowable_width = m_allowable_width_map.at(curr_time);
+    // TODO deal with if received late, fix when adding full acomms
+    std::cout << "Changing allowable width to: " << m_allowable_width << std::endl;
+  }
+
   // for now, only X/Y
   std::ostringstream formation_string;
   switch ( m_num_vehicles )
