@@ -32,9 +32,6 @@ MaxFormationWidth::MaxFormationWidth()
   m_sensor_width = 0;
 
   m_lead_vehicle = "anton";
-
-//  m_ivd = 0;
-//  m_num_vehicles = 1;
 }
 
 //---------------------------------------------------------
@@ -63,15 +60,8 @@ bool MaxFormationWidth::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-//    if ( key == "NUM_VEHICLES" )
-//      m_num_vehicles = (size_t)round(dval);
-//    else 
     if ( key == "NODE_REPORT_LOCAL" )
-    {
-//      // check if right vehicle
-//      std::string veh_name = getStringFromNodeReport(sval, "NAME");
-//      if ( veh_name == m_lead_vehicle )
-//      {
+    { // _LOCAl = ownship info
         double lead_x, lead_y, lead_hdg;
         // need contact thingy to extract position of any name from node report
         lead_x = getDoubleFromNodeReport(sval, "X");
@@ -85,7 +75,6 @@ bool MaxFormationWidth::OnNewMail(MOOSMSG_LIST &NewMail)
         checkUpcomingLakeOutline(lead_x, lead_y, lead_hdg, max_form_width);
         std::cout << "Publishing allowable width: " << max_form_width << std::endl;
         Notify("ALLOWABLE_WIDTH_FORM", max_form_width);
-//      }
     }
 //    else
 //      std::cout << "pMaxFormationWidth :: Unhandled Mail: " << key << std::endl;
@@ -154,12 +143,6 @@ bool MaxFormationWidth::OnStartUp()
     }
     else if ( param == "lead_vehicle_name" )
       m_lead_vehicle = value;
-//    else if ( (param == "inter_vehicle_distance") && isNumber(value) )
-//    {
-//      // assuming the atof works, store the val
-//      m_ivd = atof(value.c_str());
-//      handled = true;
-//    }
     else if ( param == "sensor_width" && isNumber(value) )
       m_sensor_width = atof(value.c_str());
 
@@ -180,7 +163,6 @@ bool MaxFormationWidth::OnStartUp()
 void MaxFormationWidth::registerVariables()
 {
   m_Comms.Register("NODE_REPORT_LOCAL", 0);
-//  m_Comms.Register("NUM_VEHICLES", 0);
 }
 
 void MaxFormationWidth::convertToWKT(std::string & str)
@@ -271,16 +253,6 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
   double overallMin = std::numeric_limits<double>::max();
   for ( line_iter = output.begin(); line_iter != output.end(); line_iter++ )
   {
-//    // first test
-//    // set the max formation width to max width returned
-//    // typically, we will only get 1 width returned anyway, 
-//    // unless the vehicle were to head straight at a pier or something
-//    // nb. we are not yet accounting for the fact that this measure can be skewed
-//    //     as per the boat heading (eg. only space on one side of boat)
-//    double length = boost::geometry::length(*line_iter);
-//    if ( length > max_form_width )
-//      max_form_width = length;
-
     // get endpoints linestring (linestring is a vector)
     double x1, y1, x2, y2;
     x1 = (*line_iter).at(0).x();
