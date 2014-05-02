@@ -115,6 +115,13 @@ bool PositionInFormation::OnConnectToServer()
 
 bool PositionInFormation::Iterate()
 {
+  // double-check position in formation every 2 seconds
+  // to deconflict erroneous same assignment due to solving 
+  // different assignment problem (using slightly different 
+  // locations when calculating)
+  size_t remainder = (size_t)(round(MOOSTime())) % 2;
+  if ( remainder == 0 )
+    findPosition();
   return(true);
 }
 
