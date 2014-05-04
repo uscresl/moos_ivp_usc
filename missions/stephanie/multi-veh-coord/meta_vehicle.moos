@@ -37,27 +37,28 @@ Processconfig = ANTLER
   // collision avoidance
   Run = pBasicContactMgr   @ NewConsole = false
 
-//  // inter-vehicle comms via shoreside
   Run = pShare             @ NewConsole = false
-//  Run = uFldNodeBroker     @ NewConsole = false
-//  Run = uFldMessageHandler @ NewConsole = false
-
-//  // need to add acomms
-//  pAcommsHandlerConfig = -geometry,179x100+0+20
-//  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
 
   // formation control
 #ifdef VTYPE UUV
   Run = pSelectFormation @ NewConsole = false
-  Run = pPositionInFormation @ NewConsole = true
+  Run = pPositionInFormation @ NewConsole = false
   Run = pFormationWptUpdater @ NewConsole = false
 #endif
 #ifdef VTYPE SHIP
   Run = pMaxFormationWidth @ NewConsole = false
 #endif
 
-  // temp publish some vars so I don't have to poke them
   Run = uTimerScript @ NewConsole = false
+
+//  // inter-vehicle comms via shoreside, not same as acomms, all comms routed
+//  // via shoreside, bit odd, but allows for testing comms dropouts etc.
+//  Run = uFldNodeBroker     @ NewConsole = false
+//  Run = uFldMessageHandler @ NewConsole = false
+
+//  // need to add acomms later
+//  pAcommsHandlerConfig = -geometry,179x100+0+20
+//  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
 }
 //------------------------------------------------------------
 
@@ -76,22 +77,12 @@ Processconfig = ANTLER
 // generate 'node reports'
 #include plug_pNodeReporter.moos
 
-//// inter-vehicle comms via shoreside
-//#include plug_uFldNodeBroker.moos
-//#include plug_uFldMessageHandler.moos
-
 // for simulation, to display vehicle positions and markers
 #include plug_pShare.moos
-
-// inter-vehicle comms via acomms
-// goby?
 
 // collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside
 #include plug_pBasicContactMgr.moos
-
-//// acomms, via Toby -- goby2 & pAcommsHandler
-//#include plug_pAcommsHandler.moos
 
 // formation control
 #ifdef VTYPE UUV
@@ -103,5 +94,16 @@ Processconfig = ANTLER
 #include plug_pMaxFormationWidth.moos
 #endif
 
-// temp publish some vars so I don't have to poke them
+// publish some vars so I don't have to poke them
+// replace later with process for calculating allowable height
+// and a process to determined the number of vehicles based on
+// received status updates
 #include plug_uTimerScript.moos
+
+//// inter-vehicle comms via shoreside
+//#include plug_uFldNodeBroker.moos
+//#include plug_uFldMessageHandler.moos
+
+//// inter-vehicle comms via acomms
+//// acomms, via Toby -- goby2 & pAcommsHandler
+//#include plug_pAcommsHandler.moos

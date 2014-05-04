@@ -52,7 +52,6 @@ class MaxFormationWidth : public CMOOSApp
     void publishToView(std::string const str);
 
     // Configuration variables
-    std::string m_lead_vehicle;
     double m_sensor_range;
     double m_sensor_width;
 

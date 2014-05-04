@@ -34,32 +34,19 @@ Behavior = BHV_AvoidCollision
    bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
 }
 
-//Behavior = BHV_OpRegion
-//{
-//  name       = bhv_opregion
-//  pwt        = 200 // higher weight
-//  condition  = DEPLOY = true
-
-//  polygon = 2100,1200:2100,2500:3400,2500:3400,1200
-//  
-//  trigger_entry_time = 1
-//  trigger_exit_time  = 1
-//  visual_hints = vertex_color=yellow,vertex_size=5,edge_color=red,edge_size=2
-//}
 Behavior = BHV_OpRegionBounce
 {
+// not really used, just some big square, because we want to
+// simulate sensing the environment rather than forcing constraints
   name = bhv_opregion_bounce
   pwt = 200
   duration = no-time-limit
   condition = DEPLOY = true
+// some big box
 #ifdef VTYPE UUV
-//  polygon = label,OpBox: 2100,1200:2100,2500:3400,2500:3400,1200
   polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
 #endif
 #ifdef VTYPE SHIP
-//  polygon = label,lake_outline:2465,1719:2460,1840:2485,1896:2622,1896:2622,1711
-//  polygon = label,lake_outline2:2485,1800:2485,2030:2925,2030:2925,1800
-//  polygon = label,lake_outline3:2400,2030:2400,2185:2620,2185:2620,1965:2500,1965
     polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
 #endif
   max_depth = 50 // match with BHV_OpRegionBounceDepth
@@ -158,6 +145,7 @@ Behavior = BHV_ConstantDepth
   summitdelta = 20  // m
 }
 
+// to test leader-follower simulations
 Behavior = BHV_Trail
 {
   name = bhv_trail
@@ -167,10 +155,10 @@ Behavior = BHV_Trail
   
   // bernard at 160, cornelis at 200 (40deg separation)
 #ifdef VNAME bernard
-  trail_angle = 160
+  trail_angle = 150
 #endif
 #ifdef VNAME cornelis
-  trail_angle = 200
+  trail_angle = 210
 #endif
   trail_range = 30
   contact = anton // ship

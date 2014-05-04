@@ -222,7 +222,7 @@ void SelectFormation::registerVariables()
   m_Comms.Register("NAV_SPEED", 0);
 }
 
-void SelectFormation::updateFollowCenter(double curr_time, double lead_spd)
+void SelectFormation::updateFollowCenter(double const curr_time, double const lead_spd)
 {
   double trig_angle;
   double delta_x, delta_y;
@@ -258,14 +258,14 @@ void SelectFormation::updateFollowCenter(double curr_time, double lead_spd)
 
 void SelectFormation::updateFormationShape()
 {
-  // TODO deal with if received late, fix when adding full acomms
+  // not tested yet: what if information received late?
+  // test & adapt when adding full acomms
   size_t curr_time = round(MOOSTime());
   if ( m_formation_shape_map.find(curr_time) != m_formation_shape_map.end() )
   { // found an update, update global var
     m_formation_shape = m_formation_shape_map.at(curr_time);
     std::cout << "Changing shape to: " << m_formation_shape << std::endl;
     Notify("FORMATION_SHAPE", m_formation_shape);
-
     // TODO: don't let the map get humongous, erase old items
   }
 }
@@ -383,7 +383,8 @@ void SelectFormation::processReceivedWidth(double const allowable_width)
 {
   // convert follow range to time, to know when to start changing
   size_t add_lag = round(m_follow_range / m_own_spd);
-  // nb. time message received != time message sent. TODO fix when adding full acomms
+  // nb. time message received != time message sent. 
+  // test/adapt when adding full acomms
   size_t current_time = round(MOOSTime());
   size_t start_time = current_time+1.5*add_lag;
   

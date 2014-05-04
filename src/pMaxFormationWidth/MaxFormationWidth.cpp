@@ -30,8 +30,6 @@ MaxFormationWidth::MaxFormationWidth()
   
   m_sensor_range = 0;
   m_sensor_width = 0;
-
-  m_lead_vehicle = "anton";
 }
 
 //---------------------------------------------------------
@@ -141,8 +139,6 @@ bool MaxFormationWidth::OnStartUp()
         std::cout << "\n Testing polygon, show nr pts: " << boost::geometry::num_points(m_lake_outline) << std::endl;
       handled = true;
     }
-    else if ( param == "lead_vehicle_name" )
-      m_lead_vehicle = value;
     else if ( param == "sensor_width" && isNumber(value) )
       m_sensor_width = atof(value.c_str());
 

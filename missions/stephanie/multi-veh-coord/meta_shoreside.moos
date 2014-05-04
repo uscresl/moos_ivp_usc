@@ -1,5 +1,7 @@
 //*******************************************************
 // ShoreSide Configuration File
+// basically a community for visualization of the simulation
+//
 
 NoNetwork = true
 ServerHost = localhost
@@ -26,11 +28,9 @@ Processconfig = ANTLER
   Run = pMarineViewer    @ NewConsole = false
   Run = uTimerScript     @ NewConsole = false
 
-//  // test closing app
-//  Run = pTemplate        @ NewConsole = true
+  Run = pShare           @ NewConsole = false
 
 //  // inter-vehicle comms via shoreside
-  Run = pShare           @ NewConsole = false
 //  Run = uFldShoreBroker  @ NewConsole = false
 //  Run = uFldNodeComms    @ NewConsole = false
 
@@ -46,13 +46,11 @@ Processconfig = ANTLER
 
 #include plug_pShare_shoreside.moos
 
-//#include plug_uFld_shoreside.moos
-
 #include plug_pMarineViewer.moos
+
 // show lake outline via uTimerScript
 #include plug_uTimerScript_shoreside.moos
 
-//#include plug_pTemplate.moos
-
+//#include plug_uFld_shoreside.moos
 //// acomms, via Toby -- goby2 & pAcommsHandler
 //#include plug_pAcommsHandler_shoreside.moos

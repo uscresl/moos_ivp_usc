@@ -109,18 +109,6 @@ bool FormationWptUpdater::OnStartUp()
     string value = line;
 
     bool handled = false;
-//    if((param == "example2") && isNumber(value)) 
-//    {
-//      // assuming the atof works, store the val
-//      m_example2 = atof(value.c_str());
-//      handled = true;
-//    }
-//    else if( (param == "example1") ) 
-//    {
-//      // save string .. you might wanna check for format or something
-//      m_example1 = value;
-//      handled = true;
-//    }
 
     if(!handled)
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
@@ -149,7 +137,7 @@ void FormationWptUpdater::sendWaypoint( std::string formation_string )
   vector<string> svector = parseString(formation_string, ':');
   unsigned int vsize = svector.size();
   if ( m_position > vsize )
-    std::cout << "hm .. what to do?" << std::endl; // TODO?
+    std::cout << "impossible situation" << std::endl;
   else
   {
     if ( m_position >= 1 ) // avoid sending something before valid position
