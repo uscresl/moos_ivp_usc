@@ -46,7 +46,7 @@ Processconfig = ANTLER
   Run = pFormationWptUpdater @ NewConsole = false
 #endif
 #ifdef VTYPE SHIP
-  Run = pMaxFormationWidth @ NewConsole = false
+  Run = pMaxFormationWidth @ NewConsole = true
 #endif
 
   Run = uTimerScript @ NewConsole = false

@@ -69,7 +69,7 @@ bool MaxFormationWidth::OnNewMail(MOOSMSG_LIST &NewMail)
           std::cout << "vehicle: " << lead_x << "," << lead_y << "," << lead_hdg << std::endl;
 
         // evaluate the formation width for updated position
-        double max_form_width;
+        double max_form_width = 0;
         checkUpcomingLakeOutline(lead_x, lead_y, lead_hdg, max_form_width);
         std::cout << "Publishing allowable width: " << max_form_width << std::endl;
         Notify("ALLOWABLE_WIDTH_FORM", max_form_width);
@@ -244,35 +244,63 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
       std::cout << "\n length of first linestring returned: " << boost::geometry::length(output[0]) << std::endl;
   }
   
-  std::vector<line_str>::iterator line_iter;
-  max_form_width = 0;
-  double overallMin = std::numeric_limits<double>::max();
-  for ( line_iter = output.begin(); line_iter != output.end(); line_iter++ )
+  if ( output.size() > 0 )
   {
-    // get endpoints linestring (linestring is a vector)
-    double x1, y1, x2, y2;
-    x1 = (*line_iter).at(0).x();
-    x2 = (*line_iter).at(1).x();
-    y1 = (*line_iter).at(0).y();
-    y2 = (*line_iter).at(1).x();
-    if (debug)
+    std::vector<line_str>::iterator line_iter;
+    max_form_width = 0;
+    double overallMin = std::numeric_limits<double>::max();
+    for ( line_iter = output.begin(); line_iter != output.end(); line_iter++ )
     {
-      std::cout << "check size line string vector: " << (*line_iter).size() << std::endl; // should be 2
-      // line string elements are model::d2::point_xy
-      std::cout << "first element: " << x1 << "," << y1 << std::endl;
-      std::cout << "second element: " << x2 << "," << y2 << std::endl;
+      // get endpoints linestring (linestring is a vector)
+      double x1, y1, x2, y2;
+      x1 = (*line_iter).at(0).x();
+      x2 = (*line_iter).at(1).x();
+      y1 = (*line_iter).at(0).y();
+      y2 = (*line_iter).at(1).y();
+      if (debug)
+      {
+        std::cout << "check size line string vector: " << (*line_iter).size() << std::endl; // should be 2
+        // line string elements are model::d2::point_xy
+        std::cout << "first element: " << x1 << "," << y1 << std::endl;
+        std::cout << "second element: " << x2 << "," << y2 << std::endl;
+      }
+      // temp, show them, so I can see what's created
+      std::ostringstream segl;
+      segl << "pts={" << x1 << "," << y1 << ":" << x2 << "," << y2
+           << "},label=intersection,edge_color=white,vertex_color=red,vertex_size=2,edge_size=1";
+      Notify("VIEW_SEGLIST",segl.str());
+      
+      // bug-solving: I should only calculate following if the line segment
+      //   contains the horizon center point, else, it's a little piece 
+      //   off-center, so we return min width (do not set max_form_width)
+      line_str isect_linestr;
+      // using boost assign:
+      isect_linestr += line_pt(x1, y1), line_pt(x2, y2);
+      line_pt hor_ctr;
+      hor_ctr = line_pt(horizon_x,horizon_y);
+      double dist = boost::geometry::distance(hor_ctr, isect_linestr);
+      std::cout << "distance: " << dist << std::endl;
+      if ( dist < 0.001) // should be 0
+      {
+        // calculate distance endpoints to line center
+        double euclidDistance1, euclidDistance2;
+        euclidDistance(x1, y1, horizon_x, horizon_y, euclidDistance1);
+        euclidDistance(x2, y2, horizon_x, horizon_y, euclidDistance2);
+        // take min distance endpts to line center as half formation width
+        double minDist = min(euclidDistance1, euclidDistance2)*2.0;
+        if ( minDist < overallMin )
+          overallMin = minDist;
+      }
     }
-    // calculate distance endpoints to line center
-    double euclidDistance1, euclidDistance2;
-    euclidDistance(x1, y1, horizon_x, horizon_y, euclidDistance1);
-    euclidDistance(x2, y2, horizon_x, horizon_y, euclidDistance2);
-    // take min distance endpts to line center as half formation width
-    double minDist = min(euclidDistance1, euclidDistance2)*2.0;
-    if ( minDist < overallMin )
-      overallMin = minDist;
+    if ( overallMin < std::numeric_limits<double>::max() )
+      max_form_width = overallMin;
   }
-  if ( overallMin < std::numeric_limits<double>::max() )
-    max_form_width = overallMin;
+  else
+  {
+    // no intersection line segments
+    std::cout << "no intersecting line segments" << std::endl;
+  }
+  
 }
 
 void MaxFormationWidth::publishToView(std::string const str)
