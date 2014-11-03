@@ -22,11 +22,11 @@ ProcessConfig = ANTLER
   Run = MOOSDB        @ NewConsole = false
   Run = pLogger       @ NewConsole = false
 
-  Run = pShare             @ NewConsole = false
+  Run = pShare        @ NewConsole = false
 
   Run = uSimMarine    @ NewConsole = false
   Run = pMarinePID    @ NewConsole = false
-  Run = pHelmIvP      @ NewConsole = false
+  Run = pHelmIvP      @ NewConsole = true
   Run = pNodeReporter @ NewConsole = false
 }
 

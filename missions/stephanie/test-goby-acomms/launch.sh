@@ -25,22 +25,24 @@ done
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
 nsplug shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
-   VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"     \
+   VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"   \
    VPORT="9000" SHARE_LISTEN="9300" MODEMID="1"
 
 VNAME1="anton"        # The first  vehicle community
-START_POS1="2700,1900"
+START_POS1="50,50"
 START_DEPTH1="0"
 START_SPEED1="1.0"
-WAYPOINTS1="60,-40 : 60,-160 : 150,-160 : 180,-100 : 150,-40"
+WAYPOINTS1="60,-40:60,-160:150,-160:180,-100:150,-40"
 MODEMID1="11"
-VTYPE1="AUV"
+VTYPE1="UUV" # UUV, SHIP
 nsplug auv.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
-   VNAME=$VNAME1      START_POS=$START_POS1                \
-   VPORT="9001"       SHARE_LISTEN="9301"                  \
+   VNAME=$VNAME1      START_POS=$START_POS1           \
+   VPORT="9001"       SHARE_LISTEN="9301"             \
    VTYPE=$VTYPE1          MODEMID=$MODEMID1
 nsplug auv.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
-    START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1 START_DEPTH=$START_DEPTH1 START_SPD=$START_SPEED1 VTYPE=$VTYPE1
+    START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1       \
+    START_DEPTH=$START_DEPTH1 START_SPD=$START_SPEED1 \
+    VTYPE=$VTYPE1
 
 if [ ${JUST_MAKE} = "yes" ] ; then
     exit 0
