@@ -1,0 +1,25 @@
+// pHelmIvP (ivp): behavior-based autonomy 'helm'. Behaviors spec in .bhv file.
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+
+ProcessConfig = pHelmIvP
+{
+  AppTick    = 2
+  CommsTick  = 2
+  
+  Behaviors    = targ_$(VNAME).bhv  
+  Verbose      = quiet // verbose, terse, quiet
+  
+  Domain       = course:0:359:360
+
+#ifdef VTYPE SHIP
+  // USC boat max speed ca 1.6 m/s
+  Domain       = speed:0:1.5:16
+//  Domain       = speed:0:5:26
+#endif
+#ifdef VTYPE UUV
+  // EcoMapper max speed ca 2 m/s
+  Domain       = speed:0:2:21
+  Domain       = depth:0:10:101
+#endif
+
+}

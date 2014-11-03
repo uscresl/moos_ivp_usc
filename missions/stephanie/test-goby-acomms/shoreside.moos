@@ -1,0 +1,54 @@
+//*******************************************************
+// ShoreSide Configuration File
+// basically a community for visualization of the simulation
+//
+
+NoNetwork = true
+ServerHost = 127.0.0.1//localhost
+ServerPort = $(VPORT)
+Community  = $(VNAME)
+
+modem_id_lookup_path = ../../cruise/current/data/modemidlookup.txt
+modem_id = $(MODEMID)
+
+#include plugs/plug_origin_warp.moos
+  
+//--------------------------------------------------------
+Processconfig = ANTLER
+{
+  MSBetweenLaunches = 400
+
+  // moosdb, moos util apps
+  Run = MOOSDB           @ NewConsole = false
+  Run = pLogger          @ NewConsole = false
+  // check own IP and publish to MOOSDB
+  Run = pHostInfo        @ NewConsole = false
+
+  Run = pShare           @ NewConsole = false
+
+  // shoreside visualization
+  Run = pMarineViewer    @ NewConsole = false
+
+//  // inter-vehicle comms via shoreside
+//  Run = uFldShoreBroker  @ NewConsole = false
+//  Run = uFldNodeComms    @ NewConsole = false
+
+//  // toby, acomms
+//  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+//  pAcommsHandlerConfig = -geometry,179x100+0+20
+}
+
+// utils
+#include plugs/plug_pLogger.moos
+
+#include plugs/plug_pHostInfo.moos
+
+#include plugs/plug_pShare_shoreside.moos
+
+// visualization
+#include plugs/plug_pMarineViewer.moos
+
+// acomms simulation
+//#include plug_uFld_shoreside.moos
+//// acomms, via Toby -- goby2 & pAcommsHandler
+//#include plug_pAcommsHandler_shoreside.moos.

@@ -1,0 +1,361 @@
+[32mpHostInfo launching as pHostInfo
+[0m
+
+-------------- moos connect ----------------------
+  contacting a MOOS server 127.0.0.1:9000 -  try 00001 
+  Handshaking as pHostInfo              [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mdaryl
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+***************************************************
+*  pHostInfo starting ...
+***************************************************
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  TEMP_FILE_DIR
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  DEFAULT_HOSTIP
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  COMMSTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  APPTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
+[32mpMarineViewer launching as pMarineViewer
+[0m
+
+-------------- moos connect ----------------------
+  contacting a MOOS server 127.0.0.1:9000 -  try 00001 
+  Handshaking as pShare                 [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mdaryl
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m  routing for "DEPLOY_ALL"
+  --> 224.1.1.11:90001     as DEPLOY     [multicast_1] every notification 
+  routing for "MOOS_MANUAL_OVERIDE_ALL"
+  --> 224.1.1.11:90001     as MOOS_MANUAL_OVERIDE [multicast_1] every notification 
+  routing for "RETURN_ALL"
+  --> 224.1.1.11:90001     as RETURN     [multicast_1] every notification 
+  routing for "TRAIL_ALL"
+  --> 224.1.1.11:90001     as TRAIL      [multicast_1] every notification 
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- 127.0.0.1:9300      [udp]
+-------------------------------------------------------------------------------
+pMarineViewer thread spawned
+starting pMarineViewer thread
+
+-------------- moos connect ----------------------
+  contacting a MOOS server 127.0.0.1:9000 -  try 00001 
+  Handshaking as pMarineViewer          [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mdaryl
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+***************************************************
+*  pMarineViewer starting ...
+***************************************************
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  BUTTON_THREE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  BUTTON_TWO
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  BUTTON_ONE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  BUTTON_ONE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  BUTTON_ONE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  APPCAST_VIEWABLE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  HASH_VIEWABLE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  MARKER_VIEWABLE_LABELS
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  VEHICLES_NAME_MODE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  VEHICLES_SHAPE_SCALE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  ZOOM
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  SET_PAN_Y
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  SET_PAN_X
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  TIFF_FILE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  TIFF_VIEWABLE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  COMMSTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  APPTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
+Setting PMV LatOrigin based on the MOOS file. 
+pMarineViewer is Running:
+ |-Baseline AppTick   @ 4.0 Hz
+ |	 Comms is Synchronous
+ |	 Baseline CommsTick @ 4 Hz
+
+
+trying to open:[/home/stephanie/moos-ivp-usc/data/maps/lake_arrowhead17.tif]
+Result:0x2253030
+Trying to open: /home/stephanie/moos-ivp-usc/data/maps/lake_arrowhead17.tif
+Success: /home/stephanie/moos-ivp-usc/data/maps/lake_arrowhead17.tif
+set_pan_x:-540
+set_pan_y:-833
+..new_proc_count2
+............------------------- MOOSDB V10 -------------------
+  Hosting  community                [1;32m"shoreside"
+[0m  Name look up is                   [31moff
+[0m  Asynchronous support is           [1;32mon
+[0m  Connect to this server on port    [32m9000[0m
+--------------------------------------------------
+[1;33mnetwork performance data published on localhost:9020
+listen with "nc -u -lk 9020"
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32muMAC_8788[0m
+  Type          :  [32mSynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m1[0m
+--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpLogger[0m
+  Type          :  [32mSynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m2[0m
+--------------------------------
+WARNING : Message APPCAST_REQ from uMAC_8788 is 51.8069 ms delayed
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpHostInfo[0m
+  Type          :  [32mSynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m3[0m
+--------------------------------
+WARNING : Message UMAC_8788_STATUS from uMAC_8788 is 52.0411 ms delayed
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpShare[0m
+  Type          :  [32mSynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m4[0m
+--------------------------------
+WARNING : Message APPCAST_REQ from uMAC_8788 is 52.592 ms delayed
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpMarineViewer[0m
+  Type          :  [32mSynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m5[0m
+--------------------------------
+WARNING : Message APPCAST_REQ from uMAC_8788 is 53.6399 ms delayed
+WARNING : Message PSHARE_STATUS from pShare is 424.537 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 54.625 ms delayed
+WARNING : Message PMARINEVIEWER_STATUS from pMarineViewer is 200.517 ms delayed
+WARNING : Message PHOSTINFO_STATUS from pHostInfo is 450.013 ms delayed
+WARNING : Message UMAC_8788_STATUS from uMAC_8788 is 55.0029 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 200.707 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 55.1739 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 200.868 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 55.3749 ms delayed
+WARNING : Message PSHARE_OUTPUT_SUMMARY from pShare is 420.089 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 200.946 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 201.308 ms delayed
+WARNING : Message PHOSTINFO_ITER_GAP from pHostInfo is 450.185 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 56.057 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 201.543 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 202.599 ms delayed
+WARNING : Message PSHARE_STATUS from pShare is 415.122 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 202.83 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 56.3681 ms delayed
+WARNING : Message PMARINEVIEWER_STATUS from pMarineViewer is 203.167 ms delayed
+WARNING : Message PHOSTINFO_STATUS from pHostInfo is 450.38 ms delayed
+WARNING : Message UMAC_8788_STATUS from uMAC_8788 is 56.6719 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 203.58 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 57.066 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 203.914 ms delayed
+WARNING : Message PSHARE_OUTPUT_SUMMARY from pShare is 410.066 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 204.263 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 57.5531 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 204.65 ms delayed
+...........................WARNING : Message PHOSTINFO_ITER_GAP from pHostInfo is 450.671 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 205.001 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 206.129 ms delayed
+WARNING : Message PSHARE_STATUS from pShare is 404.663 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 58.604 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 206.499 ms delayed
+WARNING : Message PMARINEVIEWER_STATUS from pMarineViewer is 206.75 ms delayed
+WARNING : Message PHOSTINFO_STATUS from pHostInfo is 450.721 ms delayed
+WARNING : Message UMAC_8788_STATUS from uMAC_8788 is 59.0899 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 207.057 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 207.306 ms delayed
+WARNING : Message PSHARE_OUTPUT_SUMMARY from pShare is 399.65 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 207.764 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 59.963 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 208.165 ms delayed
+WARNING : Message PHOSTINFO_ITER_GAP from pHostInfo is 450.946 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 208.417 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 61.157 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 209.022 ms delayed
+WARNING : Message PSHARE_STATUS from pShare is 394.548 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 209.269 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 62.196 ms delayed
+WARNING : Message PMARINEVIEWER_STATUS from pMarineViewer is 209.408 ms delayed
+WARNING : Message PHOSTINFO_STATUS from pHostInfo is 451.085 ms delayed
+WARNING : Message UMAC_8788_STATUS from uMAC_8788 is 62.396 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 209.65 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 210.109 ms delayed
+WARNING : Message PSHARE_OUTPUT_SUMMARY from pShare is 389.19 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 63.2098 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 210.544 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 210.932 ms delayed
+WARNING : Message PHOSTINFO_ITER_GAP from pHostInfo is 451.272 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 64.373 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 211.452 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 212.571 ms delayed
+WARNING : Message PSHARE_STATUS from pShare is 384.094 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 213.04 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 65.3601 ms delayed
+WARNING : Message PMARINEVIEWER_STATUS from pMarineViewer is 213.408 ms delayed
+WARNING : Message PHOSTINFO_STATUS from pHostInfo is 451.539 ms delayed
+WARNING : Message UMAC_8788_STATUS from uMAC_8788 is 66.0899 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 213.565 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 66.525 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 213.755 ms delayed
+WARNING : Message PSHARE_OUTPUT_SUMMARY from pShare is 378.959 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 214.005 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 67.5969 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 214.48 ms delayed
+WARNING : Message PHOSTINFO_ITER_GAP from pHostInfo is 451.905 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 214.841 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 215.976 ms delayed
+WARNING : Message PSHARE_STATUS from pShare is 374.093 ms delayed
+WARNING : Message APPCAST_REQ from uMAC_8788 is 68.8362 ms delayed
+WARNING : Message PMARINEVIEWER_ITER_GAP from pMarineViewer is 216.409 ms delayed
+WARNING : Message...
+-------------- moos connect ----------------------
+  contacting a MOOS server 127.0.0.1:9000 -  try 00001 
+  Handshaking as pLogger                [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mdaryl
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+pLogger is Running:
+ |-Baseline AppTick   @ 5.0 Hz
+ |	 Comms is Synchronous
+ |	 Baseline CommsTick @ 5 Hz
+
+
+  Added wildcard logging of APPCAST             
+  Added wildcard logging of APPCAST_REQ         
+  Added wildcard logging of APPCAST_REQ_ALL     
+  Added wildcard logging of DB_CLIENTS          
+  Added wildcard logging of DB_EVENT            
+  Added wildcard logging of DB_QOS              
+  Added wildcard logging of DB_RWSUMMARY        
+  Added wildcard logging of DB_TIME             
+  Added wildcard logging of DB_UPTIME           
+  Added wildcard logging of DB_VARSUMMARY       
+  Added wildcard logging of HOST_INFO_REQUEST   
+  Added wildcard logging of LOGGER_DIRECTORY    
+  Added wildcard logging of LOGGER_RESTART      
+  Added wildcard logging of PLOGGER_CMD         
+  Added wildcard logging of PSHARE_INPUT_SUMMARY
+  Added wildcard logging of GRID_CONFIG         
+  Added wildcard logging of GRID_DELTA          
+  Added wildcard logging of NODE_REPORT         
+  Added wildcard logging of NODE_REPORT_LOCAL   
+  Added wildcard logging of PHI_HOST_IP         
+  Added wildcard logging of PMV_CLEAR           
+  Added wildcard logging of PMV_MENU_CONTEXT    
+  Added wildcard logging of TRAIL_RESET         
+  Added wildcard logging of VIEW_CIRCLE         
+  Added wildcard logging of VIEW_COMMS_PULSE    
+  Added wildcard logging of VIEW_GRID           
+  Added wildcard logging of VIEW_MARKER         
+  Added wildcard logging of VIEW_POINT          
+  Added wildcard logging of VIEW_POLYGON        
+  Added wildcard logging of VIEW_RANGE_PULSE    
+  Added wildcard logging of VIEW_SEGLIST        
+  Added wildcard logging of VIEW_VECTOR         
+  Added wildcard logging of APPCAST_REQ_SHORESIDE
+  Added wildcard logging of DEPLOY_ALL          
+  Added wildcard logging of HELM_MAP_CLEAR      
+  Added wildcard logging of MOOS_MANUAL_OVERIDE_ALL
+  Added wildcard logging of PHI_HOST_INFO       
+  Added wildcard logging of PHI_HOST_IP_ALL     
+  Added wildcard logging of PHI_HOST_IP_VERBOSE 
+  Added wildcard logging of PHI_HOST_PORT_DB    
+  Added wildcard logging of PHOSTINFO_ITER_LEN  
+  Added wildcard logging of PMARINEVIEWER_ITER_GAP
+  Added wildcard logging of PMARINEVIEWER_ITER_LEN
+  Added wildcard logging of PMV_CONNECT         
+  Added wildcard logging of PSHARE_CMD          
+  Added wildcard logging of RETURN_ALL          
+  Added wildcard logging of TRAIL_ALL           
+  Added wildcard logging of PHOSTINFO_ITER_GAP  
+  Added wildcard logging of PSHARE_OUTPUT_SUMMARY
+  Added wildcard logging of MVIEWER_LCLICK      
+CMOOSCommClient::ClientLoop() quits
+*************************************
+*  This is Antler, head of MOOS...  *
+*  P. Newman 2008                   *
+*************************************
+
+
+|****** Launch ******|
+
+Unless directed otherwise using system path to locate binaries 
+   [000] Process: MOOSDB          ~ MOOSDB          launched successfully
+   [001] Process: pLogger         ~ pLogger         launched successfully
+   [002] Process: pHostInfo       ~ pHostInfo       launched successfully
+   [003] Process: pShare          ~ pShare          launched successfully
+   [004] Process: pMarineViewer   ~ pMarineViewer   launched successfully
+
+
+|***** Shutdown *****|
+
+
+   Signalling pMarineViewer   [OK]
+   Signalling pShare          [OK]
+   Signalling pHostInfo       [OK]
+   Signalling pLogger         [OK]
+   Signalling MOOSDB          [OK]
+
+   All spawned processes shutdown.
+
+   That was the MOOS 
+

@@ -1,0 +1,35 @@
+//--------------------------------------------------------
+ProcessConfig = pMarineViewer
+{
+  AppTick    = 4
+  CommsTick  = 4
+
+  tiff_viewable = true
+  tiff_file     = $(USC_DATA_DIR)/maps/lake_arrowhead17.tif
+// puddingstone_all.tif //  AerialMIT.tif
+
+//  // store the img for alogview
+//  log_the_image = true
+
+  // pan, zoom to be set for puddingstone file
+  set_pan_x            = -540
+  set_pan_y            = -833
+  zoom                 = 1.5
+  vehicles_shape_scale = 1.0
+  vehicles_name_mode   = names+shortmode
+
+  marker_viewable_labels = false
+  hash_viewable = true
+
+  appcast_viewable     = false //true
+//  appcast_width = 30
+//  appcast_color_scheme = indigo
+
+  button_one   = DEPLOY_ALL  # DEPLOY_ALL=true 
+  button_one   = MOOS_MANUAL_OVERIDE_ALL=false 
+  button_one   = RETURN_ALL=false
+  button_two   = RETURN_ALL  # RETURN_ALL=true
+  button_three = TRAIL_ALL   # TRAIL_ALL=true
+  
+//  scope = NODE_REPORT,DB_TIME
+}

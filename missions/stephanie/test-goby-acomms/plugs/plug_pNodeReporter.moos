@@ -1,0 +1,13 @@
+// pNodeReporter (ivp): generates 'node-report' (proxy for AIS) for pMarineViewer
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-tools.pdf
+
+ProcessConfig = pNodeReporter
+{
+  AppTick     = 2
+  CommsTick   = 2
+  
+  VESSEL_TYPE = $(VTYPE)
+  
+  // use a group to enable group broadcast in inter-vehicle messaging
+  group = survey
+}

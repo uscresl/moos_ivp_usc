@@ -1,0 +1,43 @@
+//*******************************************************
+// Vehicle Configuration File
+//
+
+// MOOS community specs
+NoNetwork = true
+ServerHost = 127.0.0.1//localhost
+ServerPort = $(VPORT)
+Community  = $(VNAME)
+
+#include "plugs/plug_origin_warp.moos"
+
+//****************************************************************************//
+// Base Processes
+//
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = false
+
+  Run = uSimMarine    @ NewConsole = false
+  Run = pMarinePID    @ NewConsole = false
+  Run = pHelmIvP      @ NewConsole = false
+  Run = pNodeReporter @ NewConsole = false
+}
+
+// Logging tool (MOOSEssentials)
+#include plugs/plug_pLogger.moos
+
+#include plugs/plug_pShare_auv.moos
+
+//****************************************************************************//
+// AUV simulation 
+//
+#include plugs/plug_uSimMarine.moos
+#include plugs/plug_pMarinePID.moos
+#include plugs/plug_pHelmIvP.moos
+// create fake AIS-like report
+#include plugs/plug_pNodeReporter.moos
