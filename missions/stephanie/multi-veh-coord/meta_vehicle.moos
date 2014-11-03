@@ -1,5 +1,5 @@
 NoNetwork = true
-ServerHost = localhost
+ServerHost = 127.0.0.1//localhost
 ServerPort = $(VPORT)
 Simulator  = true
 
@@ -10,7 +10,7 @@ modem_id = $(MODEMID)
 Community  = $(VNAME)
 
 // warp the simulation?
-#include plug_origin_warp.moos
+#include plugs/plug_origin_warp.moos
 
 //------------------------------------------------------------
 Processconfig = ANTLER
@@ -63,42 +63,42 @@ Processconfig = ANTLER
 //------------------------------------------------------------
 
 // utils
-#include plug_pLogger.moos
-#include plug_uProcessWatch.moos
-#include plug_pHostInfo.moos
+#include plugs/plug_pLogger.moos
+#include plugs/plug_uProcessWatch.moos
+#include plugs/plug_pHostInfo.moos
 
 // vehicle simulation
-#include plug_uSimMarine.moos
-#include plug_pMarinePID.moos
+#include plugs/plug_uSimMarine.moos
+#include plugs/plug_pMarinePID.moos
 
 // behaviors
-#include plug_pHelmIvP.moos
+#include plugs/plug_pHelmIvP.moos
 
 // generate 'node reports'
-#include plug_pNodeReporter.moos
+#include plugs/plug_pNodeReporter.moos
 
 // for simulation, to display vehicle positions and markers
-#include plug_pShare.moos
+#include plugs/plug_pShare.moos
 
 // collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside
-#include plug_pBasicContactMgr.moos
+#include plugs/plug_pBasicContactMgr.moos
 
 // formation control
 #ifdef VTYPE UUV
-#include plug_pSelectFormation.moos
-#include plug_pPositionInFormation.moos
-#include plug_pFormationWptUpdater.moos
+#include plugs/plug_pSelectFormation.moos
+#include plugs/plug_pPositionInFormation.moos
+#include plugs/plug_pFormationWptUpdater.moos
 #endif
 #ifdef VTYPE SHIP
-#include plug_pMaxFormationWidth.moos
+#include plugs/plug_pMaxFormationWidth.moos
 #endif
 
 // publish some vars so I don't have to poke them
 // replace later with process for calculating allowable height
 // and a process to determined the number of vehicles based on
 // received status updates
-#include plug_uTimerScript.moos
+#include plugs/plug_uTimerScript.moos
 
 //// inter-vehicle comms via shoreside
 //#include plug_uFldNodeBroker.moos

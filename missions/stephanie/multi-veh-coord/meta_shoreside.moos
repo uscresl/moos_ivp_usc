@@ -4,14 +4,14 @@
 //
 
 NoNetwork = true
-ServerHost = localhost
+ServerHost = 127.0.0.1//localhost
 ServerPort = 9000
 Community  = shoreside
 
 modem_id_lookup_path = ../../cruise/current/data/modemidlookup.txt
 modem_id = $(MODEMID)
 
-#include plug_origin_warp.moos
+#include plugs/plug_origin_warp.moos
   
 //--------------------------------------------------------
 Processconfig = ANTLER
@@ -40,16 +40,16 @@ Processconfig = ANTLER
 }
 
 // utils
-#include plug_pLogger.moos
+#include plugs/plug_pLogger.moos
 
-#include plug_pHostInfo.moos
+#include plugs/plug_pHostInfo.moos
 
-#include plug_pShare_shoreside.moos
+#include plugs/plug_pShare_shoreside.moos
 
-#include plug_pMarineViewer.moos
+#include plugs/plug_pMarineViewer.moos
 
 // show lake outline via uTimerScript
-#include plug_uTimerScript_shoreside.moos
+#include plugs/plug_uTimerScript_shoreside.moos
 
 //#include plug_uFld_shoreside.moos
 //// acomms, via Toby -- goby2 & pAcommsHandler
