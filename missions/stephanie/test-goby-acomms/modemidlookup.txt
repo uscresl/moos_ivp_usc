@@ -1,0 +1,4 @@
+// modem id, vehicle name (should be community name), vehicle type, other aliases
+1, shoreside, topside
+2, remus, auv
+3, vehicle3, auv

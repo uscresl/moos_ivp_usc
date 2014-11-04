@@ -8,6 +8,9 @@ ServerHost = 127.0.0.1//localhost
 ServerPort = $(VPORT)
 Community  = $(VNAME)
 
+modem_id_lookup_path = modemidlookup.txt
+modem_id = $(MODEMID)
+
 #include "plugs/plug_origin_warp.moos"
 
 //****************************************************************************//
@@ -28,6 +31,10 @@ ProcessConfig = ANTLER
   Run = pMarinePID    @ NewConsole = false
   Run = pHelmIvP      @ NewConsole = true
   Run = pNodeReporter @ NewConsole = false
+
+  // acoustic communications
+  pAcommsHandlerConfig = -geometry,179x100+0+20
+  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
 }
 
 // Logging tool (MOOSEssentials)
@@ -43,3 +50,6 @@ ProcessConfig = ANTLER
 #include plugs/plug_pHelmIvP.moos
 // create fake AIS-like report
 #include plugs/plug_pNodeReporter.moos
+
+// acoustic communications
+#include plugs/plug_pAcommsHandler_vehicle.moos

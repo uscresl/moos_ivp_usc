@@ -1,0 +1,55 @@
+ProcessConfig = pAcommsHandler
+{
+    modem_id: 7
+    common {
+        verbosity: DEBUG1 show_gui: true
+    }
+    load_proto_file: "acoustic_moospoke.proto" 
+    translator_entry {  protobuf_name: "ACOUSTIC_MOOS_POKE" 
+        trigger {  type: TRIGGER_PUBLISH  moos_var: "ACOUSTIC_MOOS_POKE"  }
+        create {  technique: TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS  moos_var: "ACOUSTIC_MOOS_POKE"  }
+        publish {  technique: TECHNIQUE_FORMAT  moos_var: "%100%"  format: "%5%"
+            algorithm {  name: "to_upper"  output_virtual_field: 100  primary_field: 4  } 
+        }
+    }
+    queue_cfg {        
+        message_entry { protobuf_name: "ACOUSTIC_MOOS_POKE"  ack: true  ttl: 1800  value_base: 10  newest_first: false
+            role { type: SOURCE_ID  field: "_src_id" }
+            role { type: DESTINATION_ID  field: "destination" }
+            role { type: TIMESTAMP  field: "_time" }
+        }
+        minimum_ack_wait_seconds: 4
+    }
+    mac_cfg {
+        type: MAC_FIXED_DECENTRALIZED
+        slot { src: 1  rate: 1 type: DATA slot_seconds: 20 } 
+        slot { src: 7  rate: 1 type: DATA slot_seconds: 20 } 
+    }
+    driver_type: DRIVER_PB_STORE_SERVER
+    driver_cfg 
+    {
+	[PBDriverConfig.request_socket] {  #  (optional)
+	    socket_type: REQUEST  #  (PUBLISH, SUBSCRIBE, REPLY, REQUEST) 
+                     # (required)
+	    socket_id: 0  # defines a socket or group of sockets that 
+                    # are send and receive together. Sockets with 
+                    # the same id that are must be compatible 
+                    # (generally have the same SocketType) 
+                    # (optional) (default=0)
+	    transport: TCP  #  (INPROC, IPC, TCP, PGM, EPGM) 
+                       # (optional) (default=EPGM)
+	    connect_or_bind: CONNECT  #  (CONNECT, BIND) (optional) 
+                                # (default=CONNECT)
+            ethernet_address: "localhost"
+	    ethernet_port: 19302  #  (optional) (default=11142)
+	}
+	[PBDriverConfig.query_interval_seconds]: 1
+	[PBDriverConfig.max_frame_size]: 65536
+	[PBDriverConfig.rate_to_bytes]: 32 
+	[PBDriverConfig.rate_to_bytes]: 192 
+	[PBDriverConfig.rate_to_bytes]: 192 
+	[PBDriverConfig.rate_to_bytes]: 512 
+	[PBDriverConfig.rate_to_bytes]: 512 
+	[PBDriverConfig.rate_to_bytes]: 2048 
+    }
+}
