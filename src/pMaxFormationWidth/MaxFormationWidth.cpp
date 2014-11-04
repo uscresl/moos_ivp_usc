@@ -270,17 +270,17 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
            << "},label=intersection,edge_color=white,vertex_color=red,vertex_size=2,edge_size=1";
       Notify("VIEW_SEGLIST",segl.str());
       
-      // bug-solving: I should only calculate following if the line segment
-      //   contains the horizon center point, else, it's a little piece 
-      //   off-center, so we return min width (do not set max_form_width)
+      // only calculate reduced width if the line segment
+      // contains the horizon center point, else, it's a little piece 
+      // off-center, so we return min width (do not set max_form_width)
+      // note: should we return biggest piece as well as the center of it? -> shift formation
       line_str isect_linestr;
       // using boost assign:
       isect_linestr += line_pt(x1, y1), line_pt(x2, y2);
       line_pt hor_ctr;
       hor_ctr = line_pt(horizon_x,horizon_y);
       double dist = boost::geometry::distance(hor_ctr, isect_linestr);
-      std::cout << "distance: " << dist << std::endl;
-      if ( dist < 0.001) // should be 0
+      if ( dist < 0.001) // it should be 0
       {
         // calculate distance endpoints to line center
         double euclidDistance1, euclidDistance2;

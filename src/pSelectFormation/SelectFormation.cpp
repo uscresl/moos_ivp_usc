@@ -248,6 +248,7 @@ void SelectFormation::updateFollowCenter(double const curr_time, double const le
     m_follow_center_y = getDoubleFromNodeReport(node_report,"Y");
     m_lead_hdg = getDoubleFromNodeReport(node_report,"HDG");
   }
+  // should I add something in case it doesn't exist (shouldn't happen?)?
 
   // show on pMarineViewer
   std::ostringstream ctr_pt;
@@ -386,7 +387,7 @@ void SelectFormation::processReceivedWidth(double const allowable_width)
   // nb. time message received != time message sent. 
   // test/adapt when adding full acomms
   size_t current_time = round(MOOSTime());
-  size_t start_time = current_time+1.5*add_lag;
+  size_t start_time = current_time+add_lag;//was: 1.5*lag
   
   std::string new_shape;
   switch ( m_num_vehicles)
