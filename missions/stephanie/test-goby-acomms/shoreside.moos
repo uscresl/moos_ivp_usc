@@ -49,4 +49,4 @@ Processconfig = ANTLER
 #include plugs/plug_pMarineViewer.moos
 
 // acoustic communications
-#include plugs/plug_pAcommsHandler_shoreside.moos
+#include plugs/plug_pAcommsHandler.moos

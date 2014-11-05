@@ -52,4 +52,4 @@ ProcessConfig = ANTLER
 #include plugs/plug_pNodeReporter.moos
 
 // acoustic communications
-#include plugs/plug_pAcommsHandler_vehicle.moos
+#include plugs/plug_pAcommsHandler.moos
