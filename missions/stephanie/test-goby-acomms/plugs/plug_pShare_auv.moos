@@ -31,7 +31,7 @@ ProcessConfig = pShare
 
   // if in simulation, we want to pass the node_reports to pMarineViewer,
   // purely for visualization, then add this:
-  output = NODE_REPORT_LOCAL->NODE_REPORT:127.0.0.1:9300 //localhost:9300 //9300 is shoreside
+  output = NODE_REPORT_LOCAL->NODE_REPORT:127.0.0.1:9300 //localhost:9300 //9300 is topside
   output = VIEW_*->127.0.0.1:9300//localhost:9300
   
   // temporary until acomms set up

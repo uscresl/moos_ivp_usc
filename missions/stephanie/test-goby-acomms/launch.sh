@@ -24,8 +24,8 @@ done
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
-nsplug shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
-   VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"   \
+nsplug topside.moos targ_topside.moos -f WARP=$TIME_WARP \
+   VNAME="topside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"   \
    VPORT="9000" SHARE_LISTEN="9300" MODEMID="1"
 
 VNAME1="anton"        # The first  vehicle community
@@ -57,10 +57,10 @@ pAntler targ_$VNAME1.moos > log_$VNAME1.log &
 sleep .25
 
 printf "Launching $SNAME MOOS Community (WARP=%s) \n"  $TIME_WARP
-pAntler targ_shoreside.moos > log_shoreside.log &
+pAntler targ_topside.moos > log_topside.log &
 printf "Done \n"
 
-uMAC targ_shoreside.moos
+uMAC targ_topside.moos
 
 printf "Killing all processes ... \n"
 kill %1 %2 %3 %4

@@ -1,5 +1,5 @@
 //*******************************************************
-// ShoreSide Configuration File
+// TopSide Configuration File
 // basically a community for visualization of the simulation
 //
 
@@ -26,10 +26,10 @@ Processconfig = ANTLER
 
   Run = pShare           @ NewConsole = false
 
-  // shoreside visualization
+  // topside visualization
   Run = pMarineViewer    @ NewConsole = false
 
-//  // inter-vehicle comms via shoreside
+//  // inter-vehicle comms via topside
 //  Run = uFldShoreBroker  @ NewConsole = false
 //  Run = uFldNodeComms    @ NewConsole = false
 
@@ -43,7 +43,7 @@ Processconfig = ANTLER
 
 #include plugs/plug_pHostInfo.moos
 
-#include plugs/plug_pShare_shoreside.moos
+#include plugs/plug_pShare_topside.moos
 
 // visualization
 #include plugs/plug_pMarineViewer.moos
