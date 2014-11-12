@@ -24,11 +24,15 @@ done
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
+nsplug shorebroker.moos targ_shorebroker.moos WARP=$TIME_WARP \
+VNAME="ufld_shorebroker" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"   \
+VPORT="9000" SHARE_LISTEN="9300"
+
 nsplug topside.moos targ_topside.moos -f WARP=$TIME_WARP \
    VNAME="topside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"   \
-   VPORT="9000" SHARE_LISTEN="9300" MODEMID="1"
+   VPORT="9001" SHARE_LISTEN="9301" MODEMID="1"
 
-VNAME1="anton"        # The first  vehicle community
+VNAME1="auv1"        # The first  vehicle community
 START_POS1="50,50"
 START_DEPTH1="0"
 START_SPEED1="1.0"
@@ -37,7 +41,7 @@ MODEMID1="2"
 VTYPE1="UUV" # UUV, SHIP
 nsplug auv.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME1      START_POS=$START_POS1           \
-   VPORT="9001"       SHARE_LISTEN="9301"             \
+   VPORT="9002"       SHARE_LISTEN="9302"             \
    VTYPE=$VTYPE1          MODEMID=$MODEMID1
 nsplug auv.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1       \
@@ -51,12 +55,17 @@ fi
 #-------------------------------------------------------
 #  Part 3: Launch the processes
 #-------------------------------------------------------
+printf "Launching ufld_shorebroker MOOS Community (WARP=%s) \n" $TIME_WARP
+pAntler targ_shorebroker.moos > log_shorebroker.log &
+#>& /dev/null &
+sleep .25
+
 printf "Launching $VNAME1 MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$VNAME1.moos > log_$VNAME1.log &
 #>& /dev/null &
 sleep .25
 
-printf "Launching $SNAME MOOS Community (WARP=%s) \n"  $TIME_WARP
+printf "Launching topside MOOS Community (WARP=%s) \n"  $TIME_WARP
 pAntler targ_topside.moos > log_topside.log &
 printf "Done \n"
 

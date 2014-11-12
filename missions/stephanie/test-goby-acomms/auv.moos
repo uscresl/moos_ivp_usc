@@ -11,11 +11,7 @@ Community  = $(VNAME)
 modem_id_lookup_path = modemidlookup.txt
 modem_id = $(MODEMID)
 
-#include "plugs/plug_origin_warp.moos"
-
-//****************************************************************************//
-// Base Processes
-//
+#include plugs/plug_origin_warp.moos
 
 // Antler: list which processes to start
 ProcessConfig = ANTLER
@@ -25,8 +21,6 @@ ProcessConfig = ANTLER
   Run = MOOSDB        @ NewConsole = false
   Run = pLogger       @ NewConsole = false
 
-  Run = pShare        @ NewConsole = false
-
   Run = uSimMarine    @ NewConsole = false
   Run = pMarinePID    @ NewConsole = false
   Run = pHelmIvP      @ NewConsole = true
@@ -35,12 +29,20 @@ ProcessConfig = ANTLER
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
   Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+  Run = uFldNodeBroker @ NewConsole = true
+  Run = uFldMessageHandler @ NewConsole = true
+  Run = pShare         @ NewConsole = false
+
+  // debugging
+  Run = uMS @ NewConsole = false
 }
 
 // Logging tool (MOOSEssentials)
 #include plugs/plug_pLogger.moos
 
-#include plugs/plug_pShare_auv.moos
+#include plugs/plug_pShare.moos
+
+#include plugs/plug_pHostInfo.moos
 
 //****************************************************************************//
 // AUV simulation 
@@ -51,5 +53,7 @@ ProcessConfig = ANTLER
 // create fake AIS-like report
 #include plugs/plug_pNodeReporter.moos
 
-// acoustic communications
+// simulate acoustic communications
 #include plugs/plug_pAcommsHandler.moos
+#include plugs/plug_uFldNodeBroker.moos
+#include plugs/plug_uFldMessageHandler.moos

@@ -24,18 +24,18 @@ Processconfig = ANTLER
   // check own IP and publish to MOOSDB
   Run = pHostInfo        @ NewConsole = false
 
-  Run = pShare           @ NewConsole = false
-
   // topside visualization
   Run = pMarineViewer    @ NewConsole = false
 
-//  // inter-vehicle comms via topside
-//  Run = uFldShoreBroker  @ NewConsole = false
-//  Run = uFldNodeComms    @ NewConsole = false
-
   // acoustic communications
-  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
   pAcommsHandlerConfig = -geometry,179x100+0+20
+  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+  Run = uFldNodeBroker @ NewConsole = true
+  Run = uFldMessageHandler @ NewConsole = true
+  Run = pShare         @ NewConsole = false
+
+  // debugging
+  Run = uMS @ NewConsole = false
 }
 
 // utils
@@ -43,10 +43,12 @@ Processconfig = ANTLER
 
 #include plugs/plug_pHostInfo.moos
 
-#include plugs/plug_pShare_topside.moos
+#include plugs/plug_pShare.moos
 
 // visualization
 #include plugs/plug_pMarineViewer.moos
 
-// acoustic communications
+// simulate acoustic communications
 #include plugs/plug_pAcommsHandler.moos
+#include plugs/plug_uFldNodeBroker.moos
+#include plugs/plug_uFldMessageHandler.moos

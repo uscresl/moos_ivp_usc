@@ -1,4 +1,5 @@
 // modem id, vehicle name (should be community name), vehicle type, other aliases
-1, topside, topside
-2, remus, auv
-3, vehicle3, auv
+0, broadcast, broadcast
+1, topside, ship
+2, auv1, auv
+3, auv2, auv
