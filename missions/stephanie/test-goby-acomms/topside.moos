@@ -34,6 +34,8 @@ ProcessConfig = ANTLER
   Run = uFldMessageHandler @ NewConsole = false
   Run = pShare         @ NewConsole = false
 
+  Run = uTimerScript @ NewConsole = false
+
   // debugging
   Run = uMS @ NewConsole = false
 }

@@ -26,16 +26,16 @@ ProcessConfig = pAcommsHandler
     }
     create {
       technique: TECHNIQUE_FORMAT
-      moos_var: "VEHICLE_NAME"
+      moos_var: "VEHICLE_ID" //"VEHICLE_NAME"
       format: "%2%"
-      algorithm {
-        name: "to_lower"
-        primary_field: 2
-      }
-      algorithm {
-        name: "name2modem_id"
-        primary_field: 2
-      }
+//      algorithm {
+//        name: "to_lower"
+//        primary_field: 2
+//      }
+//      algorithm {
+//        name: "name2modem_id"
+//        primary_field: 2
+//      }
     }
     create {
       technique: TECHNIQUE_FORMAT
