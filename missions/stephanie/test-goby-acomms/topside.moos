@@ -23,7 +23,7 @@ ProcessConfig = ANTLER
   Run = pLogger          @ NewConsole = false
 
   // topside visualization
-//  Run = pMarineViewer    @ NewConsole = false
+  Run = pMarineViewer    @ NewConsole = false
 
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
