@@ -30,7 +30,7 @@ ProcessConfig = pAcommsHandler
   driver_cfg
   {
     [goby.moos.protobuf.Config.moos_server]: "localhost"
-    [goby.moos.protobuf.Config.moos_port]: 9003
+    [goby.moos.protobuf.Config.moos_port]: $(VPORT)
     [goby.moos.protobuf.Config.rate_to_bytes]: 32
     [goby.moos.protobuf.Config.rate_to_bytes]: 192
     [goby.moos.protobuf.Config.rate_to_bytes]: 192

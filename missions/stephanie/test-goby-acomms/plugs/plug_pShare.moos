@@ -6,5 +6,5 @@ ProcessConfig = pShare
   AppTick    = 4
   CommsTick  = 4
 
-  input = route =  localhost:$(SHARE_LISTEN)
+  input = route =  $(SERVER_HOST):$(SHARE_LISTEN)
 }

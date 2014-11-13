@@ -4,7 +4,7 @@
 // NODE_MESSAGE variables
 //
 NoNetwork = true
-ServerHost = localhost
+ServerHost = $(SERVER_HOST)
 ServerPort = $(VPORT)
 Community  = $(VNAME)
 //MagneticOffset = 0.0
@@ -18,17 +18,20 @@ ProcessConfig = ANTLER
 {
   MSBetweenLaunches = 100
   Run = MOOSDB @ NewConsole = false
-  Run = pLogger @ NewConsole = true ~ pLogger
+  Run = pLogger @ NewConsole = false ~ pLogger
 
-  Run = pHostInfo @ NewConsole = true ~ pHostInfo
+  Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldShoreBroker @ NewConsole = true ~ uFldShoreBroker
   Run = uFldNodeComms @ NewConsole = true ~ uFldNodeComms
-  Run = pShare @ NewConsole = true ~ pShare
+  Run = pShare @ NewConsole = false ~ pShare
 
-  //  Run = uFldContactRangeSensor @ NewConsole = true ~ uFldContactRangeSensor
+  //Run = uFldContactRangeSensor @ NewConsole = true ~ uFldContactRangeSensor
 
   // debugging
   Run = uMS @ NewConsole = false
+
+  // node reports for shorebroker
+  Run = uTimerScript @ NewConsole = false
 }
 
 #include plugs/plug_pLogger.moos
@@ -43,14 +46,16 @@ ProcessConfig = ANTLER
 
 #include plugs/plug_pShare.moos
 
-//ProcessConfig = uFldContactRangeSensor
-//{
-//  AppTick          = 4
-//  CommsTick        = 4
-//  reach_distance = default = 2000
-//  reply_distance = default = 2000
-//  report_vars = long
-//  ping_wait = default = 0
-//  rn_algorithm     = uniform,pct=0
-//}
+#include plugs/plug_uTimerScript.moos
+
+ProcessConfig = uFldContactRangeSensor
+{
+  AppTick          = 4
+  CommsTick        = 4
+  reach_distance = default = 2000
+  reply_distance = default = 2000
+  report_vars = long
+  ping_wait = default = 0
+  rn_algorithm     = uniform,pct=0
+}
 

@@ -4,7 +4,7 @@
 
 // MOOS community specs
 NoNetwork = true
-ServerHost = 127.0.0.1//localhost
+ServerHost = $(SERVER_HOST)
 ServerPort = $(VPORT)
 Community  = $(VNAME)
 
@@ -23,14 +23,15 @@ ProcessConfig = ANTLER
 
   Run = uSimMarine    @ NewConsole = false
   Run = pMarinePID    @ NewConsole = false
-  Run = pHelmIvP      @ NewConsole = true
+  Run = pHelmIvP      @ NewConsole = false
   Run = pNodeReporter @ NewConsole = false
 
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
   Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+  Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = true
-  Run = uFldMessageHandler @ NewConsole = true
+  Run = uFldMessageHandler @ NewConsole = false
   Run = pShare         @ NewConsole = false
 
   // debugging
@@ -55,5 +56,6 @@ ProcessConfig = ANTLER
 
 // simulate acoustic communications
 #include plugs/plug_pAcommsHandler.moos
+#include plugs/plug_pHostInfo.moos
 #include plugs/plug_uFldNodeBroker.moos
 #include plugs/plug_uFldMessageHandler.moos

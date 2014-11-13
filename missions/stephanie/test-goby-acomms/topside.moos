@@ -4,7 +4,7 @@
 //
 
 NoNetwork = true
-ServerHost = 127.0.0.1//localhost
+ServerHost = $(SERVER_HOST)
 ServerPort = $(VPORT)
 Community  = $(VNAME)
 
@@ -14,24 +14,24 @@ modem_id = $(MODEMID)
 #include plugs/plug_origin_warp.moos
   
 //--------------------------------------------------------
-Processconfig = ANTLER
+ProcessConfig = ANTLER
 {
-  MSBetweenLaunches = 400
+  MSBetweenLaunches = 200
 
   // moosdb, moos util apps
   Run = MOOSDB           @ NewConsole = false
   Run = pLogger          @ NewConsole = false
-  // check own IP and publish to MOOSDB
-  Run = pHostInfo        @ NewConsole = false
 
   // topside visualization
-  Run = pMarineViewer    @ NewConsole = false
+//  Run = pMarineViewer    @ NewConsole = false
 
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
   Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+  // check own IP and publish to MOOSDB
+  Run = pHostInfo        @ NewConsole = false
   Run = uFldNodeBroker @ NewConsole = true
-  Run = uFldMessageHandler @ NewConsole = true
+  Run = uFldMessageHandler @ NewConsole = false
   Run = pShare         @ NewConsole = false
 
   // debugging
@@ -52,3 +52,6 @@ Processconfig = ANTLER
 #include plugs/plug_pAcommsHandler.moos
 #include plugs/plug_uFldNodeBroker.moos
 #include plugs/plug_uFldMessageHandler.moos
+
+// uTimerScript, to create NODE_REPORTs for shorebroker range calculations
+#include plugs/plug_uTimerScript.moos

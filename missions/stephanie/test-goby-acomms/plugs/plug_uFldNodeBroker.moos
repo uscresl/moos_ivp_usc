@@ -3,10 +3,11 @@ ProcessConfig = uFldNodeBroker
   AppTick   = 1
   CommsTick = 1
 
-  TRY_SHORE_HOST = pshare_route=localhost:$(SHARE_LISTEN)
+  TRY_SHORE_HOST = pshare_route=$(SERVER_HOST):9300//$(SHARE_LISTEN)
   BRIDGE = src=VIEW_POLYGON
   BRIDGE = src=VIEW_POINT
   BRIDGE = src=VIEW_SEGLIST
+  // bridge node_report to shorebroker so it can determine ranges between vehicles
   BRIDGE = src=NODE_REPORT_LOCAL,  alias=NODE_REPORT
   BRIDGE = src=NODE_MESSAGE_LOCAL, alias=NODE_MESSAGE
 //  BRIDGE = src=SIM_OCEANENV_REQUEST

@@ -1,0 +1,17 @@
+ProcessConfig = uTimerScript
+{
+  AppTick = 4
+  CommsTick = 4
+
+  verbose = true
+
+  event = var=NODE_REPORT_LOCAL,val="NAME=topside,X=50,Y=50,SPD=0,HDG=180,DEP=0,LAT=34.24699683,LON=-117.20353508,TYPE=ship,GROUP=survey,MODE=DRIVE,ALLSTOP=NothingToDo,INDEX=37,YAW=180,TIME=1415840083.44,LENGTH=4",time=10
+
+  reset_max = nolimit
+  reset_time = all-posted
+  reset_var = UTS_RESET
+
+  status_var = UTS_STATUS
+
+  time_warp=$(WARP)
+}

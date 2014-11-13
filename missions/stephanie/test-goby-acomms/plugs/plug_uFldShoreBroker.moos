@@ -5,5 +5,5 @@ ProcessConfig = uFldShoreBroker
 
   QBRIDGE = NODE_MESSAGE
   //BRIDGE = src=SIM_OCEANENV_REPORT
-  //BRIDGE = src=CRS_RANGE_REPORT_$V, alias=CRS_RANGE_REPORT
+//  BRIDGE = src=CRS_RANGE_REPORT_$V, alias=CRS_RANGE_REPORT
 }
