@@ -1,0 +1,61 @@
+// Community to handle the simulation of acoustic communications
+//
+// Main process, uFldNodeComms, conditionally passes on NODE_REPORT and
+// NODE_MESSAGE variables
+//
+NoNetwork = true
+ServerHost = $(SERVER_HOST)
+ServerPort = $(VPORT)
+Community  = $(VNAME)
+//MagneticOffset = 0.0
+
+log_path = ../logs/simulation
+log = true
+
+#include plugs/plug_origin_warp.moos
+
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 100
+  Run = MOOSDB @ NewConsole = false
+  Run = pLogger @ NewConsole = false ~ pLogger
+
+  Run = pHostInfo @ NewConsole = false ~ pHostInfo
+  Run = uFldShoreBroker @ NewConsole = true ~ uFldShoreBroker
+  Run = uFldNodeComms @ NewConsole = true ~ uFldNodeComms
+  Run = pShare @ NewConsole = false ~ pShare
+
+  //Run = uFldContactRangeSensor @ NewConsole = true ~ uFldContactRangeSensor
+
+  // debugging
+  Run = uMS @ NewConsole = false
+
+  // node reports for shorebroker
+  Run = uTimerScript @ NewConsole = false
+}
+
+#include plugs/plug_pLogger.moos
+
+// processes for simulation acoustic communications, incl. range limits
+
+#include plugs/plug_pHostInfo.moos
+
+#include plugs/plug_uFldShoreBroker.moos
+
+#include plugs/plug_uFldNodeComms.moos
+
+#include plugs/plug_pShare.moos
+
+#include plugs/plug_uTimerScript.moos
+
+ProcessConfig = uFldContactRangeSensor
+{
+  AppTick          = 4
+  CommsTick        = 4
+  reach_distance = default = 2000
+  reply_distance = default = 2000
+  report_vars = long
+  ping_wait = default = 0
+  rn_algorithm     = uniform,pct=0
+}
+

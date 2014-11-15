@@ -1,0 +1,10 @@
+//--------------------------------------------------
+// pTemplate, testing for shutting down app
+ProcessConfig = pTemplate
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  example1 = yes
+  example2 = 100
+}

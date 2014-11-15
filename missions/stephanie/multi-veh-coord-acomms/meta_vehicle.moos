@@ -1,0 +1,110 @@
+//*******************************************************
+// Vehicle Configuration File
+//
+
+// MOOS community specs
+NoNetwork = true
+ServerHost = $(SERVER_HOST)
+ServerPort = $(VPORT)
+// Community name IS the vehicle name
+Community  = $(VNAME)
+
+Simulator  = true
+
+modem_id_lookup_path = modemidlookup.txt
+modem_id = $(MODEMID)
+
+// warp the simulation?
+#include plugs/plug_origin_warp.moos
+
+//------------------------------------------------------------
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  // moos db, moos util apps
+  Run = MOOSDB             @ NewConsole = false
+  Run = pLogger            @ NewConsole = false
+  Run = uProcessWatch      @ NewConsole = false
+  // check own IP and publish to MOOSDB
+  Run = pHostInfo          @ NewConsole = false
+
+  // vehicle sim
+  Run = uSimMarine         @ NewConsole = false
+  Run = pMarinePID         @ NewConsole = false
+
+  // behaviors
+  Run = pHelmIvP           @ NewConsole = false
+
+  // generate 'node reports'
+  Run = pNodeReporter      @ NewConsole = false
+
+  // collision avoidance
+  Run = pBasicContactMgr   @ NewConsole = false
+
+  // formation control
+#ifdef VTYPE UUV
+  Run = pSelectFormation @ NewConsole = false
+  Run = pPositionInFormation @ NewConsole = false
+  Run = pFormationWptUpdater @ NewConsole = false
+#endif
+#ifdef VTYPE SHIP
+  Run = pMaxFormationWidth @ NewConsole = true
+#endif
+
+  Run = uTimerScript @ NewConsole = false
+
+  // acoustic communications
+  pAcommsHandlerConfig = -geometry,179x100+0+20
+  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+  Run = pHostInfo @ NewConsole = false ~ pHostInfo
+  Run = uFldNodeBroker @ NewConsole = true
+  Run = uFldMessageHandler @ NewConsole = false
+  Run = pShare             @ NewConsole = false
+
+  // debugging
+  Run = uMS @ NewConsole = false
+}
+//------------------------------------------------------------
+
+// utils
+#include plugs/plug_pLogger.moos
+#include plugs/plug_uProcessWatch.moos
+#include plugs/plug_pHostInfo.moos
+
+// vehicle simulation
+#include plugs/plug_uSimMarine.moos
+#include plugs/plug_pMarinePID.moos
+
+// behaviors
+#include plugs/plug_pHelmIvP.moos
+
+// generate 'node reports'
+#include plugs/plug_pNodeReporter.moos
+
+// collision avoidance
+// node_reports are passed via uFldNodeBroker and pShare through shoreside
+#include plugs/plug_pBasicContactMgr.moos
+
+// formation control
+#ifdef VTYPE UUV
+#include plugs/plug_pSelectFormation.moos
+#include plugs/plug_pPositionInFormation.moos
+#include plugs/plug_pFormationWptUpdater.moos
+#endif
+#ifdef VTYPE SHIP
+#include plugs/plug_pMaxFormationWidth.moos
+#endif
+
+// publish some vars so I don't have to poke them
+// replace later with process for calculating allowable height
+// and a process to determined the number of vehicles based on
+// received status updates
+#include plugs/plug_uTimerScript.moos
+
+// simulate acoustic communications
+#include plugs/plug_pAcommsHandler.moos
+#include plugs/plug_pHostInfo.moos
+#include plugs/plug_uFldNodeBroker.moos
+#include plugs/plug_uFldMessageHandler.moos
+#include plugs/plug_pShare.moos

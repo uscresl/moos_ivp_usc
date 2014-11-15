@@ -1,0 +1,166 @@
+//---------   FILE: archie.bhv   -------------
+
+initialize   DEPLOY = false
+initialize   RETURN = false
+initialize   AVOID = true
+initialize   TRAIL = false
+
+// quick fix opregion altitude requirement
+#ifdef VTYPE UUV
+initialize   NAV_ALTITUDE=100
+#endif
+
+//---------   Safety behaviors   -------------
+Behavior = BHV_AvoidCollision
+{
+  name       = bhv_avdcollision
+  pwt        = 200 // higher weight
+  condition  = AVOID=true
+  updates    = CONTACT_INFO
+  endflag    = CONTACT_RESOLVED = $[CONTACT]
+  templating = spawn
+
+             contact = to-be-set
+    on_no_contact_ok = true
+         extrapolate = true
+               decay = 30,60
+
+        pwt_outer_dist = 15
+        pwt_inner_dist = 10
+        completed_dist = 16
+     min_util_cpa_dist = 5
+     max_util_cpa_dist = 15
+             pwt_grade = linear
+   bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
+}
+
+Behavior = BHV_OpRegionBounce
+{
+// not really used, just some big square, because we want to
+// simulate sensing the environment rather than forcing constraints
+  name = bhv_opregion_bounce
+  pwt = 200
+  duration = no-time-limit
+  condition = DEPLOY = true
+// some big box
+#ifdef VTYPE UUV
+  polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
+#endif
+#ifdef VTYPE SHIP
+    polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
+#endif
+  max_depth = 50 // match with BHV_OpRegionBounceDepth
+  min_altitude = 10
+  max_time = 23400
+  trigger_entry_time = 1.0
+  trigger_exit_time = 1.0
+  visual_hints = edge_size=2.0,vertex_size=2.0
+  // bounce additions
+  bounce_buffer = 20 // meters, when to start bouncing
+  bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
+  no_zone_factor = .2
+}
+#ifdef VTYPE UUV
+Behavior = BHV_OpRegionBounceDepth
+{
+  name = bhv_opregion_depth_bounce
+  pwt = 200
+  duration = no-time-limit
+  condition = DEPLOY = true
+  max_depth = 50  // set to the max depth of the lake?
+  min_altitude = 10
+  // if buffer is not set, it is set to 0, which is in fact inactive
+  // bounce_buffer_depth: size of the buffer for depth bouncing
+  bounce_buffer_depth = 5
+  // no_zone_factor: used for: no_zone = buffer * no_zone_factor
+  no_zone_factor = .2
+}
+#endif
+
+
+//---------   Control behaviors   -------------
+Behavior = BHV_Waypoint
+{ 
+  name      = bhv_waypt_survey
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+#ifdef VTYPE UUV
+  condition  = TRAIL = false
+  updates = FORMATION_WAYPOINT_UPDATE
+#endif
+  endflag   = SURVEY_DONE = true
+#ifdef VTYPE SHIP
+  updates = WAYPOINT_UPDATES
+#endif
+
+#ifdef VTYPE SHIP
+  speed = 1.5         // m/s
+#endif
+#ifdef VTYPE UUV
+  speed = 1.6         // m/s
+#endif
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 15           // m
+
+  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  repeat = 100 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=gray25
+  visual_hints = vertex_size=1, edge_size=1
+}
+
+//----------------------------------------------
+Behavior = BHV_Waypoint
+{
+  name       = bhv_waypt_return
+  pwt        = 100
+  condition  = RETURN = true
+  condition  = DEPLOY = true
+  perpetual  = true
+  endflag    = RETURN = false
+  endflag    = DEPLOY = false
+  endflag    = HAZARDSET_REQUEST = true
+
+  speed = 1.5
+  radius = 2.0
+  nm_radius = 8.0
+  points = $(START_POS)
+}
+
+#ifdef VTYPE UUV
+//----------------------------------------------
+Behavior = BHV_ConstantDepth
+{
+  name      = bhv_const_depth
+  pwt       = 100
+  duration  = no-time-limit
+  condition = DEPLOY = true
+
+  depth = $(START_DEPTH)  // m
+  peakwidth = 3     // m
+  basewidth = 2     // m
+  summitdelta = 20  // m
+}
+
+// to test leader-follower simulations
+Behavior = BHV_Trail
+{
+  name = bhv_trail
+  pwt  = 100
+  condition = TRAIL = true
+  updates = TRAIL_UPDATES
+  
+  // bernard at 160, cornelis at 200 (40deg separation)
+#ifdef VNAME bernard
+  trail_angle = 150
+#endif
+#ifdef VNAME cornelis
+  trail_angle = 210
+#endif
+  trail_range = 30
+  contact = anton // ship
+}
+#endif

@@ -1,0 +1,54 @@
+//*******************************************************
+// ShoreSide Configuration File
+// basically a community for visualization of the simulation
+//
+
+NoNetwork = true
+ServerHost = $(SERVER_HOST)
+ServerPort = $(VPORT)
+Community  = $(VNAME)
+
+log_path = ../logs/simulation
+log = true
+
+#include plugs/plug_origin_warp.moos
+  
+//--------------------------------------------------------
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 100
+
+  // moosdb, moos util apps
+  Run = MOOSDB           @ NewConsole = false
+  Run = pLogger          @ NewConsole = false
+  // check own IP and publish to MOOSDB
+  Run = pHostInfo @ NewConsole = false ~ pHostInfo
+  Run = uFldShoreBroker @ NewConsole = true ~ uFldShoreBroker
+  Run = uFldNodeComms @ NewConsole = true ~ uFldNodeComms
+  Run = pShare @ NewConsole = false ~ pShare
+
+  // shoreside visualization
+  Run = pMarineViewer    @ NewConsole = false ~ pMarineViewer_shorebroker
+  Run = uTimerScript     @ NewConsole = false
+
+  // debugging
+  Run = uMS @ NewConsole = false
+}
+
+// utils
+#include plugs/plug_pLogger.moos
+
+// processes for simulation acoustic communications, incl. range limits
+#include plugs/plug_pHostInfo.moos
+
+#include plugs/plug_uFldShoreBroker.moos
+
+#include plugs/plug_uFldNodeComms.moos
+
+#include plugs/plug_pShare.moos //_shoreside.moos
+
+// visualization
+#include plugs/plug_pMarineViewer.moos
+
+// show lake outline via uTimerScript
+#include plugs/plug_uTimerScript_shoreside.moos
