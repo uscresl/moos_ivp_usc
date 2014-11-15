@@ -45,7 +45,8 @@ ProcessConfig = ANTLER
 
 #include plugs/plug_uFldNodeComms.moos
 
-#include plugs/plug_pShare.moos //_shoreside.moos
+#include plugs/plug_pShare.moos
+//_shoreside.moos
 
 // visualization
 #include plugs/plug_pMarineViewer.moos

@@ -26,8 +26,6 @@ ProcessConfig = ANTLER
   Run = MOOSDB             @ NewConsole = false
   Run = pLogger            @ NewConsole = false
   Run = uProcessWatch      @ NewConsole = false
-  // check own IP and publish to MOOSDB
-  Run = pHostInfo          @ NewConsole = false
 
   // vehicle sim
   Run = uSimMarine         @ NewConsole = false
@@ -70,7 +68,6 @@ ProcessConfig = ANTLER
 // utils
 #include plugs/plug_pLogger.moos
 #include plugs/plug_uProcessWatch.moos
-#include plugs/plug_pHostInfo.moos
 
 // vehicle simulation
 #include plugs/plug_uSimMarine.moos

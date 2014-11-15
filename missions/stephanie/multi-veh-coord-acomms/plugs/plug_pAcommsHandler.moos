@@ -376,9 +376,10 @@ ProcessConfig = pAcommsHandler
   }
   mac_cfg {
     type: MAC_FIXED_DECENTRALIZED
-    // todo: fix this so it is flexible for adding vehicles
-    slot { src: 1  rate: 1 type: DATA slot_seconds: 20 }
+    // TODO: fix this so it is flexible for adding vehicles
     slot { src: 2  rate: 1 type: DATA slot_seconds: 20 }
+    slot { src: 4  rate: 1 type: DATA slot_seconds: 20 }
+    slot { src: 5  rate: 1 type: DATA slot_seconds: 20 }
   }
   driver_type: DRIVER_UFIELD_SIM_DRIVER
   driver_cfg

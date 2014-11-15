@@ -32,7 +32,7 @@ done
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"     \
-   SHARE_LISTEN="9300" SERVER_HOST=$SERVERHOST
+   SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST
 
 # inter-vehicle distance for formation
 IVD="40"
