@@ -23,8 +23,8 @@ ProcessConfig = ANTLER
   Run = pLogger          @ NewConsole = false
   // check own IP and publish to MOOSDB
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
-  Run = uFldShoreBroker @ NewConsole = true ~ uFldShoreBroker
-  Run = uFldNodeComms @ NewConsole = true ~ uFldNodeComms
+  Run = uFldShoreBroker @ NewConsole = false ~ uFldShoreBroker
+  Run = uFldNodeComms @ NewConsole = false ~ uFldNodeComms
   Run = pShare @ NewConsole = false ~ pShare
 
   // shoreside visualization

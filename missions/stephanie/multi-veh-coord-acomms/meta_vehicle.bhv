@@ -154,13 +154,14 @@ Behavior = BHV_Trail
   updates = TRAIL_UPDATES
   
   // bernard at 160, cornelis at 200 (40deg separation)
-#ifdef VNAME bernard
+  // TODO: fix for flexible auvs, names
+#ifdef VNAME ferdinand
   trail_angle = 150
 #endif
-#ifdef VNAME cornelis
+#ifdef VNAME gerard
   trail_angle = 210
 #endif
   trail_range = 30
-  contact = anton // ship
+  contact = $(LEAD_NAME) //boat
 }
 #endif

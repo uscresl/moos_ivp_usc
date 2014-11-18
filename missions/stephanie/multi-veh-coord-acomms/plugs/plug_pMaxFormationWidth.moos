@@ -7,7 +7,7 @@ ProcessConfig = pMaxFormationWidth
   CommsTick = 2
   
   // whose vehicle data to use (this is self in this case)
-  lead_vehicle_name = anton
+  lead_vehicle_name = $(LEAD_NAME)
 
   // sensor model: line segment at given range
   sensor_range = 30 // meters

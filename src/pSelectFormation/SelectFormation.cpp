@@ -92,6 +92,7 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       m_num_vehicles = (size_t)round(dval);
       new_info = true;
+      std::cout << GetAppName() << " :: m_num_vehicles set to: " << m_num_vehicles << std::endl;
     }
     else if ( key == "NODE_REPORT" )
     {
@@ -262,12 +263,25 @@ void SelectFormation::updateFormationShape()
   // not tested yet: what if information received late?
   // test & adapt when adding full acomms
   size_t curr_time = round(MOOSTime());
+//  if (debug)
+//  {
+//    std::cout << " Current time: " << curr_time << "\n";
+//    std::cout << " Current time in map? " << ( m_formation_shape_map.find(curr_time) != m_formation_shape_map.end() ) << std::endl;
+//  }
   if ( m_formation_shape_map.find(curr_time) != m_formation_shape_map.end() )
   { // found an update, update global var
     m_formation_shape = m_formation_shape_map.at(curr_time);
     std::cout << "Changing shape to: " << m_formation_shape << std::endl;
     Notify("FORMATION_SHAPE", m_formation_shape);
-    // TODO: don't let the map get humongous, erase old items
+    // TODO: don't let the map get humongous, erase old items?
+  }
+  else
+  {
+    // use last received
+    std::map<size_t,std::string>::iterator iter;
+    iter = m_formation_shape_map.end();
+    iter--;
+    m_formation_shape = iter->second;
   }
 }
 
@@ -390,7 +404,7 @@ void SelectFormation::processReceivedWidth(double const allowable_width)
   size_t start_time = current_time+add_lag;//was: 1.5*lag
   
   std::string new_shape;
-  switch ( m_num_vehicles)
+  switch ( m_num_vehicles )
   {
     case 1:
       new_shape = "1AUV";

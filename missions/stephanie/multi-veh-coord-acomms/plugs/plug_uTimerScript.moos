@@ -16,10 +16,10 @@ ProcessConfig = uTimerScript
   event = var=ALLOWABLE_HEIGHT, val=10, time=100
 
 //tmp hack
-#ifdef VNAME bernard
+#ifdef VNAME ferdinand
   event = var=POSITION_IN_FORMATION, val=1, time=100
 #endif
-#ifdef VNAME cornelis
+#ifdef VNAME gerard
   event = var=POSITION_IN_FORMATION, val=2, time=100
 #endif
 

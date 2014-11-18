@@ -374,12 +374,16 @@ ProcessConfig = pAcommsHandler
     }
     minimum_ack_wait_seconds: 4
   }
-  mac_cfg {
+  mac_cfg { // TODO: fix this so it is flexible for adding vehicles
     type: MAC_FIXED_DECENTRALIZED
-    // TODO: fix this so it is flexible for adding vehicles
-    slot { src: 2  rate: 1 type: DATA slot_seconds: 20 }
-    slot { src: 4  rate: 1 type: DATA slot_seconds: 20 }
-    slot { src: 5  rate: 1 type: DATA slot_seconds: 20 }
+    // time slots estimated based on:
+    //    duration transmission: 1s
+    //    duration one-way travel (1km): 1s
+    //    buffer: 1s
+    //    if ack: +1s (currently there is ack for moos poke, not used in this sim)
+    slot { src: 1  rate: 1 type: DATA slot_seconds: 3 }
+    slot { src: 6  rate: 1 type: DATA slot_seconds: 3 }
+    slot { src: 7  rate: 1 type: DATA slot_seconds: 3 }
   }
   driver_type: DRIVER_UFIELD_SIM_DRIVER
   driver_cfg

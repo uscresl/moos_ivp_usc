@@ -37,52 +37,55 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 # inter-vehicle distance for formation
 IVD="40"
 
-VNAME1="anton"        # The first  vehicle community
+VNAME1="anna"        # The first  vehicle community
 START_POS1="2700,1900"
 START_DEPTH1="0"
 WAYPOINTS1="2600,2000:2450,2050:2280,2030:2340,2080:2495,2085:2495,2130:2365,2130:2365,2190:2470,2170:2510,2230:2555,2200:2555,2050:2600,2050:2600,2180:2665,2180:2665,2050:2700,2050:2700,2230:2710,2290:2760,2330:2760,2000"
 #format=lawnmower,label=science_survey,x=2700,y=1900,width=450,height=500,lane_width=50,rows=north-south,degs=0" #,startx=2750,starty=1900
-MODEMID1="2"
+MODEMID1="1"
 VTYPE1="SHIP" # UUV, SHIP
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME1      START_POS=$START_POS1                    \
    VPORT="9001"       SHARE_LISTEN="9301"                      \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
-   IVD=$IVD    	      SERVER_HOST=$SERVERHOST
+   IVD=$IVD    	      SERVER_HOST=$SERVERHOST                  \
+   USC_DATA_DIR="$MOOSIVP_USC_HOME/data"  LEAD_NAME=$VNAME1
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1
 
-VNAME2="bernard"      # The second vehicle community
+VNAME2="ferdinand"      # The second vehicle community
 START_POS2="2800,1900"
 START_DEPTH2="10"
 WAYPOINTS2="2800,1900"
-MODEMID2="4"
+MODEMID2="6"
 VTYPE2="UUV" # UUV, SHIP
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME2      START_POS=$START_POS2                    \
    VPORT="9002"       SHARE_LISTEN="9302"                      \
-   VTYPE=$VTYPE2      MODEMID=$MODEMID2                    \
-   IVD=$IVD           SERVER_HOST=$SERVERHOST
+   VTYPE=$VTYPE2      MODEMID=$MODEMID2                        \
+   IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
+   LEAD_NAME=$VNAME1
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
-    START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2
+    START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2 LEAD_NAME=$VNAME1
 
 if [ $NUM_AUVS -ge 2 ] ; then
-VNAME3="cornelis"     # The third vehicle community
+VNAME3="gerard"     # The third vehicle community
 START_POS3="2850,1900"
-START_DEPTH2="10"
-WAYPOINTS3="3010,1800:3150,1750:3170,1650:3010,1700"
-MODEMID3="5"
+START_DEPTH3="10"
+WAYPOINTS3="2850,1900"
+MODEMID3="7"
 VTYPE3="UUV"
 nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME3      START_POS=$START_POS3                    \
    VPORT="9003"       SHARE_LISTEN="9303"                      \
    VTYPE=UUV          MODEMID=$MODEMID3                        \
-   IVD=$IVD           SERVER_HOST=$SERVERHOST
+   IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
+   LEAD_NAME=$VNAME1
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
-    START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE3
+    START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3 LEAD_NAME=$VNAME1
 fi
 
 if [ ${JUST_MAKE} = "yes" ] ; then
@@ -92,7 +95,7 @@ fi
 #-------------------------------------------------------
 #  Part 3: Launch the processes
 #-------------------------------------------------------
-printf "Launching $SNAME MOOS Community (WARP=%s) \n"  $TIME_WARP
+printf "Launching shoreside MOOS Community (WARP=%s) \n"  $TIME_WARP
 pAntler targ_shoreside.moos > log_shoreside.log &
 
 printf "Launching $VNAME1 MOOS Community (WARP=%s) \n" $TIME_WARP
