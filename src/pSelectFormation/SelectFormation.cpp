@@ -76,7 +76,10 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     bool new_info = false;
     if( key == "ALLOWABLE_WIDTH" )
     {
-      processReceivedWidth(dval);
+      // TODO - this should come via acomms, and include time, which should be
+      // read, and passed on to the method that processes it, for accurate
+      // estimation of when to switch formation.
+      processReceivedWidth(sval);
       new_info = true;
     }
     else if ( key == "ALLOWABLE_HEIGHT" )
@@ -101,28 +104,7 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( veh_name == m_lead_vehicle )
       {
         // need speed to calculate what time corresponds to follow_range
-        double lead_spd, update_time;
-        lead_spd = getDoubleFromNodeReport(sval, "SPD");
-        update_time = getDoubleFromNodeReport(sval, "TIME");
-
-        // store info: add with timestamp of message
-        // MOOSTime is warped, so should be ok as key (= DB_TIME)
-        LeadHistory update;
-        update.timestamp = update_time;
-        update.node_report = sval;
-        
-        if ( m_lead_history.size() == 0 || (m_lead_history.back().timestamp < update.timestamp ) )
-        { // just insert, assume rest is already sorted
-          m_lead_history.insert(m_lead_history.end(), update);
-        }
-        else
-        { // insert at lower_bound, keeps vector sorted
-          m_lead_history.insert(std::lower_bound(m_lead_history.begin(), m_lead_history.end(), update), update);
-        }
-
-        // update the formation center/reference point 
-        updateFollowCenter(update_time, lead_spd);
-        new_info = true;
+        new_info = getInfoFromNodeReport(sval);
       }
     }
     else
@@ -263,11 +245,6 @@ void SelectFormation::updateFormationShape()
   // not tested yet: what if information received late?
   // test & adapt when adding full acomms
   size_t curr_time = round(MOOSTime());
-//  if (debug)
-//  {
-//    std::cout << " Current time: " << curr_time << "\n";
-//    std::cout << " Current time in map? " << ( m_formation_shape_map.find(curr_time) != m_formation_shape_map.end() ) << std::endl;
-//  }
   if ( m_formation_shape_map.find(curr_time) != m_formation_shape_map.end() )
   { // found an update, update global var
     m_formation_shape = m_formation_shape_map.at(curr_time);
@@ -275,14 +252,18 @@ void SelectFormation::updateFormationShape()
     Notify("FORMATION_SHAPE", m_formation_shape);
     // TODO: don't let the map get humongous, erase old items?
   }
-  else
-  {
-    // use last received
-    std::map<size_t,std::string>::iterator iter;
-    iter = m_formation_shape_map.end();
-    iter--;
-    m_formation_shape = iter->second;
-  }
+//  else
+//  {
+//    if ( m_formation_shape_map.size() > 0 )
+//    {
+//      // use last received
+//      std::map<size_t,std::string>::iterator iter;
+//      iter = m_formation_shape_map.end();
+//      iter--;
+//      m_formation_shape = iter->second;
+//    }
+//    // else, no formation shape available, do nothing
+//  }
 }
 
 
@@ -394,14 +375,26 @@ void SelectFormation::calculateFormation()
   Notify("DESIRED_FORMATION",formation_string.str());
 }
 
-void SelectFormation::processReceivedWidth(double const allowable_width)
+void SelectFormation::processReceivedWidth(std::string allowable_width)
 {
+  // nb. time message received (current time) != time message sent.
+  // test/adapt when adding full acomms
+
+  // example allowable_width msg content:
+  //  UTC_TIME=1416443775.000000000000000,ALLOWABLE_WIDTH=0
+  size_t time;
+  double ok_width;
+  time = round(getDoubleFromCommaSeparatedString(allowable_width, "UTC_TIME"));
+  ok_width = getDoubleFromCommaSeparatedString(allowable_width, "ALLOWABLE_WIDTH");
+
+//  // TODO, use time message, not current
+//  size_t current_time = round(MOOSTime());
+
+  // estimate when formation should take this shape, given distance between
   // convert follow range to time, to know when to start changing
   size_t add_lag = round(m_follow_range / m_own_spd);
-  // nb. time message received != time message sent. 
-  // test/adapt when adding full acomms
-  size_t current_time = round(MOOSTime());
-  size_t start_time = current_time+add_lag;//was: 1.5*lag
+//  size_t start_time = current_time+add_lag;//was: 1.5*lag
+  size_t start_time = time+add_lag;//was: 1.5*lag
   
   std::string new_shape;
   switch ( m_num_vehicles )
@@ -410,15 +403,15 @@ void SelectFormation::processReceivedWidth(double const allowable_width)
       new_shape = "1AUV";
       break;
     case 2:
-      if ( allowable_width >= m_inter_vehicle_distance )
+      if ( ok_width >= m_inter_vehicle_distance )
         new_shape = "2AUVh";
       else
         new_shape = "2AUVv";
       break;
     case 3:
-      if ( allowable_width >= 2*m_inter_vehicle_distance )
+      if ( ok_width >= 2*m_inter_vehicle_distance )
         new_shape = "3AUVh";
-      else if ( allowable_width >= m_inter_vehicle_distance )
+      else if ( ok_width >= m_inter_vehicle_distance )
         new_shape = "3AUVm";
       else
         new_shape = "3AUVv";
@@ -443,4 +436,42 @@ void SelectFormation::processReceivedWidth(double const allowable_width)
       m_formation_shape_map.insert(std::pair<size_t,std::string>(start_time,new_shape));
     }
   }
+}
+
+bool SelectFormation::getInfoFromNodeReport(std::string sval)
+{
+  // Example NODE_REPORT via acomms:
+  // NAME=anna,TYPE=ship,UTC_TIME=1416433913.000000000000000,X=2700,Y=1900,LAT=34.26372545698,LON=-117.17479031395,SPD=0,HDG=180,DEPTH=0,ALTITUDE=0,PITCH=0,ROLL=0
+
+  double lead_spd, update_time;
+  lead_spd = getDoubleFromNodeReport(sval, "SPD");
+  update_time = getDoubleFromNodeReport(sval, "UTC_TIME");
+  std::cout << "lead speed: " << lead_spd << std::endl;
+  std::cout << "update time: " << update_time << std::endl;
+
+  // check that values retrieved correctly
+  if ( lead_spd != std::numeric_limits<double>::max() && update_time != std::numeric_limits<double>::max() )
+  {
+    // store info: add with timestamp of message
+    // MOOSTime is warped, so should be ok as key (= DB_TIME)
+    LeadHistory update;
+    update.timestamp = update_time;
+    update.node_report = sval;
+
+    if ( m_lead_history.size() == 0 || (m_lead_history.back().timestamp < update.timestamp ) )
+    { // just insert, assume rest is already sorted
+      m_lead_history.insert(m_lead_history.end(), update);
+    }
+    else
+    { // insert at lower_bound, keeps vector sorted
+      m_lead_history.insert(std::lower_bound(m_lead_history.begin(), m_lead_history.end(), update), update);
+    }
+
+    // update the formation center/reference point
+    updateFollowCenter(update_time, lead_spd);
+
+    return true;
+  }
+  else
+    return false;
 }

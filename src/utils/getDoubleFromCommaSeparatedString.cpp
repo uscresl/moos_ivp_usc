@@ -1,10 +1,10 @@
 #include "USCutils.h"
 
 //---------------------------------------------------------
-// Procedure: getStringFromNodeReport
-//            retrieve any string value from node_report by name
+// Procedure: getDoubleFromCommaSeparatedString
+//            retrieve any double value from comma-separated string by name
 //
-std::string getStringFromNodeReport(std::string full_string, std::string key)
+double getDoubleFromCommaSeparatedString(std::string full_string, std::string key)
 {
   // example: NAME=anton,X=2676.17,Y=1908.45,SPD=1.48,HDG=316.19,DEP=0,
   //   LAT=34.26380127,LON=-117.17504934,TYPE=SHIP,GROUP=survey,MODE=DRIVE,
@@ -21,5 +21,5 @@ std::string getStringFromNodeReport(std::string full_string, std::string key)
       output = value;
   }
 
-  return output;
+  return atof(output.c_str());
 }

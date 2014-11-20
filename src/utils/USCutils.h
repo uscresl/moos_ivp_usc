@@ -13,6 +13,7 @@
 #include "MBUtils.h"
 #include "math.h"
 #include <stdlib.h>
+#include <limits>
 
 // angle utils
 double deg2rad(double degrees);
@@ -29,6 +30,7 @@ void euclidDistance(double const x1, double const y1, double const x2, double co
 // MOOS utils
 double getDoubleFromNodeReport(std::string full_string, std::string key);
 std::string getStringFromNodeReport(std::string full_string, std::string key);
+double getDoubleFromCommaSeparatedString(std::string full_string, std::string key);
 
 // CS599 calculations formations
 void calcDxDyOperatorsStd(double const spacing, double const lead_hdg, double& delta_x, double& delta_y, bool& pos_x, bool& pos_y);

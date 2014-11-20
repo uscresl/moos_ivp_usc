@@ -8,6 +8,7 @@ SET(SRC
   calcDxDyOperatorsStd.cpp
   deg2rad.cpp
   euclidDistance.cpp
+  getDoubleFromCommaSeparatedString.cpp
   getDoubleFromNodeReport.cpp
   getStringFromNodeReport.cpp
   quadrant.cpp

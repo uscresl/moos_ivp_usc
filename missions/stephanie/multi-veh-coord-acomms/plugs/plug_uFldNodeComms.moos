@@ -3,7 +3,7 @@ ProcessConfig = uFldNodeComms
   AppTick       = 2
   CommsTick     = 2
 
-  COMMS_RANGE      = 10000
+  COMMS_RANGE      = 500 // TODO: reduce more?
   CRITICAL_RANGE   = 0//25
   MIN_MSG_INTERVAL = 0
   MAX_MSG_LENGTH   = 10000

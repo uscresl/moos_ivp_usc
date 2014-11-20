@@ -7,5 +7,10 @@
 double getDoubleFromNodeReport(std::string full_string, std::string key)
 {
   std::string output = getStringFromNodeReport(full_string, key);
-  return atof(output.c_str());
+  if ( !output.empty() )
+  {
+    return atof(output.c_str());
+  }
+  else
+    return std::numeric_limits<double>::max();
 }

@@ -43,7 +43,8 @@ class SelectFormation : public CMOOSApp
     void updateFollowCenter(double const curr_time, double const lead_spd);
     void updateFormationShape();
     void calculateFormation();
-    void processReceivedWidth(double const dval);
+    void processReceivedWidth(std::string sval);
+    bool getInfoFromNodeReport(std::string sval);
 
     // Configuration variables
     double m_follow_range;
