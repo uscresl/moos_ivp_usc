@@ -242,7 +242,7 @@ void SelectFormation::updateFollowCenter(double const curr_time, double const le
 
 void SelectFormation::updateFormationShape()
 {
-  // not tested yet: what if information received late?
+  // TODO not tested yet: what if information received late?
   // test & adapt when adding full acomms
   size_t curr_time = round(MOOSTime());
   if ( m_formation_shape_map.find(curr_time) != m_formation_shape_map.end() )
@@ -377,9 +377,6 @@ void SelectFormation::calculateFormation()
 
 void SelectFormation::processReceivedWidth(std::string allowable_width)
 {
-  // nb. time message received (current time) != time message sent.
-  // test/adapt when adding full acomms
-
   // example allowable_width msg content:
   //  UTC_TIME=1416443775.000000000000000,ALLOWABLE_WIDTH=0
   size_t time;
@@ -387,13 +384,9 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
   time = round(getDoubleFromCommaSeparatedString(allowable_width, "UTC_TIME"));
   ok_width = getDoubleFromCommaSeparatedString(allowable_width, "ALLOWABLE_WIDTH");
 
-//  // TODO, use time message, not current
-//  size_t current_time = round(MOOSTime());
-
   // estimate when formation should take this shape, given distance between
   // convert follow range to time, to know when to start changing
   size_t add_lag = round(m_follow_range / m_own_spd);
-//  size_t start_time = current_time+add_lag;//was: 1.5*lag
   size_t start_time = time+add_lag;//was: 1.5*lag
   
   std::string new_shape;
