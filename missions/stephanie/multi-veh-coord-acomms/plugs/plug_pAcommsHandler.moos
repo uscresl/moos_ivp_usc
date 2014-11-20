@@ -390,7 +390,8 @@ ProcessConfig = pAcommsHandler
   }
 
   queue_cfg {
-    message_entry { protobuf_name: "FORMATION_CONSTRAINTS"  ack: false ttl: 1800  value_base: 10  newest_first: false
+    // prev: value base: 10, ttl 1800
+    message_entry { protobuf_name: "FORMATION_CONSTRAINTS"  ack: false max_queue: 1 ttl: 300  value_base: 1.5
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "destination" }
       role { type: TIMESTAMP  field: "_time" }
@@ -400,7 +401,8 @@ ProcessConfig = pAcommsHandler
       role { type: DESTINATION_ID  field: "destination" }
       role { type: TIMESTAMP  field: "_time" }
     }
-    message_entry { protobuf_name: "LamssStatus" ack: false blackout_time: 10 max_queue: 1 ttl: 300 value_base: 1.5
+    // prev: value base 1.5, ttl 300, blackout_time 10
+    message_entry { protobuf_name: "LamssStatus" ack: false blackout_time: 0 max_queue: 1 ttl: 300 value_base: 1.5
       role { type: SOURCE_ID field: "Node" }
       role { type: DESTINATION_ID field: "_dest_id" }
       role { type: TIMESTAMP field: "Timestamp" }
@@ -416,9 +418,10 @@ ProcessConfig = pAcommsHandler
     //    buffer: 1s
     //    if ack: +1s
     // currently there is ack for moos poke, not used in this sim, keeping total to 3
-    slot { src: 1  rate: 1 type: DATA slot_seconds: 3 }
-    slot { src: 6  rate: 1 type: DATA slot_seconds: 3 }
-    slot { src: 7  rate: 1 type: DATA slot_seconds: 3 }
+    slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 7  rate: 0 type: DATA slot_seconds: 3 }
+    // 20141120:1136: rate changed from 1 to 0
   }
   driver_type: DRIVER_UFIELD_SIM_DRIVER
   driver_cfg

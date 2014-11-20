@@ -42,7 +42,8 @@ SelectFormation::SelectFormation()
   // algorithm variables
   m_follow_center_x = 0;
   m_follow_center_y = 0;
-  
+  m_previous_formation_string = "";
+
   debug = true;
   
   m_prev_time = 0;
@@ -283,97 +284,107 @@ void SelectFormation::calculateFormation()
   std::ostringstream formation_string;
   double x1, y1, x2, y2, x3, y3;
   if ( m_formation_shape == "1AUV" )
-    formation_string << m_follow_center_x << "," << m_follow_center_y;
-  else if ( m_formation_shape == "2AUVh" )
-  { // horizontal: 2 vehicles parallel to each other
-    double delta_x, delta_y;
-    bool pos_x1 = true, pos_y1 = true; // for vehicle 2 is inverse
-    calcDxDyOperators2h(m_inter_vehicle_distance/2, m_lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
-    x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
-    x2 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
-    y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
-    y2 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
-
-    if (debug)
-    {
-      std::ostringstream pt1;
-      pt1 << "x=" << x1 << ",y=" << y1 << ",label=p1";
-      Notify("VIEW_POINT",pt1.str());
-      std::ostringstream pt2;
-      pt2 << "x=" << x2 << ",y=" << y2 << ",label=p2";
-      Notify("VIEW_POINT",pt2.str());
-    }
-  }
-  else if ( m_formation_shape == "2AUVv" )
-  { // vertical: 2 vehicles behind one another
-    double delta_x, delta_y;
-    bool pos_x = true, pos_y = true; // only for 2nd vehicle
-    calcDxDyOperatorsStd(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
-    x1 = m_follow_center_x;
-    x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
-    y1 = m_follow_center_y;
-    y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
-
-    if (debug)
-    {
-      std::ostringstream pt1;
-      pt1 << "x=" << x1 << ",y=" << y1 << ",label=p1";
-      Notify("VIEW_POINT",pt1.str());
-      std::ostringstream pt2;
-      pt2 << "x=" << x2 << ",y=" << y2 << ",label=p2";
-      Notify("VIEW_POINT",pt2.str());
-    }
-  }
-  else if ( m_formation_shape == "3AUVh" )
   {
-    // horizontal
-    // for the two outside vehicles, calculate offsets
-    double delta_x, delta_y;
-    bool pos_x1 = true, pos_y1 = true;
-    calcDxDyOperators2h(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
-
-    x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
-    x3 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
-    y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
-    y3 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
-    x2 = m_follow_center_x;
-    y2 = m_follow_center_y;
-  }
-  else if ( m_formation_shape == "3AUVm" )
-  { // 1 front, 2 back TODO trig
     x1 = m_follow_center_x;
     y1 = m_follow_center_y;
-    x2 = m_follow_center_x - m_inter_vehicle_distance;
-    y2 = m_follow_center_y - m_inter_vehicle_distance;
-    x3 = m_follow_center_x + m_inter_vehicle_distance;
-    y3 = y2;
+    formation_string << x1 << "," << y1;
   }
-  else if ( m_formation_shape == "3AUVv" )
-  { // vertical
-    double delta_x, delta_y;
-    bool pos_x = true, pos_y = true; // only for 2nd vehicle
-    calcDxDyOperatorsStd(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
-
-    x1 = m_follow_center_x;
-    y1 = m_follow_center_y;
-    x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
-    y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
-    x3 = ( pos_x ? x1 + 2*delta_x : x1 - 2*delta_x );
-    y3 = ( pos_y ? y1 + 2*delta_y : y1 - 2*delta_y );
-  }
-
-  if ( m_formation_shape.at(0) == '2' )
+  else  if ( m_formation_shape.at(0) == '2' )
+  {
+    if ( m_formation_shape.at(4) == 'h' )
+    { // horizontal: 2 vehicles parallel to each other
+      double delta_x, delta_y;
+      bool pos_x1 = true, pos_y1 = true; // for vehicle 2 is inverse
+      calcDxDyOperators2h(m_inter_vehicle_distance/2, m_lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
+      x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
+      x2 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
+      y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
+      y2 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
+    }
+    else if ( m_formation_shape.at(4) == 'v' )
+    { // vertical: 2 vehicles behind one another
+      double delta_x, delta_y;
+      bool pos_x = true, pos_y = true; // only for 2nd vehicle
+      calcDxDyOperatorsStd(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
+      x1 = m_follow_center_x;
+      x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
+      y1 = m_follow_center_y;
+      y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
+    }
     formation_string << x1 << "," << y1 << ":"  << x2 << "," << y2;
-  else if ( m_formation_shape.at(0) == '3' )
+  }
+  else if ( m_formation_shape.at(0) == '3' ) // TODO
   {
-    formation_string << x1 << "," << y1 << ":" 
-                     << x2 << "," << y2 << ":" 
+    if ( m_formation_shape == "3AUVh" ) // TODO
+    {
+      // horizontal
+      // for the two outside vehicles, calculate offsets
+      double delta_x, delta_y;
+      bool pos_x1 = true, pos_y1 = true;
+      calcDxDyOperators2h(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
+
+      x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
+      x3 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
+      y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
+      y3 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
+      x2 = m_follow_center_x;
+      y2 = m_follow_center_y;
+    }
+    else if ( m_formation_shape == "3AUVm" ) // TODO
+    { // 1 front, 2 back TODO trig
+      x1 = m_follow_center_x;
+      y1 = m_follow_center_y;
+      x2 = m_follow_center_x - m_inter_vehicle_distance;
+      y2 = m_follow_center_y - m_inter_vehicle_distance;
+      x3 = m_follow_center_x + m_inter_vehicle_distance;
+      y3 = y2;
+    }
+    else if ( m_formation_shape == "3AUVv" ) // TODO
+    { // vertical
+      double delta_x, delta_y;
+      bool pos_x = true, pos_y = true; // only for 2nd vehicle
+      calcDxDyOperatorsStd(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
+
+      x1 = m_follow_center_x;
+      y1 = m_follow_center_y;
+      x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
+      y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
+      x3 = ( pos_x ? x1 + 2*delta_x : x1 - 2*delta_x );
+      y3 = ( pos_y ? y1 + 2*delta_y : y1 - 2*delta_y );
+    }
+    formation_string << x1 << "," << y1 << ":"
+                     << x2 << "," << y2 << ":"
                      << x3 << "," << y3;
   }
 
-  // notify
-  Notify("DESIRED_FORMATION",formation_string.str());
+  // notify, but only if we have a new position
+  std::string new_formation_string = formation_string.str();
+  if ( new_formation_string != m_previous_formation_string )
+  {
+    Notify("DESIRED_FORMATION", new_formation_string);
+    m_previous_formation_string = new_formation_string;
+
+    if (debug)
+    {
+      std::ostringstream pt1;
+      pt1 << "x=" << x1 << ",y=" << y1 << ",label=p1";
+      Notify("VIEW_POINT",pt1.str());
+      if ( m_formation_shape.at(0) == '2' || m_formation_shape.at(0) == '3')
+      {
+        std::ostringstream pt2;
+        pt2 << "x=" << x2 << ",y=" << y2 << ",label=p2";
+        Notify("VIEW_POINT",pt2.str());
+      }
+      if ( m_formation_shape.at(0) == '3' )
+      {
+        std::ostringstream pt3;
+        pt3 << "x=" << x3 << ",y=" << y3 << ",label=p3";
+        Notify("VIEW_POINT",pt3.str());
+      }
+    }
+  }
 }
+
 
 void SelectFormation::processReceivedWidth(std::string allowable_width)
 {

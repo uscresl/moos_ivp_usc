@@ -53,7 +53,7 @@ bool FormationWptUpdater::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
 
-    if ( key == "DESIRED_FORMATION" ) 
+    if ( key == "DESIRED_FORMATION" )
       sendWaypoint(sval);
     else if ( key == "POSITION_IN_FORMATION" )
     {

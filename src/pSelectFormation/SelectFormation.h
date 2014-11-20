@@ -60,9 +60,10 @@ class SelectFormation : public CMOOSApp
     std::string m_shape;
     std::string m_formation_shape;
     std::string m_prev_shape;
+    std::string m_previous_formation_string;
+
     double m_lead_hdg;
     double m_own_spd;
-    
     double m_prev_time;
     
     struct LeadHistory {
