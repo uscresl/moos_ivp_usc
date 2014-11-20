@@ -3,7 +3,7 @@
 initialize   DEPLOY = false
 initialize   RETURN = false
 initialize   AVOID = true
-initialize   TRAIL = false
+initialize   TRAIL = $(LEADER_FOLLOWER)
 
 // quick fix opregion altitude requirement
 #ifdef VTYPE UUV
