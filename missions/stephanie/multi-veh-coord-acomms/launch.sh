@@ -36,7 +36,7 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 
 # inter-vehicle distance for formation
 IVD="40"
-USE_LEADER_FOLLOWER="true"
+USE_LEADER_FOLLOWER="false"
 
 VNAME1="anna"        # The first  vehicle community
 START_POS1="2700,1900"
@@ -53,7 +53,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    USC_DATA_DIR="$MOOSIVP_USC_HOME/data"  LEAD_NAME=$VNAME1
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
-    START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1
+    START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1 LEADER_FOLLOWER="false"
 
 VNAME2="ferdinand"      # The second vehicle community
 START_POS2="2800,1900"
@@ -66,7 +66,7 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VPORT="9002"       SHARE_LISTEN="9302"                      \
    VTYPE=$VTYPE2      MODEMID=$MODEMID2                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
-   LEAD_NAME=$VNAME1
+   LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2 LEAD_NAME=$VNAME1  \
@@ -84,7 +84,7 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    VPORT="9003"       SHARE_LISTEN="9303"                      \
    VTYPE=UUV          MODEMID=$MODEMID3                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
-   LEAD_NAME=$VNAME1
+   LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3 LEAD_NAME=$VNAME1  \

@@ -40,6 +40,7 @@ ProcessConfig = ANTLER
   // collision avoidance
   Run = pBasicContactMgr   @ NewConsole = false
 
+#ifdef LEADER_FOLLOWER false
   // formation control
 #ifdef VTYPE UUV
   Run = pSelectFormation @ NewConsole = true
@@ -48,6 +49,7 @@ ProcessConfig = ANTLER
 #endif
 #ifdef VTYPE SHIP
   Run = pMaxFormationWidth @ NewConsole = false
+#endif
 #endif
 
   Run = uTimerScript @ NewConsole = false
@@ -63,7 +65,7 @@ ProcessConfig = ANTLER
   // debugging
   Run = uMS @ NewConsole = false
   // checking acomms
-#ifdef VTYPE SHIP
+#ifdef VTYPE DEBUG //SHIP
   Run = pMarineViewer @ NewConsole = false ~ pMarineViewer_boat
 #endif
 
@@ -88,14 +90,16 @@ ProcessConfig = ANTLER
 // node_reports are passed via uFldNodeBroker and pShare through shoreside
 #include plugs/plug_pBasicContactMgr.moos
 
-// formation control
-#ifdef VTYPE UUV
-#include plugs/plug_pSelectFormation.moos
-#include plugs/plug_pPositionInFormation.moos
-#include plugs/plug_pFormationWptUpdater.moos
-#endif
-#ifdef VTYPE SHIP
-#include plugs/plug_pMaxFormationWidth.moos
+#ifdef LEADER_FOLLOWER false
+  // formation control
+  #ifdef VTYPE UUV
+  #include plugs/plug_pSelectFormation.moos
+  #include plugs/plug_pPositionInFormation.moos
+  #include plugs/plug_pFormationWptUpdater.moos
+  #endif
+  #ifdef VTYPE SHIP
+  #include plugs/plug_pMaxFormationWidth.moos
+  #endif
 #endif
 
 // publish some vars so I don't have to poke them
