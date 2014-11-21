@@ -43,6 +43,7 @@ SelectFormation::SelectFormation()
   m_follow_center_x = 0;
   m_follow_center_y = 0;
   m_previous_formation_string = "";
+  m_last_shape = "";
 
   debug = true;
   
@@ -77,7 +78,7 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     bool new_info = false;
     if( key == "ALLOWABLE_WIDTH" )
     {
-      // TODO - this should come via acomms, and include time, which should be
+      // this comes via acomms, and includes time, which needs to be
       // read, and passed on to the method that processes it, for accurate
       // estimation of when to switch formation.
       processReceivedWidth(sval);
@@ -206,6 +207,16 @@ void SelectFormation::registerVariables()
   m_Comms.Register("NAV_SPEED", 0);
 }
 
+//---------------------------------------------------------
+// Procedure: updateFollowCenter
+//            after storing node_report into leadhistory,
+//            calculate where follow center is along
+//            leadhistory trajectory.
+//
+//  Given that the exact time may not be in the leadhistory,
+//  it will take the std::lower_bound:
+//  the first element in the range [begin,end) which does not compare less than val (tmp).
+//
 void SelectFormation::updateFollowCenter(double const curr_time, double const lead_spd)
 {
   double trig_angle;
@@ -232,7 +243,6 @@ void SelectFormation::updateFollowCenter(double const curr_time, double const le
     m_follow_center_y = getDoubleFromNodeReport(node_report,"Y");
     m_lead_hdg = getDoubleFromNodeReport(node_report,"HDG");
   }
-  // should I add something in case it doesn't exist (shouldn't happen?)?
 
   // show on pMarineViewer
   std::ostringstream ctr_pt;
@@ -243,28 +253,18 @@ void SelectFormation::updateFollowCenter(double const curr_time, double const le
 
 void SelectFormation::updateFormationShape()
 {
-  // TODO not tested yet: what if information received late?
-  // test & adapt when adding full acomms
+  // what if information received really late? does this ever happen?
   size_t curr_time = round(MOOSTime());
-  if ( m_formation_shape_map.find(curr_time) != m_formation_shape_map.end() )
+  std::map<size_t,std::string>::iterator itx;
+  itx = m_formation_shape_map.find(curr_time);
+  if ( itx != m_formation_shape_map.end() )
   { // found an update, update global var
     m_formation_shape = m_formation_shape_map.at(curr_time);
-    std::cout << "Changing shape to: " << m_formation_shape << std::endl;
+    std::cout << GetAppName() << " :: Changing shape to: " << m_formation_shape << std::endl;
     Notify("FORMATION_SHAPE", m_formation_shape);
-    // TODO: don't let the map get humongous, erase old items?
+    // don't let the map get humongous, erase published items
+    m_formation_shape_map.erase(itx);
   }
-//  else
-//  {
-//    if ( m_formation_shape_map.size() > 0 )
-//    {
-//      // use last received
-//      std::map<size_t,std::string>::iterator iter;
-//      iter = m_formation_shape_map.end();
-//      iter--;
-//      m_formation_shape = iter->second;
-//    }
-//    // else, no formation shape available, do nothing
-//  }
 }
 
 
@@ -278,8 +278,6 @@ void SelectFormation::updateFormationShape()
 //
 void SelectFormation::calculateFormation()
 {
-//  m_prev_shape = m_shape;
-
   // for now, only X/Y
   std::ostringstream formation_string;
   double x1, y1, x2, y2, x3, y3;
@@ -396,11 +394,12 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
   ok_width = getDoubleFromCommaSeparatedString(allowable_width, "ALLOWABLE_WIDTH");
 
   // estimate when formation should take this shape, given distance between
-  // convert follow range to time, to know when to start changing
+  //   lead and formation:
+  //   convert the follow range to time, to know when to start changing
   size_t add_lag = round(m_follow_range / m_own_spd);
-  size_t start_time = time+add_lag;//was: 1.5*lag
+  size_t start_time = time+1.5*add_lag;
   
-  std::string new_shape;
+  std::string new_shape = "";
   switch ( m_num_vehicles )
   {
     case 1:
@@ -426,19 +425,10 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
   }
   
   // if the determined shape is different than last received, add it to the map
-  if ( m_formation_shape_map.size() == 0 )
-  { // nothing in map yet, always add
+  if ( new_shape != m_last_shape )
+  { // need to change shape, so store
     m_formation_shape_map.insert(std::pair<size_t,std::string>(start_time,new_shape));
-  }
-  else
-  {
-    std::map<size_t,std::string>::iterator last_in_map = m_formation_shape_map.end();
-    last_in_map--;
-    std::string last_shape = last_in_map->second;
-    if ( last_shape != new_shape )
-    { // need to change shape, so store
-      m_formation_shape_map.insert(std::pair<size_t,std::string>(start_time,new_shape));
-    }
+    m_last_shape = new_shape;
   }
 }
 
@@ -446,12 +436,9 @@ bool SelectFormation::getInfoFromNodeReport(std::string sval)
 {
   // Example NODE_REPORT via acomms:
   // NAME=anna,TYPE=ship,UTC_TIME=1416433913.000000000000000,X=2700,Y=1900,LAT=34.26372545698,LON=-117.17479031395,SPD=0,HDG=180,DEPTH=0,ALTITUDE=0,PITCH=0,ROLL=0
-
   double lead_spd, update_time;
   lead_spd = getDoubleFromNodeReport(sval, "SPD");
   update_time = getDoubleFromNodeReport(sval, "UTC_TIME");
-  std::cout << "lead speed: " << lead_spd << std::endl;
-  std::cout << "update time: " << update_time << std::endl;
 
   // check that values retrieved correctly
   if ( lead_spd != std::numeric_limits<double>::max() && update_time != std::numeric_limits<double>::max() )

@@ -59,7 +59,7 @@ class SelectFormation : public CMOOSApp
     double m_follow_center_x, m_follow_center_y;
     std::string m_shape;
     std::string m_formation_shape;
-    std::string m_prev_shape;
+    std::string m_last_shape;
     std::string m_previous_formation_string;
 
     double m_lead_hdg;
