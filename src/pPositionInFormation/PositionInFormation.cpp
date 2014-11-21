@@ -65,7 +65,10 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
 #endif
 
     if ( key == "DESIRED_FORMATION" ) 
+    {
       m_formation = sval;
+      findPosition();
+    }
     else if ( key == "FORMATION_SHAPE" )
     { // shape changed, re-determine position in shape
       findPosition();
@@ -78,19 +81,20 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       m_z = dval;
     else if ( key == "NODE_REPORT" )
     { // need to get all vehicle data for HM
-      // std::map<std::string,std::string> m_other_vehicles;
       std::string veh_name = getStringFromNodeReport(sval, "NAME");
       std::map<std::string,std::string>::iterator found_iterator = m_other_vehicles.find(veh_name);
       if ( found_iterator != m_other_vehicles.end() )
-      { // update value
+      { // vehicle already in map, update value
         m_other_vehicles[veh_name] = sval;
+        findPosition();
       }
       else
-      { // maybe insert vehicle
-        // check not own name
+      { // insert vehicle, if not self or lead (should not receive node_report from self)
         if ( veh_name != m_ownship && veh_name != m_lead_vehicle)
           m_other_vehicles.insert(std::pair<std::string, std::string>(veh_name, sval));
+        findPosition();
       }
+
     }
     else
       std::cout << "pPositionInFormation :: Unhandled Mail: " << key << std::endl;
@@ -115,13 +119,14 @@ bool PositionInFormation::OnConnectToServer()
 
 bool PositionInFormation::Iterate()
 {
-  // double-check position in formation every 2 seconds
-  // to deconflict erroneous same assignment due to solving 
-  // different assignment problem (using slightly different 
-  // locations when calculating)
-  size_t remainder = (size_t)(round(MOOSTime())) % 2;
-  if ( remainder == 0 )
-    findPosition();
+//  // if we solve the Hungarian Method only once (at time of an update),
+//  // then, if the vehicles are close to each other, and given delays in
+//  // position updates (acomms), they may solve different problems and
+//  // still end up deciding to go to the same point.
+//  size_t remainder = (size_t)(round(MOOSTime())) % 2;
+//  if ( remainder == 0 )
+//    findPosition();
+
   return(true);
 }
 
@@ -191,75 +196,58 @@ void PositionInFormation::findPosition()
   //           "2700,1880:2679,1859:2721,1859"
 
   // gotta get all positions from the formation
-  vector<string> svector = parseString(m_formation, ':');
-  unsigned int idx, vsize = svector.size();
+  vector<string> positionsInFormationvector = parseString(m_formation, ':');
+  unsigned int idx, nrPositions = positionsInFormationvector.size();
 
   // only need to calculate if there are more than 1 vehicle following
-  if ( m_other_vehicles.size() >= 1 && vsize >= 1 )
+  if ( m_other_vehicles.size() >= 1 && nrPositions >= 1 )
   {
-    // constract Eigen matrix (num_vehicles*num_positions)
-    Eigen::MatrixXd hm_matrix( m_other_vehicles.size()+1, vsize);
+    // constract Eigen matrix (total_num_vehicles*num_positions)
+    Eigen::MatrixXd hm_matrix( m_other_vehicles.size()+1, nrPositions);
 
     // need distances for Hungarian method cost matrix
-    double xval, yval; // TODO make this 3D
-    for (idx = 0; idx < vsize; idx++)
+    // TODO make this 3D
+    for (idx = 0; idx < nrPositions; idx++)
     { // own vehicle calculations
+      // for each possible position, calculate Euclidean distance to it
+      double euclidD;
+      euclidDistanceFromString(positionsInFormationvector[idx], m_x, m_y, euclidD);
+      // store distance metric into matrix
+      hm_matrix(0,idx) = euclidD;
+
       if (debug)
       {
         std::cout << "OWNSHIP CALC\n";
-        std::cout << "dealing with: " << svector[idx] << std::endl;
-      }
-      size_t comma_at = svector[idx].find(',');
-      std::string xstr = svector[idx].substr(0,comma_at-1);
-      std::string ystr = svector[idx].substr(comma_at+1,svector[idx].length());
-      xval = atof(xstr.c_str());
-      yval = atof(ystr.c_str());
-      if (debug)
-      {
-        std::cout << "xval, yval of pt " << idx+1 << ": " << xval << "," << yval << std::endl;
         std::cout << "vehicle at: " << m_x << "," << m_y << std::endl;
+        std::cout << "calculating for position: " << positionsInFormationvector[idx] << std::endl;
+        std::cout << "calculated euclid distance: " << hm_matrix(0,idx) << std::endl;
       }
-      
-      // check&store distance to position
-      double euclidD;    // TODO make this 3D
-      euclidDistance(xval, yval, m_x, m_y, euclidD);
-      // store distance metric into matrix
-      hm_matrix(0,idx) = euclidD;
-      std::cout << "calculated distance: " << hm_matrix(0,idx) << std::endl;
     }
     // for all other vehicles, calculate distance to all positions in formation
     std::map<std::string,std::string>::iterator vehicle_iter;
     size_t vnum = 1;
     for ( vehicle_iter = m_other_vehicles.begin(); vehicle_iter != m_other_vehicles.end(); ++vehicle_iter )
     { // for each vehicle
+
+      // get vehicle position
       std::string sval = vehicle_iter->second;
       double vx = getDoubleFromNodeReport(sval, "X");
       double vy = getDoubleFromNodeReport(sval, "Y");
 
-      for (idx = 0; idx < vsize; idx++)
-      { // for each point in formation
+      for (idx = 0; idx < nrPositions; idx++)
+      { // for each possible position, calculate Euclidean distance to it
+        double euclidD;
+        euclidDistanceFromString(positionsInFormationvector[idx], vx, vy, euclidD);
+        // store distance metric into matrix
+        hm_matrix(vnum, idx) = euclidD;
+
         if (debug)
         {
           std::cout << "OTHER CALC\n";
-          std::cout << "dealing with: " << svector[idx] << std::endl;
+          std::cout << "(other) vehicle at: " << vx << "," << vy << std::endl;
+          std::cout << "calculating for position: " << positionsInFormationvector[idx] << std::endl;
+          std::cout << "calculated euclid distance for vehicle " << vnum+1 << ": " << hm_matrix(vnum,idx) << std::endl;
         }
-        size_t comma_at = svector[idx].find(',');
-        std::string xstr = svector[idx].substr(0,comma_at-1);
-        std::string ystr = svector[idx].substr(comma_at+1,svector[idx].length());
-        xval = atof(xstr.c_str());
-        yval = atof(ystr.c_str());
-        if (debug)
-        {
-          std::cout << "xval, yval of pt " << idx+1 << ": " << xval << "," << yval << std::endl;
-          std::cout << "other vehicle at: " << vx << "," << vy << std::endl;
-        }
-
-        double euclidD;
-        euclidDistance(xval, yval, vx, vy, euclidD);
-        // store distance metric into matrix
-        hm_matrix(vnum, idx) = euclidD;
-        if (debug)
-          std::cout << "calculated distance for vehicle " << vnum+1 << ": " << hm_matrix(vnum,idx) << std::endl;
       }
       vnum++;
     }
@@ -277,4 +265,18 @@ void PositionInFormation::findPosition()
     size_t hm_optimal_position = hu_optimal_assignment[0]+1;
     Notify("POSITION_IN_FORMATION",hm_optimal_position);
   }
+}
+
+void PositionInFormation::euclidDistanceFromString(std::string const & xy_str, double vehicle_x, double vehicle_y, double & euclidD)
+{
+  // get the individual values
+  size_t comma_at = xy_str.find(',');
+  std::string xstr = xy_str.substr(0,comma_at-1);
+  std::string ystr = xy_str.substr(comma_at+1,xy_str.length());
+  double xval, yval;
+  xval = atof(xstr.c_str());
+  yval = atof(ystr.c_str());
+
+  // calculate the Euclid distance, return by argument
+  euclidDistance(xval, yval, vehicle_x, vehicle_y, euclidD);
 }

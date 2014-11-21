@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: SelectFormation.h                                    */
-/*    DATE: Apr 21, 2014                                         */
+/*    DATE: Apr 21, 2014, last updated: Nov 20, 2014             */
 /*                                                               */
 /*    This process will choose what formation should be taken,   */
 /*    based on the allowed width/height and number of vehicles   */

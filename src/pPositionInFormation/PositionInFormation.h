@@ -39,6 +39,7 @@ class PositionInFormation : public CMOOSApp
   private: 
     // Own functions
     void findPosition();
+    void euclidDistanceFromString(std::string const & xy_str, double vehicle_x, double vehicle_y, double & euclidD);
 
     // Configuration variables
     std::string m_lead_vehicle;
