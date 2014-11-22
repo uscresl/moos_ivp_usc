@@ -19,7 +19,7 @@ ProcessConfig = pHelmIvP
 #ifdef VTYPE UUV
   // EcoMapper max speed ca 2 m/s
   Domain       = speed:0:2:21
-  Domain       = depth:0:10:101
+  Domain       = depth:0:50:101
 #endif
 
 }

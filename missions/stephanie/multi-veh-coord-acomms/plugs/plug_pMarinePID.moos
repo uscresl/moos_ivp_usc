@@ -7,7 +7,12 @@ ProcessConfig = pMarinePID
   CommsTick  = 10
   
   VERBOSE       = true
+#ifdef VTYPE SHIP
   DEPTH_CONTROL = false
+#endif
+#ifdef VTYPE UUV
+  DEPTH_CONTROL = true
+#endif
   ACTIVE_START  = true
   
   // Yaw PID controller

@@ -15,6 +15,9 @@ ProcessConfig = uTimerScript
 //  event = var=ALLOWABLE_WIDTH, val=25, time=100
   event = var=ALLOWABLE_HEIGHT, val=10, time=100
 
+  // tmp until bathy integrated, needed by uSimMarine
+  event = var=WATER_DEPTH, val=60, time=0
+
 //tmp hack
 #ifdef VNAME ferdinand
   event = var=POSITION_IN_FORMATION, val=1, time=100
