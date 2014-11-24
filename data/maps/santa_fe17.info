@@ -1,0 +1,8 @@
+// data from ecomapper_map_generator command line arguments
+lat_north = 34.116939
+lat_south = 34.109708
+lon_west = -117.959630
+lon_east = -117.941606
+// for now, set origin to bottom left corner
+datum_lat = 34.109708
+datum_lon = -117.959630

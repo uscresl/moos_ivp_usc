@@ -5,16 +5,29 @@ ProcessConfig = pMarineViewer
   CommsTick  = 4
 
   tiff_viewable = true
+#ifdef LOCATION arrowhead
   tiff_file     = $(USC_DATA_DIR)/maps/lake_arrowhead17.tif
+#endif
+#ifdef LOCATION santafe
+  tiff_file     = $(USC_DATA_DIR)/maps/santa_fe17.tif
+#endif
+
 // puddingstone_all.tif //  AerialMIT.tif
 
 //  // store the img for alogview
 //  log_the_image = true
 
   // pan, zoom to be set for puddingstone file
+#ifdef LOCATION arrowhead
   set_pan_x            = -540
   set_pan_y            = -833
   zoom                 = 1.5
+#endif
+#ifdef LOCATION santafe
+  set_pan_x            = -236
+  set_pan_y            = 148
+  zoom                 = 1.38
+#endif
   vehicles_shape_scale = 1.0
   vehicles_name_mode   = names+shortmode
 

@@ -5,5 +5,13 @@ MOOSTimeWarp = $(WARP)
 //LongOrigin = -117.815
 
 // Lake Arrowhead
+#ifdef LOCATION arrowhead
 LatOrigin = 34.246545
 LongOrigin = -117.204077
+#endif
+
+// Santa Fe Reservoir
+#ifdef LOCATION santafe
+LatOrigin = 34.109708
+LongOrigin = -117.959630
+#endif

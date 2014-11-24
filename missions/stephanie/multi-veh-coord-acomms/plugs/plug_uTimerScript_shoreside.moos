@@ -10,7 +10,13 @@ ProcessConfig = uTimerScript
   randvar= varname=ANG, min=0, max=359, key=at_reset 
 
   // Event(s) are the key components of the script
+#ifdef LOCATION arrowhead
   event = var=VIEW_SEGLIST, val="pts={2500,1940:2475,1985:2420,2010:2310,2020:2260,2010:2180,1980:2205,2010:2265,2045:2325,2090:2345,2135:2335,2175:2334,2205:2334,2230:2355,2220:2385,2200:2445,2195:2470,2237:2495,2260:2520,2265:2550,2235:2605,2190:2635,2185:2660,2200:2670,2225:2685,2310:2725,2330:2762,2410:2780,2473:2813,2465:2790,2385:2800,2332:2840,2305:2815,2275:2865,2200:2893,2170:2935,2130:2970,2100:2965,2080:2910,2085:2910,2070:2935,2005:2985,1970:2995,1945:2500,1940},label=LakeOutline,edge_color=yellow,vertex_color=yellow,vertex_size=2,edge_size=2", time=0
+#endif
+#ifdef LOCATION santafe
+  event = var=VIEW_SEGLIST, val="pts={900,445:980,450:1115,455:1130,395:1110,360:1115,325:1145,290:1170,300:1310,340:1445,340:1515,300:1470,205:1320,170:1220,95:1105,90:1060,150:1110,265:1080,300:1035,295:990,275:940,255:900,205:900,445},label=LakeOutline,edge_color=yellow,vertex_color=yellow,vertex_size=2,edge_size=2", time=0
+#endif
+  
 
   // If true script is paused upon launch
   paused = false

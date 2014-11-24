@@ -29,19 +29,28 @@ done
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
+EXP_LOCATION="santafe" # santafe, arrowhead
+
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
-   VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"     \
-   SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST
+   VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
+   SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST       \
+   LOCATION=$EXP_LOCATION
 
 # inter-vehicle distance for formation
-IVD="40"
+IVD="50"
 USE_LEADER_FOLLOWER="false"
 
 VNAME1="anna"        # The first  vehicle community
-START_POS1="2700,1900"
 START_DEPTH1="0"
+if [ "${EXP_LOCATION}" = "santafe" ] ; then
+START_POS1="1495,290"
+WAYPOINTS1="1355,220:1235,165:1180,130:1120,160:1190,200:1280,250:1385,290:1330,315:1160,255:1110,300:1065,350:1080,415:950,400:940,310:1075,330:1150,255:1490,295"
+elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
+START_POS1="2700,1900"
 WAYPOINTS1="2600,2000:2450,2050:2280,2030:2340,2080:2495,2085:2495,2130:2365,2130:2365,2190:2470,2170:2510,2230:2555,2200:2555,2050:2600,2050:2600,2180:2665,2180:2665,2050:2700,2050:2700,2230:2710,2290:2760,2330:2760,2000"
+fi
+
 #format=lawnmower,label=science_survey,x=2700,y=1900,width=450,height=500,lane_width=50,rows=north-south,degs=0" #,startx=2750,starty=1900
 MODEMID1="1"
 VTYPE1="SHIP" # UUV, SHIP
@@ -50,15 +59,21 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VPORT="9001"       SHARE_LISTEN="9301"                      \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
    IVD=$IVD    	      SERVER_HOST=$SERVERHOST                  \
-   USC_DATA_DIR="$MOOSIVP_USC_HOME/data"  LEAD_NAME=$VNAME1
+   USC_DATA_DIR="$MOOSIVP_USC_HOME/data"  LEAD_NAME=$VNAME1    \
+   LOCATION=$EXP_LOCATION
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1 LEADER_FOLLOWER="false"
 
 VNAME2="ferdinand"      # The second vehicle community
+if [ "${EXP_LOCATION}" = "santafe" ] ; then
+START_POS2="1495,300"
+WAYPOINTS2="1495,300"
+elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
 START_POS2="2800,1900"
-START_DEPTH2="10"
 WAYPOINTS2="2800,1900"
+fi
+START_DEPTH2="10"
 MODEMID2="6"
 VTYPE2="UUV" # UUV, SHIP
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
@@ -74,9 +89,14 @@ nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
 
 if [ $NUM_AUVS -ge 2 ] ; then
 VNAME3="gerard"     # The third vehicle community
+if [ "${EXP_LOCATION}" = "santafe" ] ; then
+START_POS3="1505,295"
+WAYPOINTS3="1505,295"
+elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
 START_POS3="2850,1900"
-START_DEPTH3="10"
 WAYPOINTS3="2850,1900"
+fi
+START_DEPTH3="10"
 MODEMID3="7"
 VTYPE3="UUV"
 nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \

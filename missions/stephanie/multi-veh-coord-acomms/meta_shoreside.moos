@@ -28,7 +28,7 @@ ProcessConfig = ANTLER
   Run = pShare @ NewConsole = false ~ pShare
 
   // shoreside visualization
-  Run = pMarineViewer    @ NewConsole = false ~ pMarineViewer_shorebroker
+  Run = pMarineViewer    @ NewConsole = true ~ pMarineViewer_shorebroker
   Run = uTimerScript     @ NewConsole = false
 
   // debugging

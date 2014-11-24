@@ -397,7 +397,7 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
   //   lead and formation:
   //   convert the follow range to time, to know when to start changing
   size_t add_lag = round(m_follow_range / m_own_spd);
-  size_t start_time = time+1.5*add_lag;
+  size_t start_time = time+1.75*add_lag;
   
   std::string new_shape = "";
   switch ( m_num_vehicles )

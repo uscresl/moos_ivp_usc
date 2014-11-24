@@ -1,9 +1,11 @@
 //---------   FILE: archie.bhv   -------------
 
-initialize   DEPLOY = false
+initialize   DEPLOY = true
 initialize   RETURN = false
 initialize   AVOID = true
 initialize   TRAIL = $(LEADER_FOLLOWER)
+
+initialize   MOOS_MANUAL_OVERRIDE=false
 
 // quick fix opregion altitude requirement
 #ifdef VTYPE UUV
@@ -11,6 +13,7 @@ initialize   NAV_ALTITUDE=100
 #endif
 
 //---------   Safety behaviors   -------------
+#ifdef VTYPE UUV
 Behavior = BHV_AvoidCollision
 {
   name       = bhv_avdcollision
@@ -33,6 +36,7 @@ Behavior = BHV_AvoidCollision
              pwt_grade = linear
    bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
 }
+#endif
 
 Behavior = BHV_OpRegionBounce
 {
@@ -156,10 +160,10 @@ Behavior = BHV_Trail
   // bernard at 160, cornelis at 200 (40deg separation)
   // TODO: fix for flexible auvs, names
 #ifdef VNAME ferdinand
-  trail_angle = 150
+  trail_angle = 130//150
 #endif
 #ifdef VNAME gerard
-  trail_angle = 210
+  trail_angle = 230//210
 #endif
   trail_range = 30
   contact = $(LEAD_NAME) //boat
