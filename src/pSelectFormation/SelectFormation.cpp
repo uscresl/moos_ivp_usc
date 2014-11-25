@@ -393,42 +393,48 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
   time = round(getDoubleFromCommaSeparatedString(allowable_width, "UTC_TIME"));
   ok_width = getDoubleFromCommaSeparatedString(allowable_width, "ALLOWABLE_WIDTH");
 
-  // estimate when formation should take this shape, given distance between
-  //   lead and formation:
-  //   convert the follow range to time, to know when to start changing
-  size_t add_lag = round(m_follow_range / m_own_spd);
-  size_t start_time = time+1.75*add_lag;
-  
-  std::string new_shape = "";
-  switch ( m_num_vehicles )
+  std::string nan_test = getStringFromNodeReport(allowable_width,"ALLOWABLE_WIDTH");
+  std::cout << "nan_test: " << nan_test << std::endl;
+
+  if ( nan_test != "nan" )
   {
-    case 1:
-      new_shape = "1AUV";
-      break;
-    case 2:
-      if ( ok_width >= m_inter_vehicle_distance )
-        new_shape = "2AUVh";
-      else
+    // estimate when formation should take this shape, given distance between
+    //   lead and formation:
+    //   convert the follow range to time, to know when to start changing
+    size_t add_lag = round(m_follow_range / m_own_spd);
+    size_t start_time = time+1.75*add_lag;
+
+    std::string new_shape = "";
+    switch ( m_num_vehicles )
+    {
+      case 1:
+        new_shape = "1AUV";
+        break;
+      case 2:
+        if ( ok_width >= m_inter_vehicle_distance )
+          new_shape = "2AUVh";
+        else
+          new_shape = "2AUVv";
+        break;
+      case 3:
+        if ( ok_width >= 2*m_inter_vehicle_distance )
+          new_shape = "3AUVh";
+        else if ( ok_width >= m_inter_vehicle_distance )
+          new_shape = "3AUVm";
+        else
+          new_shape = "3AUVv";
+        break;
+      default:
         new_shape = "2AUVv";
-      break;
-    case 3:
-      if ( ok_width >= 2*m_inter_vehicle_distance )
-        new_shape = "3AUVh";
-      else if ( ok_width >= m_inter_vehicle_distance )
-        new_shape = "3AUVm";
-      else
-        new_shape = "3AUVv";
-      break;
-    default:
-      new_shape = "2AUVv";
-      break;
-  }
-  
-  // if the determined shape is different than last received, add it to the map
-  if ( new_shape != m_last_shape )
-  { // need to change shape, so store
-    m_formation_shape_map.insert(std::pair<size_t,std::string>(start_time,new_shape));
-    m_last_shape = new_shape;
+        break;
+    }
+
+    // if the determined shape is different than last received, add it to the map
+    if ( new_shape != m_last_shape )
+    { // need to change shape, so store
+      m_formation_shape_map.insert(std::pair<size_t,std::string>(start_time,new_shape));
+      m_last_shape = new_shape;
+    }
   }
 }
 

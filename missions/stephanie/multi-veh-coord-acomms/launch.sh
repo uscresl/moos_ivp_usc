@@ -29,7 +29,11 @@ done
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
+# simulation set-up
 EXP_LOCATION="santafe" # santafe, arrowhead
+USE_LEADER_FOLLOWER="true"
+# inter-vehicle distance for formation (adaptive only, not for lf)
+IVD="50"
 
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
@@ -37,15 +41,11 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST       \
    LOCATION=$EXP_LOCATION
 
-# inter-vehicle distance for formation
-IVD="50"
-USE_LEADER_FOLLOWER="false"
-
 VNAME1="anna"        # The first  vehicle community
 START_DEPTH1="0"
 if [ "${EXP_LOCATION}" = "santafe" ] ; then
 START_POS1="1495,290"
-WAYPOINTS1="1355,220:1235,165:1180,130:1120,160:1190,200:1280,250:1385,290:1330,315:1160,255:1110,300:1065,350:1080,415:950,400:940,310:1075,330:1150,255:1490,295"
+WAYPOINTS1="1355,220:1235,165:1180,130:1120,160:1190,200:1280,250:1385,290:1330,300:1160,255:1110,300:1065,350:1080,415:950,400:940,310:1075,330:1150,255:1490,295"
 elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
 START_POS1="2700,1900"
 WAYPOINTS1="2600,2000:2450,2050:2280,2030:2340,2080:2495,2085:2495,2130:2365,2130:2365,2190:2470,2170:2510,2230:2555,2200:2555,2050:2600,2050:2600,2180:2665,2180:2665,2050:2700,2050:2700,2230:2710,2290:2760,2330:2760,2000"

@@ -4,35 +4,35 @@ ProcessConfig = pAcommsHandler
   common {
     verbosity: DEBUG1 show_gui: true
   }
-  load_proto_file: "formation_constraints.proto"
-  translator_entry { protobuf_name: "FORMATION_CONSTRAINTS"
-    trigger { type: TRIGGER_PUBLISH  moos_var: "ALLOWABLE_WIDTH_FORM" }
-    create {
-      technique: TECHNIQUE_FORMAT
-      moos_var: "DB_TIME"
-      format: "%1%"
-    }
-    create {
-      technique: TECHNIQUE_FORMAT
-      moos_var: "ALLOWABLE_WIDTH_FORM"
-      format: "%4%"
-    }
-    create {
-      technique: TECHNIQUE_FORMAT
-      moos_var: "ALLOWABLE_HEIGHT_FORM"
-      format: "%5%"
-    }
-    publish {
-      technique: TECHNIQUE_FORMAT
-      moos_var: "ALLOWABLE_WIDTH"
-      format: "UTC_TIME=%1$.0lf,ALLOWABLE_WIDTH=%4%"
-    }
-    publish {
-      technique: TECHNIQUE_FORMAT
-      moos_var: "ALLOWABLE_HEIGHT"
-      format: "UTC_TIME=%1$.0lf,ALLOWABLE_HEIGHT=%5%"
-    }
-  }
+//  load_proto_file: "formation_constraints.proto"
+//  translator_entry { protobuf_name: "FORMATION_CONSTRAINTS"
+//    trigger { type: TRIGGER_PUBLISH  moos_var: "ALLOWABLE_WIDTH_FORM" }
+//    create {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "DB_TIME"
+//      format: "%1%"
+//    }
+//    create {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "ALLOWABLE_WIDTH_FORM"
+//      format: "%4%"
+//    }
+//    create {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "ALLOWABLE_HEIGHT_FORM"
+//      format: "%5%"
+//    }
+//    publish {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "ALLOWABLE_WIDTH"
+//      format: "UTC_TIME=%1$.0lf,ALLOWABLE_WIDTH=%4%"
+//    }
+//    publish {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "ALLOWABLE_HEIGHT"
+//      format: "UTC_TIME=%1$.0lf,ALLOWABLE_HEIGHT=%5%"
+//    }
+//  }
   load_proto_file: "acoustic_moospoke.proto"
   translator_entry {  protobuf_name: "ACOUSTIC_MOOS_POKE"
     trigger {  type: TRIGGER_PUBLISH  moos_var: "ACOUSTIC_MOOS_POKE"  }
@@ -145,20 +145,30 @@ ProcessConfig = pAcommsHandler
       moos_var: "PENDING_SURFACE"
       format: "%19%"
     }
+//    create {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "MAX_CLINE_DEPTH"
+//      format: "%20%"
+//    }
+//    create {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "MIN_CLINE_DEPTH"
+//      format: "%21%"
+//    }
+//    create {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "CTR_CLINE_DEPTH"
+//      format: "%22%"
+//    }
     create {
       technique: TECHNIQUE_FORMAT
-      moos_var: "MAX_CLINE_DEPTH"
+      moos_var: "ALLOWABLE_WIDTH_FORM"
       format: "%20%"
     }
     create {
       technique: TECHNIQUE_FORMAT
-      moos_var: "MIN_CLINE_DEPTH"
+      moos_var: "ALLOWABLE_HEIGHT_FORM"
       format: "%21%"
-    }
-    create {
-      technique: TECHNIQUE_FORMAT
-      moos_var: "CTR_CLINE_DEPTH"
-      format: "%22%"
     }
     publish {
       technique: TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT
@@ -167,7 +177,8 @@ ProcessConfig = pAcommsHandler
     publish {
       technique: TECHNIQUE_FORMAT
       moos_var: "STATUS_REPORT_IN"
-      format: "Timestamp=%1%,Node=%2%,MessageType=%4%,nav_x=%5%,nav_y=%6%,Speed=%7%,Heading=%8%,Depth=%9%,Altitude=%10%,Pitch=%11%,Roll=%12%,Mission_State=%13%,Deploy_Mode=%14%,Depth_Mode=%15%,Prosecute_Type=%16%,Collaboration_Mode=%17%,Sonar_Control=%18%,Secs_to_GPS=%19%,Max_Cline_Depth=%20%,Min_Cline_Depth=%21%,Ctr_Cline_Depth=%22%"
+      format: "Timestamp=%1%,Node=%2%,MessageType=%4%,nav_x=%5%,nav_y=%6%,Speed=%7%,Heading=%8%,Depth=%9%,Altitude=%10%,Pitch=%11%,Roll=%12%,Mission_State=%13%,Deploy_Mode=%14%,Depth_Mode=%15%,Prosecute_Type=%16%,Collaboration_Mode=%17%,Sonar_Control=%18%,Secs_to_GPS=%19%,Max_Width=%20%,Max_Height=%21%"
+//Max_Cline_Depth=%20%,Min_Cline_Depth=%21%,Ctr_Cline_Depth=%22%"
     }
     publish {
       technique: TECHNIQUE_FORMAT
@@ -306,65 +317,75 @@ ProcessConfig = pAcommsHandler
         primary_field: 2
       }
     }
+//    publish {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "%107%_MAX_CLINE_DEPTH"
+//      format: "%20%"
+//      algorithm {
+//        name: "modem_id2name"
+//        output_virtual_field: 107
+//        primary_field: 2
+//      }
+//      algorithm {
+//        name: "to_upper"
+//        output_virtual_field: 107
+//        primary_field: 2
+//      }
+//    }
+//    publish {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "%108%_MIN_CLINE_DEPTH"
+//      format: "%21%"
+//      algorithm {
+//        name: "modem_id2name"
+//        output_virtual_field: 108
+//        primary_field: 2
+//      }
+//      algorithm {
+//        name: "to_upper"
+//        output_virtual_field: 108
+//        primary_field: 2
+//      }
+//    }
+//    publish {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "%109%_CTR_CLINE_DEPTH"
+//      format: "%22%"
+//      algorithm {
+//        name: "modem_id2name"
+//        output_virtual_field: 109
+//        primary_field: 2
+//      }
+//      algorithm {
+//        name: "to_upper"
+//        output_virtual_field: 109
+//        primary_field: 2
+//      }
+//    }
+//    publish {
+//      technique: TECHNIQUE_FORMAT
+//      moos_var: "%110%_CTR_CLINE_DEPTH_UPDATE"
+//      format: "depth=%22%"
+//      algorithm {
+//        name: "modem_id2name"
+//        output_virtual_field: 110
+//        primary_field: 2
+//      }
+//      algorithm {
+//        name: "to_upper"
+//        output_virtual_field: 110
+//        primary_field: 2
+//      }
+//    }
     publish {
       technique: TECHNIQUE_FORMAT
-      moos_var: "%107%_MAX_CLINE_DEPTH"
-      format: "%20%"
-      algorithm {
-        name: "modem_id2name"
-        output_virtual_field: 107
-        primary_field: 2
-      }
-      algorithm {
-        name: "to_upper"
-        output_virtual_field: 107
-        primary_field: 2
-      }
+      moos_var: "ALLOWABLE_WIDTH"
+      format: "UTC_TIME=%1$.0lf,ALLOWABLE_WIDTH=%20%"
     }
     publish {
       technique: TECHNIQUE_FORMAT
-      moos_var: "%108%_MIN_CLINE_DEPTH"
-      format: "%21%"
-      algorithm {
-        name: "modem_id2name"
-        output_virtual_field: 108
-        primary_field: 2
-      }
-      algorithm {
-        name: "to_upper"
-        output_virtual_field: 108
-        primary_field: 2
-      }
-    }
-    publish {
-      technique: TECHNIQUE_FORMAT
-      moos_var: "%109%_CTR_CLINE_DEPTH"
-      format: "%22%"
-      algorithm {
-        name: "modem_id2name"
-        output_virtual_field: 109
-        primary_field: 2
-      }
-      algorithm {
-        name: "to_upper"
-        output_virtual_field: 109
-        primary_field: 2
-      }
-    }
-    publish {
-      technique: TECHNIQUE_FORMAT
-      moos_var: "%110%_CTR_CLINE_DEPTH_UPDATE"
-      format: "depth=%22%"
-      algorithm {
-        name: "modem_id2name"
-        output_virtual_field: 110
-        primary_field: 2
-      }
-      algorithm {
-        name: "to_upper"
-        output_virtual_field: 110
-        primary_field: 2
-      }
+      moos_var: "ALLOWABLE_HEIGHT"
+      format: "UTC_TIME=%1$.0lf,ALLOWABLE_HEIGHT=%21%"
     }
     publish {
       technique: TECHNIQUE_FORMAT
@@ -390,12 +411,12 @@ ProcessConfig = pAcommsHandler
   }
 
   queue_cfg {
-    // prev: value base: 10, ttl 1800
-    message_entry { protobuf_name: "FORMATION_CONSTRAINTS"  ack: false max_queue: 1 ttl: 300  value_base: 1.5
-      role { type: SOURCE_ID  field: "_src_id" }
-      role { type: DESTINATION_ID  field: "destination" }
-      role { type: TIMESTAMP  field: "_time" }
-    }
+//    // prev: value base: 10, ttl 1800
+//    message_entry { protobuf_name: "FORMATION_CONSTRAINTS"  ack: false max_queue: 1 ttl: 300  value_base: 1.5
+//      role { type: SOURCE_ID  field: "_src_id" }
+//      role { type: DESTINATION_ID  field: "destination" }
+//      role { type: TIMESTAMP  field: "_time" }
+//    }
     message_entry { protobuf_name: "ACOUSTIC_MOOS_POKE"  ack: true  ttl: 1800  value_base: 10  newest_first: false
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "destination" }

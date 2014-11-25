@@ -60,7 +60,9 @@ message LamssStatus {
 		 SONAR_CONTROL_OFF = 1; 
 	} 
 	optional double Secs_to_GPS = 19 [(dccl.field).max=5110.000000, (dccl.field).min=-5120.000000, (dccl.field).precision=-1];
-	optional int32 Max_Cline_Depth = 20 [(dccl.field).max=255, (dccl.field).min=0];
-	optional int32 Min_Cline_Depth = 21 [(dccl.field).max=255, (dccl.field).min=0];
-	optional int32 Ctr_Cline_Depth = 22 [(dccl.field).max=255, (dccl.field).min=0];
+//	optional int32 Max_Cline_Depth = 20 [(dccl.field).max=255, (dccl.field).min=0];
+//	optional int32 Min_Cline_Depth = 21 [(dccl.field).max=255, (dccl.field).min=0];
+//	optional int32 Ctr_Cline_Depth = 22 [(dccl.field).max=255, (dccl.field).min=0];
+  optional double allowable_width = 20 [(dccl.field).max=1000.0, (dccl.field).min=0.0, (dccl.field).precision=2, default = nan];
+  optional double allowable_height = 21 [(dccl.field).max=100.0, (dccl.field).min=0.0, (dccl.field).precision=2, default = nan];
 } 
