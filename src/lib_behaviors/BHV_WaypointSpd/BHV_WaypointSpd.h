@@ -112,6 +112,8 @@ protected: // intermediate or object global variables.
   bool      m_odo_virgin;
   double    m_dist_total_odo;
   double    m_dist_total_linear;
+  // SK store distance to next wpt
+  double    m_dist_to_next_wpt;
 
   double    m_osx_prev;
   double    m_osy_prev;
@@ -123,7 +125,17 @@ protected: // intermediate or object global variables.
   XYPoint   m_prevpt;
 
   bool      m_greedy_tour_pending;
+
+  // SK store radii
+  double    m_capture_radius;
+  double    m_slip_radius;
 };
+
+extern "C" {
+  IvPBehavior * createBehavior(std::string name, IvPDomain domain)
+  {return new BHV_WaypointSpd(domain);}
+}
+
 #endif
 
 

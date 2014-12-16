@@ -79,6 +79,9 @@ BHV_WaypointSpd::BHV_WaypointSpd(IvPDomain gdomain) :
   m_var_cyindex     = "CYCLE_INDEX";
   m_var_suffix      = "";
 
+  m_min_cruise_speed = 0;
+  m_max_cruise_speed = 0;
+
   // Visual Hint Defaults
   m_hint_vertex_size   = 3;
   m_hint_edge_size     = 1;
@@ -315,12 +318,16 @@ bool BHV_WaypointSpd::setParam(string param, string param_val)
     if(dval <= 0)
       return(false);
     m_waypoint_engine.setCaptureRadius(dval);
+    // SK: refactoring to store radii
+    m_capture_radius = dval;
     return(true);
   }
   else if((param=="nm_radius") || (param=="slip_radius")) {
     if(dval < 0)
       return(false);
     m_waypoint_engine.setNonmonotonicRadius(dval);
+    // SK: refactoring to store radii
+    m_slip_radius = dval;
     return(true);
   }
   else if(param == "capture_line") {
@@ -418,7 +425,7 @@ IvPFunction *BHV_WaypointSpd::onRunState()
   // Possibly increment the waypoint
   // Set m_nextpt, m_trackpt
   bool next_point = setNextWaypoint();
-    
+
   // Update things if the waypoint was indeed incremented
   double next_x = m_waypoint_engine.getPointX();
   double next_y = m_waypoint_engine.getPointY();
@@ -426,7 +433,6 @@ IvPFunction *BHV_WaypointSpd::onRunState()
     m_prevpt.set_vertex(this_x, this_y);
     postWptFlags(this_x, this_y);
   }
-
 
   // We want to report the updated cycle info regardless of the 
   // above result. Even if the next_point is false and there are
@@ -443,7 +449,7 @@ IvPFunction *BHV_WaypointSpd::onRunState()
     //postMessage("VIEW_POINT", m_prevpt.get_spec("active=true"), "prevpt");
     postMessage("VIEW_POINT", m_nextpt.get_spec("active=true"), "wpt");
     double dist = hypot((m_nextpt.x() - m_trackpt.x()), 
-			(m_nextpt.y() - m_trackpt.y()));
+                        (m_nextpt.y() - m_trackpt.y()));
     // If the trackpoint and next waypoint differ by more than five
     // meters then post a visual cue for the track point.
     if(dist > 5)
@@ -458,15 +464,18 @@ IvPFunction *BHV_WaypointSpd::onRunState()
     return(0);
   }
   
+  // post variables for distance to previous and next waypoints,
+  // if those variable names have been defined by bhv parameters
   if(m_var_dist_to_prev != "")
     postMessage(m_var_dist_to_prev, m_waypoint_engine.distToPrevWpt(m_osx, m_osy));
+  // SK: refactoring to store distance to next wpt, to be used for speed ipf
+  m_dist_to_next_wpt = m_waypoint_engine.distToNextWpt(m_osx, m_osy);
   if(m_var_dist_to_next != "")
-    postMessage(m_var_dist_to_next, m_waypoint_engine.distToNextWpt(m_osx, m_osy));
+    postMessage(m_var_dist_to_next, m_dist_to_next_wpt);
 
   IvPFunction *ipf = buildOF(m_ipf_type);
   if(ipf)
     ipf->setPWT(m_priority_wt);
-
 
   return(ipf);
 }
@@ -598,9 +607,9 @@ bool BHV_WaypointSpd::setNextWaypoint()
     }
     else if(m_lead_to_start) {
       if(!m_markpt.active()) {
-	m_markpt.set_vertex(m_osx, m_osy);
-	m_markpt.set_active(true);
-      }	
+        m_markpt.set_vertex(m_osx, m_osy);
+        m_markpt.set_active(true);
+      }
       tx = m_markpt.x();
       ty = m_markpt.y();
       track_anchor = true;
@@ -609,22 +618,22 @@ bool BHV_WaypointSpd::setNextWaypoint()
     if(track_anchor) {
       double nx, ny;
       perpSegIntPt(tx, ty, m_nextpt.x(), m_nextpt.y(), 
-		   m_osx, m_osy, nx, ny);
+                   m_osx, m_osy, nx, ny);
       XYPoint perp_pt(nx, ny);
       
       double damper_factor = 1.0;
       if(m_lead_damper > 0) {
-	double dist_to_trackline = hypot((nx-m_osx),(ny-m_osy));
-	if(dist_to_trackline < m_lead_damper) {
-	  double augment = 1 - (dist_to_trackline / m_lead_damper);
-	  damper_factor += 2*augment;
-	}
+        double dist_to_trackline = hypot((nx-m_osx),(ny-m_osy));
+        if(dist_to_trackline < m_lead_damper) {
+          double augment = 1 - (dist_to_trackline / m_lead_damper);
+          damper_factor += 2*augment;
+        }
       }
-	  
+
       double angle = relAng(tx, ty, m_nextpt.x(), m_nextpt.y());
       double dist  = distPointToPoint(nx, ny, m_nextpt.x(), m_nextpt.y());
       if(dist > (m_lead_distance * damper_factor)) 
-	dist = m_lead_distance * damper_factor;  
+        dist = m_lead_distance * damper_factor;
 
       m_trackpt.projectPt(perp_pt, angle, dist);
     }
@@ -641,9 +650,10 @@ IvPFunction *BHV_WaypointSpd::buildOF(string method)
   IvPFunction *ipf = 0;
  
   if((method == "roc") || (method == "rate_of_closure")) {
+    // method not used atm
     bool ok = true;
     AOF_Waypoint aof_wpt(m_domain);
-    // TODO: change speed given range
+    // TODO: change speed given range? - method not used atm
     double cruise_speed = m_max_cruise_speed - m_min_cruise_speed;
     ok = ok && aof_wpt.setParam("desired_speed", cruise_speed);
     ok = ok && aof_wpt.setParam("osx", m_osx);
@@ -663,9 +673,27 @@ IvPFunction *BHV_WaypointSpd::buildOF(string method)
     }
   }    
   else { // if (method == "zaic")
+    // currently used method
     ZAIC_PEAK spd_zaic(m_domain, "speed");
-    // TODO: change speed given range
-    double cruise_speed = m_max_cruise_speed - m_min_cruise_speed;
+
+    // SK, Dec 16, 2104
+    // We want speed control: being able to go fast when far away and slow down
+    //                        when close to the wpt
+    double cruise_speed = 0;
+    if ( m_dist_to_next_wpt > 2*m_slip_radius ) // use max speed
+      cruise_speed = m_max_cruise_speed;
+    else if ( m_dist_to_next_wpt > m_capture_radius )
+    {
+      // linear decrease speed
+      double spd_range = 2*m_slip_radius - m_capture_radius;
+      double spd_diff = m_max_cruise_speed - m_min_cruise_speed;
+      double range = m_dist_to_next_wpt - m_capture_radius;
+      cruise_speed = m_min_cruise_speed + (range/spd_range)*spd_diff;
+      std::cout << "setting speed to: " << cruise_speed << std::endl;
+    }
+    else // must be smaller than capture radius, use min speed
+      cruise_speed = m_min_cruise_speed;
+
     double peak_width = cruise_speed / 2;
     spd_zaic.setParams(cruise_speed, peak_width, 1.6, 20, 0, 100);
     //    spd_zaic.setParams(m_cruise_speed, 1, 1.6, 20, 0, 100);
@@ -706,7 +734,7 @@ void BHV_WaypointSpd::postStatusReport()
   unsigned int capture_hits = m_waypoint_engine.getCaptureHits();
 
   double dist_meters   = hypot((m_osx - m_nextpt.x()), 
-			       (m_osy - m_nextpt.y()));
+                               (m_osy - m_nextpt.y()));
   double eta_seconds   = dist_meters / m_osv;
   
   string hits_str = uintToString(capture_hits);
@@ -927,7 +955,3 @@ void BHV_WaypointSpd::markOdoLeg()
   m_odo_sety = m_osy;
   m_odo_distance = 0;
 }
-
-
-
-
