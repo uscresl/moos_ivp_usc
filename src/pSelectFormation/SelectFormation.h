@@ -50,6 +50,7 @@ class SelectFormation : public CMOOSApp
     double m_follow_range;
     double m_inter_vehicle_distance;
     std::string m_lead_vehicle;
+    double m_lead_sensor_range;
 
     // State variables
     bool debug;
@@ -65,6 +66,7 @@ class SelectFormation : public CMOOSApp
     double m_lead_hdg;
     double m_own_spd;
     double m_prev_time;
+    double m_lead_spd;
     
     struct LeadHistory {
       double timestamp;

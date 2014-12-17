@@ -44,6 +44,7 @@ SelectFormation::SelectFormation()
   m_follow_center_y = 0;
   m_previous_formation_string = "";
   m_last_shape = "";
+  m_lead_spd = 0;
 
   debug = true;
   
@@ -110,7 +111,7 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       }
     }
     else
-      std::cout << "pSelectFormation :: Unhandled Mail: " << key << std::endl;
+      std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
       //reportRunWarning("Unhandled Mail: " + key);
     
     // any of these updates will require recalculation of formation positions,
@@ -179,10 +180,20 @@ bool SelectFormation::OnStartUp()
       m_inter_vehicle_distance = atof(value.c_str());
       handled = true;
 
-      std::cout << GetAppName() << " :: set m_inter_vehicle_distance to be: " << m_follow_range << std::endl;
+      std::cout << GetAppName() << " :: set m_inter_vehicle_distance to be: " << m_inter_vehicle_distance << std::endl;
     }
     else if ( param == "lead_vehicle_name" )
+    {
       m_lead_vehicle = value;
+      handled = true;
+      std::cout << GetAppName() << " :: set m_lead_vehicle to be: " << m_lead_vehicle << std::endl;
+    }
+    else if ( param == "lead_sensor_range")
+    {
+      m_lead_sensor_range = atof(value.c_str());
+      handled = true;
+      std::cout << GetAppName() << " :: set m_lead_sensor_range to be: " << m_lead_sensor_range << std::endl;
+    }
 
     if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
@@ -224,21 +235,32 @@ void SelectFormation::updateFollowCenter(double const curr_time, double const le
   bool pos_x = true, pos_y = true;
 
   // convert range to time, to extract prev location lead from memory
+  // we want to know the location of the lead not at the current time, but
+  // when it was where we are supposed to be.
   double time_behind = m_follow_range / lead_spd;
 
   // extract prev position lead from memory
   double time_key = curr_time - time_behind;
-  std::vector<LeadHistory>::iterator lower_bound;
+  std::vector<LeadHistory>::iterator closest_val;
   LeadHistory tmp;
   tmp.timestamp = time_key;
-  lower_bound = std::lower_bound(m_lead_history.begin(), m_lead_history.end(), tmp);
-
+  closest_val = std::lower_bound(m_lead_history.begin(), m_lead_history.end(), tmp);
   // if valid data is available, update the follow center
-  if ( lower_bound != m_lead_history.end() )
+  double timestamp = -1;
+  std::string node_report = "";
+  if ( closest_val != m_lead_history.end() )
   { // only take data if element exists in vector
-    double timestamp = (*lower_bound).timestamp;
-    std::string node_report = (*lower_bound).node_report;
-
+    timestamp = (*closest_val).timestamp;
+    node_report = (*closest_val).node_report;
+  }
+  else if ( m_lead_history.size() != 0 )
+  {
+    // if there are only older values, take the last old one
+    timestamp = (*m_lead_history.end()).timestamp;
+    node_report = (*m_lead_history.end()).node_report;
+  }
+  if ( timestamp > 0 )
+  {
     m_follow_center_x = getDoubleFromNodeReport(node_report,"X");
     m_follow_center_y = getDoubleFromNodeReport(node_report,"Y");
     m_lead_hdg = getDoubleFromNodeReport(node_report,"HDG");
@@ -253,18 +275,37 @@ void SelectFormation::updateFollowCenter(double const curr_time, double const le
 
 void SelectFormation::updateFormationShape()
 {
-  // what if information received really late? does this ever happen?
-  size_t curr_time = round(MOOSTime());
-  std::map<size_t,std::string>::iterator itx;
-  itx = m_formation_shape_map.find(curr_time);
-  if ( itx != m_formation_shape_map.end() )
-  { // found an update, update global var
-    m_formation_shape = m_formation_shape_map.at(curr_time);
-    std::cout << GetAppName() << " :: Changing shape to: " << m_formation_shape << std::endl;
-    Notify("FORMATION_SHAPE", m_formation_shape);
-    // don't let the map get humongous, erase published items
-    m_formation_shape_map.erase(itx);
+  // check if formation shape needs changing at current time
+  if ( m_formation_shape_map.size() > 0 )
+  {
+    size_t curr_time = round(MOOSTime());
+    std::map<size_t,std::string>::iterator itx;
+    std::map<size_t,std::string>::iterator l_bound;
+    itx = m_formation_shape_map.find(curr_time);
+    l_bound = m_formation_shape_map.lower_bound(curr_time);
+    bool retrieved = false;
+    if ( itx != m_formation_shape_map.end() )
+    { // found an update, update global var
+      m_formation_shape = m_formation_shape_map.at(curr_time);
+      retrieved = true;
+    }
+    else if ( l_bound != m_formation_shape_map.begin() )
+    {  // catch the case that there are older ones, eg due to acomms delay
+       m_formation_shape = m_formation_shape_map.begin()->second;
+       retrieved = true;
+    }
+    if ( retrieved )
+    {
+      // tell the world
+      std::cout << GetAppName() << " :: Changing shape to: " << m_formation_shape << std::endl;
+      Notify("FORMATION_SHAPE", m_formation_shape);
+      // don't let the map get humongous, erase published items
+      m_formation_shape_map.erase(itx);
+      // also make sure we redo calculations
+      calculateFormation();
+    }
   }
+
 }
 
 
@@ -278,6 +319,10 @@ void SelectFormation::updateFormationShape()
 //
 void SelectFormation::calculateFormation()
 {
+  // update the formation center/reference point
+  size_t curr_time = round(MOOSTime());
+  updateFollowCenter(curr_time, m_lead_spd);
+
   // for now, only X/Y
   std::ostringstream formation_string;
   double x1, y1, x2, y2, x3, y3;
@@ -388,21 +433,19 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
 {
   // example allowable_width msg content:
   //  UTC_TIME=1416443775.000000000000000,ALLOWABLE_WIDTH=0
-  size_t time;
+  size_t sent_time;
   double ok_width;
-  time = round(getDoubleFromCommaSeparatedString(allowable_width, "UTC_TIME"));
+  sent_time = round(getDoubleFromCommaSeparatedString(allowable_width, "UTC_TIME"));
   ok_width = getDoubleFromCommaSeparatedString(allowable_width, "ALLOWABLE_WIDTH");
 
   std::string nan_test = getStringFromNodeReport(allowable_width,"ALLOWABLE_WIDTH");
-  std::cout << "nan_test: " << nan_test << std::endl;
-
   if ( nan_test != "nan" )
   {
     // estimate when formation should take this shape, given distance between
-    //   lead and formation:
+    //   lead and formation, and lead sensor range:
     //   convert the follow range to time, to know when to start changing
-    size_t add_lag = round(m_follow_range / m_own_spd);
-    size_t start_time = time+1.75*add_lag;
+    size_t add_lag = round( (m_follow_range + m_lead_sensor_range) / m_lead_spd);
+    size_t start_time = sent_time + add_lag;
 
     std::string new_shape = "";
     switch ( m_num_vehicles )
@@ -454,6 +497,7 @@ bool SelectFormation::getInfoFromNodeReport(std::string sval)
     LeadHistory update;
     update.timestamp = update_time;
     update.node_report = sval;
+    m_lead_spd = lead_spd;
 
     if ( m_lead_history.size() == 0 || (m_lead_history.back().timestamp < update.timestamp ) )
     { // just insert, assume rest is already sorted
@@ -463,10 +507,6 @@ bool SelectFormation::getInfoFromNodeReport(std::string sval)
     { // insert at lower_bound, keeps vector sorted
       m_lead_history.insert(std::lower_bound(m_lead_history.begin(), m_lead_history.end(), update), update);
     }
-
-    // update the formation center/reference point
-    updateFollowCenter(update_time, lead_spd);
-
     return true;
   }
   else
