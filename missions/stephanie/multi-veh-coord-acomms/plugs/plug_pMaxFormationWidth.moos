@@ -10,7 +10,7 @@ ProcessConfig = pMaxFormationWidth
   lead_vehicle_name = $(LEAD_NAME)
 
   // sensor model: line segment at given range
-  sensor_range = 30 // meters
+  sensor_range = $(LEAD_SENSOR_RANGE) // meters
   sensor_width = 60 // meters
 
   // use boost WKT polygon for lake outline (assumed single polygon)

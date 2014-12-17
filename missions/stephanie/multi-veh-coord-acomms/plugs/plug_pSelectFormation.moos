@@ -8,6 +8,7 @@ ProcessConfig = pSelectFormation
   
   // who to follow
   lead_vehicle_name = $(LEAD_NAME)
+  lead_sensor_range = $(LEAD_SENSOR_RANGE)
   // what distance to follow at
   follow_range = 30
   // what distance the vehicles should keep apart in the formation

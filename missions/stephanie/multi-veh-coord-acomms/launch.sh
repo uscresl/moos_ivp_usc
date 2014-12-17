@@ -31,7 +31,7 @@ done
 #-------------------------------------------------------
 # simulation set-up
 EXP_LOCATION="santafe" # santafe, arrowhead
-USE_LEADER_FOLLOWER="true"
+USE_LEADER_FOLLOWER="false"
 # inter-vehicle distance for formation (adaptive only, not for lf)
 IVD="50"
 
@@ -50,6 +50,7 @@ elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
 START_POS1="2700,1900"
 WAYPOINTS1="2600,2000:2450,2050:2280,2030:2340,2080:2495,2085:2495,2130:2365,2130:2365,2190:2470,2170:2510,2230:2555,2200:2555,2050:2600,2050:2600,2180:2665,2180:2665,2050:2700,2050:2700,2230:2710,2290:2760,2330:2760,2000"
 fi
+SENSOR_RANGE=30
 
 #format=lawnmower,label=science_survey,x=2700,y=1900,width=450,height=500,lane_width=50,rows=north-south,degs=0" #,startx=2750,starty=1900
 MODEMID1="1"
@@ -81,7 +82,8 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VPORT="9002"       SHARE_LISTEN="9302"                      \
    VTYPE=$VTYPE2      MODEMID=$MODEMID2                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
-   LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER
+   LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
+   LEAD_SENSOR_RANGE=$SENSOR_RANGE
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2 LEAD_NAME=$VNAME1  \
@@ -104,7 +106,8 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    VPORT="9003"       SHARE_LISTEN="9303"                      \
    VTYPE=UUV          MODEMID=$MODEMID3                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
-   LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER
+   LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
+   LEAD_SENSOR_RANGE=$SENSOR_RANGE
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3 LEAD_NAME=$VNAME1  \

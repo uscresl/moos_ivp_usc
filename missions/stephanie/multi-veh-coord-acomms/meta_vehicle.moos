@@ -32,7 +32,7 @@ ProcessConfig = ANTLER
   Run = pMarinePID         @ NewConsole = false
 
   // behaviors
-  Run = pHelmIvP           @ NewConsole = false
+  Run = pHelmIvP           @ NewConsole = true
 
   // generate 'node reports'
   Run = pNodeReporter      @ NewConsole = false
@@ -44,8 +44,8 @@ ProcessConfig = ANTLER
   // formation control
 #ifdef VTYPE UUV
   Run = pSelectFormation @ NewConsole = true
-  Run = pPositionInFormation @ NewConsole = true
-  Run = pFormationWptUpdater @ NewConsole = true
+  Run = pFormationWptUpdater @ NewConsole = false
+  Run = pPositionInFormation @ NewConsole = false
 #endif
 #ifdef VTYPE SHIP
   Run = pMaxFormationWidth @ NewConsole = false
@@ -63,7 +63,7 @@ ProcessConfig = ANTLER
   Run = pShare             @ NewConsole = false
 
   // debugging
-  Run = uMS @ NewConsole = false
+//  Run = uMS @ NewConsole = false
   // checking acomms
 #ifdef VTYPE DEBUG //SHIP
   Run = pMarineViewer @ NewConsole = false ~ pMarineViewer_boat

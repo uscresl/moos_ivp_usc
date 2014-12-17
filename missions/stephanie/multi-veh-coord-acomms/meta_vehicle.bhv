@@ -81,29 +81,19 @@ Behavior = BHV_OpRegionBounceDepth
 }
 #endif
 
-
 //---------   Control behaviors   -------------
+#ifdef VTYPE SHIP
 Behavior = BHV_Waypoint
 { 
   name      = bhv_waypt_survey
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
-#ifdef VTYPE UUV
-  condition  = TRAIL = false
-  updates = FORMATION_WAYPOINT_UPDATE
-#endif
   endflag   = SURVEY_DONE = true
-#ifdef VTYPE SHIP
   updates = WAYPOINT_UPDATES
-#endif
 
-#ifdef VTYPE SHIP
   speed = 1.5         // m/s
-#endif
-#ifdef VTYPE UUV
-  speed = 1.6         // m/s
-#endif
+
   radius = 5.0        // m
   slip_radius = 15.0  // m
   lead = 15           // m
@@ -115,6 +105,34 @@ Behavior = BHV_Waypoint
   visual_hints = vertex_color=yellow, edge_color=gray25
   visual_hints = vertex_size=1, edge_size=1
 }
+#endif
+
+#ifdef VTYPE UUV
+Behavior = BHV_WaypointSpd
+{
+  name      = bhv_waypt_spd
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+  condition  = TRAIL = false
+  updates = FORMATION_WAYPOINT_UPDATE
+  endflag   = SURVEY_DONE = true
+
+  // SK, Dec 16, 2014: add spd control
+  min_speed = 0.5     // m/s
+  max_speed = 2.0     // m/s
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 15           // m
+
+  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  repeat = 100 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=gray25
+  visual_hints = vertex_size=1, edge_size=1
+}
+#endif
 
 //----------------------------------------------
 Behavior = BHV_Waypoint
