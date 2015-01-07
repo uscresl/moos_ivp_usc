@@ -256,8 +256,8 @@ void SelectFormation::updateFollowCenter(double const curr_time, double const le
   else if ( m_lead_history.size() != 0 )
   {
     // if there are only older values, take the last old one
-    timestamp = (*m_lead_history.end()).timestamp;
-    node_report = (*m_lead_history.end()).node_report;
+    timestamp = (*(m_lead_history.end()-1)).timestamp;
+    node_report = (*(m_lead_history.end()-1)).node_report;
   }
   if ( timestamp > 0 )
   {
