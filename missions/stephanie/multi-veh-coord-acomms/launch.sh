@@ -61,7 +61,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
    IVD=$IVD    	      SERVER_HOST=$SERVERHOST                  \
    USC_DATA_DIR="$MOOSIVP_USC_HOME/data"  LEAD_NAME=$VNAME1    \
-   LOCATION=$EXP_LOCATION
+   LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1 LEADER_FOLLOWER="false"
