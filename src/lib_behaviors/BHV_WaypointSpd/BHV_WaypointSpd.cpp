@@ -3,8 +3,8 @@
 /*    Name: Stephanie Kemna,                                     */
 /*    Orgn: University of Southern California, LA, CA            */
 /*    File: BHV_SlowAtWaypoint.cpp                               */
-/*    Date: Dec 12, 2014                                         */
-/*    Purpose: allow speed up and slow down                      */
+/*    Date: Dec 12, 2014 & Jan 7, 2015                           */
+/*    Purpose: speed up far from, and slow down close to wpt     */
 /*                                                               */
 /*                                                               */
 /*  Original:                                                    */
@@ -79,8 +79,13 @@ BHV_WaypointSpd::BHV_WaypointSpd(IvPDomain gdomain) :
   m_var_cyindex     = "CYCLE_INDEX";
   m_var_suffix      = "";
 
+  // SK: speed control, initialize all variables
   m_min_cruise_speed = 0;
   m_max_cruise_speed = 0;
+  m_capture_radius = 0;
+  m_slip_radius = 0;
+  m_spd_radius = 0;
+  m_dist_to_next_wpt = 0;
 
   // Visual Hint Defaults
   m_hint_vertex_size   = 3;
@@ -328,6 +333,13 @@ bool BHV_WaypointSpd::setParam(string param, string param_val)
     m_waypoint_engine.setNonmonotonicRadius(dval);
     // SK: refactoring to store radii
     m_slip_radius = dval;
+    return(true);
+  }
+  else if(param=="spd_radius") {
+    // SK: outer radius to start linear decrease speed
+    if(dval < 0)
+      return(false);
+    m_spd_radius = dval;
     return(true);
   }
   else if(param == "capture_line") {
@@ -679,13 +691,14 @@ IvPFunction *BHV_WaypointSpd::buildOF(string method)
     // SK, Dec 16, 2104
     // We want speed control: being able to go fast when far away and slow down
     //                        when close to the wpt
+    // m_spd_radius: outer radius, wherein spd is linearly decreased
     double cruise_speed = 0;
-    if ( m_dist_to_next_wpt > 2*m_slip_radius ) // use max speed
+    if ( m_dist_to_next_wpt > m_spd_radius ) // use max speed
       cruise_speed = m_max_cruise_speed;
     else if ( m_dist_to_next_wpt > m_capture_radius )
     {
       // linear decrease speed
-      double spd_range = 2*m_slip_radius - m_capture_radius;
+      double spd_range = m_spd_radius - m_capture_radius;
       double spd_diff = m_max_cruise_speed - m_min_cruise_speed;
       double range = m_dist_to_next_wpt - m_capture_radius;
       cruise_speed = m_min_cruise_speed + (range/spd_range)*spd_diff;
@@ -700,6 +713,7 @@ IvPFunction *BHV_WaypointSpd::buildOF(string method)
     IvPFunction *spd_ipf = spd_zaic.extractIvPFunction();
     if(!spd_ipf)
       postWMessage("Failure on the SPD ZAIC");
+    // end addition speed control
     
     double rel_ang_to_wpt = relAng(m_osx, m_osy, m_trackpt.x(), m_trackpt.y());
 

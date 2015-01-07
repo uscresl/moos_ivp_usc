@@ -3,8 +3,8 @@
 /*    Name: Stephanie Kemna,                                     */
 /*    Orgn: University of Southern California, LA, CA            */
 /*    File: BHV_WaypointSpd.cpp                                  */
-/*    Date: Dec 15, 2014                                         */
-/*    Purpose: allow speed up and slow down                      */
+/*    Date: Dec 12, 2014 & Jan 7, 2015                           */
+/*    Purpose: speed up far from, and slow down close to wpt     */
 /*                                                               */
 /*                                                               */
 /*  Original:                                                    */
@@ -126,9 +126,10 @@ protected: // intermediate or object global variables.
 
   bool      m_greedy_tour_pending;
 
-  // SK store radii
+  // SK store radii for speed control
   double    m_capture_radius;
   double    m_slip_radius;
+  double    m_spd_radius;
 };
 
 extern "C" {

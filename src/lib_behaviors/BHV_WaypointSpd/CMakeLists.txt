@@ -6,7 +6,7 @@
 #*****************************************************************#
 
 #-------------------------------------------------------------
-# The CMakeLists.txt for:                   BHV_SlowAtWaypoint
+# The CMakeLists.txt for:                     BHV_WaypointSpd
 #-------------------------------------------------------------
 
 SET(CMAKE_VERBOSE_MAKEFILE ON)
@@ -26,9 +26,8 @@ FILE(GLOB IVP_INCLUDE_DIRS
 INCLUDE_DIRECTORIES(${IVP_INCLUDE_DIRS})
 
 #-------------------------------------------------------------
-#                                         BHV_OpRegionBounce
+#                                             BHV_WaypointSpd
 #-------------------------------------------------------------
-#ADD_BHV(BHV_OpRegionBounce)
 ADD_LIBRARY(BHV_WaypointSpd SHARED BHV_WaypointSpd.cpp)
 TARGET_LINK_LIBRARIES(BHV_WaypointSpd
   behaviors ivpbuild logic ivpcore bhvutil mbutil geometry)
