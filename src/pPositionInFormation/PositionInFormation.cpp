@@ -202,7 +202,7 @@ void PositionInFormation::findPosition()
   // only need to calculate if there are more than 1 vehicle following
   if ( m_other_vehicles.size() >= 1 && nrPositions >= 1 )
   {
-    // constract Eigen matrix (total_num_vehicles*num_positions)
+    // construct Eigen matrix (total_num_vehicles*num_positions)
     Eigen::MatrixXd hm_matrix( m_other_vehicles.size()+1, nrPositions);
 
     // need distances for Hungarian method cost matrix
