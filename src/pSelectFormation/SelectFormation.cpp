@@ -20,6 +20,9 @@
 #include <limits>
 #include <algorithm>
 
+// matrix operations
+#include <Eigen/Dense>
+
 using namespace std;
 
 //---------------------------------------------------------
@@ -323,7 +326,7 @@ void SelectFormation::calculateFormation()
   size_t curr_time = round(MOOSTime());
   updateFollowCenter(curr_time, m_lead_spd);
 
-  // for now, only X/Y
+  // for now, 2D: only X/Y
   std::ostringstream formation_string;
   double x1, y1, x2, y2, x3, y3;
   if ( m_formation_shape == "1AUV" )
@@ -332,72 +335,103 @@ void SelectFormation::calculateFormation()
     y1 = m_follow_center_y;
     formation_string << x1 << "," << y1;
   }
-  else  if ( m_formation_shape.at(0) == '2' )
+
+  // if more than 1 vehicle
+  if ( m_formation_shape.at(0) == '2' || m_formation_shape.at(0) == '3' )
   {
-    if ( m_formation_shape.at(4) == 'h' )
-    { // horizontal: 2 vehicles parallel to each other
-      double delta_x, delta_y;
-      bool pos_x1 = true, pos_y1 = true; // for vehicle 2 is inverse
-      calcDxDyOperators2h(m_inter_vehicle_distance/2, m_lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
-      x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
-      x2 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
-      y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
-      y2 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
-    }
-    else if ( m_formation_shape.at(4) == 'v' )
-    { // vertical: 2 vehicles behind one another
-      double delta_x, delta_y;
-      bool pos_x = true, pos_y = true; // only for 2nd vehicle
-      calcDxDyOperatorsStd(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
-      x1 = m_follow_center_x;
-      x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
-      y1 = m_follow_center_y;
-      y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
-    }
-    formation_string << x1 << "," << y1 << ":"  << x2 << "," << y2;
-  }
-  else if ( m_formation_shape.at(0) == '3' ) // TODO
-  {
-    if ( m_formation_shape == "3AUVh" ) // TODO
+    // initiate rotation and translation matrices
+
+    // Eigen typedef shortcuts used here:
+    //  typedef Matrix< double, 3, 1 > 	Vector3d
+    //  typedef Matrix< double, 3, 3 > 	Matrix3d
+    Eigen::Vector3d follow_ctr;
+    follow_ctr(0) = m_follow_center_x;
+    follow_ctr(1) = m_follow_center_y;
+    follow_ctr(2) = 1;
+    std::cout << "\nFOLLOW CENTER" << std::endl;
+    std::cout << follow_ctr << std::endl;
+
+    Eigen::Matrix3d rot = Eigen::Matrix3d::Identity();
+    double hdg_rad = deg2rad(m_lead_hdg);
+    std::cout << "heading deg: " << m_lead_hdg << " and rad: " << hdg_rad << std::endl;
+    rot(0,0) = std::cos(hdg_rad);
+    rot(0,1) = std::sin(hdg_rad);
+    rot(1,0) = -1*std::sin(hdg_rad);
+    rot(1,1) = std::cos(hdg_rad);
+    std::cout << "ROTATION MATRIX" << std::endl;
+    std::cout << rot << std::endl;
+
+    Eigen::Vector3d trans_auv1 = Eigen::Vector3d::Zero();
+    Eigen::Vector3d trans_auv2 = Eigen::Vector3d::Zero();
+    trans_auv1(2) = 1;
+    trans_auv2(2) = 1;
+
+    Eigen::Vector3d auv1;
+    Eigen::Vector3d auv2;
+
+    double x1, y1, x2, y2, x3, y3;
+
+    if ( m_formation_shape.at(0) == '2' )
     {
-      // horizontal
-      // for the two outside vehicles, calculate offsets
-      double delta_x, delta_y;
-      bool pos_x1 = true, pos_y1 = true;
-      calcDxDyOperators2h(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x1, pos_y1);
+      if ( m_formation_shape.at(4) == 'h' )
+      { // horizontal: 2 vehicles parallel to each other
+        trans_auv1(0) = -(m_inter_vehicle_distance/2);
+        trans_auv2(0) = m_inter_vehicle_distance/2;
+      }
+      else if ( m_formation_shape.at(4) == 'v' )
+      { // vertical: 2 vehicles behind one another
+        trans_auv2(1) = -m_inter_vehicle_distance;
+      }
+      // calculate positions and format into string
 
-      x1 = ( pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
-      x3 = ( !pos_x1 ? m_follow_center_x + delta_x : m_follow_center_x - delta_x );
-      y1 = ( pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
-      y3 = ( !pos_y1 ? m_follow_center_y + delta_y : m_follow_center_y - delta_y );
-      x2 = m_follow_center_x;
-      y2 = m_follow_center_y;
+      auv1 = follow_ctr + (rot*trans_auv1);
+      auv2 = follow_ctr + (rot*trans_auv2);
+      std::cout << "POSITION AUV1" << std::endl;
+      std::cout << auv1 << std::endl;
+      formation_string << auv1(0) << "," << auv1(1) << ":"
+                       << auv2(0) << "," << auv2(1);
+      std::cout << "OUTPUT STRING" << std::endl;
+      std::cout << formation_string.str() << std::endl;
     }
-    else if ( m_formation_shape == "3AUVm" ) // TODO
-    { // 1 front, 2 back TODO trig
-      x1 = m_follow_center_x;
-      y1 = m_follow_center_y;
-      x2 = m_follow_center_x - m_inter_vehicle_distance;
-      y2 = m_follow_center_y - m_inter_vehicle_distance;
-      x3 = m_follow_center_x + m_inter_vehicle_distance;
-      y3 = y2;
-    }
-    else if ( m_formation_shape == "3AUVv" ) // TODO
-    { // vertical
-      double delta_x, delta_y;
-      bool pos_x = true, pos_y = true; // only for 2nd vehicle
-      calcDxDyOperatorsStd(m_inter_vehicle_distance, m_lead_hdg, delta_x, delta_y, pos_x, pos_y);
+    else if ( m_formation_shape.at(0) == '3' )
+    {
+      // add 3rd auv
+      Eigen::Vector3d trans_auv3 = Eigen::Vector3d::Zero();
+      trans_auv3(2) = 1;
 
-      x1 = m_follow_center_x;
-      y1 = m_follow_center_y;
-      x2 = ( pos_x ? x1 + delta_x : x1 - delta_x );
-      y2 = ( pos_y ? y1 + delta_y : y1 - delta_y );
-      x3 = ( pos_x ? x1 + 2*delta_x : x1 - 2*delta_x );
-      y3 = ( pos_y ? y1 + 2*delta_y : y1 - 2*delta_y );
+      if ( m_formation_shape == "3AUVh" )
+      { // horizontal
+        // for the two outside vehicles, calculate offsets
+        trans_auv1(0) = -1*m_inter_vehicle_distance;
+        trans_auv3(0) = m_inter_vehicle_distance;
+      }
+      else if ( m_formation_shape == "3AUVm" )
+      { // 1 front, 2 back TODO trig
+        trans_auv2(0) = -(m_inter_vehicle_distance/2);
+        trans_auv2(1) = -m_inter_vehicle_distance;
+        trans_auv3(0) = m_inter_vehicle_distance/2;
+        trans_auv3(1) = -m_inter_vehicle_distance;
+      }
+      else if ( m_formation_shape == "3AUVv" )
+      { // vertical
+        trans_auv2(1,2) = -m_inter_vehicle_distance;
+        trans_auv3(1,2) = -2*m_inter_vehicle_distance;
+      }
+      // calculate positions and format into string
+      auv1 = follow_ctr + (rot*trans_auv1);
+      auv2 = follow_ctr + (rot*trans_auv2);
+      Eigen::Vector3d auv3;
+      auv3 = follow_ctr + (rot*trans_auv3);
+      x3 = auv3(0);
+      y3 = auv3(1);
+      formation_string << auv1(0) << "," << auv1(1) << ":"
+                       << auv2(0) << "," << auv2(1) << ":"
+                       <<  auv3(0) << "," << auv3(1);
     }
-    formation_string << x1 << "," << y1 << ":"
-                     << x2 << "," << y2 << ":"
-                     << x3 << "," << y3;
+    x1 = auv1(0);
+    y1 = auv1(1);
+    x2 = auv2(0);
+    y2 = auv2(1);
   }
 
   // notify, but only if we have a new position
