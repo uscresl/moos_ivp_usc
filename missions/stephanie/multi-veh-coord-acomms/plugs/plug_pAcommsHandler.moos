@@ -441,7 +441,13 @@ ProcessConfig = pAcommsHandler
     // currently there is ack for moos poke, not used in this sim, keeping total to 3
     slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
     slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
+    #ifdef NUM_VEHICLES 2
     slot { src: 7  rate: 0 type: DATA slot_seconds: 3 }
+    #endif
+    #ifdef NUM_VEHICLES 3
+    slot { src: 7  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 8  rate: 0 type: DATA slot_seconds: 3 }
+    #endif
     // 20141120:1136: rate changed from 1 to 0
   }
   driver_type: DRIVER_UFIELD_SIM_DRIVER

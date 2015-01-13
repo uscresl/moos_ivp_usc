@@ -11,7 +11,7 @@ ProcessConfig = uTimerScript
 
   // Event(s) are the key components of the script
 //  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
-  event = var=NUM_VEHICLES, val=2, time=0
+  event = var=NUM_VEHICLES, val=$(NUM_VEHICLES), time=0
 //  event = var=ALLOWABLE_WIDTH, val=25, time=100
   event = var=ALLOWABLE_HEIGHT, val=10, time=100
 
@@ -20,10 +20,13 @@ ProcessConfig = uTimerScript
 
 //tmp hack
 #ifdef VNAME ferdinand
-  event = var=POSITION_IN_FORMATION, val=1, time=100
+  event = var=POSITION_IN_FORMATION, val=1, time=0
 #endif
 #ifdef VNAME gerard
-  event = var=POSITION_IN_FORMATION, val=2, time=100
+  event = var=POSITION_IN_FORMATION, val=2, time=0
+#endif
+#ifdef VNAME hendrik
+  event = var=POSITION_IN_FORMATION, val=3, time=0
 #endif
 
   // If true script is paused upon launch

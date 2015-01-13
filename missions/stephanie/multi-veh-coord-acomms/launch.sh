@@ -61,7 +61,8 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
    IVD=$IVD    	      SERVER_HOST=$SERVERHOST                  \
    USC_DATA_DIR="$MOOSIVP_USC_HOME/data"  LEAD_NAME=$VNAME1    \
-   LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE
+   LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
+   NUM_VEHICLES=$NUM_AUVS
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1 LEADER_FOLLOWER="false"
@@ -83,7 +84,8 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VTYPE=$VTYPE2      MODEMID=$MODEMID2                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
    LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
-   LEAD_SENSOR_RANGE=$SENSOR_RANGE
+   LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
+   NUM_VEHICLES=$NUM_AUVS
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2 LEAD_NAME=$VNAME1  \
@@ -107,12 +109,40 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    VTYPE=UUV          MODEMID=$MODEMID3                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
    LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
-   LEAD_SENSOR_RANGE=$SENSOR_RANGE
+   LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
+   NUM_VEHICLES=$NUM_AUVS
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3 LEAD_NAME=$VNAME1  \
     LEADER_FOLLOWER=$USE_LEADER_FOLLOWER
 fi
+
+if [ $NUM_AUVS -ge 3 ] ; then
+VNAME4="hendrik"     # The third vehicle community
+if [ "${EXP_LOCATION}" = "santafe" ] ; then
+START_POS4="1510,285"
+WAYPOINTS4="1510,285"
+elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
+START_POS4="2900,1900"
+WAYPOINTS4="2900,1900"
+fi
+START_DEPTH4="10"
+MODEMID4="8"
+VTYPE4="UUV"
+nsplug meta_vehicle.moos targ_$VNAME4.moos -f WARP=$TIME_WARP  \
+   VNAME=$VNAME4      START_POS=$START_POS4                    \
+   VPORT="9004"       SHARE_LISTEN="9304"                      \
+   VTYPE=UUV          MODEMID=$MODEMID4                        \
+   IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
+   LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
+   LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
+   NUM_VEHICLES=$NUM_AUVS
+nsplug meta_vehicle.bhv targ_$VNAME4.bhv -f VNAME=$VNAME4      \
+    START_POS=$START_POS4 WAYPOINTS=$WAYPOINTS4                \
+    START_DEPTH=$START_DEPTH4 VTYPE=$VTYPE4 LEAD_NAME=$VNAME1  \
+    LEADER_FOLLOWER=$USE_LEADER_FOLLOWER
+fi
+
 
 if [ ${JUST_MAKE} = "yes" ] ; then
     exit 0
@@ -136,6 +166,12 @@ sleep .25
 if [ $NUM_AUVS -ge 2 ] ; then
 printf "Launching $VNAME3 MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$VNAME3.moos > log_$VNAME3.log &
+sleep .25
+fi
+
+if [ $NUM_AUVS -ge 3 ] ; then
+printf "Launching $VNAME4 MOOS Community (WARP=%s) \n" $TIME_WARP
+pAntler targ_$VNAME4.moos > log_$VNAME4.log &
 sleep .25
 fi
 

@@ -32,7 +32,7 @@ ProcessConfig = ANTLER
   Run = pMarinePID         @ NewConsole = false
 
   // behaviors
-  Run = pHelmIvP           @ NewConsole = true
+  Run = pHelmIvP           @ NewConsole = false
 
   // generate 'node reports'
   Run = pNodeReporter      @ NewConsole = false
@@ -43,9 +43,9 @@ ProcessConfig = ANTLER
 #ifdef LEADER_FOLLOWER false
   // formation control
 #ifdef VTYPE UUV
-  Run = pSelectFormation @ NewConsole = true
+  Run = pSelectFormation @ NewConsole = false
   Run = pFormationWptUpdater @ NewConsole = false
-  Run = pPositionInFormation @ NewConsole = false
+  Run = pPositionInFormation @ NewConsole = true
 #endif
 #ifdef VTYPE SHIP
   Run = pMaxFormationWidth @ NewConsole = false

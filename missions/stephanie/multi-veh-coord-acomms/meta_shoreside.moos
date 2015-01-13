@@ -32,7 +32,7 @@ ProcessConfig = ANTLER
   Run = uTimerScript     @ NewConsole = false
 
   // debugging
-  Run = uMS @ NewConsole = false
+//  Run = uMS @ NewConsole = false
 }
 
 // utils
