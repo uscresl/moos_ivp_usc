@@ -269,7 +269,7 @@ void PositionInFormation::findPosition()
 
     Notify("POSITION_IN_FORMATION",hm_optimal_position);
   }
-  if (m_other_vehicles.size()+1 != nrPositions)
+  if (m_other_vehicles.size()+1 != nrPositions && debug)
   {
     std::cout << "mismatch m_other_vehicles size: " << m_other_vehicles.size()
               << "and nrPositions from DESIRED_FORMATION: " << nrPositions
