@@ -200,7 +200,7 @@ void PositionInFormation::findPosition()
   unsigned int idx, nrPositions = positionsInFormationvector.size();
 
   // only need to calculate if there are more than 1 vehicle following
-  if ( m_other_vehicles.size() >= 1 && nrPositions >= 1 )
+  if ( m_other_vehicles.size() >= 1 && nrPositions >= 1 && (m_other_vehicles.size()+1 == nrPositions) )
   {
     // construct Eigen matrix (total_num_vehicles*num_positions)
     Eigen::MatrixXd hm_matrix( m_other_vehicles.size()+1, nrPositions);
@@ -263,7 +263,17 @@ void PositionInFormation::findPosition()
     
     // extract assignment for current vehicle & publish
     size_t hm_optimal_position = hu_optimal_assignment[0]+1;
+
+    // if no information from other vehicles, the assignment may be -1
+    // we should catch this case
+
     Notify("POSITION_IN_FORMATION",hm_optimal_position);
+  }
+  if (m_other_vehicles.size()+1 != nrPositions)
+  {
+    std::cout << "mismatch m_other_vehicles size: " << m_other_vehicles.size()
+              << "and nrPositions from DESIRED_FORMATION: " << nrPositions
+              << std::endl;
   }
 }
 

@@ -411,8 +411,8 @@ void SelectFormation::calculateFormation()
       }
       else if ( m_formation_shape == "3AUVv" )
       { // vertical
-        trans_auv2(2) = -m_inter_vehicle_distance;
-        trans_auv3(2) = -2*m_inter_vehicle_distance;
+        trans_auv2(1) = -m_inter_vehicle_distance;
+        trans_auv3(1) = -2*m_inter_vehicle_distance;
       }
       // calculate positions and format into string
       auv1 = follow_ctr + (rot*trans_auv1);
