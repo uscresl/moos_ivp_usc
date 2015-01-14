@@ -342,32 +342,27 @@ void SelectFormation::calculateFormation()
     // initiate rotation and translation matrices
 
     // Eigen typedef shortcuts used here:
-    //  typedef Matrix< double, 3, 1 > 	Vector3d
-    //  typedef Matrix< double, 3, 3 > 	Matrix3d
-    Eigen::Vector3d follow_ctr;
+    //  typedef Matrix< double, 2, 1 > 	Vector2d
+    //  typedef Matrix< double, 2, 2 > 	Matrix2d
+    Eigen::Vector2d follow_ctr;
     follow_ctr(0) = m_follow_center_x;
     follow_ctr(1) = m_follow_center_y;
-    follow_ctr(2) = 1;
-//    std::cout << "\nFOLLOW CENTER" << std::endl;
-//    std::cout << follow_ctr << std::endl;
 
-    Eigen::Matrix3d rot = Eigen::Matrix3d::Identity();
+    // create & fill rotation matrix
+    Eigen::Matrix2d rot;
     double hdg_rad = deg2rad(m_lead_hdg);
-//    std::cout << "heading deg: " << m_lead_hdg << " and rad: " << hdg_rad << std::endl;
     rot(0,0) = std::cos(hdg_rad);
     rot(0,1) = std::sin(hdg_rad);
     rot(1,0) = -1*std::sin(hdg_rad);
     rot(1,1) = std::cos(hdg_rad);
-//    std::cout << "ROTATION MATRIX" << std::endl;
-//    std::cout << rot << std::endl;
 
-    Eigen::Vector3d trans_auv1 = Eigen::Vector3d::Zero();
-    Eigen::Vector3d trans_auv2 = Eigen::Vector3d::Zero();
-    trans_auv1(2) = 1;
-    trans_auv2(2) = 1;
+    // init translation vectors
+    Eigen::Vector2d trans_auv1 = Eigen::Vector2d::Zero();
+    Eigen::Vector2d trans_auv2 = Eigen::Vector2d::Zero();
 
-    Eigen::Vector3d auv1;
-    Eigen::Vector3d auv2;
+    // initialize result vectors
+    Eigen::Vector2d auv1;
+    Eigen::Vector2d auv2;
 
     if ( m_formation_shape.at(0) == '2' )
     {
@@ -380,30 +375,24 @@ void SelectFormation::calculateFormation()
       { // vertical: 2 vehicles behind one another
         trans_auv2(1) = -m_inter_vehicle_distance;
       }
-      // calculate positions and format into string
-
+      // calculate possible auv positions and format into string
       auv1 = follow_ctr + (rot*trans_auv1);
       auv2 = follow_ctr + (rot*trans_auv2);
-//      std::cout << "POSITION AUV1" << std::endl;
-//      std::cout << auv1 << std::endl;
       formation_string << auv1(0) << "," << auv1(1) << ":"
                        << auv2(0) << "," << auv2(1);
-//      std::cout << "OUTPUT STRING" << std::endl;
-//      std::cout << formation_string.str() << std::endl;
     }
     else if ( m_formation_shape.at(0) == '3' )
     {
       // add 3rd auv
-      Eigen::Vector3d trans_auv3 = Eigen::Vector3d::Zero();
-      trans_auv3(2) = 1;
+      Eigen::Vector2d trans_auv3 = Eigen::Vector2d::Zero();
       if ( m_formation_shape == "3AUVh" )
       { // horizontal
-        // for the two outside vehicles, calculate offsets
+        // for the two outside vehicles, calculate offsets from center
         trans_auv1(0) = -1*m_inter_vehicle_distance;
         trans_auv3(0) = m_inter_vehicle_distance;
       }
       else if ( m_formation_shape == "3AUVm" )
-      { // 1 front, 2 back TODO trig
+      { // 1 front, 2 back
         trans_auv2(0) = -(m_inter_vehicle_distance/2);
         trans_auv2(1) = -m_inter_vehicle_distance;
         trans_auv3(0) = m_inter_vehicle_distance/2;
@@ -414,10 +403,10 @@ void SelectFormation::calculateFormation()
         trans_auv2(1) = -m_inter_vehicle_distance;
         trans_auv3(1) = -2*m_inter_vehicle_distance;
       }
-      // calculate positions and format into string
+      // calculate possible auv positions and format into string
       auv1 = follow_ctr + (rot*trans_auv1);
       auv2 = follow_ctr + (rot*trans_auv2);
-      Eigen::Vector3d auv3;
+      Eigen::Vector2d auv3;
       auv3 = follow_ctr + (rot*trans_auv3);
       x3 = auv3(0);
       y3 = auv3(1);
