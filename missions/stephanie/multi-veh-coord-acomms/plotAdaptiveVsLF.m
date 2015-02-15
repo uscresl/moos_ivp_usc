@@ -1,4 +1,14 @@
+% plotAdaptiveVsLF (adaptive_folder, lf_folder)
+%
+% Author: Stephanie Kemna, USC, 2014/2015
+%
 function [] = plotAdaptiveVsLF (adaptive_folder, lf_folder)
+
+if nargin < 1
+    disp('ERROR: no arguments received');
+    disp('Usage: plotAdaptiveVsLF (adaptive_folder, lf_folder)');
+    return
+end
 
 vehicles=['A','F','G'];
 

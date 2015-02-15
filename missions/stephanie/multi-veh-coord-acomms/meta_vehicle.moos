@@ -45,7 +45,9 @@ ProcessConfig = ANTLER
 #ifdef VTYPE UUV
   Run = pSelectFormation @ NewConsole = false
   Run = pFormationWptUpdater @ NewConsole = false
-  Run = pPositionInFormation @ NewConsole = true
+  #ifdef HUNGARIAN_METHOD true
+    Run = pPositionInFormation @ NewConsole = true
+  #endif
 #endif
 #ifdef VTYPE SHIP
   Run = pMaxFormationWidth @ NewConsole = false
@@ -94,7 +96,9 @@ ProcessConfig = ANTLER
   // formation control
   #ifdef VTYPE UUV
   #include plugs/plug_pSelectFormation.moos
-  #include plugs/plug_pPositionInFormation.moos
+  #ifdef HUNGARIAN_METHOD true
+    #include plugs/plug_pPositionInFormation.moos
+  #endif
   #include plugs/plug_pFormationWptUpdater.moos
   #endif
   #ifdef VTYPE SHIP

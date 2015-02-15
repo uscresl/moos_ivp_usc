@@ -34,6 +34,7 @@ EXP_LOCATION="santafe" # santafe, arrowhead
 USE_LEADER_FOLLOWER="false"
 # inter-vehicle distance for formation (adaptive only, not for lf)
 IVD="50"
+USE_HUNGARIAN_METHOD="true" # true, false = static assignment at start
 
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
@@ -62,7 +63,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    IVD=$IVD    	      SERVER_HOST=$SERVERHOST                  \
    USC_DATA_DIR="$MOOSIVP_USC_HOME/data"  LEAD_NAME=$VNAME1    \
    LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
-   NUM_VEHICLES=$NUM_AUVS
+   NUM_VEHICLES=$NUM_AUVS  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1 LEADER_FOLLOWER="false"
@@ -85,7 +86,7 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
    LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
    LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
-   NUM_VEHICLES=$NUM_AUVS
+   NUM_VEHICLES=$NUM_AUVS  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2 LEAD_NAME=$VNAME1  \
@@ -110,7 +111,7 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
    LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
    LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
-   NUM_VEHICLES=$NUM_AUVS
+   NUM_VEHICLES=$NUM_AUVS  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3 LEAD_NAME=$VNAME1  \

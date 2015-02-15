@@ -464,9 +464,14 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
     // estimate when formation should take this shape, given distance between
     //   lead and formation, and lead sensor range:
     //   convert the follow range to time, to know when to start changing
-    size_t add_lag = round( (m_follow_range + m_lead_sensor_range) / m_lead_spd);
+    size_t add_lag = round( (m_follow_range + m_lead_sensor_range) / m_lead_spd );
     size_t start_time = sent_time + add_lag;
 
+    // conservative switching approach:
+    // if more restrictive: decrease start time (go into it earlier)
+    //    2AUVv, 2AUVm, 3AUVv
+    // if less restrictive: increase start time (go into it later)
+    //    2AUVh, 3AUVm, 3AUVh
     std::string new_shape = "";
     switch ( m_num_vehicles )
     {
@@ -475,17 +480,35 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
         break;
       case 2:
         if ( ok_width >= m_inter_vehicle_distance )
+        {
           new_shape = "2AUVh";
+          start_time += 5;
+        }
         else
+        {
           new_shape = "2AUVv";
+          start_time -= 5;
+        }
         break;
       case 3:
         if ( ok_width >= 2*m_inter_vehicle_distance )
+        {
           new_shape = "3AUVh";
+          start_time += 5;
+        }
         else if ( ok_width >= m_inter_vehicle_distance )
+        {
           new_shape = "3AUVm";
+          if ( m_last_shape == "3AUVh")
+            start_time -= 5;
+          else
+            start_time += 5;
+        }
         else
+        {
           new_shape = "3AUVv";
+          start_time -= 5;
+        }
         break;
       default:
         new_shape = "2AUVv";

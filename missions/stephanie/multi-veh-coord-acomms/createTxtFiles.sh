@@ -9,6 +9,8 @@ function extract {
   grep " NAV_Y " LOG_${1}*/*.alog | grep uSimMarine | awk '{print $1}' > navyt_${1}.txt
   grep " NAV_Y " LOG_${1}*/*.alog | grep uSimMarine | awk '{print $4}' > navy_${1}.txt
 
+  grep " NAV_SPEED "  LOG_${1}*/*.alog | grep uSimMarine | grep -v ':' | awk '{print $4}' > navspd_${1}.txt
+
   grep " FORMATION_WAYPOINT_UPDATE " LOG_${1}*/*.alog | grep pFormationWptUpdater | awk '{print $1}' > wptst_${1}.txt
   grep " FORMATION_WAYPOINT_UPDATE " LOG_${1}*/*.alog | grep pFormationWptUpdater | awk '{print $4}' > wpts_${1}.txt
 
