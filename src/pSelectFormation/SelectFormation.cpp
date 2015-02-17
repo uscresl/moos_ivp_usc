@@ -294,7 +294,8 @@ void SelectFormation::updateFormationShape()
     }
     else if ( l_bound != m_formation_shape_map.begin() )
     {  // catch the case that there are older ones, eg due to acomms delay
-       m_formation_shape = m_formation_shape_map.begin()->second;
+       itx = m_formation_shape_map.begin();
+       m_formation_shape = itx->second;
        retrieved = true;
     }
     if ( retrieved )
@@ -303,7 +304,8 @@ void SelectFormation::updateFormationShape()
       std::cout << GetAppName() << " :: Changing shape to: " << m_formation_shape << std::endl;
       Notify("FORMATION_SHAPE", m_formation_shape);
       // don't let the map get humongous, erase published items
-      m_formation_shape_map.erase(itx);
+      if ( itx != m_formation_shape_map.end() )
+        m_formation_shape_map.erase(itx);
       // also make sure we redo calculations
       calculateFormation();
     }

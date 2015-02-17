@@ -6,7 +6,8 @@ ProcessConfig = pShare
   AppTick    = 4
   CommsTick  = 4
 
-input = route =  $(SERVER_HOST):$(SHARE_LISTEN)
+  input = route =  $(SERVER_HOST):$(SHARE_LISTEN)
+      //& multicast_1
 
 //  input = route =  localhost:$(SHARE_LISTEN) & multicast_1 & multicast_2
 //  input = route =  127.0.0.1:$(SHARE_LISTEN) & multicast_1 & multicast_2

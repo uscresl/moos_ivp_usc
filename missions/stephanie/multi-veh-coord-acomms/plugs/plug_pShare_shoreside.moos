@@ -33,8 +33,8 @@ ProcessConfig = pShare
   // purely for visualization, then add this:
 
   // to make the buttons on pMarineViewer work, share those variables
-  output = DEPLOY_ALL->DEPLOY:multicast_1
-  output = MOOS_MANUAL_OVERIDE_ALL->MOOS_MANUAL_OVERIDE:multicast_1
-  output = RETURN_ALL->RETURN:multicast_1
-  output = TRAIL_ALL->TRAIL:multicast_1
+//  output = DEPLOY_ALL->DEPLOY:multicast_1
+//  output = MOOS_MANUAL_OVERIDE_ALL->MOOS_MANUAL_OVERIDE:multicast_1
+//  output = RETURN_ALL->RETURN:multicast_1
+//  output = TRAIL_ALL->TRAIL:multicast_1
 }

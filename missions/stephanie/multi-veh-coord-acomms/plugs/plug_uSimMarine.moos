@@ -6,7 +6,7 @@ ProcessConfig = uSimMarine
   AppTick   = 10
   CommsTick = 10
 
-  START_POS = $(START_POS), 180, 0
+  START_POS = $(START_POS), $(START_HDG), 0
   PREFIX    = NAV
 
 #ifdef VTYPE UUV

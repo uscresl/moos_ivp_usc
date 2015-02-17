@@ -43,7 +43,7 @@ ProcessConfig = ANTLER
 #ifdef LEADER_FOLLOWER false
   // formation control
 #ifdef VTYPE UUV
-  Run = pSelectFormation @ NewConsole = false
+  Run = pSelectFormation @ NewConsole = true
   Run = pFormationWptUpdater @ NewConsole = false
   #ifdef HUNGARIAN_METHOD true
     Run = pPositionInFormation @ NewConsole = true

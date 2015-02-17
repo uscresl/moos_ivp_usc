@@ -18,16 +18,16 @@ ProcessConfig = uTimerScript
   // tmp until bathy integrated, needed by uSimMarine
   event = var=WATER_DEPTH, val=60, time=0
 
-//tmp hack
-#ifdef VNAME ferdinand
-  event = var=POSITION_IN_FORMATION, val=1, time=0
-#endif
-#ifdef VNAME gerard
-  event = var=POSITION_IN_FORMATION, val=2, time=0
-#endif
-#ifdef VNAME hendrik
-  event = var=POSITION_IN_FORMATION, val=3, time=0
-#endif
+////tmp hack
+//#ifdef VNAME ferdinand
+//  event = var=POSITION_IN_FORMATION, val=1, time=0
+//#endif
+//#ifdef VNAME gerard
+//  event = var=POSITION_IN_FORMATION, val=2, time=0
+//#endif
+//#ifdef VNAME hendrik
+//  event = var=POSITION_IN_FORMATION, val=3, time=0
+//#endif
 
   // If true, then script is paused upon launch
   paused = false

@@ -1,6 +1,6 @@
 //---------   FILE: archie.bhv   -------------
 
-initialize   DEPLOY = true
+initialize   DEPLOY = false
 initialize   RETURN = false
 initialize   AVOID = true
 initialize   TRAIL = $(LEADER_FOLLOWER)

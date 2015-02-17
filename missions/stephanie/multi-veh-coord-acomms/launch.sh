@@ -42,10 +42,13 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST       \
    LOCATION=$EXP_LOCATION
 
+# START HEADING same for all vehicles - can be customized (not needed here)
+START_HEADING="230"
+
 VNAME1="anna"        # The first  vehicle community
 START_DEPTH1="0"
 if [ "${EXP_LOCATION}" = "santafe" ] ; then
-START_POS1="1495,290"
+START_POS1="1450,275"
 WAYPOINTS1="1355,220:1235,165:1180,130:1120,160:1190,200:1280,250:1385,290:1330,300:1160,255:1110,300:1065,350:1080,415:950,400:940,310:1075,330:1150,255:1490,295"
 elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
 START_POS1="2700,1900"
@@ -57,7 +60,7 @@ SENSOR_RANGE=30
 MODEMID1="1"
 VTYPE1="SHIP" # UUV, SHIP
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
-   VNAME=$VNAME1      START_POS=$START_POS1                    \
+   VNAME=$VNAME1  START_POS=$START_POS1  START_HDG=$START_HEADING \
    VPORT="9001"       SHARE_LISTEN="9301"                      \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
    IVD=$IVD    	      SERVER_HOST=$SERVERHOST                  \
@@ -70,8 +73,8 @@ nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
 
 VNAME2="ferdinand"      # The second vehicle community
 if [ "${EXP_LOCATION}" = "santafe" ] ; then
-START_POS2="1495,300"
-WAYPOINTS2="1495,300"
+START_POS2="1460,305"
+WAYPOINTS2=$START_POS2
 elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
 START_POS2="2800,1900"
 WAYPOINTS2="2800,1900"
@@ -80,7 +83,7 @@ START_DEPTH2="10"
 MODEMID2="6"
 VTYPE2="UUV" # UUV, SHIP
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
-   VNAME=$VNAME2      START_POS=$START_POS2                    \
+   VNAME=$VNAME2  START_POS=$START_POS2  START_HDG=$START_HEADING \
    VPORT="9002"       SHARE_LISTEN="9302"                      \
    VTYPE=$VTYPE2      MODEMID=$MODEMID2                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
@@ -95,8 +98,8 @@ nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
 if [ $NUM_AUVS -ge 2 ] ; then
 VNAME3="gerard"     # The third vehicle community
 if [ "${EXP_LOCATION}" = "santafe" ] ; then
-START_POS3="1505,295"
-WAYPOINTS3="1505,295"
+START_POS3="1475,295"
+WAYPOINTS3=$START_POS3
 elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
 START_POS3="2850,1900"
 WAYPOINTS3="2850,1900"
@@ -105,7 +108,7 @@ START_DEPTH3="10"
 MODEMID3="7"
 VTYPE3="UUV"
 nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
-   VNAME=$VNAME3      START_POS=$START_POS3                    \
+   VNAME=$VNAME3  START_POS=$START_POS3  START_HDG=$START_HEADING \
    VPORT="9003"       SHARE_LISTEN="9303"                      \
    VTYPE=UUV          MODEMID=$MODEMID3                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
@@ -121,8 +124,8 @@ fi
 if [ $NUM_AUVS -ge 3 ] ; then
 VNAME4="hendrik"     # The third vehicle community
 if [ "${EXP_LOCATION}" = "santafe" ] ; then
-START_POS4="1510,285"
-WAYPOINTS4="1510,285"
+START_POS4="1485,285"
+WAYPOINTS4=$START_POS4
 elif [ "${EXP_LOCATION}" = "arrowhead" ] ; then
 START_POS4="2900,1900"
 WAYPOINTS4="2900,1900"
@@ -131,7 +134,7 @@ START_DEPTH4="10"
 MODEMID4="8"
 VTYPE4="UUV"
 nsplug meta_vehicle.moos targ_$VNAME4.moos -f WARP=$TIME_WARP  \
-   VNAME=$VNAME4      START_POS=$START_POS4                    \
+   VNAME=$VNAME4  START_POS=$START_POS4  START_HDG=$START_HEADING \
    VPORT="9004"       SHARE_LISTEN="9304"                      \
    VTYPE=UUV          MODEMID=$MODEMID4                        \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \

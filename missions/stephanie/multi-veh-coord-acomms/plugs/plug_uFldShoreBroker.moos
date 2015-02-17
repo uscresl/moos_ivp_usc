@@ -3,7 +3,11 @@ ProcessConfig = uFldShoreBroker
   AppTick       = 1
   CommsTick     = 1
 
-  QBRIDGE = NODE_MESSAGE
+  qbridge  = DEPLOY, RETURN, NODE_MESSAGE
+
+//  QBRIDGE = NODE_MESSAGE
   //BRIDGE = src=SIM_OCEANENV_REPORT
 //  BRIDGE = src=CRS_RANGE_REPORT_$V, alias=CRS_RANGE_REPORT
+
+//  BRIDGE = src=DEPLOY_ALL, alias=DEPLOY
 }
