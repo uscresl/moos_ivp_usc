@@ -48,6 +48,7 @@ SelectFormation::SelectFormation()
   m_previous_formation_string = "";
   m_last_shape = "";
   m_lead_spd = 0;
+  m_buffer_time = 15; // seconds
 
   debug = true;
   
@@ -99,7 +100,8 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == "NUM_VEHICLES" )
     {
-      m_num_vehicles = (size_t)round(dval);
+      // get the nr of vehicles, subtract one because we know there is a leader
+      m_num_vehicles = (size_t)round(dval)-1;
       new_info = true;
       std::cout << GetAppName() << " :: m_num_vehicles set to: " << m_num_vehicles << std::endl;
     }
@@ -484,32 +486,32 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
         if ( ok_width >= m_inter_vehicle_distance )
         {
           new_shape = "2AUVh";
-          start_time += 5;
+          start_time += m_buffer_time;
         }
         else
         {
           new_shape = "2AUVv";
-          start_time -= 5;
+          start_time -= m_buffer_time;
         }
         break;
       case 3:
         if ( ok_width >= 2*m_inter_vehicle_distance )
         {
           new_shape = "3AUVh";
-          start_time += 5;
+          start_time += m_buffer_time;
         }
         else if ( ok_width >= m_inter_vehicle_distance )
         {
           new_shape = "3AUVm";
           if ( m_last_shape == "3AUVh")
-            start_time -= 5;
+            start_time -= m_buffer_time;
           else
-            start_time += 5;
+            start_time += m_buffer_time;
         }
         else
         {
           new_shape = "3AUVv";
-          start_time -= 5;
+          start_time -= m_buffer_time;
         }
         break;
       default:

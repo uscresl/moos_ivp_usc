@@ -67,6 +67,7 @@ class SelectFormation : public CMOOSApp
     double m_own_spd;
     double m_prev_time;
     double m_lead_spd;
+    double m_buffer_time;
     
     struct LeadHistory {
       double timestamp;

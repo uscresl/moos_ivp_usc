@@ -33,7 +33,7 @@ done
 EXP_LOCATION="santafe" # santafe, arrowhead
 USE_LEADER_FOLLOWER="false"
 # inter-vehicle distance for formation (adaptive only, not for lf)
-IVD="50"
+IVD="25" # 50 for 2auvs, 25 for 3auvs
 USE_HUNGARIAN_METHOD="true" # true, false = static assignment at start
 
 SERVERHOST="localhost" #"localhost"
@@ -140,7 +140,7 @@ nsplug meta_vehicle.moos targ_$VNAME4.moos -f WARP=$TIME_WARP  \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
    LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
    LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
-   NUM_VEHICLES=$NUM_AUVS
+   NUM_VEHICLES=$NUM_AUVS  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME4.bhv -f VNAME=$VNAME4      \
     START_POS=$START_POS4 WAYPOINTS=$WAYPOINTS4                \
     START_DEPTH=$START_DEPTH4 VTYPE=$VTYPE4 LEAD_NAME=$VNAME1  \

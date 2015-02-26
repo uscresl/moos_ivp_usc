@@ -35,6 +35,7 @@ ADD_SUBDIRECTORY(pHazardPath)
 ADD_SUBDIRECTORY(pSelectFormation)
 ADD_SUBDIRECTORY(pPositionInFormation)
 ADD_SUBDIRECTORY(pFormationWptUpdater)
+ADD_SUBDIRECTORY(pNumVehicles)
 
 # get boost 1.55
 SET(BOOST_ROOT /usr/local/include/boost)

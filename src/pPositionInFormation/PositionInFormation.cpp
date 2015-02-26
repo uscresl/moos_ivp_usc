@@ -34,6 +34,7 @@ PositionInFormation::PositionInFormation()
   m_z = 0;
   m_formation = "";
   m_ownship = "";
+  m_nr_followers = 0;
 
   debug = true;
 }
@@ -94,7 +95,17 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
           m_other_vehicles.insert(std::pair<std::string, std::string>(veh_name, sval));
         findPosition();
       }
-
+    }
+    else if ( key == "NUM_VEHICLES" )
+    {
+      // change in the nr of vehicles?
+      size_t nr_followers = (size_t)dval-1;
+      if ( nr_followers != m_nr_followers )
+      {
+        // check what (potentially different) position to take on
+        findPosition();
+        m_nr_followers = nr_followers;
+      }
     }
     else
       std::cout << "pPositionInFormation :: Unhandled Mail: " << key << std::endl;
@@ -126,6 +137,11 @@ bool PositionInFormation::Iterate()
 //  size_t remainder = (size_t)(round(MOOSTime())) % 2;
 //  if ( remainder == 0 )
 //    findPosition();
+
+  // to remove obsolete follower vehicle data, i.e. if one vehicle get removed,
+  //    we need to check whether any data is old and needs to be removed from
+  //    the map
+//  cleanOtherVehiclesMap();
 
   return(true);
 }
@@ -187,6 +203,9 @@ void PositionInFormation::registerVariables()
   m_Comms.Register("NAV_Y",0);
   m_Comms.Register("NAV_Z",0);
   m_Comms.Register("NODE_REPORT",0); // need to get all vehicle data for HM
+  m_Comms.Register("NUM_VEHICLES",0); // need to get nr of vehicles in case it
+                                      // changes, so we know to recalculate
+                                      // position in formation
 }
 
 void PositionInFormation::findPosition()
@@ -200,10 +219,10 @@ void PositionInFormation::findPosition()
   unsigned int idx, nrPositions = positionsInFormationvector.size();
 
   // only need to calculate if there are more than 1 vehicle following
-  if ( m_other_vehicles.size() >= 1 && nrPositions >= 1 && (m_other_vehicles.size()+1 == nrPositions) )
+  if ( m_nr_followers >= 1 && nrPositions >= 1 && m_nr_followers == nrPositions ) //&& (m_other_vehicles.size()+1 == nrPositions) )
   {
     // construct Eigen matrix (total_num_vehicles*num_positions)
-    Eigen::MatrixXd hm_matrix( m_other_vehicles.size()+1, nrPositions);
+    Eigen::MatrixXd hm_matrix( m_nr_followers, nrPositions);
 
     // need distances for Hungarian method cost matrix
     // TODO make this 3D
@@ -223,7 +242,7 @@ void PositionInFormation::findPosition()
         std::cout << "calculated euclid distance: " << hm_matrix(0,idx) << std::endl;
       }
     }
-    // for all other vehicles, calculate distance to all positions in formation
+    // for all other vehicles, info received via acomms, calculate distance to all positions in formation
     std::map<std::string,std::string>::iterator vehicle_iter;
     size_t vnum = 1;
     for ( vehicle_iter = m_other_vehicles.begin(); vehicle_iter != m_other_vehicles.end(); ++vehicle_iter )
@@ -269,7 +288,7 @@ void PositionInFormation::findPosition()
 
     Notify("POSITION_IN_FORMATION",hm_optimal_position);
   }
-  if (m_other_vehicles.size()+1 != nrPositions && debug)
+  if ( m_nr_followers != nrPositions && debug)
   {
     std::cout << "mismatch m_other_vehicles size: " << m_other_vehicles.size()
               << "and nrPositions from DESIRED_FORMATION: " << nrPositions
@@ -290,3 +309,13 @@ void PositionInFormation::euclidDistanceFromString(std::string const & xy_str, d
   // calculate the Euclid distance, return by argument
   euclidDistance(xval, yval, vehicle_x, vehicle_y, euclidD);
 }
+
+//void PositionInFormation::cleanOtherVehiclesMap()
+//{
+//  std::map<std::string,std::string>::iterator vehicle_iter;
+//  size_t vnum = 1;
+//  for ( vehicle_iter = m_other_vehicles.begin(); vehicle_iter != m_other_vehicles.end(); ++vehicle_iter )
+//  { // for each vehicle
+//    if ( iter->first )
+//  }
+//}

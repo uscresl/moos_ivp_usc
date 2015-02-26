@@ -49,6 +49,7 @@ class PositionInFormation : public CMOOSApp
     std::string m_formation;
     std::map<std::string,std::string> m_other_vehicles;
     std::string m_ownship;
+    size_t m_nr_followers;
     bool debug;
 };
 

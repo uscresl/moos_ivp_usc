@@ -53,6 +53,7 @@ ProcessConfig = ANTLER
   Run = pMaxFormationWidth @ NewConsole = false
 #endif
 #endif
+  Run = pOtherVehicles @ NewConsole = true
 
   Run = uTimerScript @ NewConsole = false
 
@@ -104,6 +105,7 @@ ProcessConfig = ANTLER
   #ifdef VTYPE SHIP
   #include plugs/plug_pMaxFormationWidth.moos
   #endif
+  #include plugs/plug_pNumVehicles.moos
 #endif
 
 // publish some vars so I don't have to poke them
