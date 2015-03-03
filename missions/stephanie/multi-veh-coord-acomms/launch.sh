@@ -4,7 +4,7 @@
 #-------------------------------------------------------
 TIME_WARP=1
 JUST_MAKE="no"
-NUM_AUVS=1
+NUM_VEHICLES=2
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
@@ -17,9 +17,9 @@ for ARGI; do
     elif [ "${ARGI}" = "--just_build" -o "${ARGI}" = "-j" ] ; then
         JUST_MAKE="yes"
     elif [ "${ARGI}" = "--2auvs" ] ; then
-        NUM_AUVS=2
+        NUM_VEHICLES=3
     elif [ "${ARGI}" = "--3auvs" ] ; then
-        NUM_AUVS=3
+        NUM_VEHICLES=4
     else 
         printf "Bad Argument: %s \n" $ARGI
         exit 0
@@ -66,7 +66,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    IVD=$IVD    	      SERVER_HOST=$SERVERHOST                  \
    USC_DATA_DIR="$MOOSIVP_USC_HOME/data"  LEAD_NAME=$VNAME1    \
    LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
-   NUM_VEHICLES=$NUM_AUVS  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
+   NR_VEHICLES=$NUM_VEHICLES  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1 LEADER_FOLLOWER="false"
@@ -89,13 +89,13 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
    LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
    LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
-   NUM_VEHICLES=$NUM_AUVS  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
+   NR_VEHICLES=$NUM_VEHICLES  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2 LEAD_NAME=$VNAME1  \
     LEADER_FOLLOWER=$USE_LEADER_FOLLOWER
 
-if [ $NUM_AUVS -ge 2 ] ; then
+if [ $NUM_VEHICLES -ge 3 ] ; then
 VNAME3="gerard"     # The third vehicle community
 if [ "${EXP_LOCATION}" = "santafe" ] ; then
 START_POS3="1475,295"
@@ -114,14 +114,14 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
    LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
    LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
-   NUM_VEHICLES=$NUM_AUVS  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
+   NR_VEHICLES=$NUM_VEHICLES  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3 LEAD_NAME=$VNAME1  \
     LEADER_FOLLOWER=$USE_LEADER_FOLLOWER
 fi
 
-if [ $NUM_AUVS -ge 3 ] ; then
+if [ $NUM_VEHICLES -ge 4 ] ; then
 VNAME4="hendrik"     # The third vehicle community
 if [ "${EXP_LOCATION}" = "santafe" ] ; then
 START_POS4="1485,285"
@@ -140,7 +140,7 @@ nsplug meta_vehicle.moos targ_$VNAME4.moos -f WARP=$TIME_WARP  \
    IVD=$IVD           SERVER_HOST=$SERVERHOST                  \
    LEAD_NAME=$VNAME1  LEADER_FOLLOWER=$USE_LEADER_FOLLOWER     \
    LOCATION=$EXP_LOCATION  LEAD_SENSOR_RANGE=$SENSOR_RANGE     \
-   NUM_VEHICLES=$NUM_AUVS  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
+   NR_VEHICLES=$NUM_VEHICLES  HUNGARIAN_METHOD=$USE_HUNGARIAN_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME4.bhv -f VNAME=$VNAME4      \
     START_POS=$START_POS4 WAYPOINTS=$WAYPOINTS4                \
     START_DEPTH=$START_DEPTH4 VTYPE=$VTYPE4 LEAD_NAME=$VNAME1  \
@@ -167,13 +167,13 @@ printf "Launching $VNAME2 MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$VNAME2.moos > log_$VNAME2.log &
 sleep .25
 
-if [ $NUM_AUVS -ge 2 ] ; then
+if [ $NUM_VEHICLES -ge 3 ] ; then
 printf "Launching $VNAME3 MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$VNAME3.moos > log_$VNAME3.log &
 sleep .25
 fi
 
-if [ $NUM_AUVS -ge 3 ] ; then
+if [ $NUM_VEHICLES -ge 4 ] ; then
 printf "Launching $VNAME4 MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$VNAME4.moos > log_$VNAME4.log &
 sleep .25

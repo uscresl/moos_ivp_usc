@@ -1,6 +1,7 @@
 //*******************************************************
 // ShoreSide Configuration File
 // basically a community for visualization of the simulation
+// and simulating water medium
 //
 
 NoNetwork = true

@@ -25,7 +25,7 @@ ProcessConfig = ANTLER
   // moos db, moos util apps
   Run = MOOSDB             @ NewConsole = false
   Run = pLogger            @ NewConsole = false
-  Run = uProcessWatch      @ NewConsole = false
+  Run = uProcessWatch      @ NewConsole = true
 
   // vehicle sim
   Run = uSimMarine         @ NewConsole = false
@@ -48,12 +48,12 @@ ProcessConfig = ANTLER
   #ifdef HUNGARIAN_METHOD true
     Run = pPositionInFormation @ NewConsole = true
   #endif
-#endif
+  Run = pNumVehicles @ NewConsole = true
+  #endif
 #ifdef VTYPE SHIP
   Run = pMaxFormationWidth @ NewConsole = false
 #endif
 #endif
-  Run = pOtherVehicles @ NewConsole = true
 
   Run = uTimerScript @ NewConsole = false
 
@@ -101,11 +101,11 @@ ProcessConfig = ANTLER
     #include plugs/plug_pPositionInFormation.moos
   #endif
   #include plugs/plug_pFormationWptUpdater.moos
+  #include plugs/plug_pNumVehicles.moos
   #endif
   #ifdef VTYPE SHIP
   #include plugs/plug_pMaxFormationWidth.moos
   #endif
-  #include plugs/plug_pNumVehicles.moos
 #endif
 
 // publish some vars so I don't have to poke them
