@@ -34,7 +34,7 @@ SelectFormation::SelectFormation()
   
   // comms received variables
   m_allowable_height = -1.0;
-  m_num_vehicles = 1;
+  m_num_followers = 1;
   m_formation_shape = "1AUV";
   
   // parameter value variables
@@ -101,9 +101,9 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "NUM_VEHICLES" )
     {
       // get the nr of vehicles, subtract one because we know there is a leader
-      m_num_vehicles = (size_t)round(dval)-1;
+      m_num_followers = (size_t)round(dval)-1;
       new_info = true;
-      std::cout << GetAppName() << " :: m_num_vehicles set to: " << m_num_vehicles << std::endl;
+      std::cout << GetAppName() << " :: m_num_followers set to: " << m_num_followers << std::endl;
     }
     else if ( key == "NODE_REPORT" )
     {
@@ -477,7 +477,7 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
     // if less restrictive: increase start time (go into it later)
     //    2AUVh, 3AUVm, 3AUVh
     std::string new_shape = "";
-    switch ( m_num_vehicles )
+    switch ( m_num_followers )
     {
       case 1:
         new_shape = "1AUV";

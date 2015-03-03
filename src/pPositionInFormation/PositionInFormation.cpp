@@ -98,13 +98,14 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == "NUM_VEHICLES" )
     {
-      // change in the nr of vehicles?
+      // get the nr of vehicles, subtract one because we know there is a leader
       size_t nr_followers = (size_t)dval-1;
       if ( nr_followers != m_nr_followers )
       {
         // check what (potentially different) position to take on
-        findPosition();
         m_nr_followers = nr_followers;
+        findPosition();
+        std::cout << GetAppName() << " :: m_nr_followers set to: " << m_nr_followers << std::endl;
       }
     }
     else
@@ -219,7 +220,7 @@ void PositionInFormation::findPosition()
   unsigned int idx, nrPositions = positionsInFormationvector.size();
 
   // only need to calculate if there are more than 1 vehicle following
-  if ( m_nr_followers >= 1 && nrPositions >= 1 && m_nr_followers == nrPositions ) //&& (m_other_vehicles.size()+1 == nrPositions) )
+  if ( m_nr_followers > 1 && nrPositions > 1 && m_nr_followers == nrPositions ) //&& (m_other_vehicles.size()+1 == nrPositions) )
   {
     // construct Eigen matrix (total_num_vehicles*num_positions)
     Eigen::MatrixXd hm_matrix( m_nr_followers, nrPositions);
