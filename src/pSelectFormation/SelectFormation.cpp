@@ -101,9 +101,13 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "NUM_VEHICLES" )
     {
       // get the nr of vehicles, subtract one because we know there is a leader
-      m_num_followers = (size_t)round(dval)-1;
-      new_info = true;
-      std::cout << GetAppName() << " :: m_num_followers set to: " << m_num_followers << std::endl;
+      size_t nr_followers = (size_t)round(dval)-1;
+      if ( nr_followers != m_nr_followers )
+      {
+        m_num_followers = nr_followers;
+        std::cout << GetAppName() << " :: m_num_followers set to: " << m_num_followers << std::endl;
+        new_info = true;
+      }
     }
     else if ( key == "NODE_REPORT" )
     {

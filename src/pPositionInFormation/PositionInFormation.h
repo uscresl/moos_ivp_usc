@@ -45,7 +45,8 @@ class PositionInFormation : public CMOOSApp
     std::string m_lead_vehicle;
 
     // State variables
-    double m_x, m_y, m_z;
+    double m_x, m_y;
+//    , m_z;
     std::string m_formation;
     std::map<std::string,std::string> m_other_vehicles;
     std::string m_ownship;

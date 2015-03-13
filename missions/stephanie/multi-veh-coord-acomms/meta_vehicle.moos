@@ -46,9 +46,9 @@ ProcessConfig = ANTLER
   Run = pSelectFormation @ NewConsole = true
   Run = pFormationWptUpdater @ NewConsole = false
   #ifdef HUNGARIAN_METHOD true
-    Run = pPositionInFormation @ NewConsole = true
+  Run = pPositionInFormation @ NewConsole = true
   #endif
-  Run = pNumVehicles @ NewConsole = true
+  Run = pNumVehicles @ NewConsole = false
   #endif
 #ifdef VTYPE SHIP
   Run = pMaxFormationWidth @ NewConsole = false
@@ -63,7 +63,7 @@ ProcessConfig = ANTLER
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
-  Run = pShare             @ NewConsole = false
+  Run = pShare @ NewConsole = false
 
   // debugging
 //  Run = uMS @ NewConsole = false

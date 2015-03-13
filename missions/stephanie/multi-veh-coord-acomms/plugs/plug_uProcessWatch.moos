@@ -16,6 +16,14 @@ ProcessConfig = uProcessWatch
   WATCH  = pNodeReporter
   WATCH  = pMarinePID
   WATCH  = pHelmIvP
+
+#ifdef VTYPE SHIP
+  WATCH  = pMaxFormationWidth
+#endif
+#ifdef VTYPE UUV
+  WATCH  = pSelectFormation
+  WATCH  = pPositionInFormation
+#endif
 }
 
 

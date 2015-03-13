@@ -31,7 +31,7 @@ PositionInFormation::PositionInFormation()
   // class variable instantiations can go here
   m_x = 0;
   m_y = 0;
-  m_z = 0;
+//  m_z = 0;
   m_formation = "";
   m_ownship = "";
   m_nr_followers = 0;
@@ -74,12 +74,12 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     { // shape changed, re-determine position in shape
       findPosition();
     }
-    else if ( key == "NAV_X" )
-      m_x = dval;
-    else if ( key == "NAV_Y" )
-      m_y = dval;
-    else if ( key == "NAV_Z" )
-      m_z = dval;
+//    else if ( key == "NAV_X" )
+//      m_x = dval;
+//    else if ( key == "NAV_Y" )
+//      m_y = dval;
+//    else if ( key == "NAV_Z" )
+//      m_z = dval;
     else if ( key == "NODE_REPORT" )
     { // need to get all vehicle data for HM
       std::string veh_name = getStringFromNodeReport(sval, "NAME");
@@ -93,19 +93,25 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       { // insert vehicle, if not self or lead (should not receive node_report from self)
         if ( veh_name != m_ownship && veh_name != m_lead_vehicle)
           m_other_vehicles.insert(std::pair<std::string, std::string>(veh_name, sval));
+        else if ( veh_name == m_ownship )
+        {
+          // store own vehicle position
+          m_x = getDoubleFromNodeReport(sval,"X");
+          m_y = getDoubleFromNodeReport(sval,"Y");
+        }
         findPosition();
       }
     }
     else if ( key == "NUM_VEHICLES" )
     {
       // get the nr of vehicles, subtract one because we know there is a leader
-      size_t nr_followers = (size_t)dval-1;
+      size_t nr_followers = (size_t)round(dval)-1;
       if ( nr_followers != m_nr_followers )
       {
         // check what (potentially different) position to take on
         m_nr_followers = nr_followers;
-        findPosition();
         std::cout << GetAppName() << " :: m_nr_followers set to: " << m_nr_followers << std::endl;
+        findPosition();
       }
     }
     else
@@ -200,9 +206,9 @@ void PositionInFormation::registerVariables()
 {
   m_Comms.Register("DESIRED_FORMATION", 0);
   m_Comms.Register("FORMATION_SHAPE", 0);
-  m_Comms.Register("NAV_X",0);
-  m_Comms.Register("NAV_Y",0);
-  m_Comms.Register("NAV_Z",0);
+//  m_Comms.Register("NAV_X",0);
+//  m_Comms.Register("NAV_Y",0);
+//  m_Comms.Register("NAV_Z",0);
   m_Comms.Register("NODE_REPORT",0); // need to get all vehicle data for HM
   m_Comms.Register("NUM_VEHICLES",0); // need to get nr of vehicles in case it
                                       // changes, so we know to recalculate
@@ -220,10 +226,15 @@ void PositionInFormation::findPosition()
   unsigned int idx, nrPositions = positionsInFormationvector.size();
 
   // only need to calculate if there are more than 1 vehicle following
-  if ( m_nr_followers > 1 && nrPositions > 1 && m_nr_followers == nrPositions ) //&& (m_other_vehicles.size()+1 == nrPositions) )
+  // and only calculate if we have all information (avoid initialization errors)
+  if ( m_nr_followers > 1 && nrPositions > 1 && (m_nr_followers == nrPositions) && (m_other_vehicles.size()+1 == m_nr_followers) ) //&& (m_other_vehicles.size()+1 == nrPositions) )
   {
     // construct Eigen matrix (total_num_vehicles*num_positions)
     Eigen::MatrixXd hm_matrix( m_nr_followers, nrPositions);
+
+    std::cout << "OWNSHIP at " << m_x << "," << m_y << std::endl;
+    double own_x = m_x;
+    double own_y = m_y;
 
     // need distances for Hungarian method cost matrix
     // TODO make this 3D
@@ -231,17 +242,15 @@ void PositionInFormation::findPosition()
     { // own vehicle calculations
       // for each possible position, calculate Euclidean distance to it
       double euclidD;
-      euclidDistanceFromString(positionsInFormationvector[idx], m_x, m_y, euclidD);
+      euclidDistanceFromString(positionsInFormationvector[idx], own_x, own_y, euclidD);
       // store distance metric into matrix
       hm_matrix(0,idx) = euclidD;
 
-      if (debug)
-      {
-        std::cout << "OWNSHIP CALC\n";
-        std::cout << "vehicle at: " << m_x << "," << m_y << std::endl;
-        std::cout << "calculating for position: " << positionsInFormationvector[idx] << std::endl;
-        std::cout << "calculated euclid distance: " << hm_matrix(0,idx) << std::endl;
-      }
+//      if (debug)
+//      {
+//        std::cout << "calculating for position: " << positionsInFormationvector[idx] << std::endl;
+//        std::cout << "calculated euclid distance: " << hm_matrix(0,idx) << std::endl;
+//      }
     }
     // for all other vehicles, info received via acomms, calculate distance to all positions in formation
     std::map<std::string,std::string>::iterator vehicle_iter;
@@ -253,6 +262,12 @@ void PositionInFormation::findPosition()
       std::string sval = vehicle_iter->second;
       double vx = getDoubleFromNodeReport(sval, "X");
       double vy = getDoubleFromNodeReport(sval, "Y");
+      if (debug)
+      {
+        std:string vname = getStringFromNodeReport(sval,"NAME");
+        std::cout << "OTHER VEHICLE = " << vname;
+        std::cout << " at: " << vx << "," << vy << std::endl;
+      }
 
       for (idx = 0; idx < nrPositions; idx++)
       { // for each possible position, calculate Euclidean distance to it
@@ -261,25 +276,28 @@ void PositionInFormation::findPosition()
         // store distance metric into matrix
         hm_matrix(vnum, idx) = euclidD;
 
-        if (debug)
-        {
-          std::cout << "OTHER CALC\n";
-          std::cout << "(other) vehicle at: " << vx << "," << vy << std::endl;
-          std::cout << "calculating for position: " << positionsInFormationvector[idx] << std::endl;
-          std::cout << "calculated euclid distance for vehicle " << vnum+1 << ": " << hm_matrix(vnum,idx) << std::endl;
-        }
+//        if (debug)
+//        {
+//          std::cout << "calculating for position: " << positionsInFormationvector[idx] << std::endl;
+//          std::cout << "calculated euclid distance for vehicle " << vnum+1 << ": " << hm_matrix(vnum,idx) << std::endl;
+//        }
       }
       vnum++;
     }
-    if (debug)
-      std::cout << hm_matrix << std::endl;
+
+//    if (debug)
+//    {
+//      std::cout << "\nhm_matrix cols, rows: " << hm_matrix.cols() << "," << "rows: " << hm_matrix.rows() << std::endl;
+//      std::cout << hm_matrix << std::endl;
+//    }
+
 
     // pass on matrix to hungarian method solve function for optimal assignment
     HungarianMethod hu_method;
     Eigen::VectorXi hu_optimal_assignment;
     hu_optimal_assignment = hu_method.hungarian_solve(hm_matrix);
     if (debug)
-      std::cout << "optimal assignment: " << hu_optimal_assignment << std::endl;
+      std::cout << "optimal assignment: (self, other auvs)\n" << hu_optimal_assignment << '\n' << std::endl;
     
     // extract assignment for current vehicle & publish
     size_t hm_optimal_position = hu_optimal_assignment[0]+1;
@@ -289,9 +307,9 @@ void PositionInFormation::findPosition()
 
     Notify("POSITION_IN_FORMATION",hm_optimal_position);
   }
-  if ( m_nr_followers != nrPositions && debug)
+  if ( (m_nr_followers != (size_t)nrPositions) && debug)
   {
-    std::cout << "mismatch m_other_vehicles size: " << m_other_vehicles.size()
+    std::cout << "mismatch m_nr_followers: " << m_nr_followers
               << "and nrPositions from DESIRED_FORMATION: " << nrPositions
               << std::endl;
   }

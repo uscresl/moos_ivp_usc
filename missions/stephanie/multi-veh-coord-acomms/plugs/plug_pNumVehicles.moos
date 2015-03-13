@@ -7,5 +7,5 @@ ProcessConfig = pNumVehicles
   CommsTick = 2
   
   // time limit: remove node_reports older than current_time-time_limit
-  time_limit = 300 // seconds
+  time_limit = 60 // seconds
 }
