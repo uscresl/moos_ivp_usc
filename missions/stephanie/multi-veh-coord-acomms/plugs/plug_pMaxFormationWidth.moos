@@ -11,7 +11,7 @@ ProcessConfig = pMaxFormationWidth
 
   // sensor model: line segment at given range
   sensor_range = $(LEAD_SENSOR_RANGE) // meters
-  sensor_width = 60 // meters
+  sensor_width = 70 // meters
 
   // use boost WKT polygon for lake outline (assumed single polygon)
   // input format as MOOS polygons: 30,10:40,40:20,40:10,20:30,10

@@ -33,7 +33,7 @@ done
 EXP_LOCATION="santafe" # santafe, arrowhead
 USE_LEADER_FOLLOWER="false"
 # inter-vehicle distance for formation (adaptive only, not for lf)
-IVD="25" # 50 for 2auvs, 25 for 3auvs
+IVD="50" # 50 for 2auvs, 25 for 3auvs
 USE_HUNGARIAN_METHOD="true" # true, false = static assignment at start
 
 SERVERHOST="localhost" #"localhost"
