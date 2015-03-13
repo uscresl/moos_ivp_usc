@@ -56,7 +56,7 @@ class SelectFormation : public CMOOSApp
     bool debug;
     std::map<size_t,std::string> m_formation_shape_map;
     double m_allowable_height;
-    size_t m_num_followers;
+    size_t m_nr_followers;
     double m_follow_center_x, m_follow_center_y;
     std::string m_shape;
     std::string m_formation_shape;

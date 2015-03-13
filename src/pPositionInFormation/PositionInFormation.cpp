@@ -35,6 +35,7 @@ PositionInFormation::PositionInFormation()
   m_formation = "";
   m_ownship = "";
   m_nr_followers = 0;
+  m_time_limit = 300; // seconds = 5 minutes
 
   debug = true;
 }
@@ -65,14 +66,15 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
 
+    bool new_info = false;
     if ( key == "DESIRED_FORMATION" ) 
     {
       m_formation = sval;
-      findPosition();
+      new_info = true;
     }
     else if ( key == "FORMATION_SHAPE" )
     { // shape changed, re-determine position in shape
-      findPosition();
+      new_info = true;
     }
 //    else if ( key == "NAV_X" )
 //      m_x = dval;
@@ -87,19 +89,23 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( found_iterator != m_other_vehicles.end() )
       { // vehicle already in map, update value
         m_other_vehicles[veh_name] = sval;
-        findPosition();
+        m_other_vehicles_update_time[veh_name] = getDoubleFromNodeReport(sval,"UTC_TIME");
+        new_info = true;
       }
       else
       { // insert vehicle, if not self or lead (should not receive node_report from self)
         if ( veh_name != m_ownship && veh_name != m_lead_vehicle)
+        {
           m_other_vehicles.insert(std::pair<std::string, std::string>(veh_name, sval));
+          m_other_vehicles_update_time.insert(std::pair<std::string,double>(veh_name,getDoubleFromNodeReport(sval,"UTC_TIME")));
+        }
         else if ( veh_name == m_ownship )
         {
           // store own vehicle position
           m_x = getDoubleFromNodeReport(sval,"X");
           m_y = getDoubleFromNodeReport(sval,"Y");
         }
-        findPosition();
+        new_info = true;
       }
     }
     else if ( key == "NUM_VEHICLES" )
@@ -111,12 +117,14 @@ bool PositionInFormation::OnNewMail(MOOSMSG_LIST &NewMail)
         // check what (potentially different) position to take on
         m_nr_followers = nr_followers;
         std::cout << GetAppName() << " :: m_nr_followers set to: " << m_nr_followers << std::endl;
-        findPosition();
+        new_info = true;
       }
     }
     else
       std::cout << "pPositionInFormation :: Unhandled Mail: " << key << std::endl;
-      //reportRunWarning("Unhandled Mail: " + key);
+
+    if ( new_info )
+      findPosition();
   }
 
    return(true);
@@ -137,18 +145,11 @@ bool PositionInFormation::OnConnectToServer()
 
 bool PositionInFormation::Iterate()
 {
-//  // if we solve the Hungarian Method only once (at time of an update),
-//  // then, if the vehicles are close to each other, and given delays in
-//  // position updates (acomms), they may solve different problems and
-//  // still end up deciding to go to the same point.
-//  size_t remainder = (size_t)(round(MOOSTime())) % 2;
-//  if ( remainder == 0 )
-//    findPosition();
-
-  // to remove obsolete follower vehicle data, i.e. if one vehicle get removed,
+  // to remove obsolete follower vehicle data, i.e. if one vehicle gets removed,
   //    we need to check whether any data is old and needs to be removed from
   //    the map
-//  cleanOtherVehiclesMap();
+  // remove old node reports, if not recently updated
+  cleanVehicleMap();
 
   return(true);
 }
@@ -165,7 +166,6 @@ bool PositionInFormation::OnStartUp()
   m_MissionReader.EnableVerbatimQuoting(true);
   if(!m_MissionReader.GetConfiguration(GetAppName(), sParams))
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
-    //reportConfigWarning("No config block found for " + GetAppName());
 
   if(!m_MissionReader.GetValue("Community", m_ownship))
   {
@@ -187,10 +187,17 @@ bool PositionInFormation::OnStartUp()
       m_lead_vehicle= value;
       handled = true;
     }
+    else if ( (param == "time_limit") && isNumber(value) )
+    {
+      // assuming the atof works, store the val
+      m_time_limit = atof(value.c_str());
+      handled = true;
+
+      std::cout << GetAppName() << " :: set m_time_limit to be: " << m_time_limit << std::endl;
+    }
 
     if(!handled)
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
-      //reportUnhandledConfigWarning(orig);
   }
 
   registerVariables();
@@ -209,7 +216,7 @@ void PositionInFormation::registerVariables()
 //  m_Comms.Register("NAV_X",0);
 //  m_Comms.Register("NAV_Y",0);
 //  m_Comms.Register("NAV_Z",0);
-  m_Comms.Register("NODE_REPORT",0); // need to get all vehicle data for HM
+  m_Comms.Register("NODE_REPORT",0);  // need to get all vehicle data for HM
   m_Comms.Register("NUM_VEHICLES",0); // need to get nr of vehicles in case it
                                       // changes, so we know to recalculate
                                       // position in formation
@@ -227,7 +234,7 @@ void PositionInFormation::findPosition()
 
   // only need to calculate if there are more than 1 vehicle following
   // and only calculate if we have all information (avoid initialization errors)
-  if ( m_nr_followers > 1 && nrPositions > 1 && (m_nr_followers == nrPositions) && (m_other_vehicles.size()+1 == m_nr_followers) ) //&& (m_other_vehicles.size()+1 == nrPositions) )
+  if ( m_nr_followers > 1 && (m_nr_followers == nrPositions) && (m_nr_followers == (m_other_vehicles.size()+1)) )
   {
     // construct Eigen matrix (total_num_vehicles*num_positions)
     Eigen::MatrixXd hm_matrix( m_nr_followers, nrPositions);
@@ -246,11 +253,6 @@ void PositionInFormation::findPosition()
       // store distance metric into matrix
       hm_matrix(0,idx) = euclidD;
 
-//      if (debug)
-//      {
-//        std::cout << "calculating for position: " << positionsInFormationvector[idx] << std::endl;
-//        std::cout << "calculated euclid distance: " << hm_matrix(0,idx) << std::endl;
-//      }
     }
     // for all other vehicles, info received via acomms, calculate distance to all positions in formation
     std::map<std::string,std::string>::iterator vehicle_iter;
@@ -276,21 +278,9 @@ void PositionInFormation::findPosition()
         // store distance metric into matrix
         hm_matrix(vnum, idx) = euclidD;
 
-//        if (debug)
-//        {
-//          std::cout << "calculating for position: " << positionsInFormationvector[idx] << std::endl;
-//          std::cout << "calculated euclid distance for vehicle " << vnum+1 << ": " << hm_matrix(vnum,idx) << std::endl;
-//        }
       }
       vnum++;
     }
-
-//    if (debug)
-//    {
-//      std::cout << "\nhm_matrix cols, rows: " << hm_matrix.cols() << "," << "rows: " << hm_matrix.rows() << std::endl;
-//      std::cout << hm_matrix << std::endl;
-//    }
-
 
     // pass on matrix to hungarian method solve function for optimal assignment
     HungarianMethod hu_method;
@@ -329,12 +319,17 @@ void PositionInFormation::euclidDistanceFromString(std::string const & xy_str, d
   euclidDistance(xval, yval, vehicle_x, vehicle_y, euclidD);
 }
 
-//void PositionInFormation::cleanOtherVehiclesMap()
-//{
-//  std::map<std::string,std::string>::iterator vehicle_iter;
-//  size_t vnum = 1;
-//  for ( vehicle_iter = m_other_vehicles.begin(); vehicle_iter != m_other_vehicles.end(); ++vehicle_iter )
-//  { // for each vehicle
-//    if ( iter->first )
-//  }
-//}
+void PositionInFormation::cleanVehicleMap()
+{
+  size_t curr_time = round(MOOSTime());
+  std::map<std::string,double>::iterator veh_iter;
+  for ( veh_iter = m_other_vehicles_update_time.begin(); veh_iter != m_other_vehicles_update_time.end(); ++veh_iter )
+  {
+    if ( curr_time - veh_iter->second > m_time_limit )
+    {
+      m_other_vehicles_update_time.erase(veh_iter);
+      if ( m_other_vehicles.find(veh_iter->first) != m_other_vehicles.end() )
+        m_other_vehicles.erase(m_other_vehicles.find(veh_iter->first));
+    }
+  }
+}

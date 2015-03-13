@@ -8,4 +8,5 @@ ProcessConfig = pPositionInFormation
   
   // potential process parameters would go here
   lead_vehicle_name = anton
+  time_limit = 300 // for keeping vehicles, 300s = 5min
 }

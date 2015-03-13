@@ -34,7 +34,7 @@ SelectFormation::SelectFormation()
   
   // comms received variables
   m_allowable_height = -1.0;
-  m_num_followers = 1;
+  m_nr_followers = 1;
   m_formation_shape = "1AUV";
   
   // parameter value variables
@@ -104,8 +104,8 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
       size_t nr_followers = (size_t)round(dval)-1;
       if ( nr_followers != m_nr_followers )
       {
-        m_num_followers = nr_followers;
-        std::cout << GetAppName() << " :: m_num_followers set to: " << m_num_followers << std::endl;
+        m_nr_followers = nr_followers;
+        std::cout << GetAppName() << " :: m_num_followers set to: " << m_nr_followers << std::endl;
         new_info = true;
       }
     }
@@ -121,7 +121,6 @@ bool SelectFormation::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
-      //reportRunWarning("Unhandled Mail: " + key);
     
     // any of these updates will require recalculation of formation positions,
     // so let's recalculate (since not all are updated at same time, values
@@ -164,7 +163,6 @@ bool SelectFormation::OnStartUp()
   m_MissionReader.EnableVerbatimQuoting(true);
   if(!m_MissionReader.GetConfiguration(GetAppName(), sParams))
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
-    //reportConfigWarning("No config block found for " + GetAppName());
 
   STRING_LIST::iterator p;
   for(p=sParams.begin(); p!=sParams.end(); p++) 
@@ -206,7 +204,6 @@ bool SelectFormation::OnStartUp()
 
     if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
-      //reportUnhandledConfigWarning(orig);
   }
 
   registerVariables();
@@ -481,7 +478,7 @@ void SelectFormation::processReceivedWidth(std::string allowable_width)
     // if less restrictive: increase start time (go into it later)
     //    2AUVh, 3AUVm, 3AUVh
     std::string new_shape = "";
-    switch ( m_num_followers )
+    switch ( m_nr_followers )
     {
       case 1:
         new_shape = "1AUV";

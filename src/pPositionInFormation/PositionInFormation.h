@@ -40,6 +40,7 @@ class PositionInFormation : public CMOOSApp
     // Own functions
     void findPosition();
     void euclidDistanceFromString(std::string const & xy_str, double vehicle_x, double vehicle_y, double & euclidD);
+    void cleanVehicleMap();
 
     // Configuration variables
     std::string m_lead_vehicle;
@@ -49,6 +50,8 @@ class PositionInFormation : public CMOOSApp
 //    , m_z;
     std::string m_formation;
     std::map<std::string,std::string> m_other_vehicles;
+    std::map<std::string,double> m_other_vehicles_update_time;
+    double m_time_limit;
     std::string m_ownship;
     size_t m_nr_followers;
     bool debug;
