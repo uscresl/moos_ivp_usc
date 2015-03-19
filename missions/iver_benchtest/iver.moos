@@ -19,11 +19,14 @@ ProcessConfig = ANTLER
   Run = MOOSDB        @ NewConsole = false
   Run = pLogger       @ NewConsole = true
   
-  // add the bench test for iver control
+  // add the bench test for generating desired spd/hdg/depth
   Run = pIverBenchTest @ NewConsole = true
+  
+  // add the frontseat interface
+  Run = iOceanServerComms @ NewConsole = true
 }
 
-// put configs below, if diff from default
+// put configs below, if you want to adapt them from default
 
 // Logging tool (MOOSEssentials)
 ProcessConfig = pLogger
