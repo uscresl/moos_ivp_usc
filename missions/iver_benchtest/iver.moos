@@ -26,8 +26,9 @@ ProcessConfig = ANTLER
   Run = iOceanServerComms @ NewConsole = true
 }
 
-// put configs below, if you want to adapt them from default
+// put configs below
 
+//----------------------------------------------------------------------------
 // Logging tool (MOOSEssentials)
 ProcessConfig = pLogger
 {
@@ -50,3 +51,49 @@ ProcessConfig = pLogger
   //WildCardOmitPattern = *_STATUS
   WildCardExclusionLog = true
 }
+
+//----------------------------------------------------------------------------
+ProcessConfig = pIverBenchTest
+{
+    AppTick   = 1
+    CommsTick = 1
+
+    CommTimeout = 2
+}
+
+
+//----------------------------------------------------------------------------
+ProcessConfig = iOceanServerComms
+{
+    AppTick   = 1
+    CommsTick = 5
+	
+    //Frontseat Serial Port Configuration
+    port        = /dev/ttyS0
+    BaudRate    = 19200
+    handshaking = false
+    streaming   = false
+	
+    //Use Local UTM coordinate system?
+    UTM = false
+
+    //Request data from DVL?
+    DVL = true
+
+    //Request general CTD data?
+    CTD = false
+
+    //Request data string from YSI Sonde?
+    YSI = false
+
+    //Are we in salt water?  (Used for YSI sound velocity calculation.)
+    SaltWater = true
+
+    //Post NAV_* variables?
+    PostNav = true
+
+    //Constraints
+    CommTimeout =  2 //seconds
+    ServoFilter =  0 //ticks
+}
+
