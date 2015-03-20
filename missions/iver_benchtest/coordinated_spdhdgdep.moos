@@ -102,3 +102,43 @@ ProcessConfig = uTimerScript
   // Rate at which time is accelerated in execuing the script
   time_warp = 1 // match with this file's warp (at top)
 }
+
+//----------------------------------------------------------------------------
+ProcessConfig = iOceanServerComms
+{
+    AppTick   = 1
+    CommsTick = 5
+
+    //Frontseat Serial Port Configuration
+    port        = /dev/ttyS12
+    BaudRate    = 57600
+    handshaking = false
+    streaming   = false
+
+    //Use Local UTM coordinate system?
+    UTM = false
+
+    //Request data from DVL?
+    DVL = true
+
+    //Request general CTD data?
+    CTD = false
+
+    //Request data string from YSI Sonde?
+    YSI = false
+
+    //Are we in salt water?  (Used for YSI sound velocity calculation.)
+    SaltWater = true
+
+    //Post NAV_* variables?
+    PostNav = true
+
+    //Constraints
+    CommTimeout =  2 //seconds
+    ServoFilter =  0 //ticks
+
+    //Choose what to command (for bench test)
+    CommandSpeed = false
+    CommandHeading = true
+    CommandDepth = true
+}
