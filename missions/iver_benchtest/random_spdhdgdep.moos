@@ -69,8 +69,8 @@ ProcessConfig = iOceanServerComms
     CommsTick = 5
 	
     //Frontseat Serial Port Configuration
-    port        = /dev/ttyS0
-    BaudRate    = 19200
+    port        = /dev/ttyS12
+    BaudRate    = 57600
     handshaking = false
     streaming   = false
 	
@@ -95,5 +95,10 @@ ProcessConfig = iOceanServerComms
     //Constraints
     CommTimeout =  2 //seconds
     ServoFilter =  0 //ticks
+
+    //Choose what to command (for bench test)
+    CommandSpeed = false
+    CommandHeading = true
+    CommandDepth = true
 }
 
