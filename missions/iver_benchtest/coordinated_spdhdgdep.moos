@@ -1,0 +1,104 @@
+// MOOS community specs
+ServerHost = localhost
+ServerPort = 9000
+Community  = ecomapper
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = 1
+
+// Location
+LatOrigin  = 36.729529
+LongOrigin = -122.026634
+
+
+//****************************************************************************//
+// Base Processes
+//
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = false
+
+  // add uTimerScript for generating consistent desired spd/hdg/depth
+  Run = uTimerScript  @ NewConsole = true
+  // add the frontseat interface
+  Run = iOceanServerComms @ NewConsole = true
+}
+
+// Log what we do
+ProcessConfig = pLogger
+{
+  AppTick   = 8
+  CommsTick = 8
+
+  Path = ./
+  AsyncLog = true
+  FileTimeStamp = true
+
+  BridgeFrequency = 0
+  // For variables that are published in a bundle on their first post,
+  // explicitly declare their logging request
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
+  Log = APPCASE @ 0 NOSYNC
+
+  // Log everything
+  LogAuxSrc = true
+  WildCardLogging = true
+  //WildCardOmitPattern = *_STATUS
+  WildCardExclusionLog = true
+}
+
+// Need to publish: DESIRED_{SPEED,HEADING,DEPTH}
+ProcessConfig = uTimerScript
+{
+  AppTick= 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose= true// or {false}
+
+//  // Declaration of random var macro expanded in event values
+//  randvar= varname=ANG, min=0, max=359, key=at_reset
+
+  // Event(s) are the key components of the script
+  // desired speed: we do not want this for the bench test
+  event = var=DESIRED_SPEED, val=0, time=0
+  // desired heading:
+  event = var=DESIRED_HEADING, val=0, time=0
+  event = var=DESIRED_HEADING, val=45, time=4
+  event = var=DESIRED_HEADING, val=90, time=8
+  event = var=DESIRED_HEADING, val=135, time=12
+  event = var=DESIRED_HEADING, val=180, time=16
+  event = var=DESIRED_HEADING, val=225, time=20
+  event = var=DESIRED_HEADING, val=270, time=24
+  event = var=DESIRED_HEADING, val=315, time=28
+  // desired_depth
+  event = var=DESIRED_DEPTH, val=0, time=0
+  event = var=DESIRED_DEPTH, val=0.5, time=4
+  event = var=DESIRED_DEPTH, val=1, time=8
+  event = var=DESIRED_DEPTH, val=2, time=12
+  event = var=DESIRED_DEPTH, val=4, time=16
+  event = var=DESIRED_DEPTH, val=8, time=20
+  event = var=DESIRED_DEPTH, val=16, time=24
+  event = var=DESIRED_DEPTH, val=32, time=28
+
+  // If true, then script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max= nolimit // or in range [0,inf)
+  // A point when the script is reset
+  reset_time = all-posted // or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+  reset_var = UTS_RESET // or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var = UTS_STATUS // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp = 1 // match with this file's warp (at top)
+}

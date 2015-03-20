@@ -17,9 +17,9 @@ ProcessConfig = ANTLER
 
   // start MOOSDB, add a logger
   Run = MOOSDB        @ NewConsole = false
-  Run = pLogger       @ NewConsole = true
+  Run = pLogger       @ NewConsole = false
   
-  // add the bench test for generating desired spd/hdg/depth
+  // add the bench test for generating random desired spd/hdg/depth
   Run = pIverBenchTest @ NewConsole = true
   
   // add the frontseat interface
