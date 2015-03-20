@@ -69,22 +69,22 @@ ProcessConfig = uTimerScript
   event = var=DESIRED_SPEED, val=0, time=0
   // desired heading:
   event = var=DESIRED_HEADING, val=0, time=0
-  event = var=DESIRED_HEADING, val=45, time=4
-  event = var=DESIRED_HEADING, val=90, time=8
-  event = var=DESIRED_HEADING, val=135, time=12
-  event = var=DESIRED_HEADING, val=180, time=16
-  event = var=DESIRED_HEADING, val=225, time=20
-  event = var=DESIRED_HEADING, val=270, time=24
-  event = var=DESIRED_HEADING, val=315, time=28
+  event = var=DESIRED_HEADING, val=45, time=1
+  event = var=DESIRED_HEADING, val=90, time=2
+  event = var=DESIRED_HEADING, val=135, time=3
+  event = var=DESIRED_HEADING, val=180, time=4
+  event = var=DESIRED_HEADING, val=225, time=5
+  event = var=DESIRED_HEADING, val=270, time=6
+  event = var=DESIRED_HEADING, val=315, time=7
   // desired_depth
   event = var=DESIRED_DEPTH, val=0, time=0
-  event = var=DESIRED_DEPTH, val=0.5, time=4
-  event = var=DESIRED_DEPTH, val=1, time=8
-  event = var=DESIRED_DEPTH, val=2, time=12
-  event = var=DESIRED_DEPTH, val=4, time=16
-  event = var=DESIRED_DEPTH, val=8, time=20
-  event = var=DESIRED_DEPTH, val=16, time=24
-  event = var=DESIRED_DEPTH, val=32, time=28
+  event = var=DESIRED_DEPTH, val=0.5, time=1
+  event = var=DESIRED_DEPTH, val=1, time=2
+  event = var=DESIRED_DEPTH, val=2, time=3
+  event = var=DESIRED_DEPTH, val=4, time=4
+  event = var=DESIRED_DEPTH, val=8, time=5
+  event = var=DESIRED_DEPTH, val=16, time=6
+  event = var=DESIRED_DEPTH, val=32, time=7
 
   // If true, then script is paused upon launch
   paused = false
