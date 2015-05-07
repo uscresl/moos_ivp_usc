@@ -1,5 +1,7 @@
 // MOOS community specs
-ServerHost = localhost
+//CHECK: ip address shoreside laptop
+//TODO: add to script
+ServerHost = 192.168.0.206 //1.117
 ServerPort = 9100
 Community  = shoreside
 
@@ -7,6 +9,7 @@ Community  = shoreside
 MOOSTimeWarp = 1
 
 // Location: Puddingstone full
+//TODO add to file setup
 LatOrigin  = 34.0784000000111
 LongOrigin = -117.815
 
@@ -55,15 +58,15 @@ ProcessConfig = pMarineViewer
   CommsTick  = 4
 
   tiff_viewable = true
-  tiff_file     = $(USC_DATA_DIR)/maps/puddingstone_all.tif
+  tiff_file     = /home/stephanie/moos-ivp-usc/data/maps/puddingstone_all.tif
 
 //  // store the img for alogview
 //  log_the_image = true
 
   // pan, zoom to be set for puddingstone file
-  set_pan_x            = -540
-  set_pan_y            = -833
-  zoom                 = 1.5
+  set_pan_x            = 2470
+  set_pan_y            = -511
+  zoom                 = 1.1
 
   vehicles_shape_scale = 1.0
   vehicles_name_mode   = names+shortmode
@@ -105,7 +108,9 @@ ProcessConfig = pShare
   AppTick    = 4
   CommsTick  = 4
 
-  input = route =  $(SERVER_HOST):9400
+  //CHECK: IP address shoreside laptop
+  //TODO add to script
+  input = route = 192.168.0.206:9400
       //& multicast_1
 
 //  input = route =  localhost:$(SHARE_LISTEN) & multicast_1 & multicast_2

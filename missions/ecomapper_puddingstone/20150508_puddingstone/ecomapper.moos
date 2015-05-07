@@ -1,12 +1,14 @@
 // MOOS community specs
-ServerHost = localhost
+ServerHost = 192.168.1.11
 ServerPort = 9000
 Community  = ecomapper
+NoNetwork = true
 
 // warp? (increase sim speed, ok as long as no process reads system time)
 MOOSTimeWarp = 1
 
 // Location: Puddingstone full
+//TODO add to file setup
 LatOrigin  = 34.0784000000111
 LongOrigin = -117.815
 
@@ -17,23 +19,27 @@ ProcessConfig = ANTLER
 
   Run = MOOSDB        @ NewConsole = false
   Run = pLogger       @ NewConsole = false
-  Run = uProcessWatch @ NewConsole = true
+  Run = uProcessWatch @ NewConsole = false
 
   // behaviors
-  Run = pHelmIvP      @ NewConsole = true
+  Run = pHelmIvP      @ NewConsole = false
 
   // add the frontseat interface
-  #ifdef runtime
+//  #ifdef runtime
   Run = iOceanServerComms @ NewConsole = false
-  #endif
+//  #endif
   
   // node report
-  Run = pNodeReporter @ NewConsole = true
+  Run = pNodeReporter @ NewConsole = false
   
   // pShare for pMarineViewer
-  Run = pShare @ NewConsole = true
+  Run = pShare @ NewConsole = false
+
+  // MOOS-ROS bridge
+  Run = MOOS_ROS_BRIDGE  @ NewConsole = false
 }
 
+//----------------------------------------------------------------------------
 // Log what we do
 ProcessConfig = pLogger
 {
@@ -87,7 +93,7 @@ ProcessConfig = iOceanServerComms
   streaming   = false
 
   //Use Local UTM coordinate system?
-  UTM = false
+  UTM = true
 
   //Request data from DVL?
   DVL = true
@@ -99,21 +105,22 @@ ProcessConfig = iOceanServerComms
   YSI = false
 
   //Are we in salt water?  (Used for YSI sound velocity calculation.)
-  SaltWater = true
+  SaltWater = false
 
   //Post NAV_* variables?
   PostNav = true
 
   //Constraints
-  CommTimeout =  2 //seconds
+  CommTimeout =  2 //seconds (for backseat commands)
   ServoFilter =  0 //ticks
 
   //Choose what to command (for bench test)
-  CommandSpeed = false
+  CommandSpeed = true
   CommandHeading = true
   CommandDepth = true
 }
 
+//----------------------------------------------------------------------------
 // pNodeReporter (ivp): generates 'node-report' (proxy for AIS) for pMarineViewer
 // documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-tools.pdf
 ProcessConfig = pNodeReporter
@@ -125,7 +132,7 @@ ProcessConfig = pNodeReporter
   PLATFORM_LENGTH = 3 // (meters)
 }
 
-//---------------------------------------------------------
+//----------------------------------------------------------------------------
 // pShare Config Block  (Created from Plugin)
 
 ProcessConfig = pShare
@@ -133,7 +140,7 @@ ProcessConfig = pShare
   AppTick    = 4
   CommsTick  = 4
 
-  input = route =  $(SERVER_HOST):9300
+  input = route =  192.168.1.11:9300
       //& multicast_1
 
 //  input = route =  localhost:$(SHARE_LISTEN) & multicast_1 & multicast_2
@@ -161,8 +168,10 @@ ProcessConfig = pShare
 
   // if in simulation, we want to pass the node_reports to pMarineViewer,
   // purely for visualization, then add this:
-  output = NODE_REPORT_LOCAL->NODE_REPORT:localhost:9400
-  output = VIEW_*->localhost:9400
+  //CHECK ip address shoreside laptop
+  //TODO add to script
+  output = NODE_REPORT_LOCAL->NODE_REPORT:192.168.0.206:9400
+  output = VIEW_*->192.168.0.206:9400
   
   // temporary until acomms set up
   // share positions vehicles between one another
@@ -179,9 +188,16 @@ ProcessConfig = uProcessWatch
 
     WATCH = pLogger
     WATCH = pHelmIvP
-    #ifdef runtime
+//    #ifdef runtime
     WATCH = iOceanServerComms
-    #endif
+//    #endif
     WATCH = pNodeReporter
     WATCH = pShare
+}
+
+// MOOS-ROS bridge
+ProcessConfig = MOOS_ROS_BRIDGE
+{
+  AppTick    = 1
+  CommsTick  = 20
 }
