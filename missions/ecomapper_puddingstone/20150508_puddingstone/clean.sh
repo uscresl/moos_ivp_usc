@@ -39,7 +39,7 @@ fi
 #  Part 2: Do the cleaning!
 #-------------------------------------------------------
 
-rm -rf  $VERBOSE   MOOSLOG_*
+rm -rf  $VERBOSE   MOOSLog_*
 rm -f   $VERBOSE   log_*.log
 rm -f   $VERBOSE   *~
 rm -f   $VERBOSE   *.moos
