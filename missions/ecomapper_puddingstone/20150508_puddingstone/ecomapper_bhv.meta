@@ -31,7 +31,7 @@ Behavior = BHV_Waypoint
   updates   = WPT_UPDATE
 
   // bhv params
-  points = 440,950:440,1000:440,1030:400,1015:400,975:440,950
+  points = $(WAYPOINTS) //440,950:440,1000:440,1030:400,1015:400,975:440,950
   // 440,950:440,1025:440,950
   speed = 1.0   // m/s
   capture_radius = 5.0

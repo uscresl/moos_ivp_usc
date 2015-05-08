@@ -1,12 +1,12 @@
 // MOOS community specs
 //CHECK: ip address shoreside laptop
 //TODO: add to script
-ServerHost = 192.168.0.206 //1.117
-ServerPort = 9100
-Community  = shoreside
+ServerHost = $(SERVER_HOST) //192.168.0.206 //1.117
+ServerPort = $(VPORT) //9100
+Community  = $(VNAME) //shoreside
 
 // warp? (increase sim speed, ok as long as no process reads system time)
-MOOSTimeWarp = 1
+MOOSTimeWarp = $(WARP) //1
 
 // Location: Puddingstone full
 //TODO add to file setup
@@ -110,7 +110,7 @@ ProcessConfig = pShare
 
   //CHECK: IP address shoreside laptop
   //TODO add to script
-  input = route = 192.168.0.206:9400
+  input = route = $(SERVER_HOST):9400 //192.168.0.206:9400
       //& multicast_1
 
 //  input = route =  localhost:$(SHARE_LISTEN) & multicast_1 & multicast_2
