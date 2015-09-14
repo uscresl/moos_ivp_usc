@@ -193,10 +193,13 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
   double horizon_x = 0.0, horizon_y = 0.0;
   horizon_x = ( !pos_x ? lead_x + delta_x : lead_x - delta_x );
   horizon_y = ( !pos_y ? lead_y + delta_y : lead_y - delta_y );
-  // visualize
-  std::ostringstream hor_ctr;
-  hor_ctr << "x=" << horizon_x << ",y=" << horizon_y << ",label=horizon_ctr";
-  Notify("VIEW_POINT",hor_ctr.str());
+  if ( debug )
+  {
+    // visualize
+    std::ostringstream hor_ctr;
+    hor_ctr << "x=" << horizon_x << ",y=" << horizon_y << ",label=horizon_ctr";
+    Notify("VIEW_POINT",hor_ctr.str());
+  }
 
   // construct a line at sensor_range
   // old: m_num_vehicles*m_ivd; // num_veh*ivd length, at time_horizon
@@ -264,11 +267,15 @@ void MaxFormationWidth::checkUpcomingLakeOutline(double const lead_x, double con
         std::cout << "first element: " << x1 << "," << y1 << std::endl;
         std::cout << "second element: " << x2 << "," << y2 << std::endl;
       }
-      // temp, show them, so I can see what's created
-      std::ostringstream segl;
-      segl << "pts={" << x1 << "," << y1 << ":" << x2 << "," << y2
-           << "},label=intersection,edge_color=white,vertex_color=red,vertex_size=2,edge_size=1";
-      Notify("VIEW_SEGLIST",segl.str());
+
+      if ( debug )
+      {
+        // temp, show them, so I can see what's created
+        std::ostringstream segl;
+        segl << "pts={" << x1 << "," << y1 << ":" << x2 << "," << y2
+             << "},label=intersection,edge_color=white,vertex_color=red,vertex_size=2,edge_size=1";
+        Notify("VIEW_SEGLIST",segl.str());
+      }
       
       // only calculate reduced width if the line segment
       // contains the horizon center point, else, it's a little piece 

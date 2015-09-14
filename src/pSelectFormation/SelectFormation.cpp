@@ -50,7 +50,7 @@ SelectFormation::SelectFormation()
   m_lead_spd = 0;
   m_buffer_time = 15; // seconds
 
-  debug = true;
+  debug = false;
   
   m_prev_time = 0;
 }
@@ -272,11 +272,14 @@ void SelectFormation::updateFollowCenter(double const curr_time, double const le
     m_lead_hdg = getDoubleFromNodeReport(node_report,"HDG");
   }
 
-  // show on pMarineViewer
-  std::ostringstream ctr_pt;
-  ctr_pt << "x=" << m_follow_center_x << ",y=" << m_follow_center_y 
-         << ",label=follow_center";
-  Notify("VIEW_POINT",ctr_pt.str());
+  if (debug)
+  {
+    // show on pMarineViewer
+    std::ostringstream ctr_pt;
+    ctr_pt << "x=" << m_follow_center_x << ",y=" << m_follow_center_y
+           << ",label=follow_center";
+    Notify("VIEW_POINT",ctr_pt.str());
+  }
 }
 
 void SelectFormation::updateFormationShape()
