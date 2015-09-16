@@ -57,7 +57,7 @@ if [ "${SIMULATION_MODE}" = "yes" ] ; then
 fi
 if [ "${SIMULATION_MODE}" = "no" ] ; then
   SERVERHOST_EM="192.168.10.11"
-  SERVERHOST_SS="192.168.0.33"
+  SERVERHOST_SS="192.168.10.117"
 fi
 TIME_WARP=1
 
