@@ -12,26 +12,36 @@ initialize INPUT = waypoints // or 'hsd'
 
 // Waypoint control
 // documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
-Behavior = BHV_Waypoint
+Behavior = BHV_WaypointSpd
 { 
-  name      = waypoints
+  name      = waypoints_plus_spd
   pwt       = 100
 
   condition = DEPLOY = true
   condition = INPUT = waypoints
   duration = no-time-limit
   // be able to run again after completion
-  perpetual = true
+  perpetual = false //true
 
   // be able to update below bhv parameters through this var
   updates   = WPT_UPDATE
 
   // bhv params
   points = 60,-40 : 60,-160 : 150,-160 : 180,-100 : 150,-40
-  speed = 1.0   // m/s
   capture_radius = 5.0
   slip_radius = 15.0
   capture_line = true
+
+//  speed = 1.0   // m/s
+  // SK: added spd control
+  // spd_radius: outer radius wherein speed is linearly decreased,
+  //             a reasonably default may be: 2*slip_radius
+  spd_radius = 30     // m
+  // max speed: outside 'spd_radius'
+  max_speed = 2.0     // m/s
+  // min speed: inside 'capture_radius'
+  min_speed = 0.5     // m/s
+
   // track-line following
   lead = 8
   lead_damper = 1

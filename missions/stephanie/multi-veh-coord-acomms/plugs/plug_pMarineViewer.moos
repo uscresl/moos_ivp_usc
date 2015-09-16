@@ -28,9 +28,10 @@ ProcessConfig = pMarineViewer
   set_pan_y            = 148
   zoom                 = 1.98
 #endif
-  vehicles_shape_scale = 1.0
+  vehicles_shape_scale = 2.0
   vehicles_name_mode   = names+shortmode
 
+  seglist_viewable_labels = false
   marker_viewable_labels = false
   hash_viewable = true
   // do not start up comms visualization (overhead)

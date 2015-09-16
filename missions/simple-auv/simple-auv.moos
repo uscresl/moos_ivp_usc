@@ -4,7 +4,7 @@ ServerPort = 9000
 Community  = ecomapper
 
 // warp? (increase sim speed, ok as long as no process reads system time)
-MOOSTimeWarp = 1
+MOOSTimeWarp = 20
 
 // Location
 LatOrigin  = 36.729529
