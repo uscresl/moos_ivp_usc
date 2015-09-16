@@ -5,16 +5,19 @@
 TIME_WARP=1
 JUST_MAKE="no"
 
-# standard: runtime ecomapper
+# standard: runtime
 SIMULATION_MODE="no"
+
 TOPSIDE="no"
+ECOMAPPER="no"
 
 printUsage ()
 {
   printf "USAGE:\n"
   printf "%s [SWITCHES] [time_warp]   \n" $0
   printf "  --just_make, -j    \n" 
-  printf "  --simulation, -s   \n" 
+  printf "  --simulation, -s   \n"
+  printf "  --ecomapper, -e    \n"
   printf "  --topside, -t      \n" 
   printf "  --help, -h         \n" 
   exit 0;
@@ -33,6 +36,8 @@ for ARGI; do
         JUST_MAKE="yes"
     elif [ "${ARGI}" = "--simulation" -o "${ARGI}" = "-s" ] ; then
         SIMULATION_MODE="yes"
+    elif [ "${ARGI}" = "--ecomapper" -o "${ARGI}" = "-e" ] ; then
+        ECOMAPPER="yes"
     elif [ "${ARGI}" = "--topside" -o "${ARGI}" = "-t" ] ; then
         TOPSIDE="yes"
     else 
@@ -56,7 +61,7 @@ if [ "${SIMULATION_MODE}" = "no" ] ; then
 fi
 TIME_WARP=1
 
-if [ "${TOPSIDE}" = "yes" ] ; then
+if [ "${TOPSIDE}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   # create shoreside.moos
   nsplug shoreside.meta shoreside.moos -f WARP=$TIME_WARP \
      VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
@@ -64,7 +69,7 @@ if [ "${TOPSIDE}" = "yes" ] ; then
      SERVER_HOST_EM=$SERVERHOST_EM
 fi
 
-if [ "${TOPSIDE}" = "no" ] ; then
+if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   # create ecomapper.moos
   VNAME1="zoomer"        # The first  vehicle community
   START_DEPTH1="0"
@@ -96,9 +101,9 @@ if [ "${TOPSIDE}" = "yes" ] ; then
   pAntler shoreside.moos > log_shoreside.log &
 fi
 
-if [ "${TOPSIDE}" = "no" ] ; then 
+if [ "${ECOMAPPER}" = "yes" ] ; then 
   printf "Launching EcoMapper MOOS Community (WARP=%s) \n" $TIME_WARP
-  pAntler ecomapper.moos > log_ecomapper.log &
+  pAntler ecomapper.moos > log_ecomapper.log
 fi
 
 if [ "${TOPSIDE}" = "yes" ]; then
