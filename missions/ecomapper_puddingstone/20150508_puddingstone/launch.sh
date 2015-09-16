@@ -35,16 +35,18 @@ if [ "${SIMULATION_MODE}" = "yes" ] ; then
   SERVERHOST_SS="localhost"
 fi
 if [ "${SIMULATION_MODE}" = "no" ] ; then
-  SERVERHOST_EM="192.168.1.11"
-  SERVERHOST_SS="192.168.0.206"
+  SERVERHOST_EM="192.168.10.11"
+  SERVERHOST_SS="192.168.0.33"
 fi
 TIME_WARP=1
 
-# create shoreside.moos
-nsplug shoreside.meta shoreside.moos -f WARP=$TIME_WARP \
-   VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
-   SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST_SS       \
-   SERVER_HOST_EM=$SERVERHOST_EM
+if [ "${SIMULATION_MODE}" = "yes" ] ; then
+  # create shoreside.moos
+  nsplug shoreside.meta shoreside.moos -f WARP=$TIME_WARP \
+     VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
+     SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST_SS       \
+     SERVER_HOST_EM=$SERVERHOST_EM
+fi
 
 # create ecomapper.moos
 VNAME1="zoomer"        # The first  vehicle community
@@ -71,17 +73,21 @@ fi
 #-------------------------------------------------------
 #  Part 3: Launch the processes
 #-------------------------------------------------------
-printf "Launching shoreside MOOS Community (WARP=%s) \n"  $TIME_WARP
-pAntler shoreside.moos > log_shoreside.log &
+if [ "${SIMULATION_MODE}" = "yes" ] ; then
+  printf "Launching shoreside MOOS Community (WARP=%s) \n"  $TIME_WARP
+  pAntler shoreside.moos > log_shoreside.log &
+fi
 
 printf "Launching EcoMapper MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler ecomapper.moos > log_ecomapper.log &
-sleep .25
 
-printf "Done \n"
+if [ "${SIMULATION_MODE}" = "yes" ]; then
+  sleep .25
+  printf "Done \n"
 
-uMAC shoreside.moos
+  uMAC shoreside.moos
 
-printf "Killing all processes ... \n"
-kill %1 %2
-printf "Done killing processes.   \n"
+  printf "Killing all processes ... \n"
+  kill %1 %2
+  printf "Done killing processes.   \n"
+fi
