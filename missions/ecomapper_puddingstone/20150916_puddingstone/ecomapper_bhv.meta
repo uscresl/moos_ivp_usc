@@ -4,7 +4,7 @@
 
 initialize DEPLOY = true
 initialize MOOS_MANUAL_OVERRIDE = false
-initialize INPUT = loiter // or 'hsd' or 'waypoints'
+initialize INPUT = waypoints //loiter // or 'hsd' or 'waypoints'
 initialize WPT_UNDERWAY = true
 initialize SAFETY = true
 
