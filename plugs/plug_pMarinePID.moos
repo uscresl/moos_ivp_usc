@@ -1,20 +1,31 @@
 //-----------------------------------------------------
 // pMarinePID Configuration Block (created from plugin)
-
+//
+// pMarinePID (ivp): simple PID controller which produces values suitable for
+//        actuator control based on inputs from the helm. In simulation the
+//        output is consumed by the vehicle simulator rather than the vehicle
+//        actuators.
+// documentation: none currently
+//
 ProcessConfig = pMarinePID
 {
   AppTick    = 10
   CommsTick  = 10
   
   VERBOSE       = true
+  ACTIVE_START  = true
+
 #ifdef VTYPE SHIP
   DEPTH_CONTROL = false
 #endif
 #ifdef VTYPE UUV
   DEPTH_CONTROL = true
 #endif
-  ACTIVE_START  = true
-  
+
+  sim_instability = 0     // Range [0,inf)
+  tardy_helm_threshold = 2.0
+  tardy_nav_threshold  = 2.0
+
   // Yaw PID controller
   YAW_PID_KP             = 0.4
   YAW_PID_KD             = 0.1
@@ -36,7 +47,7 @@ ProcessConfig = pMarinePID
 
   //ZPID controller
   Z_TO_PITCH_PID_KP              = 0.12
-  Z_TO_PITCH_PID_KD              = 0
+  Z_TO_PITCH_PID_KD              = 1.0 //0
   Z_TO_PITCH_PID_KI              = 0.004
   Z_TO_PITCH_PID_INTEGRAL_LIMIT  = 0.05
 

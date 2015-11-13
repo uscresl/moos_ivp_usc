@@ -3,8 +3,8 @@
 
 ProcessConfig = pHelmIvP
 {
-  AppTick    = 2
-  CommsTick  = 2
+  AppTick    = 4
+  CommsTick  = 4
   
   Behaviors    = targ_$(VNAME).bhv  
   Verbose      = quiet // verbose, terse, quiet
@@ -21,5 +21,4 @@ ProcessConfig = pHelmIvP
   // EcoMapper max depth ca 200 ft ~ 61m
   Domain       = depth:0:50:101
 #endif
-
 }

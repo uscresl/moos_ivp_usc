@@ -1,4 +1,7 @@
 //--------------------------------------------------------
+// pMarineViewer (ivp): to render vehicles, history & info during sim & ops
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+//
 ProcessConfig = pMarineViewer
 {
   AppTick    = 4
@@ -33,6 +36,7 @@ ProcessConfig = pMarineViewer
 #endif
   vehicles_shape_scale = 2.0
   vehicles_name_mode   = names+shortmode
+  stale_vehicles_viewable = true
 
   seglist_viewable_labels = false
   marker_viewable_labels = false

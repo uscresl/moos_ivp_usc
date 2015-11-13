@@ -1,4 +1,7 @@
+// warp? (increase sim speed, ok as long as no process reads system time)
 MOOSTimeWarp = $(WARP)
+
+// Location ////////////////////////////////////////////////////////////////////
 
 // Lake Arrowhead
 #ifdef LOCATION arrowhead
@@ -17,3 +20,5 @@ LongOrigin = -117.959630
 LatOrigin = 34.0784000000111
 LongOrigin = -117.815
 #endif
+
+////////////////////////////////////////////////////////////////////////////////

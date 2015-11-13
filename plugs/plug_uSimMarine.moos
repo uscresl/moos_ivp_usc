@@ -1,18 +1,42 @@
 //------------------------------------------------------
 // uSimMarine Configuration Block  (Created from plugin)
-
+//
+// uSimMarine (ivp): very simple 3D vehicle simulator that considers the current
+//        vehicle pose and actuator commands and produces a new vehicle pose
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-tools.pdf
+//
 ProcessConfig = uSimMarine
 {
   AppTick   = 10
   CommsTick = 10
 
-  START_POS = $(START_POS), $(START_HDG), 0
   PREFIX    = NAV
+  // specify a start position
+  START_POS = $(START_POS), $(START_HDG), 0
 
+//  // external forces
+//  force_x       = 0
+//  force_y       = 0
+//  force_theta   = 0
+//  force_vector  = 0,0 // heading, magnitude
+
+//  // vehicle dynamics
+//  buoyancy_rate        = 0.025 // meters/sec
+//  max_acceleration     = 0     // meters/sec^2
+//  max_deceleration     = 0.5   // meters/sec^2
+//  max_depth_rate       = 0.5   // meters/sec
+//  max_depth_rate_speed = 2.0   // meters/sec
 #ifdef VTYPE UUV
   BUOYANCY_RATE    = 0.025
   MAX_DEPTH_RATE = 0.5
   MAX_DEPTH_RATE_SPEED = 2.0
 #endif
+
+//  sim_pause            = false // or {true}
+//  dual_state           = false // or {true}
+//  thrust_reflect       = false // or {true}
+//  thrust_factor        = 20    // range [0,inf)
+//  turn_rate            = 70    // range [0,100]
+//  thrust_map           = 0:0, 20:1, 40:2, 60:3, 80:5, 100:5
 }
 
