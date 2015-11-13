@@ -180,8 +180,8 @@ ProcessConfig = pMarineViewer
 //  TIFF_FILE            = forrest19.tif
 
   // where to focus
-  set_pan_x            = 0
-  set_pan_y            = 0
+  set_pan_x            = 160
+  set_pan_y            = -160
   zoom                 = 2
 
   vehicles_shape_scale = 1.5
