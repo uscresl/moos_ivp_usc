@@ -1,0 +1,25 @@
+//----------------------------------------------------
+// pHelmIvP Configuration Block
+
+ProcessConfig = pHelmIvP
+{
+  AppTick    = 2
+  CommsTick  = 2
+  
+  Behaviors    = targ_$(VNAME).bhv  
+  Verbose      = quiet // verbose, terse, quiet
+  
+  Domain       = course:0:359:360
+
+#ifdef VTYPE SHIP
+  // USC boat max speed ca 1.6 m/s
+  Domain       = speed:0:1.5:16
+#endif
+#ifdef VTYPE UUV
+  // EcoMapper max speed ca 2 m/s
+  Domain       = speed:0:2.0:21 //1.7:18//2:21
+  // EcoMapper max depth ca 200 ft ~ 61m
+  Domain       = depth:0:50:101
+#endif
+
+}

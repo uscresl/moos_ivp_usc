@@ -1,0 +1,35 @@
+//--------------------------------------------------
+// uFldShoreBroker Configuration Block
+
+ProcessConfig = uFldShoreBroker
+{
+  AppTick       = 1
+  CommsTick     = 1
+
+  // Note: [qbridge = FOO]  is shorthand for                    
+  //       [bridge = src=FOO_$V,  alias=FOO] and                
+  //       [bridge = src=FOO_ALL, alias=FOO]
+
+  bridge   = src=UHZ_OPTIONS_SUMMARY
+
+  qbridge  = DEPLOY, RETURN, NODE_REPORT, NODE_MESSAGE
+  qbridge  = MOOS_MANUAL_OVERIDE
+
+  bridge   = src=APPCAST_REQ 
+}
+
+//--------------------------------------------------
+// uFldNodeComms Configuration Block
+
+ProcessConfig = uFldNodeComms
+{
+  AppTick       = 2
+  CommsTick     = 2
+
+  comms_range          = 250 // meters
+  critical_range       = 25  // safety: always communicate own position in this range
+  min_msg_interval     = 0   // 0: unlimited
+  max_msg_length       = 0   // 0: unlimited
+  groups               = true
+  view_node_rpt_pulses = true
+}
