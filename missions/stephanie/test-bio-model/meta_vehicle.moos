@@ -1,0 +1,80 @@
+//*******************************************************
+// Vehicle Configuration File
+//
+
+// MOOS community specs
+NoNetwork = true
+ServerHost = $(SERVER_HOST)
+ServerPort = $(VPORT)
+// Community name IS the vehicle name
+Community  = $(VNAME)
+
+Simulator  = true
+
+modem_id_lookup_path = modemidlookup.txt
+modem_id = $(MODEMID)
+
+// warp the simulation?
+#include $(PLUG_DIR)/plug_origin_warp.moos
+
+//------------------------------------------------------------
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  // moos db, moos util apps
+  Run = MOOSDB             @ NewConsole = false
+  Run = pLogger            @ NewConsole = false
+  Run = uProcessWatch      @ NewConsole = true
+
+  // vehicle sim
+  Run = uSimMarine         @ NewConsole = false
+  Run = pMarinePID         @ NewConsole = false
+
+  // behaviors
+  Run = pHelmIvP           @ NewConsole = false
+
+  // generate 'node reports'
+  Run = pNodeReporter      @ NewConsole = false
+
+  // collision avoidance
+  Run = pBasicContactMgr   @ NewConsole = false
+
+  // acoustic communications
+  pAcommsHandlerConfig = -geometry,179x100+0+20
+  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+  Run = pHostInfo @ NewConsole = false ~ pHostInfo
+  Run = uFldNodeBroker @ NewConsole = false
+  Run = uFldMessageHandler @ NewConsole = false
+  Run = pShare @ NewConsole = false
+
+  // add other processes here
+}
+//------------------------------------------------------------
+
+// utils
+#include $(PLUG_DIR)/plug_pLogger.moos
+#include $(PLUG_DIR)/plug_uProcessWatch.moos
+
+// vehicle simulation
+#include $(PLUG_DIR)/plug_uSimMarine.moos
+#include $(PLUG_DIR)/plug_pMarinePID.moos
+
+// behaviors
+#include $(PLUG_DIR)/plug_pHelmIvP.moos
+
+// generate 'node reports'
+#include $(PLUG_DIR)/plug_pNodeReporter.moos
+
+// collision avoidance
+// node_reports are passed via uFldNodeBroker and pShare through shoreside
+#include $(PLUG_DIR)/plug_pBasicContactMgr.moos
+
+// simulate acoustic communications
+#include $(PLUG_DIR)/plug_pAcommsHandler.moos
+#include $(PLUG_DIR)/plug_pHostInfo.moos
+#include $(PLUG_DIR)/plug_uFldNodeBroker.moos
+#include $(PLUG_DIR)/plug_uFldMessageHandler.moos
+#include $(PLUG_DIR)/plug_pShare.moos
+
+// add other processes here
