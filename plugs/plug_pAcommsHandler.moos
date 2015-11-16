@@ -4,36 +4,7 @@ ProcessConfig = pAcommsHandler
   common {
     verbosity: DEBUG1 show_gui: true
   }
-//  load_proto_file: "formation_constraints.proto"
-//  translator_entry { protobuf_name: "FORMATION_CONSTRAINTS"
-//    trigger { type: TRIGGER_PUBLISH  moos_var: "ALLOWABLE_WIDTH_FORM" }
-//    create {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "DB_TIME"
-//      format: "%1%"
-//    }
-//    create {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "ALLOWABLE_WIDTH_FORM"
-//      format: "%4%"
-//    }
-//    create {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "ALLOWABLE_HEIGHT_FORM"
-//      format: "%5%"
-//    }
-//    publish {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "ALLOWABLE_WIDTH"
-//      format: "UTC_TIME=%1$.0lf,ALLOWABLE_WIDTH=%4%"
-//    }
-//    publish {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "ALLOWABLE_HEIGHT"
-//      format: "UTC_TIME=%1$.0lf,ALLOWABLE_HEIGHT=%5%"
-//    }
-//  }
-  load_proto_file: "acoustic_moospoke.proto"
+  load_proto_file: "$(MSG_DIR)/acoustic_moospoke.proto"
   translator_entry {  protobuf_name: "ACOUSTIC_MOOS_POKE"
     trigger {  type: TRIGGER_PUBLISH  moos_var: "ACOUSTIC_MOOS_POKE"  }
     create {  technique: TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS  moos_var: "ACOUSTIC_MOOS_POKE"  }
@@ -41,7 +12,7 @@ ProcessConfig = pAcommsHandler
       algorithm {  name: "to_upper"  output_virtual_field: 100  primary_field: 4  }
     }
   }
-  load_proto_file: "lamss_status.proto"
+  load_proto_file: "$(MSG_DIR)/lamss_status.proto"
   translator_entry {
     protobuf_name: "LamssStatus"
     trigger {
@@ -145,21 +116,6 @@ ProcessConfig = pAcommsHandler
       moos_var: "PENDING_SURFACE"
       format: "%19%"
     }
-//    create {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "MAX_CLINE_DEPTH"
-//      format: "%20%"
-//    }
-//    create {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "MIN_CLINE_DEPTH"
-//      format: "%21%"
-//    }
-//    create {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "CTR_CLINE_DEPTH"
-//      format: "%22%"
-//    }
     create {
       technique: TECHNIQUE_FORMAT
       moos_var: "ALLOWABLE_WIDTH_FORM"
@@ -317,66 +273,6 @@ ProcessConfig = pAcommsHandler
         primary_field: 2
       }
     }
-//    publish {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "%107%_MAX_CLINE_DEPTH"
-//      format: "%20%"
-//      algorithm {
-//        name: "modem_id2name"
-//        output_virtual_field: 107
-//        primary_field: 2
-//      }
-//      algorithm {
-//        name: "to_upper"
-//        output_virtual_field: 107
-//        primary_field: 2
-//      }
-//    }
-//    publish {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "%108%_MIN_CLINE_DEPTH"
-//      format: "%21%"
-//      algorithm {
-//        name: "modem_id2name"
-//        output_virtual_field: 108
-//        primary_field: 2
-//      }
-//      algorithm {
-//        name: "to_upper"
-//        output_virtual_field: 108
-//        primary_field: 2
-//      }
-//    }
-//    publish {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "%109%_CTR_CLINE_DEPTH"
-//      format: "%22%"
-//      algorithm {
-//        name: "modem_id2name"
-//        output_virtual_field: 109
-//        primary_field: 2
-//      }
-//      algorithm {
-//        name: "to_upper"
-//        output_virtual_field: 109
-//        primary_field: 2
-//      }
-//    }
-//    publish {
-//      technique: TECHNIQUE_FORMAT
-//      moos_var: "%110%_CTR_CLINE_DEPTH_UPDATE"
-//      format: "depth=%22%"
-//      algorithm {
-//        name: "modem_id2name"
-//        output_virtual_field: 110
-//        primary_field: 2
-//      }
-//      algorithm {
-//        name: "to_upper"
-//        output_virtual_field: 110
-//        primary_field: 2
-//      }
-//    }
     publish {
       technique: TECHNIQUE_FORMAT
       moos_var: "ALLOWABLE_WIDTH"
@@ -411,12 +307,6 @@ ProcessConfig = pAcommsHandler
   }
 
   queue_cfg {
-//    // prev: value base: 10, ttl 1800
-//    message_entry { protobuf_name: "FORMATION_CONSTRAINTS"  ack: false max_queue: 1 ttl: 300  value_base: 1.5
-//      role { type: SOURCE_ID  field: "_src_id" }
-//      role { type: DESTINATION_ID  field: "destination" }
-//      role { type: TIMESTAMP  field: "_time" }
-//    }
     message_entry { protobuf_name: "ACOUSTIC_MOOS_POKE"  ack: true  ttl: 1800  value_base: 10  newest_first: false
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "destination" }
@@ -438,7 +328,7 @@ ProcessConfig = pAcommsHandler
     //    duration one-way travel (1km): 1s
     //    buffer: 1s
     //    if ack: +1s
-    // currently there is ack for moos poke, not used in this sim, keeping total to 3
+    // currently there is ack for moos poke, not used in this sim, keeping total to 3s
     #ifdef NR_VEHICLES 2
     slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
     slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
@@ -453,6 +343,10 @@ ProcessConfig = pAcommsHandler
     slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
     slot { src: 7  rate: 0 type: DATA slot_seconds: 3 }
     slot { src: 8  rate: 0 type: DATA slot_seconds: 3 }
+    #endif
+    #ifndef NR_VEHICLES
+    slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
     #endif
     // 20141120:1136: rate changed from 1 to 0
   }
