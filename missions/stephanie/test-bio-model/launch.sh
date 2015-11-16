@@ -27,12 +27,13 @@ done
 # simulation set-up
 EXP_LOCATION="santafe" # santafe, arrowhead
 PLUGDIR="../../../plugs" # no leading slash
+MSGDIR="../../../modem-msgs"
 
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
    SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST       \
-   LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR
+   LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR
 
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
@@ -48,7 +49,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VPORT="9001"       SHARE_LISTEN="9301"                      \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
-   PLUG_DIR=$PLUGDIR
+   PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1
