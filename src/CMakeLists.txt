@@ -36,7 +36,6 @@ find_package( PkgConfig )
 pkg_check_modules( EIGEN3 eigen3 )
 if ( EIGEN3_FOUND )
 include( ${EIGEN3_INCLUDE_DIRS} )
-
 ADD_SUBDIRECTORY(pSelectFormation)
 ADD_SUBDIRECTORY(pPositionInFormation)
 endif()
@@ -56,6 +55,8 @@ if (Boost_FOUND)
   endif()
 endif()
 
+# Nov'15: add simulation biology
+ADD_SUBDIRECTORY(uSimBioSensor)
 
 ##############################################################################
 #                           END of CMakeLists.txt
