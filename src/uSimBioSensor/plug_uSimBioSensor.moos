@@ -1,0 +1,12 @@
+//--------------------------------------------------
+// uSimBioSensor configuration block
+//
+ProcessConfig = uSimBioSensor
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  // potential process parameters would go here
+  example1 = yes
+  example2 = 100
+}
