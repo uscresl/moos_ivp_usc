@@ -167,6 +167,7 @@ bool SimBioSensor::OnStartUp()
   runPython();
 
   registerVariables();
+
   return(true);
 }
 
@@ -215,6 +216,9 @@ bool SimBioSensor::handleMailSimBioSensorVarIn(string str)
   
   if(!valid_msg)
     std::cout << GetAppName() << " :: Unhandled SimBioSensorVarIn: " << original_msg << std::endl;
+  std::cout << GetAppName() << " :: Unhandled SimBioSensorVarIn: " << original_msg << std::endl;
+  std::cout << GetAppName() << " :: Unhandled SimBioSensorVarIn: " << original_msg << std::endl;
+    std::cout << GetAppName() << " :: Unhandled SimBioSensorVarIn: " << original_msg << std::endl;
     //reportRunWarning("Unhandled SimBioSensorVarIn:" + original_msg);
 
   if(valid_msg) 
@@ -229,12 +233,43 @@ bool SimBioSensor::handleMailSimBioSensorVarIn(string str)
 
 void SimBioSensor::runPython()
 {
-  // very high level embedding
+  // python embedding,
   // via (https://docs.python.org/2/extending/embedding.html)
-  //Py_SetProgramName();
+
   Py_Initialize();
-  //PyRun_SimpleFile("/home/stephanie/git/ipython-scripts-stephanie/testGMM.py");
-  PyRun_SimpleString("from time import time, ctime\n"
-                     "print 'Today is',ctime(time())\n");
+
+  // filename
+  // TODO make filename a parameter
+  // note, make sure the path is part of PYTHONPATH, or otherwise set here
+  PyObject *pFileName = PyUnicode_FromString((char *) "testGMM");
+  PyObject *pModule = PyImport_Import(pFileName);
+  // free memory name, now that we have module
+  Py_DECREF(pFileName);
+
+  PyObject *pFunc, *pArgs;
+  // continue to call function in file
+  if ( pModule != NULL )
+  {
+    // choose function
+    // TODO make function name parameter
+    pFunc = PyObject_GetAttrString(pModule, (char *)"create_gmm_and_save_to_file");
+
+    if ( pFunc && PyCallable_Check(pFunc) )
+    {
+      // no function arguments, so we can skip that for now
+      // no return argument, so skip that as well
+      PyObject_CallObject(pFunc, NULL);
+    }
+    // free up memory
+    Py_XDECREF(pFunc);
+    Py_DECREF(pModule);
+  }
+  else
+  {
+    // print error, exit
+    PyErr_Print();
+    std::exit(0);
+  }
+
   Py_Finalize();
 }
