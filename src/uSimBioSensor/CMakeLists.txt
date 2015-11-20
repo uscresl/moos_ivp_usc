@@ -17,5 +17,6 @@ TARGET_LINK_LIBRARIES(uSimBioSensor
    mbutil
    ${SYSTEM_LIBS}
    # whatever other libs you need
+   ${PYTHON_LIBRARIES}
 )
 

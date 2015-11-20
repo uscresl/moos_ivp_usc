@@ -31,7 +31,7 @@ class SimBioSensor : public CMOOSApp
 
  private: 
    // Own functions
-   void makeYourOwn();
+   void runPython();
 
    // Configuration variables
    std::string m_example1;
@@ -39,6 +39,13 @@ class SimBioSensor : public CMOOSApp
    // State variables
    double m_whatever;
    bool m_got_aabbcc;
+
+   // temp hardcoded vars
+   double m_min_lat;
+   double m_max_lat;
+   double m_min_lon;
+   double m_max_lon;
+
 };
 
 #endif 

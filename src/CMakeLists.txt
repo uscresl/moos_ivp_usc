@@ -35,9 +35,9 @@ ADD_SUBDIRECTORY(pHazardPath)
 find_package( PkgConfig )
 pkg_check_modules( EIGEN3 eigen3 )
 if ( EIGEN3_FOUND )
-include( ${EIGEN3_INCLUDE_DIRS} )
-ADD_SUBDIRECTORY(pSelectFormation)
-ADD_SUBDIRECTORY(pPositionInFormation)
+  include( ${EIGEN3_INCLUDE_DIRS} )
+  ADD_SUBDIRECTORY(pSelectFormation)
+  ADD_SUBDIRECTORY(pPositionInFormation)
 endif()
 ADD_SUBDIRECTORY(pFormationWptUpdater)
 ADD_SUBDIRECTORY(pNumVehicles)
@@ -56,7 +56,14 @@ if (Boost_FOUND)
 endif()
 
 # Nov'15: add simulation biology
-ADD_SUBDIRECTORY(uSimBioSensor)
+FIND_PACKAGE(PythonLibs 3.2 REQUIRED)
+if ( PYTHONLIBS_FOUND )
+  message("     found Python libs, version " ${PYTHONLIBS_VERSION_STRING})
+  message("     include dirs: " ${PYTHON_INCLUDE_DIR})
+  message("     target link libs: " ${PYTHON_LIBRARIES})
+  include_directories( ${PYTHON_INCLUDE_DIRS} )
+  ADD_SUBDIRECTORY(uSimBioSensor)
+endif()
 
 ##############################################################################
 #                           END of CMakeLists.txt

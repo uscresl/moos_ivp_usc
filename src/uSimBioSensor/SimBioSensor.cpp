@@ -15,6 +15,13 @@
 #include "math.h"
 #include <limits>
 
+// include python headers for running Python from C++
+// this generates some warning on compile, just ignore them
+// (the general advice way to get rid of the warnings is:
+//  'include Python.h first, before other includes'
+//  but even when put as first thing in header file, doesn't help here'
+#include <Python.h>
+
 using namespace std;
 
 //---------------------------------------------------------
@@ -26,6 +33,14 @@ SimBioSensor::SimBioSensor()
   m_example1 = "";
   m_example2 = -1;
   m_got_aabbcc = false;
+
+  // temporary hardcoded values for initial testing
+  // TODO take from input WKT polygon or similar
+  m_min_lat = 34.0784000000111;
+  m_max_lat = 34.0935;
+  m_min_lon = -117.815;
+  m_max_lon = -117.793099999973;
+
 }
 
 //---------------------------------------------------------
@@ -141,11 +156,15 @@ bool SimBioSensor::OnStartUp()
       m_example1 = value;
       handled = true;
     }
+    //TODO add parameter for reading in WKT polygon, rather than hardcoded
+    // min/max lat/lon
 
     if(!handled)
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
       //reportUnhandledConfigWarning(orig);
   }
+
+  runPython();
 
   registerVariables();
   return(true);
@@ -204,4 +223,18 @@ bool SimBioSensor::handleMailSimBioSensorVarIn(string str)
   }
 
   return(valid_msg);
+}
+
+// own functions ///////////////////////////////////////////////////////////////
+
+void SimBioSensor::runPython()
+{
+  // very high level embedding
+  // via (https://docs.python.org/2/extending/embedding.html)
+  //Py_SetProgramName();
+  Py_Initialize();
+  //PyRun_SimpleFile("/home/stephanie/git/ipython-scripts-stephanie/testGMM.py");
+  PyRun_SimpleString("from time import time, ctime\n"
+                     "print 'Today is',ctime(time())\n");
+  Py_Finalize();
 }
