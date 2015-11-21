@@ -22,7 +22,10 @@
 //  but even when put as first thing in header file, doesn't help here'
 #include <Python.h>
 
-using namespace std;
+// read from file
+#include <istream>
+
+//using namespace std;
 
 //---------------------------------------------------------
 // Constructor
@@ -55,15 +58,15 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
   MOOSMSG_LIST::iterator p;
   for(p=NewMail.begin(); p!=NewMail.end(); p++) {
     CMOOSMsg &msg = *p;
-    string key   = msg.GetKey();
-    string sval  = msg.GetString();
+    std::string key   = msg.GetKey();
+    std::string sval  = msg.GetString();
     // separate way for getting the double val (sval was not working for DB_UPTIME) 
     double dval  = msg.GetDouble();
 
 #if 0 // Keep these around just for template
-    string comm  = msg.GetCommunity();
+    std::string comm  = msg.GetCommunity();
     double dval  = msg.GetDouble();
-    string msrc  = msg.GetSource();
+    std::string msrc  = msg.GetSource();
     double mtime = msg.GetTime();
     bool   mdbl  = msg.IsDouble();
     bool   mstr  = msg.IsString();
@@ -122,10 +125,10 @@ bool SimBioSensor::OnStartUp()
   STRING_LIST::iterator p;
   for(p=sParams.begin(); p!=sParams.end(); p++) 
   {
-    string orig  = *p;
-    string line  = *p;
-    string param = tolower(biteStringX(line, '='));
-    string value = line;
+    std::string orig  = *p;
+    std::string line  = *p;
+    std::string param = tolower(biteStringX(line, '='));
+    std::string value = line;
 
     bool handled = false;
     if((param == "example2") && isNumber(value)) 
@@ -164,7 +167,11 @@ bool SimBioSensor::OnStartUp()
       //reportUnhandledConfigWarning(orig);
   }
 
+  // generate biomass file
   runPython();
+
+  // read biomass file
+  readBioDataFromFile();
 
   registerVariables();
 
@@ -187,20 +194,20 @@ void SimBioSensor::registerVariables()
 //            a place to do more advanced handling of the
 //            incoming message
 //
-bool SimBioSensor::handleMailSimBioSensorVarIn(string str)
+bool SimBioSensor::handleMailSimBioSensorVarIn(std::string str)
 {
   // Expected parts in string:
   std::string aa, bb, cc;
   
   // Parse and handle ack message components
   bool   valid_msg = true;
-  string original_msg = str;
+  std::string original_msg = str;
   // handle comma-separated string
-  vector<string> svector = parseString(str, ',');
+  std::vector<std::string> svector = parseString(str, ',');
   unsigned int i, vsize = svector.size();
   for(i=0; i<vsize; i++) {
-    string param = biteStringX(svector[i], '=');
-    string value = svector[i];
+    std::string param = biteStringX(svector[i], '=');
+    std::string value = svector[i];
     if(param == "aa")
       aa = value;
     else if(param == "bb")
@@ -272,4 +279,30 @@ void SimBioSensor::runPython()
   }
 
   Py_Finalize();
+}
+
+void SimBioSensor::readBioDataFromFile()
+{
+  // read from file
+  // data formatting: tab separated lon, lat, depth, bio_value
+  // latitude: north - south
+  // longitude: east - west
+  std::ifstream input_filestream;
+  // TODO make filename parameter
+  input_filestream.open("test.out", std::ios::in);
+  std::string line_read;
+  if ( input_filestream.is_open() )
+  {
+    while ( std::getline(input_filestream, line_read) )
+    {
+      std::cout << "reading: " << line_read << std::endl;
+      // nxt: split line, store values
+    }
+
+    // done with this file, close
+    input_filestream.close();
+  }
+  else
+    std::cout << "error reading file" << std::endl;
+
 }

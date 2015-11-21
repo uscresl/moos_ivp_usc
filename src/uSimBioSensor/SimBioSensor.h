@@ -32,6 +32,7 @@ class SimBioSensor : public CMOOSApp
  private: 
    // Own functions
    void runPython();
+   void readBioDataFromFile();
 
    // Configuration variables
    std::string m_example1;
