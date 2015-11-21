@@ -56,7 +56,7 @@ if (Boost_FOUND)
 endif()
 
 # Nov'15: add simulation biology
-FIND_PACKAGE(PythonLibs 3.2 REQUIRED)
+FIND_PACKAGE(PythonLibs 2.7 REQUIRED) #3.2 REQUIRED)
 if ( PYTHONLIBS_FOUND )
   message("     found Python libs, version " ${PYTHONLIBS_VERSION_STRING})
   message("     include dirs: " ${PYTHON_INCLUDE_DIR})
