@@ -290,13 +290,23 @@ void SimBioSensor::readBioDataFromFile()
   std::ifstream input_filestream;
   // TODO make filename parameter
   input_filestream.open("test.out", std::ios::in);
+
   std::string line_read;
+  std::istringstream line_stream;
   if ( input_filestream.is_open() )
   {
     while ( std::getline(input_filestream, line_read) )
     {
       std::cout << "reading: " << line_read << std::endl;
       // nxt: split line, store values
+      std::string lon, lat, depth, data;
+      line_stream.clear();
+      line_stream.str(line_read);
+      if ( line_stream >> lon >> lat >> depth >> data )
+      {
+        // store the data
+
+      }
     }
 
     // done with this file, close
