@@ -6,6 +6,8 @@
 SET(SRC
   SimBioSensor.cpp
   main.cpp
+  DataPoint.cpp
+  Location.cpp
 )
 
 ADD_EXECUTABLE(uSimBioSensor ${SRC})

@@ -24,6 +24,9 @@
 
 // read from file
 #include <istream>
+// atof
+#include <stdlib.h>
+
 
 //using namespace std;
 
@@ -43,6 +46,8 @@ SimBioSensor::SimBioSensor()
   m_max_lat = 34.0935;
   m_min_lon = -117.815;
   m_max_lon = -117.793099999973;
+
+//  m_data_pts = new std::vector<DataPoint>();
 
 }
 
@@ -119,7 +124,7 @@ bool SimBioSensor::OnStartUp()
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
   if(!m_MissionReader.GetConfiguration(GetAppName(), sParams))
-    std::cout << GetAppName() << " :: No config block found for " << GetAppName();
+    std::cout << GetAppName() << " :: No config which is not allowed because non-const member functions make NO PROMISE not to modify the obblock found for " << GetAppName();
     //reportConfigWarning("No config block found for " + GetAppName());
 
   STRING_LIST::iterator p;
@@ -305,7 +310,8 @@ void SimBioSensor::readBioDataFromFile()
       if ( line_stream >> lon >> lat >> depth >> data )
       {
         // store the data
-
+        DataPoint tmp( atof(lon.c_str()), atof(lat.c_str()), atof(depth.c_str()), atof(data.c_str()) );
+        m_data_pts.push_back( tmp );
       }
     }
 
@@ -315,4 +321,10 @@ void SimBioSensor::readBioDataFromFile()
   else
     std::cout << "error reading file" << std::endl;
 
+  std::cout << "done reading files, objects: " << m_data_pts.size() << '\n';
+  std::cout << "print:\n";
+  for ( int idx = 0; idx < m_data_pts.size(); ++idx )
+  {
+    m_data_pts.at(idx).print();
+  }
 }
