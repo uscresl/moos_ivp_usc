@@ -155,7 +155,7 @@ ProcessConfig = pHelmIvP
   CommsTick  = 4
   
   Behaviors    = simple-auv.bhv
-  Verbose      = false
+  Verbose      = verbose
 
   //             domain:min:max:steps
   Domain       = course:0:359:360
