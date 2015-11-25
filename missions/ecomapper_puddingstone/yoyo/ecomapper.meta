@@ -1,0 +1,72 @@
+// MOOS community specs
+ServerHost = $(SERVER_HOST) //192.168.1.11
+ServerPort = $(VPORT) //9000
+Community  = $(VNAME) //ecomapper
+NoNetwork = true
+#ifdef SIMULATION yes
+Simulation = true
+#endif
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = $(WARP)
+
+// Location: Puddingstone full
+//TODO add to file setup
+LatOrigin  = 34.0784000000111
+LongOrigin = -117.815
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = false
+  Run = uProcessWatch @ NewConsole = false
+
+  // behaviors
+  Run = pHelmIvP      @ NewConsole = false
+
+  // add the frontseat interface
+#ifdef SIMULATION no
+  Run = iOceanServerComms @ NewConsole = false
+#endif
+#ifdef SIMULATION yes
+  // simulate the AUV
+  Run = uSimMarine @ NewConsole = false
+  Run = pMarinePID @ NewConsole = false
+#endif
+  
+  // node report
+  Run = pNodeReporter @ NewConsole = false
+  
+  // pShare for pMarineViewer
+  Run = pShare @ NewConsole = false
+
+  // MOOS-ROS bridge
+//  Run = MOOS_ROS_BRIDGE  @ NewConsole = false
+}
+
+#include $(PLUG_DIR)/plug_pLogger.moos
+
+#include plugs/plug_pHelmIvP.moos
+
+#ifdef SIMULATION no
+#include plugs/plug_iOceanServerComms.moos
+#endif
+#ifdef SIMULATION yes
+#include plugs/plug_auv_simulation.moos
+#endif
+
+#include $(PLUG_DIR)/plug_pNodeReporter.moos
+
+#include plugs/plug_pShare.moos
+
+#include $(PLUG_DIR)/plug_uProcessWatch.moos
+
+//// MOOS-ROS bridge
+//ProcessConfig = MOOS_ROS_BRIDGE
+//{
+//  AppTick    = 1
+//  CommsTick  = 20
+//}
