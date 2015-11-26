@@ -67,7 +67,6 @@ if [ "${SIMULATION_MODE}" = "no" ] ; then
   SERVERHOST_EM="192.168.10.11"
   SERVERHOST_SS="192.168.10.117"
 fi
-TIME_WARP=1
 
 if [ "${TOPSIDE}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   # create shoreside.moos
@@ -91,7 +90,7 @@ if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
      VPORT="9001"       SHARE_LISTEN="9301"                      \
      VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
      SERVER_HOST=$SERVERHOST_EM SERVER_HOST_SS=$SERVERHOST_SS    \
-     SIMULATION=$SIMULATION_MODE  PLUG_DIR=$PLUGDIR  WARP=$TIME_WARP
+     SIMULATION=$SIMULATION_MODE  PLUG_DIR=$PLUGDIR
   nsplug ecomapper_bhv.meta ecomapper.bhv -f VNAME=$VNAME1       \
       START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
       START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1
