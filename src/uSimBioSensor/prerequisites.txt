@@ -1,0 +1,13 @@
+1. install Python (2.7)
+   $ sudo apt-get install libpython2.7 libpython2.7-dev 
+2. install FLANN (1.8.4)
+   a. Get the zip from: http://www.cs.ubc.ca/research/flann/uploads/FLANN/flann-1.8.4-src.zip
+   b. Unpack the zip
+   c. Build the code:
+      $ mkdir build
+      $ cd build
+      $ cmake ..
+      $ make
+   d. Copy the cmake module to your module directory, e.g.
+      (double-check where your cmake modules are located!)
+      $ cp cmake/FindFlann.cmake /usr/share/cmake-2.8/Modules/
