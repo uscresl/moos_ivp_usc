@@ -57,13 +57,23 @@ endif()
 
 # Nov'15: add simulation biology
 FIND_PACKAGE(PythonLibs 2.7 REQUIRED) #3.2 REQUIRED)
+FIND_PACKAGE(Flann)
 if ( PYTHONLIBS_FOUND )
   message("     found Python libs, version " ${PYTHONLIBS_VERSION_STRING})
   message("     include dirs: " ${PYTHON_INCLUDE_DIR})
   message("     target link libs: " ${PYTHON_LIBRARIES})
   include_directories( ${PYTHON_INCLUDE_DIRS} )
+endif()
+if ( FLANN_FOUND )
+  message("     found Flann libs")
+  message("     include dirs: " ${FLANN_INCLUDE_DIRS})
+  message("     target link libs: " ${FLANN_LIBRARIES})
+  include_directories(${FLANN_INCLUDE_DIRS})
+endif()
+if ( PYTHONLIBS_FOUND AND FLANN_FOUND )
   ADD_SUBDIRECTORY(uSimBioSensor)
 endif()
+
 
 ##############################################################################
 #                           END of CMakeLists.txt
