@@ -388,34 +388,51 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   flann_build_index_double(test, nn, 3, speedup, parameters)
 */
 
-  std::cout << "build index" << std::endl;
+  // AutotunedIndexParams(float target_precision = 0.8, float build_weight = 0.01, float memory_weight = 0, float sample_fraction = 0.1)
+  std::cout << "init index" << std::endl;
+  flann::Index<flann::L2<float> > index(test, flann::LinearIndexParams());
+//                                        flann::KDTreeIndexParams(4));
+//                                        flann::AutotunedIndexParams(0.8,0.01,0,0.1)); // 80% precision
 
-  flann::Index<flann::L2<float> > index(test, flann::AutotunedIndexParams(0.8,0.01,0,0.1)); // 80% precision
+  std::cout << "build index" << std::endl;
   index.buildIndex();
 
-  flann::Matrix<float> dists;
-  flann::Matrix<size_t> indices;
-  dists = flann::Matrix<float>(new float[nn*3], nn, 3);
-  indices = flann::Matrix<size_t>(new size_t[nn*3], nn, 3);
+  std::cout << "prep dists, indices" << std::endl;
+
+  // prep data structs for storing result, automatically resized as needed
+  std::vector< std::vector<int> > indices;
+  std::vector< std::vector<float> > dists;
 
   std::cout << "create query point" << std::endl;
-
-  //float query[1][3];
-  // some test point
+  // some random test point TODO take AUV position
   flann::Matrix<float> query(new float[1*3], 1, 3);
   query[0][0] = 0.0;
   query[0][1] = 0.0;
   query[0][2] = 0.0;
+  std::cout << "query created with " << query.rows << " entries" << std::endl;
 
   std::cout << "run kNN" << std::endl;
-
   // nr of nearest neighbors to search for
-  size_t k = 1;
-  index.knnSearch(query, indices, dists, k, flann::SearchParams(flann::FLANN_CHECKS_AUTOTUNED) );
+  size_t k_neighbors = 1;
+  // run kNN, standard search
+  index.knnSearch(query, indices, dists, k_neighbors, flann::SearchParams(-1)); //flann::FLANN_CHECKS_AUTOTUNED) );
   // returned are: indices of, and distances to, the neighbors found
 
-  std::cout << "Rows: " << indices.rows << '\n';
-  std::cout << "Cols: " << indices.cols << '\n';
+  std::cout << "Dists: " << dists.size() << '\n';
+  std::cout << " dists inner: " << (dists.at(0)).size() << '\n';
+  std::cout << "Indices: " << indices.size() << '\n';
+  std::cout << " indices inner: " << (indices.at(0)).size() << '\n';
+
+  std::cout << "*dist: " << (dists.at(0)).at(0) << '\n';
+  size_t ind = (indices.at(0)).at(0);
+  std::cout << "*indi: " << ind << '\n';
+
+  std::cout << "*best pt: " << test[ind][0] << ", " << test[ind][1] << ", "
+            << test[ind][2] << std::endl;
+  std::cout << "random nbr for test: " << test[ind+1][0] << ", "
+            << test[ind+1][1] << ", " << test[ind+1][2] << std::endl;
+
+  // WORKING :D
 
   m_test = 0;
 }
