@@ -34,6 +34,7 @@ class SimBioSensor : public CMOOSApp
    // Own functions
    void runPython();
    void readBioDataFromFile();
+   void findClosestDataPoint(); //Location vehicle, DataPoint& closest);
 
    // Configuration variables
    std::string m_example1;
@@ -50,6 +51,9 @@ class SimBioSensor : public CMOOSApp
 
    // data
    std::vector<DataPoint> m_data_pts;
+
+   // temp
+   size_t m_test;
 };
 
 #endif 

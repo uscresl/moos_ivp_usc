@@ -27,6 +27,9 @@
 // atof
 #include <stdlib.h>
 
+// FLANN
+#include <flann/flann.hpp>
+#include <flann/io/hdf5.h>
 
 //using namespace std;
 
@@ -49,6 +52,7 @@ SimBioSensor::SimBioSensor()
 
 //  m_data_pts = new std::vector<DataPoint>();
 
+  m_test = 0;
 }
 
 //---------------------------------------------------------
@@ -87,6 +91,15 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
       // let's check if we can quit the application
       RequestQuit();
     }
+    else if ( key == "NODE_REPORT_LOCAL" )
+    {
+      //handle
+      double test_lon = 0.0;
+      double test_lat = 0.0;
+      double test_depth = 0.0;
+      Location test_loc = Location(test_lon, test_lat, test_depth);
+
+    }
     else
       std::cout << "uSimBioSensor :: Unhandled Mail: " << key << std::endl;
       //reportRunWarning("Unhandled Mail: " + key);
@@ -110,6 +123,12 @@ bool SimBioSensor::OnConnectToServer()
 
 bool SimBioSensor::Iterate()
 {
+  std::cout << "iterate, test = " << m_test << std::endl;
+  if ( m_test == 1 )
+  {
+    findClosestDataPoint();
+  }
+
   return(true);
 }
 
@@ -192,6 +211,11 @@ void SimBioSensor::registerVariables()
 {
   m_Comms.Register("SIMBIOSENSOR_VAR_IN", 0);
   m_Comms.Register("SIMBIOSENSOR_VAR_IN2", 0);
+
+  // get current vehicle position
+  // because we want lon/lat/depth at the same time, we might as well use
+  // the node report
+  m_Comms.Register("NODE_REPORT_LOCAL", 0);
 }
 
 //---------------------------------------------------------
@@ -262,7 +286,11 @@ void SimBioSensor::runPython()
   // continue to call function in file
   if ( pModule != NULL )
   {
-    // choose function
+    // choose function  std::cout << "print:\n";
+    for ( int idx = 0; idx < m_data_pts.size(); ++idx )
+    {
+      m_data_pts.at(idx).print();
+    }
     // TODO make function name parameter
     pFunc = PyObject_GetAttrString(pModule, (char *)"create_gmm_and_save_to_file");
 
@@ -302,7 +330,7 @@ void SimBioSensor::readBioDataFromFile()
   {
     while ( std::getline(input_filestream, line_read) )
     {
-      std::cout << "reading: " << line_read << std::endl;
+//      std::cout << "reading: " << line_read << std::endl;
       // nxt: split line, store values
       std::string lon, lat, depth, data;
       line_stream.clear();
@@ -322,9 +350,72 @@ void SimBioSensor::readBioDataFromFile()
     std::cout << "error reading file" << std::endl;
 
   std::cout << "done reading files, objects: " << m_data_pts.size() << '\n';
-  std::cout << "print:\n";
-  for ( int idx = 0; idx < m_data_pts.size(); ++idx )
+//  std::cout << "print:\n";
+//  for ( int idx = 0; idx < m_data_pts.size(); ++idx )
+//  {
+//    m_data_pts.at(idx).print();
+//  }
+
+  m_test = 1;
+}
+
+void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closest)
+{
+  // call FLANN
+  std::cout << "start" << std::endl;
+
+  size_t nn = m_data_pts.size();
+
+  //float test_arr [nn][3];
+
+  std::cout << "reformat data" << std::endl;
+
+  // Matrix(T* data_, size_t rows_, size_t cols_, size_t stride_ = 0)
+  flann::Matrix<float> test(new float[nn*3], nn, 3);
+  for ( int idx = 0; idx < nn; ++idx )
   {
-    m_data_pts.at(idx).print();
+    DataPoint dp = m_data_pts.at(idx);
+    // serialize data
+    test[idx][0] = dp.data_location().lon();
+    test[idx][1] = dp.data_location().lat();
+    test[idx][2] = dp.data_location().depth();
   }
+
+/*
+  C code:
+  //flann_build_index_double(dataset, n rows, 3 columns, speedup?, parameters)
+  float * speedup;
+  flann_build_index_double(test, nn, 3, speedup, parameters)
+*/
+
+  std::cout << "build index" << std::endl;
+
+  flann::Index<flann::L2<float> > index(test, flann::AutotunedIndexParams(0.8,0.01,0,0.1)); // 80% precision
+  index.buildIndex();
+
+  flann::Matrix<float> dists;
+  flann::Matrix<size_t> indices;
+  dists = flann::Matrix<float>(new float[nn*3], nn, 3);
+  indices = flann::Matrix<size_t>(new size_t[nn*3], nn, 3);
+
+  std::cout << "create query point" << std::endl;
+
+  //float query[1][3];
+  // some test point
+  flann::Matrix<float> query(new float[1*3], 1, 3);
+  query[0][0] = 0.0;
+  query[0][1] = 0.0;
+  query[0][2] = 0.0;
+
+  std::cout << "run kNN" << std::endl;
+
+  // nr of nearest neighbors to search for
+  size_t k = 1;
+  index.knnSearch(query, indices, dists, k, flann::SearchParams(flann::FLANN_CHECKS_AUTOTUNED) );
+  // returned are: indices of, and distances to, the neighbors found
+
+  std::cout << "Rows: " << indices.rows << '\n';
+  std::cout << "Cols: " << indices.cols << '\n';
+
+  m_test = 0;
 }
