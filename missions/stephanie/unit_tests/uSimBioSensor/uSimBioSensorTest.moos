@@ -23,6 +23,9 @@ ProcessConfig = ANTLER
   Run = pLogger       @ NewConsole = true
 
   Run = uSimBioSensor @ NewConsole = true
+
+  // simulate NODE_REPORT_LOCAL
+  Run = uTimerScript  @ NewConsole = true
 }
 
 // Logging tool (MOOSEssentials)
@@ -62,4 +65,36 @@ ProcessConfig = uSimBioSensor
   // potential process parameters would go here
   example1 = yes
   example2 = 10
+}
+
+ProcessConfig = uTimerScript
+{
+  AppTick= 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose= true// or {false}
+
+  // Declaration of random var macro expanded in event values
+  randvar= varname=ANG, min=0, max=359, key=at_reset
+
+  // Event(s) are the key components of the script
+//  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
+  event = var=NODE_REPORT_LOCAL, val="LON=-117.810,LAT=34.0786,DEP=4.5", time=10
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max= nolimit// or in range [0,inf)
+  // A point when the script is reset
+  reset_time= none// or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+  reset_var= UTS_RESET// or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var= UTS_STATUS // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp= $(WARP)
 }
