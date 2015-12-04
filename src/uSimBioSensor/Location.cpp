@@ -32,3 +32,23 @@ void Location::print() const
   std::cout << "Location (lon, lat, depth): " << m_lon << ", " << m_lat << ", "
             << m_depth << std::endl;
 }
+
+// operator overloading
+
+bool Location::operator< ( Location const & other ) const
+{
+  if ( this->lon() > other.lon() )
+    return false;
+  if ( this->lat() > other.lat() )
+    return false;
+  if ( this->depth() > other.depth() )
+    return false;
+  return true;
+}
+
+bool Location::operator ==( Location const & other ) const
+{
+  if ( this->lon() == other.lon() && this->lat() == other.lat() && this->depth() == other.depth() )
+    return true;
+  return false;
+}

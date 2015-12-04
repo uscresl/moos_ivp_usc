@@ -54,7 +54,8 @@ class SimBioSensor : public CMOOSApp
    double m_veh_depth;
 
    // data
-   std::vector<DataPoint> m_data_pts;
+   std::vector<Location> m_locations;
+   std::map<Location, double> m_data_at_loc;
 
    // temp
    size_t m_test;

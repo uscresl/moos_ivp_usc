@@ -105,8 +105,6 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
       m_veh_lat = getDoubleFromNodeReport(sval,"LAT");
       m_veh_depth = getDoubleFromNodeReport(sval,"DEP");
 
-      //Location test_loc = Location(test_lon, test_lat, test_depth);
-      //findClosestDataPoint();
       if ( m_test == 0 )
         m_test = 1;
     }
@@ -296,11 +294,8 @@ void SimBioSensor::runPython()
   // continue to call function in file
   if ( pModule != NULL )
   {
-    // choose function  std::cout << "print:\n";
-    for ( int idx = 0; idx < m_data_pts.size(); ++idx )
-    {
-      m_data_pts.at(idx).print();
-    }
+    // choose function
+
     // TODO make function name parameter
     pFunc = PyObject_GetAttrString(pModule, (char *)"create_gmm_and_save_to_file");
 
@@ -343,7 +338,6 @@ void SimBioSensor::readBioDataFromFile()
   {
     while ( std::getline(input_filestream, line_read) )
     {
-//      std::cout << "reading: " << line_read << std::endl;
       // nxt: split line, store values
       std::string lon, lat, depth, data;
       line_stream.clear();
@@ -351,8 +345,9 @@ void SimBioSensor::readBioDataFromFile()
       if ( line_stream >> lon >> lat >> depth >> data )
       {
         // store the data
-        DataPoint tmp( atof(lon.c_str()), atof(lat.c_str()), atof(depth.c_str()), atof(data.c_str()) );
-        m_data_pts.push_back( tmp );
+        Location tmp( atof(lon.c_str()), atof(lat.c_str()), atof(depth.c_str()) );
+        m_locations.push_back( tmp );
+        m_data_at_loc.insert( std::pair<Location,double>(tmp, (double)atof(data.c_str())) );
       }
     }
 
@@ -362,12 +357,7 @@ void SimBioSensor::readBioDataFromFile()
   else
     std::cout << "error reading file" << std::endl;
 
-  std::cout << "done reading files, objects: " << m_data_pts.size() << '\n';
-//  std::cout << "print:\n";
-//  for ( int idx = 0; idx < m_data_pts.size(); ++idx )
-//  {
-//    m_data_pts.at(idx).print();
-//  }
+  std::cout << "done reading files, objects: " << m_locations.size() << '\n';
 
   if ( m_veh_lat != 0 )
     m_test = 1;
@@ -378,9 +368,7 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   // call FLANN
   std::cout << "start" << std::endl;
 
-  size_t nn = m_data_pts.size();
-
-  //float test_arr [nn][3];
+  size_t nn = m_locations.size();
 
   std::cout << "reformat data" << std::endl;
 
@@ -388,11 +376,11 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   flann::Matrix<float> test(new float[nn*3], nn, 3);
   for ( int idx = 0; idx < nn; ++idx )
   {
-    DataPoint dp = m_data_pts.at(idx);
+    Location loc = m_locations.at(idx);
     // serialize data
-    test[idx][0] = dp.data_location().lon();
-    test[idx][1] = dp.data_location().lat();
-    test[idx][2] = dp.data_location().depth();
+    test[idx][0] = loc.lon();
+    test[idx][1] = loc.lat();
+    test[idx][2] = loc.depth();
   }
 
 /*
@@ -440,7 +428,13 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   std::cout << "*best pt: " << test[ind][0] << ", " << test[ind][1] << ", "
             << test[ind][2] << std::endl;
 
+  Location pt_found(test[ind][0], test[ind][1], test[ind][2]);
+  double data = m_data_at_loc.at(pt_found);
+
+  std::cout << "value: " << data << std::endl;
   // WORKING :D
+
+  m_Comms.Notify("SIM_DATA", data);
 
   m_test = 0;
 }

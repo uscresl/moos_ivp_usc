@@ -15,6 +15,10 @@ class Location
 
     void print() const;
 
+    // operator overloading
+    bool operator< ( Location const & other ) const;
+    bool operator== ( Location const & other ) const;
+
   private:
     double m_lon;
     double m_lat;
