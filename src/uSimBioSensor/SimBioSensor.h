@@ -49,6 +49,10 @@ class SimBioSensor : public CMOOSApp
    double m_min_lon;
    double m_max_lon;
 
+   double m_veh_lon;
+   double m_veh_lat;
+   double m_veh_depth;
+
    // data
    std::vector<DataPoint> m_data_pts;
 

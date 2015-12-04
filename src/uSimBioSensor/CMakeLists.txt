@@ -22,5 +22,6 @@ TARGET_LINK_LIBRARIES(uSimBioSensor
    ${PYTHON_LIBRARIES}
    hdf5
    ${FLANN_LIBRARIES}
+   uscutil
 )
 

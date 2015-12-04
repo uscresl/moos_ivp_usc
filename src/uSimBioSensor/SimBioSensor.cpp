@@ -31,6 +31,9 @@
 #include <flann/flann.hpp>
 #include <flann/io/hdf5.h>
 
+// handle node report
+#include "USCutils.h"
+
 //using namespace std;
 
 //---------------------------------------------------------
@@ -49,6 +52,10 @@ SimBioSensor::SimBioSensor()
   m_max_lat = 34.0935;
   m_min_lon = -117.815;
   m_max_lon = -117.793099999973;
+
+  m_veh_lon = 0;
+  m_veh_lat = 0;
+  m_veh_depth = 0;
 
 //  m_data_pts = new std::vector<DataPoint>();
 
@@ -94,11 +101,14 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "NODE_REPORT_LOCAL" )
     {
       //handle
-      double test_lon = 0.0;
-      double test_lat = 0.0;
-      double test_depth = 0.0;
-      Location test_loc = Location(test_lon, test_lat, test_depth);
+      m_veh_lon = getDoubleFromNodeReport(sval,"LON");
+      m_veh_lat = getDoubleFromNodeReport(sval,"LAT");
+      m_veh_depth = getDoubleFromNodeReport(sval,"DEP");
 
+      //Location test_loc = Location(test_lon, test_lat, test_depth);
+      //findClosestDataPoint();
+      if ( m_test == 0 )
+        m_test = 1;
     }
     else
       std::cout << "uSimBioSensor :: Unhandled Mail: " << key << std::endl;
@@ -296,6 +306,9 @@ void SimBioSensor::runPython()
 
     if ( pFunc && PyCallable_Check(pFunc) )
     {
+      // TODO: input arguments
+      //      PyObject  *args = PyTuple_New(5);
+
       // no function arguments, so we can skip that for now
       // no return argument, so skip that as well
       PyObject_CallObject(pFunc, NULL);
@@ -356,7 +369,8 @@ void SimBioSensor::readBioDataFromFile()
 //    m_data_pts.at(idx).print();
 //  }
 
-  m_test = 1;
+  if ( m_veh_lat != 0 )
+    m_test = 1;
 }
 
 void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closest)
@@ -406,10 +420,11 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   std::cout << "create query point" << std::endl;
   // some random test point TODO take AUV position
   flann::Matrix<float> query(new float[1*3], 1, 3);
-  query[0][0] = 0.0;
-  query[0][1] = 0.0;
-  query[0][2] = 0.0;
+  query[0][0] = m_veh_lon;
+  query[0][1] = m_veh_lat;
+  query[0][2] = m_veh_depth;
   std::cout << "query created with " << query.rows << " entries" << std::endl;
+  std::cout << "content: " << m_veh_lon << " " << m_veh_lat << " " << m_veh_depth << '\n' << std::endl;
 
   std::cout << "run kNN" << std::endl;
   // nr of nearest neighbors to search for
@@ -418,19 +433,12 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   index.knnSearch(query, indices, dists, k_neighbors, flann::SearchParams(-1)); //flann::FLANN_CHECKS_AUTOTUNED) );
   // returned are: indices of, and distances to, the neighbors found
 
-  std::cout << "Dists: " << dists.size() << '\n';
-  std::cout << " dists inner: " << (dists.at(0)).size() << '\n';
-  std::cout << "Indices: " << indices.size() << '\n';
-  std::cout << " indices inner: " << (indices.at(0)).size() << '\n';
-
   std::cout << "*dist: " << (dists.at(0)).at(0) << '\n';
   size_t ind = (indices.at(0)).at(0);
   std::cout << "*indi: " << ind << '\n';
 
   std::cout << "*best pt: " << test[ind][0] << ", " << test[ind][1] << ", "
             << test[ind][2] << std::endl;
-  std::cout << "random nbr for test: " << test[ind+1][0] << ", "
-            << test[ind+1][1] << ", " << test[ind+1][2] << std::endl;
 
   // WORKING :D
 
