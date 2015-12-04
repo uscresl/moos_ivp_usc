@@ -11,7 +11,7 @@ DataPoint::DataPoint()
 DataPoint::DataPoint(double lon, double lat,
                      double depth, double value)
   :
-    m_location(lat, lon, depth),
+    m_location(lon, lat, depth),
     m_value(value)
 {
 }
