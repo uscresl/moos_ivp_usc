@@ -151,7 +151,7 @@ bool SimBioSensor::OnStartUp()
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
   if(!m_MissionReader.GetConfiguration(GetAppName(), sParams))
-    std::cout << GetAppName() << " :: No config which is not allowed because non-const member functions make NO PROMISE not to modify the obblock found for " << GetAppName();
+    std::cout << GetAppName() << " :: No config block found for " << GetAppName();
     //reportConfigWarning("No config block found for " + GetAppName());
 
   STRING_LIST::iterator p;
@@ -383,13 +383,6 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
     test[idx][2] = loc.depth();
   }
 
-/*
-  C code:
-  //flann_build_index_double(dataset, n rows, 3 columns, speedup?, parameters)
-  float * speedup;
-  flann_build_index_double(test, nn, 3, speedup, parameters)
-*/
-
   // AutotunedIndexParams(float target_precision = 0.8, float build_weight = 0.01, float memory_weight = 0, float sample_fraction = 0.1)
   std::cout << "init index" << std::endl;
   flann::Index<flann::L2<float> > index(test, flann::LinearIndexParams());
@@ -405,14 +398,10 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   std::vector< std::vector<int> > indices;
   std::vector< std::vector<float> > dists;
 
-  std::cout << "create query point" << std::endl;
-  // some random test point TODO take AUV position
   flann::Matrix<float> query(new float[1*3], 1, 3);
   query[0][0] = m_veh_lon;
   query[0][1] = m_veh_lat;
   query[0][2] = m_veh_depth;
-  std::cout << "query created with " << query.rows << " entries" << std::endl;
-  std::cout << "content: " << m_veh_lon << " " << m_veh_lat << " " << m_veh_depth << '\n' << std::endl;
 
   std::cout << "run kNN" << std::endl;
   // nr of nearest neighbors to search for
@@ -421,17 +410,12 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   index.knnSearch(query, indices, dists, k_neighbors, flann::SearchParams(-1)); //flann::FLANN_CHECKS_AUTOTUNED) );
   // returned are: indices of, and distances to, the neighbors found
 
-  std::cout << "*dist: " << (dists.at(0)).at(0) << '\n';
-  size_t ind = (indices.at(0)).at(0);
-  std::cout << "*indi: " << ind << '\n';
-
-  std::cout << "*best pt: " << test[ind][0] << ", " << test[ind][1] << ", "
-            << test[ind][2] << std::endl;
-
   Location pt_found(test[ind][0], test[ind][1], test[ind][2]);
   double data = m_data_at_loc.at(pt_found);
 
-  std::cout << "value: " << data << std::endl;
+  std::cout << GetAppName() << "*best pt: " << test[ind][0] << ", " << test[ind][1] << ", "
+            << test[ind][2] << '\n';
+  std::cout << GetAppName() << "*value: " << data << std::endl;
   // WORKING :D
 
   m_Comms.Notify("SIM_DATA", data);
