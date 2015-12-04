@@ -25,7 +25,7 @@ done
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
 # simulation set-up
-EXP_LOCATION="santafe" # santafe, arrowhead
+EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
 PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="../../../modem-msgs"
 
@@ -39,9 +39,9 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 START_HEADING="230"
 
 VNAME1="anna"        # The first  vehicle community
-START_DEPTH1="0"
-START_POS1="1450,275"
-WAYPOINTS1="1355,220:1235,165:1180,130:1120,160:1190,200:1280,250:1385,290:1330,300:1160,255:1110,300:1065,350:1080,415:950,400:940,310:1075,330:1150,255:1490,295"
+START_DEPTH1="5"
+START_POS1="460,935"
+WAYPOINTS1="440,940:300,1000:600,1000:600,1100:400,1000"
 MODEMID1="1"
 VTYPE1="UUV" # UUV, SHIP
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \

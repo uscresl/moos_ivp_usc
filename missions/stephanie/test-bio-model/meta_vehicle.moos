@@ -49,6 +49,7 @@ ProcessConfig = ANTLER
   Run = pShare @ NewConsole = false
 
   // add other processes here
+  Run = uSimBioSensor @ NewConsole = true
 }
 //------------------------------------------------------------
 
@@ -78,3 +79,16 @@ ProcessConfig = ANTLER
 #include $(PLUG_DIR)/plug_pShare.moos
 
 // add other processes here
+
+//--------------------------------------------------
+// uSimBioSensor configuration block
+//
+ProcessConfig = uSimBioSensor
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // potential process parameters would go here
+  example1 = yes
+  example2 = 10
+}
