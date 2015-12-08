@@ -1,0 +1,8 @@
+// data read from BoundingBox geotiffinfo() CornerCoords (use matlab)
+lat_north = 34.09124
+lat_south = 34.0861950000026
+lon_west = -117.81332
+lon_east = -117.805828999996
+// for now, set to bottom left corner
+datum_lat = 34.0861950000026
+datum_lon = -117.81332
