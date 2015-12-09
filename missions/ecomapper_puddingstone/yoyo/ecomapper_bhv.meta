@@ -214,7 +214,7 @@ Behavior = BHV_OpRegion
   condition  = SAFETY = true
   updates    = OPREGION_UPDATE
 
-  polygon = 400,940:400,1045:600,1300:800,1300:800,940
+  polygon = 400,940:400,1045:480,1215:600,1300:700,1300:700,940
   // 470,935:395,910:340,920:255,965:255,1035:335,1035:480,1035:480,975
   //             polygon = pts="0,-100:0,-200:150,-200:150,-100"
   trigger_entry_time = 1

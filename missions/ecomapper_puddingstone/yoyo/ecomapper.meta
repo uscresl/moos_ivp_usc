@@ -11,9 +11,7 @@ Simulation = true
 MOOSTimeWarp = $(WARP)
 
 // Location: Puddingstone full
-//TODO add to file setup
-LatOrigin  = 34.0784000000111
-LongOrigin = -117.815
+#include $(PLUG_DIR)/plug_origin_warp.moos
 
 // Antler: list which processes to start
 ProcessConfig = ANTLER

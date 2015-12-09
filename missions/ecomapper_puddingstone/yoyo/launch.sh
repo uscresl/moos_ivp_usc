@@ -56,7 +56,7 @@ fi
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
 # simulation set-up
-
+LAKE="puddingstone_bathy"
 PLUGDIR="../../../plugs" # no leading slash
 
 if [ "${SIMULATION_MODE}" = "yes" ] ; then
@@ -73,7 +73,7 @@ if [ "${TOPSIDE}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   nsplug shoreside.meta shoreside.moos -f WARP=$TIME_WARP \
      VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
      SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST_SS       \
-     SERVER_HOST_EM=$SERVERHOST_EM  PLUG_DIR=$PLUGDIR
+     SERVER_HOST_EM=$SERVERHOST_EM  PLUG_DIR=$PLUGDIR  LOCATION=$LAKE
 fi
 
 if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
@@ -82,7 +82,8 @@ if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   START_DEPTH1="0"
   START_POS1="440,950"
   START_HEADING1="0"
-  WAYPOINTS1="445,945:445,1025:525,1155:525,1000:585,1000:585,1155:670,1155:670,1000:445,1000:445,945"
+  WAYPOINTS1="445,945:445,1045:500,1100:520,1100:520,1200:540,1200:540,1100:560,1100:560,1200:580,1200:580,1100:600,1100:600,1200:500,1100:425,1025:450,945"
+#"445,945:445,1025:525,1155:525,1000:585,1000:585,1155:670,1155:670,1000:445,1000:445,945
   #"440,950:440,1000:440,1030:400,1015:400,975:440,950"
   MODEMID1="1"
   VTYPE1="UUV" # UUV, SHIP
@@ -91,7 +92,7 @@ if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
      VPORT="9001"       SHARE_LISTEN="9301"                      \
      VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
      SERVER_HOST=$SERVERHOST_EM SERVER_HOST_SS=$SERVERHOST_SS    \
-     SIMULATION=$SIMULATION_MODE  PLUG_DIR=$PLUGDIR
+     SIMULATION=$SIMULATION_MODE  PLUG_DIR=$PLUGDIR  LOCATION=$LAKE
   nsplug ecomapper_bhv.meta ecomapper.bhv -f VNAME=$VNAME1       \
       START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
       START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1

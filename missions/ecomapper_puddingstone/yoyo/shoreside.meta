@@ -37,15 +37,15 @@ ProcessConfig = pMarineViewer
   CommsTick  = 4
 
   tiff_viewable = true
-  tiff_file     = ../../../data/maps/puddingstone_all.tif
+  tiff_file     = ../../../data/maps/puddingstone_dam_extended_with_bathy.tif
 
 //  // store the img for alogview
 //  log_the_image = true
 
   // pan, zoom to be set for puddingstone file
-  set_pan_x            = 2470
-  set_pan_y            = -511
-  zoom                 = 1.1
+  set_pan_x            = -71.1
+  set_pan_y            = 50.2
+  zoom                 = 1.2
 
   vehicles_shape_scale = 1.0
   vehicles_name_mode   = names+shortmode
