@@ -410,6 +410,7 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   index.knnSearch(query, indices, dists, k_neighbors, flann::SearchParams(-1)); //flann::FLANN_CHECKS_AUTOTUNED) );
   // returned are: indices of, and distances to, the neighbors found
 
+  size_t ind = (indices.at(0)).at(0);
   Location pt_found(test[ind][0], test[ind][1], test[ind][2]);
   double data = m_data_at_loc.at(pt_found);
 
