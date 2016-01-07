@@ -42,24 +42,18 @@
 SimBioSensor::SimBioSensor()
 {
   // class variable instantiations can go here
-  m_example1 = "";
-  m_example2 = -1;
-  m_got_aabbcc = false;
 
-  // temporary hardcoded values for initial testing
-  // TODO take from input WKT polygon or similar
-  m_min_lat = 34.0784000000111;
-  m_max_lat = 34.0935;
-  m_min_lon = -117.815;
-  m_max_lon = -117.793099999973;
-
+  // MOOS variables
   m_veh_lon = 0;
   m_veh_lat = 0;
   m_veh_depth = 0;
 
-//  m_data_pts = new std::vector<DataPoint>();
+  // params
+  m_filename = "";
 
-  m_test = 0;
+  // class vars
+  m_file_read = false;
+  m_nav_data_received = false;
 }
 
 //---------------------------------------------------------
@@ -88,25 +82,15 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-    if( key == "SIMBIOSENSOR_VAR_IN" ) 
-    {
-      handleMailSimBioSensorVarIn(sval);
-    }
-    else if ( key == "SIMBIOSENSOR_VAR_IN2" )
-    {
-      m_whatever = dval;
-      // let's check if we can quit the application
-      RequestQuit();
-    }
-    else if ( key == "NODE_REPORT_LOCAL" )
+    if ( key == "NODE_REPORT_LOCAL" )
     {
       //handle
       m_veh_lon = getDoubleFromNodeReport(sval,"LON");
       m_veh_lat = getDoubleFromNodeReport(sval,"LAT");
       m_veh_depth = getDoubleFromNodeReport(sval,"DEP");
 
-      if ( m_test == 0 )
-        m_test = 1;
+      if ( !m_nav_data_received )
+        m_nav_data_received = true;
     }
     else
       std::cout << "uSimBioSensor :: Unhandled Mail: " << key << std::endl;
@@ -131,8 +115,8 @@ bool SimBioSensor::OnConnectToServer()
 
 bool SimBioSensor::Iterate()
 {
-  std::cout << "iterate, test = " << m_test << std::endl;
-  if ( m_test == 1 )
+  std::cout << "iterate, proceed? " << (m_file_read && m_nav_data_received) << std::endl;
+  if ( m_file_read && m_nav_data_received )
   {
     findClosestDataPoint();
   }
@@ -163,44 +147,21 @@ bool SimBioSensor::OnStartUp()
     std::string value = line;
 
     bool handled = false;
-    if((param == "example2") && isNumber(value)) 
+
+    if ( param == "filename" )
     {
-      // assuming the atof works, store the val
-      m_example2 = atof(value.c_str());
-      handled = true;
-
-      std::cout << GetAppName() << " :: set m_example2 to be: " << m_example2 << std::endl;
-
-      // let's check if we can quit the application, e.g. because we don't like
-      // the param value
-      if (m_example2 < -99.9)
-      {
-        std::cout << GetAppName() << " :: oh no, value is < 99.9" << std::endl;
-        return(false); // this would be the preferred way to quit in OnStartUp
-      }
-      else if (m_example2 > 99.9)
-      {
-        std::cout << GetAppName() << " :: oh no, value is > 99.9" << std::endl;
-        RequestQuit();
-      }
-
-    }
-    else if( (param == "example1") ) 
-    {
-      // save string .. you might wanna check for format or something
-      m_example1 = value;
+      m_filename = tolower(value);
+      std::cout << "Parameter: filename: " << m_filename << std::endl;
       handled = true;
     }
-    //TODO add parameter for reading in WKT polygon, rather than hardcoded
-    // min/max lat/lon
 
     if(!handled)
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
       //reportUnhandledConfigWarning(orig);
   }
 
-  // generate biomass file
-  runPython();
+//  // generate biomass file
+//  runPython();
 
   // read biomass file
   readBioDataFromFile();
@@ -217,61 +178,12 @@ bool SimBioSensor::OnStartUp()
 //
 void SimBioSensor::registerVariables()
 {
-  m_Comms.Register("SIMBIOSENSOR_VAR_IN", 0);
-  m_Comms.Register("SIMBIOSENSOR_VAR_IN2", 0);
-
   // get current vehicle position
   // because we want lon/lat/depth at the same time, we might as well use
   // the node report
   m_Comms.Register("NODE_REPORT_LOCAL", 0);
 }
 
-//---------------------------------------------------------
-// Procedure: handleMailSimBioSensorVarIn
-//            a place to do more advanced handling of the
-//            incoming message
-//
-bool SimBioSensor::handleMailSimBioSensorVarIn(std::string str)
-{
-  // Expected parts in string:
-  std::string aa, bb, cc;
-  
-  // Parse and handle ack message components
-  bool   valid_msg = true;
-  std::string original_msg = str;
-  // handle comma-separated string
-  std::vector<std::string> svector = parseString(str, ',');
-  unsigned int i, vsize = svector.size();
-  for(i=0; i<vsize; i++) {
-    std::string param = biteStringX(svector[i], '=');
-    std::string value = svector[i];
-    if(param == "aa")
-      aa = value;
-    else if(param == "bb")
-      bb = value;
-    else if(param == "cc")
-      cc = value;
-    else
-      valid_msg = false;       
-  }
-
-  if( (aa=="") || (bb=="") || (cc=="") )
-    valid_msg = false;
-  
-  if(!valid_msg)
-    std::cout << GetAppName() << " :: Unhandled SimBioSensorVarIn: " << original_msg << std::endl;
-  std::cout << GetAppName() << " :: Unhandled SimBioSensorVarIn: " << original_msg << std::endl;
-  std::cout << GetAppName() << " :: Unhandled SimBioSensorVarIn: " << original_msg << std::endl;
-    std::cout << GetAppName() << " :: Unhandled SimBioSensorVarIn: " << original_msg << std::endl;
-    //reportRunWarning("Unhandled SimBioSensorVarIn:" + original_msg);
-
-  if(valid_msg) 
-  {
-    m_got_aabbcc = true;
-  }
-
-  return(valid_msg);
-}
 
 // own functions ///////////////////////////////////////////////////////////////
 
@@ -328,9 +240,9 @@ void SimBioSensor::readBioDataFromFile()
   // data formatting: tab separated lon, lat, depth, bio_value
   // latitude: north - south
   // longitude: east - west
+
   std::ifstream input_filestream;
-  // TODO make filename parameter
-  input_filestream.open("test.out", std::ios::in);
+  input_filestream.open(m_filename.c_str(), std::ios::in);
 
   std::string line_read;
   std::istringstream line_stream;
@@ -355,12 +267,11 @@ void SimBioSensor::readBioDataFromFile()
     input_filestream.close();
   }
   else
-    std::cout << "error reading file" << std::endl;
+    std::cout << "Error reading file: " << m_filename << std::endl;
 
-  std::cout << "done reading files, objects: " << m_locations.size() << '\n';
-
-  if ( m_veh_lat != 0 )
-    m_test = 1;
+  std::cout << "Done reading files, objects: " << m_locations.size() << '\n';
+  if ( m_locations.size() != 0 )
+    m_file_read = true;
 }
 
 void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closest)
@@ -420,6 +331,4 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   // WORKING :D
 
   m_Comms.Notify("SIM_DATA", data);
-
-  m_test = 0;
 }

@@ -28,7 +28,6 @@ class SimBioSensor : public CMOOSApp
 
    // Registration, Configuration, Mail handling utils
    void registerVariables();
-   bool handleMailSimBioSensorVarIn(std::string);
 
  private: 
    // Own functions
@@ -37,28 +36,21 @@ class SimBioSensor : public CMOOSApp
    void findClosestDataPoint(); //Location vehicle, DataPoint& closest);
 
    // Configuration variables
-   std::string m_example1;
-   double m_example2;
+   std::string m_filename;
+
    // State variables
-   double m_whatever;
-   bool m_got_aabbcc;
+   bool m_file_read;
+   bool m_nav_data_received;
 
-   // temp hardcoded vars
-   double m_min_lat;
-   double m_max_lat;
-   double m_min_lon;
-   double m_max_lon;
-
+   // MOOS vars
    double m_veh_lon;
    double m_veh_lat;
    double m_veh_depth;
 
-   // data
+   // data read from file
    std::vector<Location> m_locations;
    std::map<Location, double> m_data_at_loc;
 
-   // temp
-   size_t m_test;
 };
 
 #endif 
