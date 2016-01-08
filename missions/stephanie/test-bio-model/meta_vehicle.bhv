@@ -53,12 +53,12 @@ Behavior = BHV_OpRegionBounce
   condition = DEPLOY = true
 // some big box
 #ifdef VTYPE UUV
-  polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
+  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:700,1300:700,940
 #endif
 #ifdef VTYPE SHIP
-    polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
+    polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:700,1300:700,940
 #endif
-  max_depth = 50 // match with BHV_OpRegionBounceDepth
+  max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
   max_time = 23400
   trigger_entry_time = 1.0
@@ -76,7 +76,7 @@ Behavior = BHV_OpRegionBounceDepth
   pwt = 200
   duration = no-time-limit
   condition = DEPLOY = true
-  max_depth = 50  // set to the max depth of the lake?
+  max_depth = 20  // set to the max depth of the lake?
   min_altitude = 10
   // if buffer is not set, it is set to 0, which is in fact inactive
   // bounce_buffer_depth: size of the buffer for depth bouncing
