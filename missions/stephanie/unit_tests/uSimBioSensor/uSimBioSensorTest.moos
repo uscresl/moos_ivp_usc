@@ -62,9 +62,8 @@ ProcessConfig = uSimBioSensor
   AppTick   = 2
   CommsTick = 2
 
-  // potential process parameters would go here
-  example1 = yes
-  example2 = 10
+  // process parameters
+  filename = "test.out"
 }
 
 ProcessConfig = uTimerScript
