@@ -1,0 +1,12 @@
+//--------------------------------------------------
+// uSimBioSensor configuration block
+//
+ProcessConfig = uSimBioSensor
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  // process parameters
+  filename = "test.out"
+  output_var = "SIM_DATA"
+}

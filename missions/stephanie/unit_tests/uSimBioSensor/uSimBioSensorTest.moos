@@ -64,6 +64,7 @@ ProcessConfig = uSimBioSensor
 
   // process parameters
   filename = "test.out"
+  output_var = "SIM_DATA"
 }
 
 ProcessConfig = uTimerScript
