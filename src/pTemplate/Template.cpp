@@ -14,11 +14,9 @@
 
 #include <iterator>
 #include "MBUtils.h"
-//#include "ACTable.h"
+
 #include "math.h"
 #include <limits>
-
-using namespace std;
 
 //---------------------------------------------------------
 // Constructor
@@ -41,23 +39,23 @@ Template::Template()
 bool Template::OnNewMail(MOOSMSG_LIST &NewMail)
 {
   MOOSMSG_LIST::iterator p;
-  for(p=NewMail.begin(); p!=NewMail.end(); p++) {
+  for ( p=NewMail.begin(); p!=NewMail.end(); p++ ) {
     CMOOSMsg &msg = *p;
-    string key   = msg.GetKey();
-    string sval  = msg.GetString();
-    // separate way for getting the double val (sval was not working for DB_UPTIME) 
+    std::string key   = msg.GetKey();
+    std::string sval  = msg.GetString();
+    // separate way for getting the double val (sval was not working for DB_UPTIME)
     double dval  = msg.GetDouble();
 
 #if 0 // Keep these around just for template
-    string comm  = msg.GetCommunity();
+    std::string comm  = msg.GetCommunity();
     double dval  = msg.GetDouble();
-    string msrc  = msg.GetSource();
+    std::string msrc  = msg.GetSource();
     double mtime = msg.GetTime();
     bool   mdbl  = msg.IsDouble();
     bool   mstr  = msg.IsString();
 #endif
     
-    if( key == "TEMPLATE_VAR_IN" ) 
+    if ( key == "TEMPLATE_VAR_IN" )
     {
       handleMailTemplateVarIn(sval);
     }
@@ -69,10 +67,10 @@ bool Template::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else
       std::cout << "pTemplate :: Unhandled Mail: " << key << std::endl;
-      //reportRunWarning("Unhandled Mail: " + key);
+    //reportRunWarning("Unhandled Mail: " + key);
   }
 
-   return(true);
+  return (true);
 }
 
 //---------------------------------------------------------
@@ -80,8 +78,8 @@ bool Template::OnNewMail(MOOSMSG_LIST &NewMail)
 
 bool Template::OnConnectToServer()
 {
-   registerVariables();
-   return(true);
+  registerVariables();
+  return (true);
 }
 
 //---------------------------------------------------------
@@ -90,7 +88,7 @@ bool Template::OnConnectToServer()
 
 bool Template::Iterate()
 {
-  return(true);
+  return (true);
 }
 
 //---------------------------------------------------------
@@ -103,20 +101,20 @@ bool Template::OnStartUp()
   
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
-  if(!m_MissionReader.GetConfiguration(GetAppName(), sParams))
+  if ( !m_MissionReader.GetConfiguration(GetAppName(), sParams) )
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
-    //reportConfigWarning("No config block found for " + GetAppName());
+  //reportConfigWarning("No config block found for " + GetAppName());
 
   STRING_LIST::iterator p;
-  for(p=sParams.begin(); p!=sParams.end(); p++) 
+  for ( p=sParams.begin(); p!=sParams.end(); p++ )
   {
-    string orig  = *p;
-    string line  = *p;
-    string param = tolower(biteStringX(line, '='));
-    string value = line;
+    std::string orig  = *p;
+    std::string line  = *p;
+    std::string param = tolower(biteStringX(line, '='));
+    std::string value = line;
 
     bool handled = false;
-    if((param == "example2") && isNumber(value)) 
+    if ( (param == "example2") && isNumber(value) )
     {
       // assuming the atof works, store the val
       m_example2 = atof(value.c_str());
@@ -126,32 +124,32 @@ bool Template::OnStartUp()
 
       // let's check if we can quit the application, e.g. because we don't like
       // the param value
-      if (m_example2 < -99.9)
+      if ( m_example2 < -99.9 )
       {
-        std::cout << GetAppName() << " :: oh no, value is < 99.9" << std::endl;
+        std::cout << GetAppName() << " :: oh no, value is < -99.9" << std::endl;
         return(false); // this would be the preferred way to quit in OnStartUp
       }
-      else if (m_example2 > 99.9)
+      else if ( m_example2 > 99.9 )
       {
         std::cout << GetAppName() << " :: oh no, value is > 99.9" << std::endl;
         RequestQuit();
       }
 
     }
-    else if( (param == "example1") ) 
+    else if( (param == "example1") )
     {
       // save string .. you might wanna check for format or something
       m_example1 = value;
       handled = true;
     }
 
-    if(!handled)
+    if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
-      //reportUnhandledConfigWarning(orig);
+    //reportUnhandledConfigWarning(orig);
   }
 
   registerVariables();
-  return(true);
+  return (true);
 }
 
 //---------------------------------------------------------
@@ -170,41 +168,39 @@ void Template::registerVariables()
 //            a place to do more advanced handling of the
 //            incoming message
 //
-bool Template::handleMailTemplateVarIn(string str)
+bool Template::handleMailTemplateVarIn(std::string str)
 {
   // Expected parts in string:
   std::string aa, bb, cc;
   
   // Parse and handle ack message components
   bool   valid_msg = true;
-  string original_msg = str;
+  std::string original_msg = str;
   // handle comma-separated string
-  vector<string> svector = parseString(str, ',');
-  unsigned int i, vsize = svector.size();
-  for(i=0; i<vsize; i++) {
-    string param = biteStringX(svector[i], '=');
-    string value = svector[i];
-    if(param == "aa")
+  std::vector<std::string> svector = parseString(str, ',');
+  unsigned int idx, vsize = svector.size();
+  for ( idx=0; idx<vsize; idx++ ) {
+    std::string param = biteStringX(svector[idx], '=');
+    std::string value = svector[idx];
+    if ( param == "aa" )
       aa = value;
-    else if(param == "bb")
+    else if ( param == "bb" )
       bb = value;
-    else if(param == "cc")
+    else if ( param == "cc" )
       cc = value;
     else
-      valid_msg = false;       
+      valid_msg = false;
   }
 
-  if( (aa=="") || (bb=="") || (cc=="") )
+  if ( (aa=="") || (bb=="") || (cc=="") )
     valid_msg = false;
   
-  if(!valid_msg)
+  if ( !valid_msg )
     std::cout << GetAppName() << " :: Unhandled TemplateVarIn: " << original_msg << std::endl;
-    //reportRunWarning("Unhandled TemplateVarIn:" + original_msg);
+  //reportRunWarning("Unhandled TemplateVarIn:" + original_msg);
 
-  if(valid_msg) 
-  {
+  if ( valid_msg )
     m_got_aabbcc = true;
-  }
 
-  return(valid_msg);
+  return ( valid_msg );
 }

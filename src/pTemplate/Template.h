@@ -38,6 +38,7 @@ class Template : public CMOOSApp
    // Configuration variables
    std::string m_example1;
    double m_example2;
+
    // State variables
    double m_whatever;
    bool m_got_aabbcc;
