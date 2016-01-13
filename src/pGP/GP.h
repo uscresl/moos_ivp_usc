@@ -34,8 +34,8 @@ class GP : public CMOOSApp
    void makeYourOwn();
 
    // Configuration variables
-   std::string m_example1;
-   double m_example2;
+   std::string m_input_var;
+
    // State variables
    double m_whatever;
    bool m_got_aabbcc;
