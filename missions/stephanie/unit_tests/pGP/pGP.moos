@@ -23,6 +23,9 @@ ProcessConfig = ANTLER
   Run = pLogger       @ NewConsole = true
 
   Run = pGP @ NewConsole = true
+
+  // add fake data to be read by pGP
+  Run = uTimerScript @ NewConsole = false
 }
 
 // Logging tool (MOOSEssentials)
@@ -60,5 +63,37 @@ ProcessConfig = pGP
   CommsTick = 2
 
   // process parameters
+  input_var = "SIM_DATA"
 }
 
+ProcessConfig = uTimerScript
+{
+  AppTick = 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose = true// or {false}
+
+  // Declaration of random var macro expanded in event values
+  randvar = varname=VAL, min=0, max=30, key=at_reset
+
+  // Event(s) are the key components of the script
+//  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
+  event = var=SIM_DATA, val=$[VAL], time=1
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max = nolimit // or in range [0,inf)
+  // A point when the script is reset
+  reset_time = all-posted // or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+  reset_var = UTS_RESET // or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var = UTS_STATUS // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp = $(WARP)
+}
