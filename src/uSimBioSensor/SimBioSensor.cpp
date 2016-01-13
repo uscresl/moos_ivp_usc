@@ -50,6 +50,7 @@ SimBioSensor::SimBioSensor()
 
   // params
   m_filename = "";
+  m_output_var = "";
 
   // class vars
   m_file_read = false;
@@ -151,8 +152,13 @@ bool SimBioSensor::OnStartUp()
     if ( param == "filename" )
     {
       m_filename = tolower(value);
-      std::cout << "Parameter: filename: " << m_filename << std::endl;
+      std::cout << GetAppName() << " :: Parameter filename: " << m_filename << std::endl;
       handled = true;
+    }
+    else if ( param == "output_var" )
+    {
+      m_output_var = toupper(value);
+      std::cout << GetAppName() << " :: Parameter output_var: " << m_output_var << std::endl;
     }
 
     if(!handled)
@@ -330,5 +336,6 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   std::cout << GetAppName() << "*value: " << data << std::endl;
   // WORKING :D
 
-  m_Comms.Notify("SIM_DATA", data);
+  if ( m_output_var != "" )
+    m_Comms.Notify(m_output_var, data);
 }

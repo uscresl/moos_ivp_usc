@@ -37,6 +37,7 @@ class SimBioSensor : public CMOOSApp
 
    // Configuration variables
    std::string m_filename;
+   std::string m_output_var;
 
    // State variables
    bool m_file_read;
