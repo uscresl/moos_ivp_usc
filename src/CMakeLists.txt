@@ -80,6 +80,8 @@ if ( PYTHONLIBS_FOUND AND FLANN_FOUND AND HDF5_FOUND )
   ADD_SUBDIRECTORY(uSimBioSensor)
 endif()
 
+# Jan'16: add process for GP generation
+add_subdirectory(pGP)
 
 ##############################################################################
 #                           END of CMakeLists.txt
