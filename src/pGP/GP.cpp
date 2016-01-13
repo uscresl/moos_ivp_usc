@@ -22,6 +22,7 @@ GP::GP()
 {
   // class variable instantiations can go here
   m_got_aabbcc = false;
+  m_input_var = "";
 }
 
 //---------------------------------------------------------
@@ -50,9 +51,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-    if( key == "GP_VAR_IN" )
+    if( key == m_input_var )
     {
-      handleMailGPVarIn(sval);
+      //handleMailGPVarIn(sval);
+      std::cout << "receiving: " << dval << " " << atof( sval.c_str() ) << std::endl;
     }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
@@ -105,7 +107,7 @@ bool GP::OnStartUp()
     bool handled = false;
     if ( param == "input_var" )
     {
-      m_input_var = tolower(value);
+      m_input_var = toupper(value);
       handled = true;
     }
 
@@ -138,35 +140,35 @@ bool GP::handleMailGPVarIn(std::string str)
 {
   // Expected parts in string:
   std::string aa, bb, cc;
-  
+
   // Parse and handle ack message components
   bool   valid_msg = true;
   std::string original_msg = str;
   // handle comma-separated string
   std::vector<std::string> svector = parseString(str, ',');
-  unsigned int i, vsize = svector.size();
-  for(i=0; i<vsize; i++) {
-    std::string param = biteStringX(svector[i], '=');
-    std::string value = svector[i];
-    if(param == "aa")
+  unsigned int idx, vsize = svector.size();
+  for ( idx=0; idx<vsize; idx++ ) {
+    std::string param = biteStringX(svector[idx], '=');
+    std::string value = svector[idx];
+    if ( param == "aa" )
       aa = value;
-    else if(param == "bb")
+    else if ( param == "bb" )
       bb = value;
-    else if(param == "cc")
+    else if ( param == "cc" )
       cc = value;
     else
       valid_msg = false;
   }
 
-  if( (aa=="") || (bb=="") || (cc=="") )
+  if ( (aa=="") || (bb=="") || (cc=="") )
     valid_msg = false;
-  
-  if(!valid_msg)
-    std::cout << GetAppName() << " :: Unhandled GPVarIn: " << original_msg << std::endl;
-  //reportRunWarning("Unhandled GPVarIn:" + original_msg);
 
-  if(valid_msg)
+  if ( !valid_msg )
+    std::cout << GetAppName() << " :: Unhandled TemplateVarIn: " << original_msg << std::endl;
+  //reportRunWarning("Unhandled TemplateVarIn:" + original_msg);
+
+  if ( valid_msg )
     m_got_aabbcc = true;
 
-  return(valid_msg);
+  return ( valid_msg );
 }
