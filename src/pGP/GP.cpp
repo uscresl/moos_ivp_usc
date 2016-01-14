@@ -25,8 +25,10 @@
 GP::GP()
 {
   // class variable instantiations can go here
-  m_got_aabbcc = false;
   m_input_var = "";
+  m_lat = 0;
+  m_lon = 0;
+  m_dep = 0;
 }
 
 //---------------------------------------------------------
@@ -59,7 +61,14 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       //handleMailGPVarIn(sval);
       std::cout << "receiving: " << dval << " " << atof( sval.c_str() ) << std::endl;
+      handleMailData(dval);
     }
+    else if ( key == "NAV_LAT" )
+      m_lat = dval;
+    else if ( key == "NAV_LONG" )
+      m_lon = dval;
+    else if ( key == "NAV_DEPTH" )
+      m_dep = dval;
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
     //reportRunWarning("Unhandled Mail: " + key);
@@ -131,48 +140,36 @@ bool GP::OnStartUp()
 //
 void GP::registerVariables()
 {
+  // get vehicle location
+  m_Comms.Register("NAV_LAT", 0);
+  m_Comms.Register("NAV_LONG", 0);
+  m_Comms.Register("NAV_DEPTH", 0);
+
+  // get data for GP
   if ( m_input_var != "" )
     m_Comms.Register(m_input_var, 0);
 }
 
 //---------------------------------------------------------
-// Procedure: handleMailGPVarIn
-//            a place to do more advanced handling of the
-//            incoming message
+// Procedure: handleMailData
+//            handle the incoming message
 //
-bool GP::handleMailGPVarIn(std::string str)
+bool GP::handleMailData(double received_data)
 {
-  // Expected parts in string:
-  std::string aa, bb, cc;
+  if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
+    return false;
+  else
+  {
+    // Parse and handle ack message components
+    bool   valid_msg = true;
 
-  // Parse and handle ack message components
-  bool   valid_msg = true;
-  std::string original_msg = str;
-  // handle comma-separated string
-  std::vector<std::string> svector = parseString(str, ',');
-  unsigned int idx, vsize = svector.size();
-  for ( idx=0; idx<vsize; idx++ ) {
-    std::string param = biteStringX(svector[idx], '=');
-    std::string value = svector[idx];
-    if ( param == "aa" )
-      aa = value;
-    else if ( param == "bb" )
-      bb = value;
-    else if ( param == "cc" )
-      cc = value;
-    else
-      valid_msg = false;
+    // initial test
+    // initialize a GP for 3D input data,
+    // using the squared exponential covariance function,
+    // with additive white noise
+    libgp::GaussianProcess gp(2, "CovSum ( CovSEiso, CovNoise )");
+
+    return ( valid_msg );
   }
-
-  if ( (aa=="") || (bb=="") || (cc=="") )
-    valid_msg = false;
-
-  if ( !valid_msg )
-    std::cout << GetAppName() << " :: Unhandled TemplateVarIn: " << original_msg << std::endl;
-  //reportRunWarning("Unhandled TemplateVarIn:" + original_msg);
-
-  if ( valid_msg )
-    m_got_aabbcc = true;
-
-  return ( valid_msg );
+  return false;
 }

@@ -31,14 +31,15 @@ class GP : public CMOOSApp
 
  private: 
    // Own functions
-   void makeYourOwn();
+   bool handleMailData(double received_data);
 
    // Configuration variables
    std::string m_input_var;
 
    // State variables
-   double m_whatever;
-   bool m_got_aabbcc;
+   double m_lat;
+   double m_lon;
+   double m_dep;
 };
 
 #endif 
