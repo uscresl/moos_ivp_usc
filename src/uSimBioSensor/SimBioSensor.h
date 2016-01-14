@@ -31,7 +31,7 @@ class SimBioSensor : public CMOOSApp
 
  private: 
    // Own functions
-   void runPython();
+//   void runPython();
    void readBioDataFromFile();
    void findClosestDataPoint(); //Location vehicle, DataPoint& closest);
 

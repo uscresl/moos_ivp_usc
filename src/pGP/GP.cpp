@@ -15,6 +15,10 @@
 #include "math.h"
 #include <limits>
 
+// lib GP
+#include "gp.h"
+
+
 //---------------------------------------------------------
 // Constructor
 //

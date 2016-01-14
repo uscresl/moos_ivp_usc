@@ -1,0 +1,7 @@
+1. install libGP:
+   https://github.com/StephanieKemna/libgp.git
+   (fork from https://github.com/mblum/libgp.git)
+
+2. Add an environment variable for the GP library to your .bashrc:
+  export GPLIB_LOCATION="/home/stephanit/git/gp_mblum"
+

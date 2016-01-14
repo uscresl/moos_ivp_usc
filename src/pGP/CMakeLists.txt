@@ -19,5 +19,6 @@ TARGET_LINK_LIBRARIES(pGP
    mbutil
    ${SYSTEM_LIBS}
    # whatever other libs you need
+   ${LIBGP_LIBRARIES}
 )
 
