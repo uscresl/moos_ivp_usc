@@ -15,8 +15,10 @@ find_package(PkgConfig)
 pkg_check_modules(PC_LIBGP QUIET libgp)
 set(LIBGP_DEFINITIONS ${PC_LIBGP_CFLAGS_OTHER})
 
+# get the installation location from the environment variable
 set(GP_LOCATION $ENV{GPLIB_LOCATION} )
 
+# find the include dirs (header files) and the library dir (libgp.a)
 find_path(LIBGP_INCLUDE_DIR gp.h
           HINTS ${PC_LIBGP_INCLUDEDIR} ${PC_LIBGP_INCLUDE_DIRS} ${GP_LOCATION}/include/ )
 
