@@ -76,9 +76,15 @@ ProcessConfig = uTimerScript
 
   // Declaration of random var macro expanded in event values
   randvar = varname=VAL, min=0, max=30, key=at_reset
+  randvar = varname=LAT, min=34.020000, max=34.040000, key=at_reset
+  randvar = varname=LON, min=-118.290000, max=-118.270000, key=at_reset
+  randvar = varname=DEP, min=0, max=15, key=at_reset
 
   // Event(s) are the key components of the script
 //  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
+  event = var=NAV_LAT, val=$[LAT], time=1
+  event = var=NAV_LON, val=$[LON], time=1
+  event = var=NAV_DEPTH, val=$[DEP], time=1
   event = var=SIM_DATA, val=$[VAL], time=1
 
   // If true script is paused upon launch
