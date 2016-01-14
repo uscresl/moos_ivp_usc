@@ -12,6 +12,9 @@
 
 #include "MOOS/libMOOS/MOOSLib.h"
 
+// lib GP
+#include "gp.h"
+
 class GP : public CMOOSApp
 {
  public:
@@ -40,6 +43,9 @@ class GP : public CMOOSApp
    double m_lat;
    double m_lon;
    double m_dep;
+   bool m_data_added;
+
+   libgp::GaussianProcess m_gp;
 };
 
 #endif 

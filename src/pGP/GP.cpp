@@ -15,20 +15,30 @@
 #include "math.h"
 #include <limits>
 
-// lib GP
-#include "gp.h"
-
 
 //---------------------------------------------------------
 // Constructor
 //
-GP::GP()
+GP::GP() :
+  m_gp(3, "CovSum(CovSEiso, CovNoise)")
 {
   // class variable instantiations can go here
   m_input_var = "";
+
   m_lat = 0;
   m_lon = 0;
   m_dep = 0;
+  m_data_added = false;
+
+  // initialize a GP for 3D input data,
+  // using the squared exponential covariance function,
+  // with additive white noise
+
+  // Set log-hyperparameter of the covariance function.
+  Eigen::VectorXd params(m_gp.covf().get_param_dim());
+  params << 0.0, 0.0, -2.0; //TODO change, current copy from 2d example
+  m_gp.covf().set_loghyper(params);
+
 }
 
 //---------------------------------------------------------
@@ -60,7 +70,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     if( key == m_input_var )
     {
       //handleMailGPVarIn(sval);
-      std::cout << "receiving: " << dval << " " << atof( sval.c_str() ) << std::endl;
+      std::cout << "\nreceiving: " << dval << " " << atof( sval.c_str() ) << std::endl;
       handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -92,6 +102,21 @@ bool GP::OnConnectToServer()
 
 bool GP::Iterate()
 {
+  if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
+    return true;
+  else if ( m_data_added )
+  {
+    // predict target value for given input, f()
+    // predict variance of prediction for given input, var()
+    double x_t[] = {m_lon+0.00001, m_lat+0.00001, m_dep+0.1}; //TODO change/move
+    double pred_f = m_gp.f(x_t);
+    double pred_var = m_gp.var(x_t);
+
+    std::cout << "\n";
+    std::cout << "pred_f: " << pred_f << '\n';
+    std::cout << "pred_var: " << pred_var << std::endl;
+  }
+
   return(true);
 }
 
@@ -157,17 +182,20 @@ void GP::registerVariables()
 bool GP::handleMailData(double received_data)
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
+  {
+    std::cout << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
     return false;
+  }
   else
   {
     // Parse and handle ack message components
     bool   valid_msg = true;
 
-    // initial test
-    // initialize a GP for 3D input data,
-    // using the squared exponential covariance function,
-    // with additive white noise
-    libgp::GaussianProcess gp(2, "CovSum ( CovSEiso, CovNoise )");
+    // add training data
+    // Input vectors x must be provided as double[] and targets y as double.
+    double x[] = {m_lon, m_lat, m_dep};
+    m_gp.add_pattern(x, received_data);
+    m_data_added = true;
 
     return ( valid_msg );
   }
