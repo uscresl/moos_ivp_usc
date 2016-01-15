@@ -20,7 +20,7 @@
 // Constructor
 //
 GP::GP() :
-  m_gp(3, "CovSum(CovSEiso, CovNoise)")
+  m_gp(2, "CovSum(CovSEiso, CovNoise)")
 {
   // class variable instantiations can go here
   m_input_var = "";
@@ -30,7 +30,7 @@ GP::GP() :
   m_dep = 0;
   m_data_added = false;
 
-  // initialize a GP for 3D input data,
+  // initialize a GP for 2D input data, //TODO convert to 3D
   // using the squared exponential covariance function,
   // with additive white noise
 
@@ -108,7 +108,7 @@ bool GP::Iterate()
   {
     // predict target value for given input, f()
     // predict variance of prediction for given input, var()
-    double x_t[] = {m_lon+0.00001, m_lat+0.00001, m_dep+0.1}; //TODO change/move
+    double x_t[] = {m_lon+0.00001, m_lat+0.00001}; //, m_dep+0.1}; //TODO change/move
     double pred_f = m_gp.f(x_t);
     double pred_var = m_gp.var(x_t);
 
@@ -193,7 +193,7 @@ bool GP::handleMailData(double received_data)
 
     // add training data
     // Input vectors x must be provided as double[] and targets y as double.
-    double x[] = {m_lon, m_lat, m_dep};
+    double x[] = {m_lon, m_lat}; //, m_dep};
     m_gp.add_pattern(x, received_data);
     m_data_added = true;
 
