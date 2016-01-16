@@ -36,9 +36,10 @@ GP::GP() :
 
   // Set log-hyperparameter of the covariance function.
   Eigen::VectorXd params(m_gp.covf().get_param_dim());
-  params << 0.0, 0.0, -2.0; //TODO change, current copy from 2d example
+  // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
+  // note, these can be optimized using cg or rprop
+  params << 0.0, 0.0, -2.0;
   m_gp.covf().set_loghyper(params);
-
 }
 
 //---------------------------------------------------------
@@ -116,6 +117,8 @@ bool GP::Iterate()
     std::cout << "pred_f: " << pred_f << '\n';
     std::cout << "pred_var: " << pred_var << std::endl;
   }
+
+  std::cout << m_gp.get_sampleset_size() << std::endl;
 
   return(true);
 }
