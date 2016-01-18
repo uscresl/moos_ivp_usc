@@ -15,12 +15,12 @@
 #include "math.h"
 #include <limits>
 
-// include python headers for running Python from C++
-// this generates some warning on compile, just ignore them
-// (the general advice way to get rid of the warnings is:
-//  'include Python.h first, before other includes'
-//  but even when put as first thing in header file, doesn't help here'
-#include <Python.h>
+//// include python headers for running Python from C++
+//// this generates some warning on compile, just ignore them
+//// (the general advice way to get rid of the warnings is:
+////  'include Python.h first, before other includes'
+////  but even when put as first thing in header file, doesn't help here'
+//#include <Python.h>
 
 // read from file
 #include <istream>
@@ -50,6 +50,7 @@ SimBioSensor::SimBioSensor()
 
   // params
   m_filename = "";
+  m_output_var = "";
 
   // class vars
   m_file_read = false;
@@ -151,8 +152,13 @@ bool SimBioSensor::OnStartUp()
     if ( param == "filename" )
     {
       m_filename = tolower(value);
-      std::cout << "Parameter: filename: " << m_filename << std::endl;
+      std::cout << GetAppName() << " :: Parameter filename: " << m_filename << std::endl;
       handled = true;
+    }
+    else if ( param == "output_var" )
+    {
+      m_output_var = toupper(value);
+      std::cout << GetAppName() << " :: Parameter output_var: " << m_output_var << std::endl;
     }
 
     if(!handled)
@@ -187,52 +193,52 @@ void SimBioSensor::registerVariables()
 
 // own functions ///////////////////////////////////////////////////////////////
 
-void SimBioSensor::runPython()
-{
-  // python embedding,
-  // via (https://docs.python.org/2/extending/embedding.html)
+//void SimBioSensor::runPython()
+//{
+//  // python embedding,
+//  // via (https://docs.python.org/2/extending/embedding.html)
 
-  Py_Initialize();
+//  Py_Initialize();
 
-  // filename
-  // TODO make filename a parameter
-  // note, make sure the path is part of PYTHONPATH, or otherwise set here
-  PyObject *pFileName = PyUnicode_FromString((char *) "testGMM");
-  PyObject *pModule = PyImport_Import(pFileName);
-  // free memory name, now that we have module
-  Py_DECREF(pFileName);
+//  // filename
+//  // TODO make filename a parameter
+//  // note, make sure the path is part of PYTHONPATH, or otherwise set here
+//  PyObject *pFileName = PyUnicode_FromString((char *) "testGMM");
+//  PyObject *pModule = PyImport_Import(pFileName);
+//  // free memory name, now that we have module
+//  Py_DECREF(pFileName);
 
-  PyObject *pFunc, *pArgs;
-  // continue to call function in file
-  if ( pModule != NULL )
-  {
-    // choose function
+//  PyObject *pFunc, *pArgs;
+//  // continue to call function in file
+//  if ( pModule != NULL )
+//  {
+//    // choose function
 
-    // TODO make function name parameter
-    pFunc = PyObject_GetAttrString(pModule, (char *)"create_gmm_and_save_to_file");
+//    // TODO make function name parameter
+//    pFunc = PyObject_GetAttrString(pModule, (char *)"create_gmm_and_save_to_file");
 
-    if ( pFunc && PyCallable_Check(pFunc) )
-    {
-      // TODO: input arguments
-      //      PyObject  *args = PyTuple_New(5);
+//    if ( pFunc && PyCallable_Check(pFunc) )
+//    {
+//      // TODO: input arguments
+//      //      PyObject  *args = PyTuple_New(5);
 
-      // no function arguments, so we can skip that for now
-      // no return argument, so skip that as well
-      PyObject_CallObject(pFunc, NULL);
-    }
-    // free up memory
-    Py_XDECREF(pFunc);
-    Py_DECREF(pModule);
-  }
-  else
-  {
-    // print error, exit
-    PyErr_Print();
-    std::exit(0);
-  }
+//      // no function arguments, so we can skip that for now
+//      // no return argument, so skip that as well
+//      PyObject_CallObject(pFunc, NULL);
+//    }
+//    // free up memory
+//    Py_XDECREF(pFunc);
+//    Py_DECREF(pModule);
+//  }
+//  else
+//  {
+//    // print error, exit
+//    PyErr_Print();
+//    std::exit(0);
+//  }
 
-  Py_Finalize();
-}
+//  Py_Finalize();
+//}
 
 void SimBioSensor::readBioDataFromFile()
 {
@@ -330,5 +336,6 @@ void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closes
   std::cout << GetAppName() << "*value: " << data << std::endl;
   // WORKING :D
 
-  m_Comms.Notify("SIM_DATA", data);
+  if ( m_output_var != "" )
+    m_Comms.Notify(m_output_var, data);
 }

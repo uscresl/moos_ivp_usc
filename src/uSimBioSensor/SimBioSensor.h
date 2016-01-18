@@ -31,12 +31,13 @@ class SimBioSensor : public CMOOSApp
 
  private: 
    // Own functions
-   void runPython();
+//   void runPython();
    void readBioDataFromFile();
    void findClosestDataPoint(); //Location vehicle, DataPoint& closest);
 
    // Configuration variables
    std::string m_filename;
+   std::string m_output_var;
 
    // State variables
    bool m_file_read;

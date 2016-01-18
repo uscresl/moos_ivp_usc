@@ -1,0 +1,64 @@
+// MOOS community specs (doesn't matter for unit test)
+ServerHost = localhost
+ServerPort = 9000
+Community  = test
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = 1
+
+// Location (doesn't matter for unit test)
+LatOrigin  = 34.020026
+LongOrigin = -118.290083
+
+//****************************************************************************//
+// Base Processes
+//
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = true
+
+  Run = pTemplate @ NewConsole = true
+}
+
+// Logging tool (MOOSEssentials)
+ProcessConfig = pLogger
+{
+  AppTick   = 8
+  CommsTick = 8
+
+  Path = ./
+  AsyncLog = true
+  FileTimeStamp = true
+
+  BridgeFrequency = 0
+  // For variables that are published in a bundle on their first post,
+  // explicitly declare their logging request
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
+  Log = APPCASE @ 0 NOSYNC
+
+  // Log everything
+  LogAuxSrc = true
+  WildCardLogging = true
+  //WildCardOmitPattern = *_STATUS
+  WildCardExclusionLog = true
+}
+
+//****************************************************************************//
+// TESTING
+
+//--------------------------------------------------
+// pTemplate configuration block
+//
+ProcessConfig = pTemplate
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // process parameters
+}
+

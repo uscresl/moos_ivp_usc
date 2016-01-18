@@ -1,24 +1,25 @@
 /*****************************************************************/
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
-/*    FILE: Template.h                                           */
+/*    FILE: GP.h                                                 */
 /*    DATE: Mar 29, 2014                                         */
 /*                                                               */
-/*    Note: this is a template dir, so you can copy to start     */
-/*          making your MOOSApp                                  */
 /*                                                               */
 /*****************************************************************/
 
-#ifndef PTEMPLATE_HEADER
-#define PTEMPLATE_HEADER
+#ifndef PGP_HEADER
+#define PGP_HEADER
 
 #include "MOOS/libMOOS/MOOSLib.h"
 
-class Template : public CMOOSApp
+// lib GP
+#include "gp.h"
+
+class GP : public CMOOSApp
 {
  public:
-   Template();
-   ~Template() {};
+   GP();
+   ~GP() {};
 
  protected: 
    // Standard MOOSApp functions to overload
@@ -29,19 +30,22 @@ class Template : public CMOOSApp
 
    // Registration, Configuration, Mail handling utils
    void registerVariables();
-   bool handleMailTemplateVarIn(std::string);
+   bool handleMailGPVarIn(std::string);
 
  private: 
    // Own functions
-   void makeYourOwn();
+   bool handleMailData(double received_data);
 
    // Configuration variables
-   std::string m_example1;
-   double m_example2;
+   std::string m_input_var;
 
    // State variables
-   double m_whatever;
-   bool m_got_aabbcc;
+   double m_lat;
+   double m_lon;
+   double m_dep;
+   bool m_data_added;
+
+   libgp::GaussianProcess m_gp;
 };
 
 #endif 

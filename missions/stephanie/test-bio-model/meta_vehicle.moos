@@ -79,15 +79,4 @@ ProcessConfig = ANTLER
 #include $(PLUG_DIR)/plug_pShare.moos
 
 // add other processes here
-
-//--------------------------------------------------
-// uSimBioSensor configuration block
-//
-ProcessConfig = uSimBioSensor
-{
-  AppTick   = 2
-  CommsTick = 2
-
-  // process parameters
-  filename = "test.out"
-}
+#include $(PLUG_DIR)/plug_uSimBioSensor.moos

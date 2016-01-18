@@ -1,0 +1,12 @@
+//--------------------------------------------------
+// pGP configuration block
+//
+ProcessConfig = pGP
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  // potential process parameters would go here
+  input_var = "SIM_DATA"
+
+}
