@@ -93,6 +93,8 @@ if ( LIBGP_FOUND )
 #  message("     target link dirs: " ${LIBGP_LIBRARIES})
   include_directories(${LIBGP_INCLUDE_DIRS})
   add_subdirectory(pGP)
+else()
+  message("LibGP not found. Did you set the GPLIB_LOCATION environment variable?")
 endif()
 
 

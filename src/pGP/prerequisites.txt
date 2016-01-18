@@ -2,6 +2,6 @@
    https://github.com/StephanieKemna/libgp.git
    (fork from https://github.com/mblum/libgp.git)
 
-2. Add an environment variable for the GP library to your .bashrc:
-  export GPLIB_LOCATION="/home/stephanit/git/gp_mblum"
+2. Add an environment variable for the GP library to your .bashrc, e.g.:
+   export GPLIB_LOCATION="/home/stephanie/git/gp_mblum"
 
