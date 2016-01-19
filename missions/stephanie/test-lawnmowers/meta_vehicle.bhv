@@ -1,0 +1,181 @@
+//****************************************************************************//
+// initialize MOOS variables
+//
+
+initialize   DEPLOY = false
+initialize   RETURN = false
+initialize   AVOID = true
+
+initialize   MOOS_MANUAL_OVERRIDE=false
+
+// quick fix opregion altitude requirement
+#ifdef VTYPE UUV
+initialize   NAV_ALTITUDE=100
+#endif
+
+//****************************************************************************//
+// Behaviors
+//
+
+//---------   Safety behaviors   -------------
+#ifdef VTYPE UUV
+Behavior = BHV_AvoidCollision
+{
+  name       = bhv_avdcollision
+  pwt        = 200 // higher weight
+  condition  = AVOID=true
+  updates    = CONTACT_INFO
+  endflag    = CONTACT_RESOLVED = $[CONTACT]
+  templating = spawn
+
+             contact = to-be-set
+    on_no_contact_ok = true
+         extrapolate = true
+               decay = 30,60
+
+        pwt_outer_dist = 15
+        pwt_inner_dist = 10
+        completed_dist = 16
+     min_util_cpa_dist = 5
+     max_util_cpa_dist = 15
+             pwt_grade = linear
+   bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
+}
+#endif
+
+Behavior = BHV_OpRegionBounce
+{
+// not really used, just some big square, because we want to
+// simulate sensing the environment rather than forcing constraints
+  name = bhv_opregion_bounce
+  pwt = 200
+  duration = no-time-limit
+  condition = DEPLOY = true
+// some big box
+#ifdef VTYPE UUV
+  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:900,1300:900,940
+#endif
+#ifdef VTYPE SHIP
+    polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:900,1300:900,940
+#endif
+  max_depth = 20 // match with BHV_OpRegionBounceDepth
+  min_altitude = 10
+  max_time = 23400
+  trigger_entry_time = 1.0
+  trigger_exit_time = 1.0
+  visual_hints = edge_size=2.0,vertex_size=2.0
+  // bounce additions
+  bounce_buffer = 20 // meters, when to start bouncing
+  bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
+  no_zone_factor = .2
+}
+#ifdef VTYPE UUV
+Behavior = BHV_OpRegionBounceDepth
+{
+  name = bhv_opregion_depth_bounce
+  pwt = 200
+  duration = no-time-limit
+  condition = DEPLOY = true
+  max_depth = 20  // set to the max depth of the lake?
+  min_altitude = 10
+  // if buffer is not set, it is set to 0, which is in fact inactive
+  // bounce_buffer_depth: size of the buffer for depth bouncing
+  bounce_buffer_depth = 5
+  // no_zone_factor: used for: no_zone = buffer * no_zone_factor
+  no_zone_factor = .2
+}
+#endif
+
+//---------   Control behaviors   -------------
+
+Behavior = BHV_Waypoint
+{ 
+  name      = ns_survey
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+  endflag   = NS_SURVEY_DONE = true
+  updates   = WAYPOINT_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+//  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  // do lawnmower
+  // note: x, y are middle of lawnmower area
+  points = $(LAWNMOWER_NS)
+  order  = normal
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+
+Behavior = BHV_Waypoint
+{ 
+  name      = ew_survey
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+  condition = NS_SURVEY_DONE = true
+  endflag   = EW_SURVEY_DONE = true
+  endflag   = RETURN=true
+  updates   = WAYPOINT_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+  // do lawnmower
+//  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  points = $(LAWNMOWER_EW)
+  order  = normal
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+
+//----------------------------------------------
+Behavior = BHV_Waypoint
+{
+  name       = bhv_waypt_return
+  pwt        = 100
+  condition  = RETURN = true
+  condition  = DEPLOY = true
+  perpetual  = true
+  endflag    = RETURN = false
+  endflag    = DEPLOY = false
+
+  speed = 1.5
+  radius = 2.0
+  nm_radius = 8.0
+  points = $(START_POS)
+}
+
+#ifdef VTYPE UUV
+//----------------------------------------------
+Behavior = BHV_ConstantDepth
+{
+  name      = bhv_const_depth
+  pwt       = 100
+  duration  = no-time-limit
+  condition = DEPLOY = true
+
+  depth = $(START_DEPTH)  // m
+  peakwidth = 3     // m
+  basewidth = 2     // m
+  summitdelta = 20  // m
+}
+#endif
