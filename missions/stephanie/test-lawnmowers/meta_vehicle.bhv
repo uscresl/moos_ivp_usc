@@ -53,10 +53,10 @@ Behavior = BHV_OpRegionBounce
   condition = DEPLOY = true
 // some big box
 #ifdef VTYPE UUV
-  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:900,1300:900,940
+  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
 #endif
 #ifdef VTYPE SHIP
-    polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:900,1300:900,940
+    polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
 #endif
   max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10

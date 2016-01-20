@@ -30,9 +30,10 @@ PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="../../../modem-msgs"
 
 # survey specs
-PAINTSEGLIST="pts={500,1150:500,1050:800,1050:800,1150:500,1150},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=1,edge_size=1"
-LAWNMOWEREW="format=lawnmower,label=east-west-survey,x=650,y=1100,width=300,height=100,lane_width=20,lane_width=20,rows=east-west,degs=0,startx=0,starty=0"
-LAWNMOWERNS="format=lawnmower,label=north-south-survey,x=650,y=1100,width=300,height=100,lane_width=20,rows=north-south,degs=0,startx=0,starty=0"
+PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=1,edge_size=1"
+LAWNMOWER="format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWEREW="$LAWNMOWER,rows=east-west"
+LAWNMOWERNS="$LAWNMOWER,rows=north-south"
 
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
