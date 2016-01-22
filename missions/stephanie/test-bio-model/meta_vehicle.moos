@@ -42,15 +42,17 @@ ProcessConfig = ANTLER
 
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
-  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+  Run = pAcommsHandler @ NewConsole=false,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
   Run = pShare @ NewConsole = false
 
   // add other processes here
-  Run = uSimBioSensor @ NewConsole = true
-  Run = pGP @ NewConsole = true
+  uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
+  Run = uSimBioSensor @ NewConsole = true,XConfig=uSBSConfig
+  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+  Run = pGP @ NewConsole = true,XConfig=pGPConfig
 }
 //------------------------------------------------------------
 
