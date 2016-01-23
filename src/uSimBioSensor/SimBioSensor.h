@@ -17,7 +17,7 @@ class SimBioSensor : public CMOOSApp
 {
  public:
    SimBioSensor();
-   ~SimBioSensor() {};
+   ~SimBioSensor();
 
  protected: 
    // Standard MOOSApp functions to overload
@@ -33,7 +33,8 @@ class SimBioSensor : public CMOOSApp
    // Own functions
 //   void runPython();
    void readBioDataFromFile();
-   void findClosestDataPoint(); //Location vehicle, DataPoint& closest);
+//   void findClosestDataPoint(); //Location vehicle, DataPoint& closest);
+   double getDataPoint();
 
    // Configuration variables
    std::string m_filename;
@@ -49,6 +50,13 @@ class SimBioSensor : public CMOOSApp
    double m_veh_depth;
 
    // data read from file
+   // lon_min lon_max lon_res lat_min lat_max lat_res depth_min depth_max depth_res
+   double d_lon_min, d_lon_max;
+   double d_lat_min, d_lat_max;
+   double d_depth_min, d_depth_max;
+   size_t d_lon_res, d_lat_res, d_depth_res;
+   double *** d_location_values;
+
    std::vector<Location> m_locations;
    std::map<Location, double> m_data_at_loc;
 
