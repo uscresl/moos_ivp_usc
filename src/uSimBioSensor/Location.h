@@ -18,6 +18,7 @@ class Location
     // operator overloading
     bool operator< ( Location const & other ) const;
     bool operator== ( Location const & other ) const;
+    bool operator> ( Location const & other ) const;
 
   private:
     double m_lon;
