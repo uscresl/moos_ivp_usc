@@ -1,14 +1,1 @@
-1. get libhdf:
-   $ sudo apt-get install libhdf5-dev
-
-2. install FLANN (1.8.4)
-   a. Get the zip from: http://www.cs.ubc.ca/research/flann/uploads/FLANN/flann-1.8.4-src.zip
-   b. Unpack the zip
-   c. Build the code:
-      $ mkdir build
-      $ cd build
-      $ cmake ..
-      $ make
-
-(*. install Python (2.7) )
-($ sudo apt-get install libpython2.7 libpython2.7-dev )
+This code at the moment only depends on MOOS-IvP, MOOS-IvP-USC and Boost.

@@ -19,4 +19,3 @@ TARGET_LINK_LIBRARIES(uSimBioSensor
    # whatever other libs you need
    uscutil
 )
-
