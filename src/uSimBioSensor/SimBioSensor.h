@@ -50,12 +50,10 @@ class SimBioSensor : public CMOOSApp
    double m_veh_depth;
 
    // data read from file
-   // lon_min lon_max lon_res lat_min lat_max lat_res depth_min depth_max depth_res
-   double d_lon_min, d_lon_max;
-   double d_lat_min, d_lat_max;
-   double d_depth_min, d_depth_max;
-   size_t d_lon_res, d_lat_res, d_depth_res;
-   double *** d_location_values;
+   std::map<std::string, double> d_boundaries_map; // lon_min lon_max lon_res
+                                                   // lat_min lat_max lat_res
+                                                   // depth_min depth_max depth_res
+   double *** d_location_values; // lon, lat, dep -> data value
 
    std::vector<Location> m_locations;
    std::map<Location, double> m_data_at_loc;

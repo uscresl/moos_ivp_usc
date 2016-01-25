@@ -66,10 +66,12 @@ SimBioSensor::SimBioSensor()
 //
 SimBioSensor::~SimBioSensor()
 {
+  size_t lon_res = (size_t)d_boundaries_map.at("lon_res");
+  size_t lat_res = (size_t)d_boundaries_map.at("lat_res");
   // remove dynamically allocated array
-  for ( int idlo = 0; idlo < d_lon_res+1; idlo++ )
+  for ( int idlo = 0; idlo < lon_res+1; idlo++ )
   {
-    for ( int idla = 0; idla < d_lat_res+1; idla++ )
+    for ( int idla = 0; idla < lat_res+1; idla++ )
     {
       delete[] d_location_values[idlo][idla];
     }
@@ -137,14 +139,16 @@ bool SimBioSensor::OnConnectToServer()
 
 bool SimBioSensor::Iterate()
 {
-  std::cout << "iterate, proceed? " << (m_file_read && m_nav_data_received) << std::endl;
+  //std::cout << "iterate, proceed? " << (m_file_read && m_nav_data_received) << std::endl;
   if ( m_file_read && m_nav_data_received )
   {
 //    findClosestDataPoint();
     double dat = getDataPoint();
-    std::cout << "data: " << dat << std::endl;
-    if ( m_output_var != "" )
+    if ( m_output_var != "" && dat > 0 )
+    {
+      std::cout << "publishing data: " << dat << std::endl;
       m_Comms.Notify(m_output_var, dat);
+    }
   }
 
   return(true);
@@ -233,42 +237,29 @@ void SimBioSensor::readBioDataFromFile()
   size_t cnt = 0;
   if ( input_filestream.is_open() )
   {
-    // TODO read based on what header lines say,
-    // for now, test quick knowing format
-    // header lines
-    // skip first header line, names
-    std::getline(input_filestream, line_read);
-    line_read.clear();
+    // first header line: names
+    std::string hdr_line;
+    std::getline(input_filestream, hdr_line);
 
-    // get the boundaries from header
+    // second header line: boundaries
     // (lon_min lon_max lon_res lat_min lat_max lat_res depth_min depth_max depth_res)
     std::getline(input_filestream, line_read);
 
+    // extract the boundary values given header name and value
     boost::char_separator<char> sep(",");
     boost::tokenizer< boost::char_separator<char> > tokens(line_read, sep);
-    boost::tokenizer< boost::char_separator<char> >::iterator tok_itr = tokens.begin();
-    d_lon_min = (double)atof((*tok_itr).c_str());
-    tok_itr++;
-    d_lon_max = (double)atof((*tok_itr).c_str());
-    tok_itr++;
-    d_lon_res = (double)atof((*tok_itr).c_str());
-    tok_itr++;
-    d_lat_min = (double)atof((*tok_itr).c_str());
-    tok_itr++;
-    d_lat_max = (double)atof((*tok_itr).c_str());
-    tok_itr++;
-    d_lat_res = (double)atof((*tok_itr).c_str());
-    tok_itr++;
-    d_depth_min = (double)atof((*tok_itr).c_str());
-    tok_itr++;
-    d_depth_max = (double)atof((*tok_itr).c_str());
-    tok_itr++;
-    d_depth_res = (double)atof((*tok_itr).c_str());
-
-    std::cout << "boundaries stored: " << std::endl;
-    std::cout << "lon: " << d_lon_min << ", " << d_lon_max << ", " << d_lon_res << std::endl;
-    std::cout << "lat: " << d_lat_min << ", " << d_lat_max << ", " << d_lat_res << std::endl;
-    std::cout << "dep: " << d_depth_min << ", " << d_depth_max << ", " << d_depth_res << std::endl;
+    boost::tokenizer< boost::char_separator<char> > hdr_tokens(hdr_line, sep);
+    typedef boost::tokenizer< boost::char_separator<char> >::iterator bst_tkn_itr;
+    for ( bst_tkn_itr hdr_itr = hdr_tokens.begin(), value_itr = tokens.begin(); hdr_itr != hdr_tokens.end() && value_itr != tokens.end(); hdr_itr++, value_itr++ )
+    {
+      // add to map
+      d_boundaries_map.insert(std::pair<std::string, double>(*hdr_itr,(double)atof((*value_itr).c_str())));
+    }
+    // printout for checking
+    std::cout << "\nboundaries stored: " << std::endl;
+    std::map<std::string, double>::iterator itr;
+    for ( itr = d_boundaries_map.begin(); itr != d_boundaries_map.end(); itr++ )
+      std::cout << itr->first << ": " << itr->second << std::endl;
 
     // skip the data header line
     line_read.clear();
@@ -277,21 +268,23 @@ void SimBioSensor::readBioDataFromFile()
     // read the actual data
 
     // initialize the array to store values (dynamic allocation, requires destructor)
-    d_location_values = new double ** [d_lon_res];
-    for ( int idlo = 0; idlo < d_lon_res+1; idlo++ )
+    size_t lon_res = (size_t)d_boundaries_map.at("lon_res");
+    size_t lat_res = (size_t)d_boundaries_map.at("lat_res");
+    size_t depth_res = (size_t)d_boundaries_map.at("depth_res");
+    d_location_values = new double ** [lon_res];
+    for ( int idlo = 0; idlo < lon_res+1; idlo++ )
     {
-      d_location_values[idlo] = new double*[d_lat_res];
-      for ( int idla = 0; idla < d_lat_res+1; idla++ )
-      {
-        d_location_values[idlo][idla] = new double[d_depth_res];
-      }
+      d_location_values[idlo] = new double*[lat_res];
+      for ( int idla = 0; idla < lat_res+1; idla++ )
+        d_location_values[idlo][idla] = new double[depth_res];
     }
 
     // do calculations to figure out indices
-    double lon_step = std::abs(d_lon_max - d_lon_min) / d_lon_res;
-    double lat_step = std::abs(d_lat_max - d_lat_min) / d_lat_res;
-    double depth_step = std::abs(d_depth_max - d_depth_min) / d_depth_res;
+    double lon_step = std::abs(d_boundaries_map.at("lon_max") - d_boundaries_map.at("lon_min")) / lon_res;
+    double lat_step = std::abs(d_boundaries_map.at("lat_max") - d_boundaries_map.at("lat_min")) / lat_res;
+    double depth_step = std::abs(d_boundaries_map.at("depth_max") - d_boundaries_map.at("depth_min")) / depth_res;
 
+    boost::tokenizer< boost::char_separator<char> >::iterator tok_itr;
     while ( std::getline(input_filestream, line_read) )
     {
       // nxt: split line, store values
@@ -309,9 +302,9 @@ void SimBioSensor::readBioDataFromFile()
       cnt++;
 
       size_t lon_idx, lat_idx, dep_idx;
-      lon_idx = std::floor( ((double)atof(lon.c_str())-d_lon_min)/lon_step );
-      lat_idx = std::floor( ((double)atof(lat.c_str())-d_lat_min)/lat_step );
-      dep_idx = std::floor( ((double)atof(depth.c_str())-d_depth_min)/depth_step );
+      lon_idx = std::floor( ((double)atof(lon.c_str())-d_boundaries_map.at("lon_min"))/lon_step );
+      lat_idx = std::floor( ((double)atof(lat.c_str())-d_boundaries_map.at("lat_min"))/lat_step );
+      dep_idx = std::floor( ((double)atof(depth.c_str())-d_boundaries_map.at("depth_min"))/depth_step );
 
       d_location_values[lon_idx][lat_idx][dep_idx] = (double)atof(data.c_str());
     }
@@ -333,20 +326,28 @@ void SimBioSensor::readBioDataFromFile()
 
 double SimBioSensor::getDataPoint()
 {
-  if (m_veh_lon >= d_lon_min && m_veh_lon <= d_lon_max &&
-       m_veh_lat >= d_lat_min && m_veh_lat <= d_lat_max &&
-       m_veh_depth >= std::abs(d_depth_min) && m_veh_depth <= std::abs(d_depth_max) )
+  // get boundary values local because we use them twice
+  double lon_min = d_boundaries_map.at("lon_min");
+  double lon_max = d_boundaries_map.at("lon_max");
+  double lat_min = d_boundaries_map.at("lat_min");
+  double lat_max = d_boundaries_map.at("lat_max");
+  double dep_min = std::abs(d_boundaries_map.at("depth_min"));
+  double dep_max = std::abs(d_boundaries_map.at("depth_max"));
+
+  if (m_veh_lon >= lon_min && m_veh_lon <= lon_max &&
+       m_veh_lat >= lat_min && m_veh_lat <= lat_max &&
+       m_veh_depth >= dep_min && m_veh_depth <= dep_max )
   {
     // do calculations to figure out indices
-    double lon_step = std::abs(d_lon_max - d_lon_min) / d_lon_res;
-    double lat_step = std::abs(d_lat_max - d_lat_min) / d_lat_res;
-    double depth_step = std::abs(d_depth_max - d_depth_min) / d_depth_res;
+    double lon_step = std::abs(lon_max - lon_min) / d_boundaries_map.at("lon_res");
+    double lat_step = std::abs(lat_max - lat_min) / d_boundaries_map.at("lat_res");
+    double depth_step = std::abs(dep_max - dep_min) / d_boundaries_map.at("depth_res");
 
     size_t nav_lon_idx, nav_lat_idx, nav_dep_idx;
 
-    nav_lon_idx = std::floor( (m_veh_lon-d_lon_min)/lon_step );
-    nav_lat_idx = std::floor( (m_veh_lat-d_lat_min)/lat_step );
-    nav_dep_idx = std::floor( (m_veh_depth-d_depth_min)/depth_step );
+    nav_lon_idx = std::floor( (m_veh_lon - lon_min) / lon_step );
+    nav_lat_idx = std::floor( (m_veh_lat - lat_min) / lat_step );
+    nav_dep_idx = std::floor( (m_veh_depth - dep_min) / depth_step );
 
     return d_location_values[nav_lon_idx][nav_lat_idx][nav_dep_idx];
   }
