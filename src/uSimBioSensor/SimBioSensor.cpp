@@ -238,6 +238,14 @@ void SimBioSensor::readBioDataFromFile()
       // add to map
       d_boundaries_map.insert(std::pair<std::string, double>(*hdr_itr,(double)atof((*value_itr).c_str())));
     }
+
+    // check file format
+    if ( d_boundaries_map.size() < 9 )
+    {
+      std::cout << GetAppName() << " :: ERROR: wrong file format, exiting." << std::endl;
+      std::exit(0);
+    }
+
     // printout for checking
     std::cout << "\nboundaries stored: " << std::endl;
     std::map<std::string, double>::iterator itr;
@@ -271,6 +279,7 @@ void SimBioSensor::readBioDataFromFile()
     while ( std::getline(input_filestream, line_read) )
     {
       // nxt: split line, store values
+      // TODO, store by checking header lines for positions
       std::string lon, lat, depth, data;
       boost::tokenizer< boost::char_separator<char> > data_tok(line_read, sep);
       tok_itr = data_tok.begin();
