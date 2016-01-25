@@ -130,7 +130,6 @@ bool SimBioSensor::Iterate()
   //std::cout << "iterate, proceed? " << (m_file_read && m_nav_data_received) << std::endl;
   if ( m_file_read && m_nav_data_received )
   {
-//    findClosestDataPoint();
     double dat = getDataPoint();
     if ( m_output_var != "" && dat > 0 )
     {

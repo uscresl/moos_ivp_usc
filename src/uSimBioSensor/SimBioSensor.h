@@ -11,7 +11,6 @@
 #define PSIMBIOSENSOR_HEADER
 
 #include "MOOS/libMOOS/MOOSLib.h"
-#include "DataPoint.h"
 
 class SimBioSensor : public CMOOSApp
 {
@@ -52,9 +51,6 @@ class SimBioSensor : public CMOOSApp
                                                    // lat_min lat_max lat_res
                                                    // depth_min depth_max depth_res
    double *** d_location_values; // lon, lat, dep -> data value
-
-   std::vector<Location> m_locations;
-   std::map<Location, double> m_data_at_loc;
 
 };
 
