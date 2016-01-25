@@ -2,8 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: SimBioSensor.h                                       */
-/*    DATE: Mar 29, 2014                                         */
-/*                                                               */
+/*    DATE: Jan 25, 2016                                         */
 /*                                                               */
 /*****************************************************************/
 

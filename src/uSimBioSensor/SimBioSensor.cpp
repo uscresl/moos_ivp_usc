@@ -2,8 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: SimBioSensor.cpp                                     */
-/*    DATE: Nov 19, 2015                                         */
-/*                                                               */
+/*    DATE: Jan 25, 2016                                         */
 /*                                                               */
 /*****************************************************************/
 
@@ -38,7 +37,7 @@ SimBioSensor::SimBioSensor()
   // MOOS variables
   m_veh_lon = 0;
   m_veh_lat = 0;
-  m_veh_depth = 0;
+  m_veh_depth = -1;
 
   // params
   m_filename = "";
@@ -94,19 +93,21 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-    if ( key == "NODE_REPORT_LOCAL" )
-    {
-      //handle
-      m_veh_lon = getDoubleFromNodeReport(sval,"LON");
-      m_veh_lat = getDoubleFromNodeReport(sval,"LAT");
-      m_veh_depth = getDoubleFromNodeReport(sval,"DEP");
-
-      if ( !m_nav_data_received )
-        m_nav_data_received = true;
-    }
+    if ( key == "NAV_LONG" )
+      m_veh_lon = dval;
+    else if ( key == "NAV_LAT" )
+      m_veh_lat = dval;
+    else if ( key == "NAV_DEPTH" )
+      m_veh_depth = dval;
     else
-      std::cout << "uSimBioSensor :: Unhandled Mail: " << key << std::endl;
-      //reportRunWarning("Unhandled Mail: " + key);
+      std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
+
+    if ( m_nav_data_received == false && !(m_veh_lon == 0 || m_veh_lat == 0 || m_veh_depth == -1) )
+    {
+      m_nav_data_received = true;
+      std::cout << GetAppName() << " :: first nav data received (lon, lat, depth): "
+                << m_veh_lon << ", " << m_veh_lat << ", " << m_veh_depth << std::endl;
+    }
   }
 
    return(true);
@@ -127,13 +128,12 @@ bool SimBioSensor::OnConnectToServer()
 
 bool SimBioSensor::Iterate()
 {
-  //std::cout << "iterate, proceed? " << (m_file_read && m_nav_data_received) << std::endl;
   if ( m_file_read && m_nav_data_received )
   {
     double dat = getDataPoint();
     if ( m_output_var != "" && dat > 0 )
     {
-      std::cout << "publishing data: " << dat << std::endl;
+      std::cout << GetAppName() << " :: publishing data: " << dat << std::endl;
       m_Comms.Notify(m_output_var, dat);
     }
   }
@@ -151,12 +151,11 @@ bool SimBioSensor::OnStartUp()
   
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
-  if(!m_MissionReader.GetConfiguration(GetAppName(), sParams))
+  if ( !m_MissionReader.GetConfiguration(GetAppName(), sParams) )
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
-    //reportConfigWarning("No config block found for " + GetAppName());
 
   STRING_LIST::iterator p;
-  for(p=sParams.begin(); p!=sParams.end(); p++) 
+  for ( p = sParams.begin(); p != sParams.end(); p++ )
   {
     std::string orig  = *p;
     std::string line  = *p;
@@ -175,11 +174,11 @@ bool SimBioSensor::OnStartUp()
     {
       m_output_var = toupper(value);
       std::cout << GetAppName() << " :: Parameter output_var: " << m_output_var << std::endl;
+      handled = true;
     }
 
-    if(!handled)
+    if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
-      //reportUnhandledConfigWarning(orig);
   }
 
   // read biomass file
@@ -198,9 +197,9 @@ bool SimBioSensor::OnStartUp()
 void SimBioSensor::registerVariables()
 {
   // get current vehicle position
-  // because we want lon/lat/depth at the same time, we might as well use
-  // the node report
-  m_Comms.Register("NODE_REPORT_LOCAL", 0);
+  m_Comms.Register("NAV_LAT", 0);
+  m_Comms.Register("NAV_LONG", 0);
+  m_Comms.Register("NAV_DEPTH", 0);
 }
 
 
