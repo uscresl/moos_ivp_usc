@@ -79,7 +79,15 @@ else()
 endif()
 
 # Jan'16: add process to determine sample points for GP
-add_subdirectory(pSamplePoints)
+# need MOOS Geodesy for conversion x/y/lon/lat
+find_package(MOOSGeodesy)
+if ( MOOSGeodesy_FOUND )
+  include_directories(${MOOSGeodesy_INCLUDE_DIRS})
+  link_directories(${MOOSGeodesy_LIBRARY_PATH})
+  message("MOOSGeodesy_INCLUDE_DIRS:" ${MOOSGeodesy_INCLUDE_DIRS})
+  message("MOOSGeodesy_LIBRARY_PATH:" ${MOOSGeodesy_LIBRARY_PATH})
+  add_subdirectory(pSamplePoints)
+endif()
 
 ##############################################################################
 #                           END of CMakeLists.txt

@@ -6,7 +6,8 @@ ProcessConfig = pSamplePoints
   AppTick   = 2
   CommsTick = 2
   
-  // potential process parameters would go here
-  example1 = yes
-  example2 = 100
+  // pass on the lawnmower params
+  lawnmower_config = format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0,rows=north-south
+  // define what output variable name to use
+  output_var = SAMPLE_POINTS
 }
