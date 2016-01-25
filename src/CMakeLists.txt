@@ -61,6 +61,7 @@ if ( Boost_FOUND )
 endif()
 
 # Nov'15: add simulation biology
+find_package(Boost)
 if ( Boost_FOUND )
   ADD_SUBDIRECTORY(uSimBioSensor)
 endif()
@@ -77,6 +78,8 @@ else()
   message("LibGP not found. Did you set the GPLIB_LOCATION environment variable?")
 endif()
 
+# Jan'16: add process to determine sample points for GP
+add_subdirectory(pSamplePoints)
 
 ##############################################################################
 #                           END of CMakeLists.txt
