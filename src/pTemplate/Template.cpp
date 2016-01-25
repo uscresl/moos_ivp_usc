@@ -66,8 +66,7 @@ bool Template::OnNewMail(MOOSMSG_LIST &NewMail)
       RequestQuit();
     }
     else
-      std::cout << "pTemplate :: Unhandled Mail: " << key << std::endl;
-    //reportRunWarning("Unhandled Mail: " + key);
+      std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
   }
 
   return (true);
@@ -103,7 +102,6 @@ bool Template::OnStartUp()
   m_MissionReader.EnableVerbatimQuoting(true);
   if ( !m_MissionReader.GetConfiguration(GetAppName(), sParams) )
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
-  //reportConfigWarning("No config block found for " + GetAppName());
 
   STRING_LIST::iterator p;
   for ( p=sParams.begin(); p!=sParams.end(); p++ )
@@ -136,7 +134,7 @@ bool Template::OnStartUp()
       }
 
     }
-    else if( (param == "example1") )
+    else if( param == "example1" )
     {
       // save string .. you might wanna check for format or something
       m_example1 = value;
@@ -145,7 +143,6 @@ bool Template::OnStartUp()
 
     if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
-    //reportUnhandledConfigWarning(orig);
   }
 
   registerVariables();
@@ -174,12 +171,12 @@ bool Template::handleMailTemplateVarIn(std::string str)
   std::string aa, bb, cc;
   
   // Parse and handle ack message components
-  bool   valid_msg = true;
+  bool valid_msg = true;
   std::string original_msg = str;
   // handle comma-separated string
   std::vector<std::string> svector = parseString(str, ',');
   unsigned int idx, vsize = svector.size();
-  for ( idx=0; idx<vsize; idx++ ) {
+  for ( idx = 0; idx < vsize; idx++ ) {
     std::string param = biteStringX(svector[idx], '=');
     std::string value = svector[idx];
     if ( param == "aa" )
@@ -192,12 +189,11 @@ bool Template::handleMailTemplateVarIn(std::string str)
       valid_msg = false;
   }
 
-  if ( (aa=="") || (bb=="") || (cc=="") )
+  if ( ( aa == "") || ( bb == "") || ( cc == "") )
     valid_msg = false;
   
   if ( !valid_msg )
     std::cout << GetAppName() << " :: Unhandled TemplateVarIn: " << original_msg << std::endl;
-  //reportRunWarning("Unhandled TemplateVarIn:" + original_msg);
 
   if ( valid_msg )
     m_got_aabbcc = true;
