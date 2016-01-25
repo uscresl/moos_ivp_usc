@@ -11,25 +11,15 @@
 
 #include <iterator>
 #include "MBUtils.h"
-//#include "ACTable.h"
+
 #include "math.h"
 #include <limits>
 
-//// include python headers for running Python from C++
-//// this generates some warning on compile, just ignore them
-//// (the general advice way to get rid of the warnings is:
-////  'include Python.h first, before other includes'
-////  but even when put as first thing in header file, doesn't help here'
-//#include <Python.h>
-
 // read from file
 #include <istream>
+
 // atof
 #include <stdlib.h>
-
-// FLANN
-#include <flann/flann.hpp>
-#include <flann/io/hdf5.h>
 
 // handle node report
 #include "USCutils.h"
@@ -37,8 +27,6 @@
 // csv handling
 #include <boost/foreach.hpp>
 #include <boost/tokenizer.hpp>
-
-//using namespace std;
 
 //---------------------------------------------------------
 // Constructor
@@ -194,9 +182,6 @@ bool SimBioSensor::OnStartUp()
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
       //reportUnhandledConfigWarning(orig);
   }
-
-//  // generate biomass file
-//  runPython();
 
   // read biomass file
   readBioDataFromFile();
@@ -355,63 +340,3 @@ double SimBioSensor::getDataPoint()
   else
     return -1;
 }
-
-//void SimBioSensor::findClosestDataPoint() //Location vehicle, DataPoint & closest)
-//{
-//  // call FLANN
-//  std::cout << "start" << std::endl;
-
-//  size_t nn = m_locations.size();
-
-//  std::cout << "reformat data" << std::endl;
-
-//  // Matrix(T* data_, size_t rows_, size_t cols_, size_t stride_ = 0)
-//  flann::Matrix<float> test(new float[nn*3], nn, 3);
-//  for ( int idx = 0; idx < nn; ++idx )
-//  {
-//    Location loc = m_locations.at(idx);
-//    // serialize data
-//    test[idx][0] = loc.lon();
-//    test[idx][1] = loc.lat();
-//    test[idx][2] = loc.depth();
-//  }
-
-//  // AutotunedIndexParams(float target_precision = 0.8, float build_weight = 0.01, float memory_weight = 0, float sample_fraction = 0.1)
-//  std::cout << "init index" << std::endl;
-//  flann::Index<flann::L2<float> > index(test, flann::LinearIndexParams());
-////                                        flann::KDTreeIndexParams(4));
-////                                        flann::AutotunedIndexParams(0.8,0.01,0,0.1)); // 80% precision
-
-//  std::cout << "build index" << std::endl;
-//  index.buildIndex();
-
-//  std::cout << "prep dists, indices" << std::endl;
-
-//  // prep data structs for storing result, automatically resized as needed
-//  std::vector< std::vector<int> > indices;
-//  std::vector< std::vector<float> > dists;
-
-//  flann::Matrix<float> query(new float[1*3], 1, 3);
-//  query[0][0] = m_veh_lon;
-//  query[0][1] = m_veh_lat;
-//  query[0][2] = m_veh_depth;
-
-//  std::cout << "run kNN" << std::endl;
-//  // nr of nearest neighbors to search for
-//  size_t k_neighbors = 1;
-//  // run kNN, standard search
-//  index.knnSearch(query, indices, dists, k_neighbors, flann::SearchParams(-1)); //flann::FLANN_CHECKS_AUTOTUNED) );
-//  // returned are: indices of, and distances to, the neighbors found
-
-//  size_t ind = (indices.at(0)).at(0);
-//  Location pt_found(test[ind][0], test[ind][1], test[ind][2]);
-//  double data = m_data_at_loc.at(pt_found);
-
-//  std::cout << GetAppName() << "*best pt: " << test[ind][0] << ", " << test[ind][1] << ", "
-//            << test[ind][2] << '\n';
-//  std::cout << GetAppName() << "*value: " << data << std::endl;
-//  // WORKING :D
-
-//  if ( m_output_var != "" )
-//    m_Comms.Notify(m_output_var, data);
-//}
