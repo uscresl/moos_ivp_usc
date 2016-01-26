@@ -236,8 +236,8 @@ void SamplePoints::calculateGridPoints(double ctr_x, double ctr_y, double width,
   // 1 deg lon in m: 92287.20804979937m
   double lat_deg_to_m = 110923.99118801417;
   double lon_deg_to_m = 92287.20804979937;
-  double lw_lon = lane_width*lon_deg_to_m; // convert lane width to lon
-  double lw_lat = lane_width*lat_deg_to_m; // convert lane width to lat
+  double lw_lon = lane_width/lon_deg_to_m; // convert lane width to lon
+  double lw_lat = lane_width/lat_deg_to_m; // convert lane width to lat
 
   // checking
   std::cout << "SW corner: " << sw_corner_lon << ", " << sw_corner_lat << std::endl;
