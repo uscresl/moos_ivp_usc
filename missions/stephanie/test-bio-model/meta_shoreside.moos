@@ -31,6 +31,9 @@ ProcessConfig = ANTLER
   // shoreside visualization
   Run = pMarineViewer    @ NewConsole = true ~ pMarineViewer_shorebroker
 
+  // paint extra polygons etc
+  Run = uTimerScript     @ NewConsole = false
+
   // debugging
 //  Run = uMS @ NewConsole = false
 }
@@ -50,3 +53,21 @@ ProcessConfig = ANTLER
 
 // visualization
 #include $(PLUG_DIR)/plug_pMarineViewer.moos
+
+ProcessConfig = uTimerScript
+{
+  AppTick = 4
+  CommsTick = 4
+
+  verbose = true
+
+  event = var=VIEW_SEGLIST,val="$(PAINT_SEGLIST)",time=10
+
+  reset_max = nolimit
+//  reset_time = all-posted
+  reset_var = UTS_RESET
+
+  status_var = UTS_STATUS
+
+  time_warp=$(WARP)
+}
