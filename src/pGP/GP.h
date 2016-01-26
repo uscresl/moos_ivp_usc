@@ -48,6 +48,7 @@ class GP : public CMOOSApp
    double m_lon;
    double m_dep;
    bool m_data_added;
+   double m_last_published;
 
    std::vector< std::pair<double, double> > m_sample_points;
 

@@ -33,6 +33,7 @@ GP::GP() :
   m_lon = 0;
   m_dep = 0;
   m_data_added = false;
+  m_last_published = std::numeric_limits<double>::max();
 
   // initialize a GP for 2D input data, //TODO convert to 3D
   // using the squared exponential covariance function,
@@ -114,7 +115,7 @@ bool GP::Iterate()
   else if ( m_data_added )
   {
     // predict target value and variance for sample locations
-    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0 ) // every 5 min, for now
+    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  && (std::abs(m_last_published - MOOSTime()) > 1) ) // every 5 min, for now
     {
       // predict target value for given input, f()
       // predict variance of prediction for given input, var()
@@ -134,6 +135,7 @@ bool GP::Iterate()
       // TODO, use this for figuring out where to go next
       m_Comms.Notify(m_output_var_pred, output_stream.str());
       std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
+      m_last_published = MOOSTime();
     }
   }
 
