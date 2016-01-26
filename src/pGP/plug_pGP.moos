@@ -6,7 +6,7 @@ ProcessConfig = pGP
   AppTick   = 2
   CommsTick = 2
   
-  // potential process parameters would go here
-  input_var = "SIM_DATA"
-
+  // define the names of input variables
+  input_var_data = "SIM_DATA"
+  input_var_sample_points = "SAMPLE_POINTS"
 }

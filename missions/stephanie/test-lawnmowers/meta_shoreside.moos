@@ -61,7 +61,7 @@ ProcessConfig = uTimerScript
 
   verbose = true
 
-  event = var=VIEW_SEGLIST,val=$(PAINT_SEGLIST),time=10
+  event = var=VIEW_SEGLIST,val="$(PAINT_SEGLIST)",time=10
 
   reset_max = nolimit
 //  reset_time = all-posted
