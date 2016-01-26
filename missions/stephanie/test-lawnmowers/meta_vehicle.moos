@@ -49,8 +49,12 @@ ProcessConfig = ANTLER
   Run = pShare @ NewConsole = false
 
   // add other processes here
-  Run = uSimBioSensor @ NewConsole = true
-  Run = pGP @ NewConsole = true
+  uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
+  Run = uSimBioSensor @ NewConsole = true,XConfig=uSBSConfig
+  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+  pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
+  Run = pSamplePoints @ NewConsole = true,XConfig=pSPConfig
 }
 //------------------------------------------------------------
 
@@ -81,6 +85,7 @@ ProcessConfig = ANTLER
 
 // add other processes here
 #include $(PLUG_DIR)/plug_uSimBioSensor.moos
+
 //--------------------------------------------------
 // pGP configuration block
 //
@@ -89,6 +94,25 @@ ProcessConfig = pGP
   AppTick   = 2
   CommsTick = 2
 
-  // process parameters
-  input_var = "SIM_DATA"
+  // define the names of input variables
+  input_var_data = "SIM_DATA"
+  input_var_sample_points = "SAMPLE_POINTS"
+  output_var_predictions = "GP_PREDICTIONS"
+
+  // define the prediction interval (predict every X seconds)
+  prediction_interval = 300
 }
+
+//--------------------------------------------------
+// pSamplePoints configuration block
+//
+ProcessConfig = pSamplePoints
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // potential process parameters would go here
+  lawnmower_config = $(LAWNMOWER_CONFIG)
+  output_var = SAMPLE_POINTS
+}
+

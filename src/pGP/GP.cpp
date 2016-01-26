@@ -15,6 +15,7 @@
 #include "math.h"
 #include <limits>
 
+#include <boost/lexical_cast.hpp>
 
 //---------------------------------------------------------
 // Constructor
@@ -23,7 +24,10 @@ GP::GP() :
   m_gp(2, "CovSum(CovSEiso, CovNoise)")
 {
   // class variable instantiations can go here
-  m_input_var = "";
+  m_input_var_data = "";
+  m_input_var_sample_points = "";
+  m_output_var_pred = "";
+  m_prediction_interval = -1;
 
   m_lat = 0;
   m_lon = 0;
@@ -68,10 +72,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-    if( key == m_input_var )
+    if ( key == m_input_var_data )
     {
-      //handleMailGPVarIn(sval);
-      std::cout << "\nreceiving: " << dval << " " << atof( sval.c_str() ) << std::endl;
       handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -80,9 +82,13 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       m_lon = dval;
     else if ( key == "NAV_DEPTH" )
       m_dep = dval;
+    else if ( key == m_input_var_sample_points )
+    {
+      // process sample locations
+      storeSamplePoints(sval);
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
-    //reportRunWarning("Unhandled Mail: " + key);
   }
 
   return(true);
@@ -93,7 +99,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
 bool GP::OnConnectToServer()
 {
-  registerVariables();
+//  registerVariables();
   return(true);
 }
 
@@ -107,18 +113,31 @@ bool GP::Iterate()
     return true;
   else if ( m_data_added )
   {
-    // predict target value for given input, f()
-    // predict variance of prediction for given input, var()
-    double x_t[] = {m_lon+0.00001, m_lat+0.00001}; //, m_dep+0.1}; //TODO change/move
-    double pred_f = m_gp.f(x_t);
-    double pred_var = m_gp.var(x_t);
+    // predict target value and variance for sample locations
+    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0 ) // every 5 min, for now
+    {
+      // predict target value for given input, f()
+      // predict variance of prediction for given input, var()
 
-    std::cout << "\n";
-    std::cout << "pred_f: " << pred_f << '\n';
-    std::cout << "pred_var: " << pred_var << std::endl;
+      //    double x_t[] = {m_lon+0.00001, m_lat+0.00001}; //, m_dep+0.1}; //TODO change/move
+      //    double pred_f = m_gp.f(x_t);
+      //    double pred_var = m_gp.var(x_t);
+      std::ostringstream output_stream;
+      for ( size_t loc_idx = 0; loc_idx < m_sample_points.size(); loc_idx++ )
+      {
+        std::pair<double, double> location = m_sample_points.at(loc_idx);
+        double x_t[] = {location.first, location.second};
+        double pred_f = m_gp.f(x_t);
+        double pred_var = m_gp.var(x_t);
+        output_stream << pred_f << "," << pred_var << ";";
+      }
+      // TODO, use this for figuring out where to go next
+      m_Comms.Notify(m_output_var_pred, output_stream.str());
+      std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
+    }
   }
 
-  std::cout << m_gp.get_sampleset_size() << std::endl;
+//  std::cout << m_gp.get_sampleset_size() << std::endl;
 
   return(true);
 }
@@ -135,7 +154,6 @@ bool GP::OnStartUp()
   m_MissionReader.EnableVerbatimQuoting(true);
   if (!m_MissionReader.GetConfiguration(GetAppName(), sParams))
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
-  //reportConfigWarning("No config block found for " + GetAppName());
 
   STRING_LIST::iterator p;
   for (p=sParams.begin(); p!=sParams.end(); p++)
@@ -146,18 +164,50 @@ bool GP::OnStartUp()
     std::string value = line;
 
     bool handled = false;
-    if ( param == "input_var" )
+    if ( param == "input_var_data" )
     {
-      m_input_var = toupper(value);
+      m_input_var_data = toupper(value);
       handled = true;
+    }
+    else if ( param == "input_var_sample_points" )
+    {
+      m_input_var_sample_points = toupper(value);
+      handled = true;
+    }
+    else if ( param == "output_var_predictions" )
+    {
+      m_output_var_pred = toupper(value);
+      handled = true;
+    }
+    else if ( param == "prediction_interval" )
+    {
+      m_prediction_interval = (size_t)atoi(value.c_str());
+      if ( m_prediction_interval < 0 )
+      {
+        std::cout << GetAppName() << " :: ERROR, invalid prediction interval, needs to be > 0" << std::endl;
+        RequestQuit();
+      }
+      else
+        handled = true;
     }
 
     if(!handled)
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
-    //reportUnhandledConfigWarning(orig);
+  }
+
+  if ( m_input_var_data == "" || m_input_var_sample_points == "" )
+  {
+    std::cout << GetAppName() << " :: ERROR, missing input variable name, exiting." << std::endl;
+    RequestQuit();
+  }
+  else if ( m_output_var_pred == "" )
+  {
+    std::cout << GetAppName() << " :: ERROR, missing output variable name, exiting." << std::endl;
+    RequestQuit();
   }
 
   registerVariables();
+
   return(true);
 }
 
@@ -174,33 +224,48 @@ void GP::registerVariables()
   m_Comms.Register("NAV_DEPTH", 0);
 
   // get data for GP
-  if ( m_input_var != "" )
-    m_Comms.Register(m_input_var, 0);
+  m_Comms.Register(m_input_var_data, 0);
+
+  // get sample points for GP
+  m_Comms.Register(m_input_var_sample_points, 0);
 }
 
 //---------------------------------------------------------
 // Procedure: handleMailData
 //            handle the incoming message
 //
-bool GP::handleMailData(double received_data)
+void GP::handleMailData(double received_data)
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
-  {
-    std::cout << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
-    return false;
-  }
+    std::cout << GetAppName() << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
   else
   {
-    // Parse and handle ack message components
-    bool   valid_msg = true;
-
     // add training data
     // Input vectors x must be provided as double[] and targets y as double.
     double x[] = {m_lon, m_lat}; //, m_dep};
     m_gp.add_pattern(x, received_data);
     m_data_added = true;
-
-    return ( valid_msg );
   }
-  return false;
+}
+
+//---------------------------------------------------------
+// Procedure: storeSamplePoints
+//            parse the string, store the sample locations
+//
+void GP::storeSamplePoints(std::string input_string)
+{
+  // input: semicolon separated string of comma separated locations
+  // separate by semicolon
+  std::vector<std::string> sample_points = parseString(input_string, ';');
+  // for each, add to vector
+  for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
+  {
+    std::string location = sample_points.at(id_pt);
+    size_t comma_pos = location.find(',');
+    double lon = (double)atof(location.substr(0,comma_pos).c_str());
+    double lat = (double)atof(location.substr(comma_pos+1,location.length()).c_str());
+    m_sample_points.push_back( std::pair<double, double>(lon, lat) );
+  }
+  // check / communicate what we did
+  std::cout << GetAppName() << " :: stored " << m_sample_points.size() << " sample locations" << std::endl;
 }

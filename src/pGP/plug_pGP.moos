@@ -9,4 +9,8 @@ ProcessConfig = pGP
   // define the names of input variables
   input_var_data = "SIM_DATA"
   input_var_sample_points = "SAMPLE_POINTS"
+  output_var_predictions = "GP_PREDICTIONS"
+
+  // define the prediction interval (predict every X seconds)
+  prediction_interval = 300
 }

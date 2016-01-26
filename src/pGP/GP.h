@@ -34,16 +34,22 @@ class GP : public CMOOSApp
 
  private: 
    // Own functions
-   bool handleMailData(double received_data);
+   void handleMailData(double received_data);
+   void storeSamplePoints(std::string input_string);
 
    // Configuration variables
-   std::string m_input_var;
+   std::string m_input_var_data;
+   std::string m_input_var_sample_points;
+   std::string m_output_var_pred;
+   size_t m_prediction_interval;
 
    // State variables
    double m_lat;
    double m_lon;
    double m_dep;
    bool m_data_added;
+
+   std::vector< std::pair<double, double> > m_sample_points;
 
    libgp::GaussianProcess m_gp;
 };
