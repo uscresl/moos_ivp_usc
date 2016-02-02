@@ -17,6 +17,9 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <cov.h>
+#include <cov_se_iso.h>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -132,10 +135,37 @@ bool GP::Iterate()
         double pred_var = m_gp.var(x_t);
         output_stream << pred_f << "," << pred_var << ";";
       }
+
       // TODO, use this for figuring out where to go next
       m_Comms.Notify(m_output_var_pred, output_stream.str());
       std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
       m_last_published = MOOSTime();
+
+      // TESTING 123 TODO: change to use sampled/unsampled locations
+      // get covariance function from GP
+      // have two sets; sampled and unsampled locations
+      // use the get() function from the CovarianceFunction
+      libgp::CovarianceFunction & cov_f = m_gp.covf();
+      std::cout << "covar func: " << cov_f.to_string() << std::endl;
+      Eigen::VectorXd y(2);
+      y(0) = -117.806000;
+      y(1) = 34.088000;
+
+      Eigen::VectorXd sampled_locations(2);
+      sampled_locations(0) = -117.809000;
+      sampled_locations(1) = 34.080000;
+      double k_ya = cov_f.get(y, sampled_locations);
+      double k_ay = cov_f.get(sampled_locations, y);
+      std::cout << " covariance: " << k_ya << "  " << k_ay << std::endl;
+      double k_yy = cov_f.get(y, y);
+      std::cout << "cov yy : " << k_yy << std::endl;
+
+//      double k_yy = cov_f.get(y, y);
+//      double k_yA = cov_f.get(y, sampled_locations);
+//      double k_Ay = cov_f.get(sampled_locations, y);
+//      double k_AA = cov_f.get(sampled_locations, sampled_locations);
+//      double k_yAb = cov_f.get(y, unsampled_locations);
+//      double k_Aby = cov_f.get(y, sampled_locations);
     }
   }
 
