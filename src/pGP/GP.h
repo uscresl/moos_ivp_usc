@@ -63,8 +63,8 @@ class GP : public CMOOSApp
    double m_pts_grid_spacing;
 
    //std::vector< std::pair<double, double> > m_sample_points;
-   std::map< size_t, std::pair<double, double> > m_sample_points_unvisited;
-   std::map< size_t, std::pair<double, double> > m_sample_points_visited;
+   std::map< size_t, Eigen::VectorXd > m_sample_points_unvisited;
+   std::map< size_t, Eigen::VectorXd > m_sample_points_visited;
 
    libgp::GaussianProcess m_gp;
 };

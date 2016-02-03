@@ -146,12 +146,11 @@ bool GP::Iterate()
       size_t size_unvisited = m_sample_points_unvisited.size();
       double best_so_far = 0.0;
       Eigen::VectorXd best_so_far_y(2);
-      std::map<size_t,std::pair<double,double> >::iterator y_itr;
+      std::map<size_t, Eigen::VectorXd>::iterator y_itr;
       for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
       {
         Eigen::VectorXd y(2);
-        y(0) = (y_itr->second).first;
-        y(1) = (y_itr->second).second;
+        y = y_itr->second;
 
         // calculate k(y,y)
         double k_yy = cov_f.get(y,y);
@@ -332,7 +331,10 @@ void GP::storeSamplePoints(std::string input_string)
     // 1. assume ordered as per creation (if needed, we can recalculate the v_id)
     // 2. store in a map; v_id is key, location is value
     // 3. later on, we can easily retrieve from map / store in other
-    m_sample_points_unvisited.insert( std::pair<size_t, std::pair<double, double> >(id_pt, std::pair<double, double>(lon, lat)) );
+    Eigen::VectorXd loc_vec(2);
+    loc_vec(0) = lon;
+    loc_vec(1) = lat;
+    m_sample_points_unvisited.insert( std::pair<size_t, Eigen::VectorXd>(id_pt, loc_vec) );
 
     // the first location should be bottom left corner, store as minima
     if ( id_pt == 0 )
@@ -341,9 +343,6 @@ void GP::storeSamplePoints(std::string input_string)
       m_min_lat = lat;
       std::cout << GetAppName() << " :: SW Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
     }
-
-    // old method
-    //m_sample_points.push_back( std::pair<double, double>(lon, lat) );
   }
   // check / communicate what we did
   std::cout << GetAppName() << " :: stored " << m_sample_points_unvisited.size() << " sample locations" << std::endl;
@@ -406,11 +405,11 @@ void GP::updateVisitedSet()
     if ( m_sample_points_unvisited.find(index) != m_sample_points_unvisited.end() )
     {
       // remove point from unvisited set
-      std::pair<double, double> move_pt = m_sample_points_unvisited.at(index);
+      Eigen::VectorXd move_pt = m_sample_points_unvisited.at(index);
 
       // tmp check
-      double dist_lon = std::abs(move_pt.first - veh_lon);
-      double dist_lat = std::abs(move_pt.second - veh_lat);
+      double dist_lon = std::abs(move_pt(0) - veh_lon);
+      double dist_lat = std::abs(move_pt(1)- veh_lat);
       double dist_lon_m = dist_lon*lon_deg_to_m;
       double dist_lat_m = dist_lat*lat_deg_to_m;
 
@@ -427,10 +426,10 @@ void GP::updateVisitedSet()
       m_sample_points_unvisited.erase(m_sample_points_unvisited.find(index));
 
       // and add the point to the visited set
-      m_sample_points_visited.insert(std::pair<size_t, std::pair<double, double> >(index, std::pair<double, double>(move_pt)));
+      m_sample_points_visited.insert(std::pair<size_t, Eigen::VectorXd>(index, move_pt));
 
       // report
-      std::cout << "moved pt: " << std::setprecision(10) << move_pt.first << ", " << move_pt.second;
+      std::cout << "moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
       std::cout << " from unvisited to visited.\n";
       std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
       std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
@@ -448,27 +447,25 @@ void GP::updateVisitedSet()
 void GP::createCovarVecsMatrices(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya, Eigen::MatrixXd & K_aa)
 {
   // choose which map to use
-  std::map<size_t, std::pair<double, double> > & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
+  std::map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
 
   // calculate the covariances
-  std::map<size_t, std::pair<double, double> >::iterator a_itr;
+  std::map<size_t, Eigen::VectorXd>::iterator a_itr;
   size_t a_cnt = 0;
   for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
   {
     // calc k_ya
     Eigen::VectorXd a(2);
-    a(0) = (a_itr->second).first;
-    a(1) = (a_itr->second).second;
+    a = a_itr->second;
     k_ya(a_cnt) = cov_f.get(y,a);
 
     // calc K_aa
-    std::map<size_t, std::pair<double, double> >::iterator b_itr;
+    std::map<size_t, Eigen::VectorXd>::iterator b_itr;
     size_t b_cnt = 0;
     for ( b_itr = map_ref.begin(); b_itr != map_ref.end(); b_itr++, b_cnt++ )
     {
       Eigen::VectorXd b(2);
-      b(0) = (b_itr->second).first;
-      b(1) = (b_itr->second).second;
+      b = b_itr->second;
       K_aa(a_cnt, b_cnt) = cov_f.get(a, b);
     }
   }
