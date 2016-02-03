@@ -21,7 +21,7 @@ class GP : public CMOOSApp
    GP();
    ~GP() {};
 
- protected:
+  protected:
    // Standard MOOSApp functions to overload
    bool OnNewMail(MOOSMSG_LIST &NewMail);
    bool Iterate();
@@ -38,6 +38,8 @@ class GP : public CMOOSApp
    void storeSamplePoints(std::string input_string);
    void storeSamplePointsSpecs(std::string input_string);
    void updateVisitedSet();
+
+   void findNextSampleLocation();
    void createCovarVecsMatrices(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya, Eigen::MatrixXd & K_aa);
 
    // Configuration variables

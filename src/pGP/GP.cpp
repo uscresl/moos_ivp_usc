@@ -125,75 +125,12 @@ bool GP::Iterate()
     // predict target value and variance for sample locations
     if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  && (std::abs(m_last_published - MOOSTime()) > 1) ) // every 5 min, for now
     {
-      // predict target value for given input, f()
-      // predict variance of prediction for given input, var()
-
-      // for mutual information, we use visited and unvisited sets
-      // we want to calculate, for each possible location y,
-      // the values of k(y,y), k(y,a), k(a,a), k(y,a*), k(a*,a*)
-      // i.e. we calculate the covariance with all the points in the visite
-      // and unvisited sets
-      // then we calculate sigma^2 (kyy - kya kaa kay) for each set
-      // and divide sigma_y_visited by sigma_y_unvisited
-
-      // for each y (from unvisited set only, as in greedy algorithm Krause'08)
-      // calculate the mutual information term
-
-      // get covariance function from GP
-      // so we can use the get() function from the CovarianceFunction
-      libgp::CovarianceFunction & cov_f = m_gp.covf();
-      size_t size_visited = m_sample_points_visited.size();
-      size_t size_unvisited = m_sample_points_unvisited.size();
-      double best_so_far = 0.0;
-      Eigen::VectorXd best_so_far_y(2);
-      std::map<size_t, Eigen::VectorXd>::iterator y_itr;
-      for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
-      {
-        Eigen::VectorXd y(2);
-        y = y_itr->second;
-
-        // calculate k(y,y)
-        double k_yy = cov_f.get(y,y);
-
-        // calculate covariance with visited set
-        Eigen::VectorXd k_ya(size_visited);
-        Eigen::MatrixXd K_aa(size_visited, size_visited);
-        createCovarVecsMatrices(cov_f, y, "visited", k_ya, K_aa);
-        // TODO: add noise term?
-        double mat_ops_result = k_ya.transpose() * K_aa.inverse() * k_ya;
-        double sigma_y_A = k_yy - mat_ops_result;
-
-        // calculate covariance with unvisited set
-        Eigen::VectorXd k_yav(size_unvisited);
-        Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
-        createCovarVecsMatrices(cov_f, y, "unvisited", k_yav, K_avav);
-        // TODO add noise term?
-        mat_ops_result = k_yav.transpose() * K_avav.inverse() * k_yav;
-        double sigma_y_Av = k_yy - mat_ops_result;
-
-        // calculate mutual information term
-        double div = 0.5 * log(sigma_y_A / sigma_y_Av);
-//        std::cout << "sigmas, div: " << sigma_y_A << " " << sigma_y_Av << ", " << div << std::endl;
-        if ( div > best_so_far )
-        {
-          best_so_far = div;
-          best_so_far_y = y;
-        }
-      }
-
-      std::ostringstream output_stream;
-      output_stream << "best_y=" << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
-      // TODO, use this for figuring out where to go next
-      m_Comms.Notify(m_output_var_pred, output_stream.str());
-      std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
-      m_last_published = MOOSTime();
+      findNextSampleLocation();
     }
 
-    // test sample sets
+    // update sample sets
     updateVisitedSet();
   }
-
-//  std::cout << m_gp.get_sampleset_size() << std::endl;
 
   return(true);
 }
@@ -201,7 +138,6 @@ bool GP::Iterate()
 //---------------------------------------------------------
 // Procedure: OnStartUp()
 //            happens before connection is open
-
 bool GP::OnStartUp()
 {
   CMOOSApp::OnStartUp();
@@ -348,6 +284,10 @@ void GP::storeSamplePoints(std::string input_string)
   std::cout << GetAppName() << " :: stored " << m_sample_points_unvisited.size() << " sample locations" << std::endl;
 }
 
+//---------------------------------------------------------
+// Procedure: storeSamplePoints
+//            parse the string, store specs for sample locations
+//
 void GP::storeSamplePointsSpecs(std::string input_string)
 {
   // input: comma-separated list of param=value pairs
@@ -372,6 +312,11 @@ void GP::storeSamplePointsSpecs(std::string input_string)
                m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
 }
 
+//---------------------------------------------------------
+// Procedure: updateVisitedSet
+//            given current vehicle location, move locations
+//            from unvisited to visited set
+//
 void GP::updateVisitedSet()
 {
   // store values in tmp to avoid change while this procedure is run
@@ -402,7 +347,8 @@ void GP::updateVisitedSet()
     // calculate index into map (stored from SW, y first, then x)
     size_t index = y_resolution*x_cell_rnd + y_cell_rnd;
 
-    if ( m_sample_points_unvisited.find(index) != m_sample_points_unvisited.end() )
+    std::map<size_t, Eigen::VectorXd>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
+    if ( curr_loc_itr != m_sample_points_unvisited.end() )
     {
       // remove point from unvisited set
       Eigen::VectorXd move_pt = m_sample_points_unvisited.at(index);
@@ -423,7 +369,7 @@ void GP::updateVisitedSet()
       }
 
       // now remove it from the unvisited set
-      m_sample_points_unvisited.erase(m_sample_points_unvisited.find(index));
+      m_sample_points_unvisited.erase(curr_loc_itr);
 
       // and add the point to the visited set
       m_sample_points_visited.insert(std::pair<size_t, Eigen::VectorXd>(index, move_pt));
@@ -441,9 +387,85 @@ void GP::updateVisitedSet()
 //    std::cout << GetAppName() << " :: current vehicle location outside data grid\n";
 //    std::cout << GetAppName() << " :: lon boundary ok? " << ( veh_lon >= m_min_lon ? "yes" : "no" ) << '\n';
 //    std::cout << GetAppName() << " :: lat boundary ok? " << ( veh_lat >= m_min_lat ? "yes" : "no" ) << '\n';
+    return;
   }
 }
 
+//---------------------------------------------------------
+// Procedure: findNextSampleLocation
+//            find next sample location, using mutual information
+//
+void GP::findNextSampleLocation()
+{
+  // predict target value for given input, f()
+  // predict variance of prediction for given input, var()
+
+  // for mutual information, we use visited and unvisited sets
+  // we want to calculate, for each possible location y,
+  // the values of k(y,y), k(y,a), k(a,a), k(y,a*), k(a*,a*)
+  // i.e. we calculate the covariance with all the points in the visite
+  // and unvisited sets
+  // then we calculate sigma^2 (kyy - kya kaa kay) for each set
+  // and divide sigma_y_visited by sigma_y_unvisited
+
+  // get covariance function from GP
+  // so we can use the get() function from the CovarianceFunction
+  libgp::CovarianceFunction & cov_f = m_gp.covf();
+
+  // for each y (from unvisited set only, as in greedy algorithm Krause'08)
+  // calculate the mutual information term
+  size_t size_visited = m_sample_points_visited.size();
+  size_t size_unvisited = m_sample_points_unvisited.size();
+  double best_so_far = 0.0;
+  Eigen::VectorXd best_so_far_y(2);
+  std::map<size_t, Eigen::VectorXd>::iterator y_itr;
+  for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
+  {
+    Eigen::VectorXd y(2);
+    y = y_itr->second;
+
+    // calculate k(y,y)
+    double k_yy = cov_f.get(y,y);
+
+    // calculate covariance with visited set
+    Eigen::VectorXd k_ya(size_visited);
+    Eigen::MatrixXd K_aa(size_visited, size_visited);
+    createCovarVecsMatrices(cov_f, y, "visited", k_ya, K_aa);
+    // TODO: add noise term?
+    double mat_ops_result = k_ya.transpose() * K_aa.inverse() * k_ya;
+    double sigma_y_A = k_yy - mat_ops_result;
+
+    // calculate covariance with unvisited set
+    Eigen::VectorXd k_yav(size_unvisited);
+    Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
+    createCovarVecsMatrices(cov_f, y, "unvisited", k_yav, K_avav);
+    // TODO add noise term?
+    mat_ops_result = k_yav.transpose() * K_avav.inverse() * k_yav;
+    double sigma_y_Av = k_yy - mat_ops_result;
+
+    // calculate mutual information term
+    double div = 0.5 * log(sigma_y_A / sigma_y_Av);
+
+    // store max
+    if ( div > best_so_far )
+    {
+      best_so_far = div;
+      best_so_far_y = y;
+    }
+  }
+
+  std::ostringstream output_stream;
+  output_stream << "best_y=" << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
+  // TODO, use this for figuring out where to go next
+  m_Comms.Notify(m_output_var_pred, output_stream.str());
+  std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
+  m_last_published = MOOSTime();
+}
+
+//---------------------------------------------------------
+// Procedure: createCovarVecsMatrices
+//            helper method for mutual information calculation
+//
 void GP::createCovarVecsMatrices(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya, Eigen::MatrixXd & K_aa)
 {
   // choose which map to use
