@@ -34,6 +34,11 @@ ProcessConfig = pMarineViewer
   set_pan_y            = 148
   zoom                 = 1.98
 #endif
+#ifdef LOCATION puddingstone
+  set_pan_x = 1723
+  set_pan_y = -684
+  zoom      = 0.75
+#endif
   vehicles_shape_scale = 2.0
   vehicles_name_mode   = names+shortmode
   stale_vehicles_viewable = true
