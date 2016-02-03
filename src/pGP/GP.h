@@ -36,21 +36,34 @@ class GP : public CMOOSApp
    // Own functions
    void handleMailData(double received_data);
    void storeSamplePoints(std::string input_string);
+   void storeSamplePointsSpecs(std::string input_string);
+   void updateVisitedSet();
 
    // Configuration variables
    std::string m_input_var_data;
    std::string m_input_var_sample_points;
+   std::string m_input_var_sample_points_specs;
    std::string m_output_var_pred;
    size_t m_prediction_interval;
 
    // State variables
+      // vehicle locatio
    double m_lat;
    double m_lon;
    double m_dep;
+      // process state
    bool m_data_added;
    double m_last_published;
+      // sample points grid specs
+   double m_min_lon;
+   double m_min_lat;
+   double m_pts_grid_width;
+   double m_pts_grid_height;
+   double m_pts_grid_spacing;
 
-   std::vector< std::pair<double, double> > m_sample_points;
+   //std::vector< std::pair<double, double> > m_sample_points;
+   std::map< size_t, std::pair<double, double> > m_sample_points_unvisited;
+   std::map< size_t, std::pair<double, double> > m_sample_points_visited;
 
    libgp::GaussianProcess m_gp;
 };

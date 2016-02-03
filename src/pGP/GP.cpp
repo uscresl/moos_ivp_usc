@@ -29,6 +29,7 @@ GP::GP() :
   // class variable instantiations can go here
   m_input_var_data = "";
   m_input_var_sample_points = "";
+  m_input_var_sample_points_specs = "";
   m_output_var_pred = "";
   m_prediction_interval = -1;
 
@@ -91,6 +92,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // process sample locations
       storeSamplePoints(sval);
     }
+    else if ( key == m_input_var_sample_points_specs )
+    {
+      // process specs for sample points
+      storeSamplePointsSpecs(sval);
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
   }
@@ -127,13 +133,18 @@ bool GP::Iterate()
       //    double pred_f = m_gp.f(x_t);
       //    double pred_var = m_gp.var(x_t);
       std::ostringstream output_stream;
-      for ( size_t loc_idx = 0; loc_idx < m_sample_points.size(); loc_idx++ )
+      for ( size_t loc_idx = 0; loc_idx < m_sample_points_unvisited.size(); loc_idx++ )
       {
-        std::pair<double, double> location = m_sample_points.at(loc_idx);
-        double x_t[] = {location.first, location.second};
-        double pred_f = m_gp.f(x_t);
-        double pred_var = m_gp.var(x_t);
-        output_stream << pred_f << "," << pred_var << ";";
+        // TODO change for sets
+        // tmp fix
+        if ( m_sample_points_unvisited.find(loc_idx) != m_sample_points_unvisited.end() )
+        {
+          std::pair<double, double> location = m_sample_points_unvisited.at(loc_idx);
+          double x_t[] = {location.first, location.second};
+          double pred_f = m_gp.f(x_t);
+          double pred_var = m_gp.var(x_t);
+          output_stream << pred_f << "," << pred_var << ";";
+        }
       }
 
       // TODO, use this for figuring out where to go next
@@ -167,6 +178,9 @@ bool GP::Iterate()
 //      double k_yAb = cov_f.get(y, unsampled_locations);
 //      double k_Aby = cov_f.get(y, sampled_locations);
     }
+
+    // test sample sets
+    updateVisitedSet();
   }
 
 //  std::cout << m_gp.get_sampleset_size() << std::endl;
@@ -204,6 +218,11 @@ bool GP::OnStartUp()
     else if ( param == "input_var_sample_points" )
     {
       m_input_var_sample_points = toupper(value);
+      handled = true;
+    }
+    else if ( param == "input_var_sample_points_specs")
+    {
+      m_input_var_sample_points_specs = toupper(value);
       handled = true;
     }
     else if ( param == "output_var_predictions" )
@@ -260,6 +279,7 @@ void GP::registerVariables()
 
   // get sample points for GP
   m_Comms.Register(m_input_var_sample_points, 0);
+  m_Comms.Register(m_input_var_sample_points_specs, 0);
 }
 
 //---------------------------------------------------------
@@ -296,8 +316,120 @@ void GP::storeSamplePoints(std::string input_string)
     size_t comma_pos = location.find(',');
     double lon = (double)atof(location.substr(0,comma_pos).c_str());
     double lat = (double)atof(location.substr(comma_pos+1,location.length()).c_str());
-    m_sample_points.push_back( std::pair<double, double>(lon, lat) );
+
+    // new storage:
+    // 1. assume ordered as per creation (if needed, we can recalculate the v_id)
+    // 2. store in a map; v_id is key, location is value
+    // 3. later on, we can easily retrieve from map / store in other
+    m_sample_points_unvisited.insert( std::pair<size_t, std::pair<double, double> >(id_pt, std::pair<double, double>(lon, lat)) );
+
+    // the first location should be bottom left corner, store as minima
+    if ( id_pt == 0 )
+    {
+      m_min_lon = lon;
+      m_min_lat = lat;
+      std::cout << GetAppName() << " :: SW Sample location: " << lon << " " << lat << std::endl;
+    }
+
+    // old method
+    //m_sample_points.push_back( std::pair<double, double>(lon, lat) );
   }
   // check / communicate what we did
-  std::cout << GetAppName() << " :: stored " << m_sample_points.size() << " sample locations" << std::endl;
+  std::cout << GetAppName() << " :: stored " << m_sample_points_unvisited.size() << " sample locations" << std::endl;
+}
+
+void GP::storeSamplePointsSpecs(std::string input_string)
+{
+  // input: comma-separated list of param=value pairs
+  // separate by comma
+  std::vector<std::string> sample_points_specs = parseString(input_string, ',');
+  // for each, check what it is, and store
+  for ( size_t param_idx = 0; param_idx < sample_points_specs.size(); param_idx++ )
+  {
+    std::string param = biteStringX(sample_points_specs[param_idx], '=');
+    double value = (double)atof(sample_points_specs[param_idx].c_str());
+    if ( param == "width" )
+      m_pts_grid_width = value;
+    else if ( param == "height" )
+      m_pts_grid_height = value;
+    else if ( param == "lane_width")
+      m_pts_grid_spacing = value;
+    else
+      std::cout << GetAppName() << " :: error, unhandled part of sample points specs: " << param << std::endl;
+  }
+  // tmp
+  std::cout << GetAppName() << " :: width, height, spacing: " << m_pts_grid_width << ", " <<
+               m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
+}
+
+void GP::updateVisitedSet()
+{
+  // store values in tmp to avoid change while this procedure is run
+  double veh_lon = m_lon;
+  double veh_lat = m_lat;
+
+  // TODO move this to library?
+  double lat_deg_to_m = 110923.99118801417;
+  double lon_deg_to_m = 92287.20804979937;
+  double lon_spacing = m_pts_grid_spacing/lon_deg_to_m; // convert lane width to lon
+  double lat_spacing = m_pts_grid_spacing/lat_deg_to_m; // convert lane width to lat
+
+  // TODO: boundary conditions
+  // if just outside data grid, should be able to map to border points, if close enough
+  // currently we only have min lat/lon stored, need also max, and then check for all boundaries
+
+  // calculate the id of the location where the vehicle is currently
+  // at, and move it to visited
+  if ( veh_lon >= m_min_lon && veh_lat >= m_min_lat )
+  {
+    double x_cell = (veh_lon - m_min_lon)/lon_spacing;
+    double y_cell = (veh_lat - m_min_lat)/lat_spacing;
+    size_t x_cell_rnd = (size_t) round(x_cell);
+    size_t y_cell_rnd = (size_t) round(y_cell);
+    size_t y_resolution = (size_t) round(m_pts_grid_height/m_pts_grid_spacing);
+    // add one because of zero indexing
+    y_resolution++;
+    // calculate index into map (stored from SW, y first, then x)
+    size_t index = y_resolution*x_cell_rnd + y_cell_rnd;
+
+    if ( m_sample_points_unvisited.find(index) != m_sample_points_unvisited.end() )
+    {
+      // remove point from unvisited set
+      std::pair<double, double> move_pt = m_sample_points_unvisited.at(index);
+
+      // tmp check
+      double dist_lon = std::abs(move_pt.first - veh_lon);
+      double dist_lat = std::abs(move_pt.second - veh_lat);
+      double dist_lon_m = dist_lon*lon_deg_to_m;
+      double dist_lat_m = dist_lat*lat_deg_to_m;
+
+      if ( dist_lon_m > m_pts_grid_spacing || dist_lat_m > m_pts_grid_spacing )
+      {
+        std::cout << GetAppName() << " :: ERROR: distance to chosen sample point is bigger than the grid spacing\n";
+        std::cout << GetAppName() << " :: Distance to chosen point: " << dist_lon_m << " " << dist_lat_m << '\n';
+        std::cout << GetAppName() << " :: Quitting in 2 seconds." << std::endl;
+        sleep(2);
+        RequestQuit();
+      }
+
+      // now remove it from the unvisited set
+      m_sample_points_unvisited.erase(m_sample_points_unvisited.find(index));
+
+      // and add the point to the visited set
+      m_sample_points_visited.insert(std::pair<size_t, std::pair<double, double> >(index, std::pair<double, double>(move_pt)));
+
+      // report
+      std::cout << "moved pt: " << move_pt.first << ", " << move_pt.second;
+      std::cout << " from unvisited to visited.\n";
+      std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
+      std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
+    }
+  }
+  else
+  {
+    // boundary conditions
+    std::cout << GetAppName() << " :: current vehicle location outside data grid\n";
+    std::cout << GetAppName() << " :: lon boundary ok? " << ( veh_lon >= m_min_lon ? "yes" : "no" ) << '\n';
+    std::cout << GetAppName() << " :: lat boundary ok? " << ( veh_lat >= m_min_lat ? "yes" : "no" ) << '\n';
+  }
 }
