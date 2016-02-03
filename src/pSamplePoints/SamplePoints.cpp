@@ -23,7 +23,8 @@
 SamplePoints::SamplePoints()
 {
   // class variable instantiations can go here
-  m_output_var = "SAMPLE_POINTS";
+  m_output_var_sample_points = "SAMPLE_POINTS";
+  m_output_var_specs = "SAMPLE_POINTS_SPEC";
 }
 
 //---------------------------------------------------------
@@ -160,7 +161,11 @@ bool SamplePoints::OnStartUp()
     }
     else if ( param == "output_var" )
     {
-      m_output_var = toupper(value);
+      m_output_var_sample_points = toupper(value);
+    }
+    else if ( param == "output_var_specs" )
+    {
+      m_output_var_specs = toupper(value);
     }
 
     if ( !handled )
@@ -250,14 +255,16 @@ void SamplePoints::calculateGridPoints(double ctr_x, double ctr_y, double width,
 
   // calculate grid pts
   std::vector< std::pair<double,double> > grid_pts;
-  for ( int d_x = 0; d_x < lanes_x; d_x++ )
+  // note; one more vertex than there are lanes
+  for ( int d_x = 0; d_x < lanes_x+1; d_x++ )
   {
-    for ( int d_y = 0; d_y < lanes_y; d_y++ )
+    for ( int d_y = 0; d_y < lanes_y+1; d_y++ )
     {
       grid_pts.push_back(std::pair<double,double>(sw_corner_lon + d_x * lw_lon, sw_corner_lat + d_y * lw_lat));
     }
   }
 
+  publishGridSpecs(width, height, lane_width);
   publishGridPoints(grid_pts);
 
   std::cout << GetAppName() << " :: Number of grid points: " << grid_pts.size();
@@ -274,9 +281,17 @@ void SamplePoints::publishGridPoints(std::vector< std::pair<double, double> > gr
   for ( grid_vec_itr = grid_vector.begin(); grid_vec_itr != grid_vector.end(); grid_vec_itr++ )
   {
     std::pair<double, double> grid_pt = *grid_vec_itr;
-    output_ss << grid_pt.first << "," << grid_pt.second << ";";
+    output_ss << std::setprecision(15) << grid_pt.first << "," << grid_pt.second << ";";
   }
   std::cout << "output string: " << output_ss.str() << std::endl;
 
-  m_Comms.Notify(m_output_var, output_ss.str());
+  m_Comms.Notify(m_output_var_sample_points, output_ss.str());
+}
+
+void SamplePoints::publishGridSpecs(double width, double height, double lane_width)
+{
+  std::ostringstream output_string;
+  output_string << "width=" << width << ",height=" << height << ",lane_width=" << lane_width;
+  std::cout << "output string specs: " << output_string.str() << std::endl;
+  m_Comms.Notify(m_output_var_specs, output_string.str());
 }

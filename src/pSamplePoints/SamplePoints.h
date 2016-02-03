@@ -33,9 +33,11 @@ class SamplePoints : public CMOOSApp
     void calculateGridPoints(double ctr_x, double ctr_y, double width, double height, double lane_width);
     void initGeodesy();
     void publishGridPoints(std::vector<std::pair<double, double> > grid_vector);
+    void publishGridSpecs(double width, double height, double lane_width);
 
     // Configuration variables
-    std::string m_output_var;
+    std::string m_output_var_sample_points;
+    std::string m_output_var_specs;
 
     // State variables
     bool m_got_aabbcc;
