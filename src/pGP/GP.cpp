@@ -116,7 +116,6 @@ bool GP::OnConnectToServer()
 //---------------------------------------------------------
 // Procedure: Iterate()
 //            happens AppTick times per second
-
 bool GP::Iterate()
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
@@ -148,34 +147,19 @@ bool GP::Iterate()
       double best_so_far = 0.0;
       Eigen::VectorXd best_so_far_y(2);
       std::map<size_t,std::pair<double,double> >::iterator y_itr;
-      for ( y_itr = m_sample_points_visited.begin(); y_itr != m_sample_points_visited.end(); y_itr++ )
+      for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
       {
         Eigen::VectorXd y(2);
         y(0) = (y_itr->second).first;
         y(1) = (y_itr->second).second;
+
         // calculate k(y,y)
         double k_yy = cov_f.get(y,y);
+
         // calculate covariance with visited set
         Eigen::VectorXd k_ya(size_visited);
         Eigen::MatrixXd K_aa(size_visited, size_visited);
-        std::map<size_t, std::pair<double, double> >::iterator a_itr;
-        size_t a_cnt = 0;
-        for ( a_itr = m_sample_points_visited.begin(); a_itr != m_sample_points_visited.end(); a_itr++, a_cnt++)
-        {
-          Eigen::VectorXd a(2);
-          a(0) = (a_itr->second).first;
-          a(1) = (a_itr->second).second;
-          k_ya(a_cnt) = cov_f.get(y,a);
-          std::map<size_t, std::pair<double, double> >::iterator b_itr;
-          size_t b_cnt = 0;
-          for ( b_itr = m_sample_points_visited.begin(); b_itr != m_sample_points_visited.end(); b_itr++, b_cnt++ )
-          {
-            Eigen::VectorXd b(2);
-            b(0) = (b_itr->second).first;
-            b(1) = (b_itr->second).second;
-            K_aa(a_cnt, b_cnt) = cov_f.get(a, b);
-          }
-        }
+        createCovarVecsMatrices(cov_f, y, "visited", k_ya, K_aa);
         // TODO: add noise term?
         double mat_ops_result = k_ya.transpose() * K_aa.inverse() * k_ya;
         double sigma_y_A = k_yy - mat_ops_result;
@@ -183,30 +167,14 @@ bool GP::Iterate()
         // calculate covariance with unvisited set
         Eigen::VectorXd k_yav(size_unvisited);
         Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
-        std::map<size_t, std::pair<double, double> >::iterator av_itr;
-        size_t av_cnt = 0;
-        for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, av_cnt++ )
-        {
-          Eigen::VectorXd av(2);
-          av(0) = (av_itr->second).first;
-          av(1) = (av_itr->second).second;
-          k_yav(av_cnt) = cov_f.get(y,av);
-          std::map<size_t, std::pair<double, double> >::iterator bv_itr;
-          size_t bv_cnt = 0;
-          for ( bv_itr = m_sample_points_unvisited.begin(); bv_itr != m_sample_points_unvisited.end(); bv_itr++, bv_cnt++ )
-          {
-            Eigen::VectorXd bv(2);
-            bv(0) = (bv_itr->second).first;
-            bv(1) = (bv_itr->second).second;
-            K_avav(av_cnt, bv_cnt) = cov_f.get(av, bv);
-          }
-        }
+        createCovarVecsMatrices(cov_f, y, "unvisited", k_yav, K_avav);
         // TODO add noise term?
         mat_ops_result = k_yav.transpose() * K_avav.inverse() * k_yav;
         double sigma_y_Av = k_yy - mat_ops_result;
 
         // calculate mutual information term
-        double div = sigma_y_A / sigma_y_Av;
+        double div = 0.5 * log(sigma_y_A / sigma_y_Av);
+//        std::cout << "sigmas, div: " << sigma_y_A << " " << sigma_y_Av << ", " << div << std::endl;
         if ( div > best_so_far )
         {
           best_so_far = div;
@@ -371,7 +339,7 @@ void GP::storeSamplePoints(std::string input_string)
     {
       m_min_lon = lon;
       m_min_lat = lat;
-      std::cout << GetAppName() << " :: SW Sample location: " << lon << " " << lat << std::endl;
+      std::cout << GetAppName() << " :: SW Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
     }
 
     // old method
@@ -470,9 +438,38 @@ void GP::updateVisitedSet()
   }
   else
   {
-    // boundary conditions
-    std::cout << GetAppName() << " :: current vehicle location outside data grid\n";
-    std::cout << GetAppName() << " :: lon boundary ok? " << ( veh_lon >= m_min_lon ? "yes" : "no" ) << '\n';
-    std::cout << GetAppName() << " :: lat boundary ok? " << ( veh_lat >= m_min_lat ? "yes" : "no" ) << '\n';
+//    // boundary conditions
+//    std::cout << GetAppName() << " :: current vehicle location outside data grid\n";
+//    std::cout << GetAppName() << " :: lon boundary ok? " << ( veh_lon >= m_min_lon ? "yes" : "no" ) << '\n';
+//    std::cout << GetAppName() << " :: lat boundary ok? " << ( veh_lat >= m_min_lat ? "yes" : "no" ) << '\n';
+  }
+}
+
+void GP::createCovarVecsMatrices(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya, Eigen::MatrixXd & K_aa)
+{
+  // choose which map to use
+  std::map<size_t, std::pair<double, double> > & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
+
+  // calculate the covariances
+  std::map<size_t, std::pair<double, double> >::iterator a_itr;
+  size_t a_cnt = 0;
+  for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
+  {
+    // calc k_ya
+    Eigen::VectorXd a(2);
+    a(0) = (a_itr->second).first;
+    a(1) = (a_itr->second).second;
+    k_ya(a_cnt) = cov_f.get(y,a);
+
+    // calc K_aa
+    std::map<size_t, std::pair<double, double> >::iterator b_itr;
+    size_t b_cnt = 0;
+    for ( b_itr = map_ref.begin(); b_itr != map_ref.end(); b_itr++, b_cnt++ )
+    {
+      Eigen::VectorXd b(2);
+      b(0) = (b_itr->second).first;
+      b(1) = (b_itr->second).second;
+      K_aa(a_cnt, b_cnt) = cov_f.get(a, b);
+    }
   }
 }
