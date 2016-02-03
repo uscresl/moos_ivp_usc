@@ -129,54 +129,97 @@ bool GP::Iterate()
       // predict target value for given input, f()
       // predict variance of prediction for given input, var()
 
-      //    double x_t[] = {m_lon+0.00001, m_lat+0.00001}; //, m_dep+0.1}; //TODO change/move
-      //    double pred_f = m_gp.f(x_t);
-      //    double pred_var = m_gp.var(x_t);
-      std::ostringstream output_stream;
-      for ( size_t loc_idx = 0; loc_idx < m_sample_points_unvisited.size(); loc_idx++ )
+      // for mutual information, we use visited and unvisited sets
+      // we want to calculate, for each possible location y,
+      // the values of k(y,y), k(y,a), k(a,a), k(y,a*), k(a*,a*)
+      // i.e. we calculate the covariance with all the points in the visite
+      // and unvisited sets
+      // then we calculate sigma^2 (kyy - kya kaa kay) for each set
+      // and divide sigma_y_visited by sigma_y_unvisited
+
+      // for each y (from unvisited set only, as in greedy algorithm Krause'08)
+      // calculate the mutual information term
+
+      // get covariance function from GP
+      // so we can use the get() function from the CovarianceFunction
+      libgp::CovarianceFunction & cov_f = m_gp.covf();
+      size_t size_visited = m_sample_points_visited.size();
+      size_t size_unvisited = m_sample_points_unvisited.size();
+      double best_so_far = 0.0;
+      Eigen::VectorXd best_so_far_y(2);
+      std::map<size_t,std::pair<double,double> >::iterator y_itr;
+      for ( y_itr = m_sample_points_visited.begin(); y_itr != m_sample_points_visited.end(); y_itr++ )
       {
-        // TODO change for sets
-        // tmp fix
-        if ( m_sample_points_unvisited.find(loc_idx) != m_sample_points_unvisited.end() )
+        Eigen::VectorXd y(2);
+        y(0) = (y_itr->second).first;
+        y(1) = (y_itr->second).second;
+        // calculate k(y,y)
+        double k_yy = cov_f.get(y,y);
+        // calculate covariance with visited set
+        Eigen::VectorXd k_ya(size_visited);
+        Eigen::MatrixXd K_aa(size_visited, size_visited);
+        std::map<size_t, std::pair<double, double> >::iterator a_itr;
+        size_t a_cnt = 0;
+        for ( a_itr = m_sample_points_visited.begin(); a_itr != m_sample_points_visited.end(); a_itr++, a_cnt++)
         {
-          std::pair<double, double> location = m_sample_points_unvisited.at(loc_idx);
-          double x_t[] = {location.first, location.second};
-          double pred_f = m_gp.f(x_t);
-          double pred_var = m_gp.var(x_t);
-          output_stream << pred_f << "," << pred_var << ";";
+          Eigen::VectorXd a(2);
+          a(0) = (a_itr->second).first;
+          a(1) = (a_itr->second).second;
+          k_ya(a_cnt) = cov_f.get(y,a);
+          std::map<size_t, std::pair<double, double> >::iterator b_itr;
+          size_t b_cnt = 0;
+          for ( b_itr = m_sample_points_visited.begin(); b_itr != m_sample_points_visited.end(); b_itr++, b_cnt++ )
+          {
+            Eigen::VectorXd b(2);
+            b(0) = (b_itr->second).first;
+            b(1) = (b_itr->second).second;
+            K_aa(a_cnt, b_cnt) = cov_f.get(a, b);
+          }
+        }
+        // TODO: add noise term?
+        double mat_ops_result = k_ya.transpose() * K_aa.inverse() * k_ya;
+        double sigma_y_A = k_yy - mat_ops_result;
+
+        // calculate covariance with unvisited set
+        Eigen::VectorXd k_yav(size_unvisited);
+        Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
+        std::map<size_t, std::pair<double, double> >::iterator av_itr;
+        size_t av_cnt = 0;
+        for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, av_cnt++ )
+        {
+          Eigen::VectorXd av(2);
+          av(0) = (av_itr->second).first;
+          av(1) = (av_itr->second).second;
+          k_yav(av_cnt) = cov_f.get(y,av);
+          std::map<size_t, std::pair<double, double> >::iterator bv_itr;
+          size_t bv_cnt = 0;
+          for ( bv_itr = m_sample_points_unvisited.begin(); bv_itr != m_sample_points_unvisited.end(); bv_itr++, bv_cnt++ )
+          {
+            Eigen::VectorXd bv(2);
+            bv(0) = (bv_itr->second).first;
+            bv(1) = (bv_itr->second).second;
+            K_avav(av_cnt, bv_cnt) = cov_f.get(av, bv);
+          }
+        }
+        // TODO add noise term?
+        mat_ops_result = k_yav.transpose() * K_avav.inverse() * k_yav;
+        double sigma_y_Av = k_yy - mat_ops_result;
+
+        // calculate mutual information term
+        double div = sigma_y_A / sigma_y_Av;
+        if ( div > best_so_far )
+        {
+          best_so_far = div;
+          best_so_far_y = y;
         }
       }
 
+      std::ostringstream output_stream;
+      output_stream << "best_y=" << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
       // TODO, use this for figuring out where to go next
       m_Comms.Notify(m_output_var_pred, output_stream.str());
       std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
       m_last_published = MOOSTime();
-
-      // TESTING 123 TODO: change to use sampled/unsampled locations
-      // get covariance function from GP
-      // have two sets; sampled and unsampled locations
-      // use the get() function from the CovarianceFunction
-      libgp::CovarianceFunction & cov_f = m_gp.covf();
-      std::cout << "covar func: " << cov_f.to_string() << std::endl;
-      Eigen::VectorXd y(2);
-      y(0) = -117.806000;
-      y(1) = 34.088000;
-
-      Eigen::VectorXd sampled_locations(2);
-      sampled_locations(0) = -117.809000;
-      sampled_locations(1) = 34.080000;
-      double k_ya = cov_f.get(y, sampled_locations);
-      double k_ay = cov_f.get(sampled_locations, y);
-      std::cout << " covariance: " << k_ya << "  " << k_ay << std::endl;
-      double k_yy = cov_f.get(y, y);
-      std::cout << "cov yy : " << k_yy << std::endl;
-
-//      double k_yy = cov_f.get(y, y);
-//      double k_yA = cov_f.get(y, sampled_locations);
-//      double k_Ay = cov_f.get(sampled_locations, y);
-//      double k_AA = cov_f.get(sampled_locations, sampled_locations);
-//      double k_yAb = cov_f.get(y, unsampled_locations);
-//      double k_Aby = cov_f.get(y, sampled_locations);
     }
 
     // test sample sets
@@ -419,7 +462,7 @@ void GP::updateVisitedSet()
       m_sample_points_visited.insert(std::pair<size_t, std::pair<double, double> >(index, std::pair<double, double>(move_pt)));
 
       // report
-      std::cout << "moved pt: " << move_pt.first << ", " << move_pt.second;
+      std::cout << "moved pt: " << std::setprecision(10) << move_pt.first << ", " << move_pt.second;
       std::cout << " from unvisited to visited.\n";
       std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
       std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
