@@ -20,7 +20,7 @@
 #include <cov.h>
 #include <cov_se_iso.h>
 
-//test runtime
+// check running time
 #include <ctime>
 
 //---------------------------------------------------------
@@ -483,8 +483,9 @@ void GP::findNextSampleLocation()
 }
 
 //---------------------------------------------------------
-// Procedure: createCovarVecsMatrices
+// Procedure: createCovarVector
 //            helper method for mutual information calculation
+//            calculates K_ya
 //
 void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya)
 {
@@ -504,6 +505,11 @@ void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, 
   }
 }
 
+//---------------------------------------------------------
+// Procedure: createCovarMatrix
+//            helper method for mutual information calculation
+//            calculates K_AA
+//
 void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
 {
   // choose which map to use
