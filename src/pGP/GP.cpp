@@ -20,6 +20,9 @@
 #include <cov.h>
 #include <cov_se_iso.h>
 
+//test runtime
+#include <ctime>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -125,7 +128,10 @@ bool GP::Iterate()
     // predict target value and variance for sample locations
     if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  && (std::abs(m_last_published - MOOSTime()) > 1) ) // every 5 min, for now
     {
+      std::clock_t begin = std::clock();
       findNextSampleLocation();
+      std::clock_t end = std::clock();
+      std::cout << "runtime findNextSampleLocation: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
     }
 
     // update sample sets
@@ -350,6 +356,9 @@ void GP::updateVisitedSet()
     std::map<size_t, Eigen::VectorXd>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
     if ( curr_loc_itr != m_sample_points_unvisited.end() )
     {
+
+      std::clock_t begin = std::clock();
+
       // remove point from unvisited set
       Eigen::VectorXd move_pt = m_sample_points_unvisited.at(index);
 
@@ -378,7 +387,10 @@ void GP::updateVisitedSet()
       std::cout << "moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
       std::cout << " from unvisited to visited.\n";
       std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
-      std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
+      std::cout << "Visited size: " << m_sample_points_visited.size() << std::endl;
+
+      std::clock_t end = std::clock();
+      std::cout << "runtime updateVisitedSet: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n'<< std::endl;
     }
   }
   else
@@ -416,6 +428,16 @@ void GP::findNextSampleLocation()
   // calculate the mutual information term
   size_t size_visited = m_sample_points_visited.size();
   size_t size_unvisited = m_sample_points_unvisited.size();
+
+  // calculate covariance matrices sets, and their inverses (costly operations)
+  Eigen::MatrixXd K_aa(size_visited, size_visited);
+  createCovarMatrix(cov_f, "visited", K_aa);
+  Eigen::MatrixXd K_aa_inv = K_aa.inverse();
+
+  Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
+  createCovarMatrix(cov_f, "unvisited", K_avav);
+  Eigen::MatrixXd K_avav_inv = K_avav.inverse();
+
   double best_so_far = 0.0;
   Eigen::VectorXd best_so_far_y(2);
   std::map<size_t, Eigen::VectorXd>::iterator y_itr;
@@ -429,18 +451,16 @@ void GP::findNextSampleLocation()
 
     // calculate covariance with visited set
     Eigen::VectorXd k_ya(size_visited);
-    Eigen::MatrixXd K_aa(size_visited, size_visited);
-    createCovarVecsMatrices(cov_f, y, "visited", k_ya, K_aa);
+    createCovarVector(cov_f, y, "visited", k_ya);
     // TODO: add noise term?
-    double mat_ops_result = k_ya.transpose() * K_aa.inverse() * k_ya;
+    double mat_ops_result = k_ya.transpose() * K_aa_inv * k_ya;
     double sigma_y_A = k_yy - mat_ops_result;
 
     // calculate covariance with unvisited set
     Eigen::VectorXd k_yav(size_unvisited);
-    Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
-    createCovarVecsMatrices(cov_f, y, "unvisited", k_yav, K_avav);
+    createCovarVector(cov_f, y, "unvisited", k_yav);
     // TODO add noise term?
-    mat_ops_result = k_yav.transpose() * K_avav.inverse() * k_yav;
+    mat_ops_result = k_yav.transpose() * K_avav_inv * k_yav;
     double sigma_y_Av = k_yy - mat_ops_result;
 
     // calculate mutual information term
@@ -466,7 +486,7 @@ void GP::findNextSampleLocation()
 // Procedure: createCovarVecsMatrices
 //            helper method for mutual information calculation
 //
-void GP::createCovarVecsMatrices(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya, Eigen::MatrixXd & K_aa)
+void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya)
 {
   // choose which map to use
   std::map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
@@ -479,7 +499,22 @@ void GP::createCovarVecsMatrices(libgp::CovarianceFunction& cov_f, Eigen::Vector
     // calc k_ya
     Eigen::VectorXd a(2);
     a = a_itr->second;
+
     k_ya(a_cnt) = cov_f.get(y,a);
+  }
+}
+
+void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
+{
+  // choose which map to use
+  std::map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
+
+  std::map<size_t, Eigen::VectorXd>::iterator a_itr;
+  size_t a_cnt = 0;
+  for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
+  {
+    Eigen::VectorXd a(2);
+    a = a_itr->second;
 
     // calc K_aa
     std::map<size_t, Eigen::VectorXd>::iterator b_itr;
@@ -488,6 +523,7 @@ void GP::createCovarVecsMatrices(libgp::CovarianceFunction& cov_f, Eigen::Vector
     {
       Eigen::VectorXd b(2);
       b = b_itr->second;
+
       K_aa(a_cnt, b_cnt) = cov_f.get(a, b);
     }
   }

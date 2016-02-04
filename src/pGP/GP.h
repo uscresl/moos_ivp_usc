@@ -40,7 +40,8 @@ class GP : public CMOOSApp
    void updateVisitedSet();
 
    void findNextSampleLocation();
-   void createCovarVecsMatrices(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya, Eigen::MatrixXd & K_aa);
+   void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
+   void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
 
    // Configuration variables
    std::string m_input_var_data;
