@@ -16,32 +16,32 @@
 
 class Template : public CMOOSApp
 {
- public:
-   Template();
-   ~Template() {};
+  public:
+    Template();
+    ~Template() {};
 
- protected: 
-   // Standard MOOSApp functions to overload
-   bool OnNewMail(MOOSMSG_LIST &NewMail);
-   bool Iterate();
-   bool OnConnectToServer();
-   bool OnStartUp();
+  protected:
+    // Standard MOOSApp functions to overload
+    bool OnNewMail(MOOSMSG_LIST &NewMail);
+    bool Iterate();
+    bool OnConnectToServer();
+    bool OnStartUp();
 
-   // Registration, Configuration, Mail handling utils
-   void registerVariables();
-   bool handleMailTemplateVarIn(std::string);
+    // Registration, Configuration, Mail handling utils
+    void registerVariables();
+    bool handleMailTemplateVarIn(std::string);
 
- private: 
-   // Own functions
-   void makeYourOwn();
+  private:
+    // Own functions
+    void makeYourOwn();
 
-   // Configuration variables
-   std::string m_example1;
-   double m_example2;
+    // Configuration variables
+    std::string m_example1;
+    double m_example2;
 
-   // State variables
-   double m_whatever;
-   bool m_got_aabbcc;
+    // State variables
+    double m_whatever;
+    bool m_got_aabbcc;
 };
 
 #endif 
