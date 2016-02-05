@@ -161,26 +161,22 @@ bool GP::OnStartUp()
     std::string param = tolower(biteStringX(line, '='));
     std::string value = line;
 
-    bool handled = false;
+    bool handled = true;
     if ( param == "input_var_data" )
     {
       m_input_var_data = toupper(value);
-      handled = true;
     }
     else if ( param == "input_var_sample_points" )
     {
       m_input_var_sample_points = toupper(value);
-      handled = true;
     }
     else if ( param == "input_var_sample_points_specs")
     {
       m_input_var_sample_points_specs = toupper(value);
-      handled = true;
     }
     else if ( param == "output_var_predictions" )
     {
       m_output_var_pred = toupper(value);
-      handled = true;
     }
     else if ( param == "prediction_interval" )
     {
@@ -190,11 +186,11 @@ bool GP::OnStartUp()
         std::cout << GetAppName() << " :: ERROR, invalid prediction interval, needs to be > 0" << std::endl;
         RequestQuit();
       }
-      else
-        handled = true;
     }
+    else
+      handled = false;
 
-    if(!handled)
+    if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
   }
 
@@ -483,7 +479,6 @@ void GP::findNextSampleLocation()
     m_Comms.Notify(m_output_var_pred, output_stream.str());
     std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
     m_last_published = MOOSTime();
-
   }
 }
 
