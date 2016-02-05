@@ -89,6 +89,9 @@ if ( MOOSGeodesy_FOUND )
   add_subdirectory(pSamplePoints)
 endif()
 
+# Feb'16: add process to convert a lon/lat location to x/y wpt update
+add_subdirectory(pLonLatToWptUpdate)
+
 ##############################################################################
 #                           END of CMakeLists.txt
 ##############################################################################
