@@ -429,57 +429,62 @@ void GP::findNextSampleLocation()
   size_t size_visited = m_sample_points_visited.size();
   size_t size_unvisited = m_sample_points_unvisited.size();
 
-  // calculate covariance matrices sets, and their inverses (costly operations)
-  Eigen::MatrixXd K_aa(size_visited, size_visited);
-  createCovarMatrix(cov_f, "visited", K_aa);
-  Eigen::MatrixXd K_aa_inv = K_aa.inverse();
-
-  Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
-  createCovarMatrix(cov_f, "unvisited", K_avav);
-  Eigen::MatrixXd K_avav_inv = K_avav.inverse();
-
-  double best_so_far = 0.0;
-  Eigen::VectorXd best_so_far_y(2);
-  std::map<size_t, Eigen::VectorXd>::iterator y_itr;
-  for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
+  if ( size_visited > 0 )
   {
-    Eigen::VectorXd y(2);
-    y = y_itr->second;
 
-    // calculate k(y,y)
-    double k_yy = cov_f.get(y,y);
+    // calculate covariance matrices sets, and their inverses (costly operations)
+    Eigen::MatrixXd K_aa(size_visited, size_visited);
+    createCovarMatrix(cov_f, "visited", K_aa);
+    Eigen::MatrixXd K_aa_inv = K_aa.inverse();
 
-    // calculate covariance with visited set
-    Eigen::VectorXd k_ya(size_visited);
-    createCovarVector(cov_f, y, "visited", k_ya);
-    // TODO: add noise term?
-    double mat_ops_result = k_ya.transpose() * K_aa_inv * k_ya;
-    double sigma_y_A = k_yy - mat_ops_result;
+    Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
+    createCovarMatrix(cov_f, "unvisited", K_avav);
+    Eigen::MatrixXd K_avav_inv = K_avav.inverse();
 
-    // calculate covariance with unvisited set
-    Eigen::VectorXd k_yav(size_unvisited);
-    createCovarVector(cov_f, y, "unvisited", k_yav);
-    // TODO add noise term?
-    mat_ops_result = k_yav.transpose() * K_avav_inv * k_yav;
-    double sigma_y_Av = k_yy - mat_ops_result;
-
-    // calculate mutual information term
-    double div = 0.5 * log(sigma_y_A / sigma_y_Av);
-
-    // store max
-    if ( div > best_so_far )
+    double best_so_far = std::numeric_limits<double>::min();
+    Eigen::VectorXd best_so_far_y(2);
+    std::map<size_t, Eigen::VectorXd>::iterator y_itr;
+    for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
     {
-      best_so_far = div;
-      best_so_far_y = y;
-    }
-  }
+      Eigen::VectorXd y(2);
+      y = y_itr->second;
 
-  std::ostringstream output_stream;
-  output_stream << "best_y=" << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
-  // TODO, use this for figuring out where to go next
-  m_Comms.Notify(m_output_var_pred, output_stream.str());
-  std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
-  m_last_published = MOOSTime();
+      // calculate k(y,y)
+      double k_yy = cov_f.get(y,y);
+
+      // calculate covariance with visited set
+      Eigen::VectorXd k_ya(size_visited);
+      createCovarVector(cov_f, y, "visited", k_ya);
+      // TODO: add noise term?
+      double mat_ops_result = k_ya.transpose() * K_aa_inv * k_ya;
+      double sigma_y_A = k_yy - mat_ops_result;
+
+      // calculate covariance with unvisited set
+      Eigen::VectorXd k_yav(size_unvisited);
+      createCovarVector(cov_f, y, "unvisited", k_yav);
+      // TODO add noise term?
+      mat_ops_result = k_yav.transpose() * K_avav_inv * k_yav;
+      double sigma_y_Av = k_yy - mat_ops_result;
+
+      // calculate mutual information term
+      double div = 0.5 * log(sigma_y_A / sigma_y_Av);
+
+      // store max
+      if ( div > best_so_far )
+      {
+        best_so_far = div;
+        best_so_far_y = y;
+      }
+    }
+
+    std::ostringstream output_stream;
+    output_stream << "best_y=" << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
+    // TODO, use this for figuring out where to go next
+    m_Comms.Notify(m_output_var_pred, output_stream.str());
+    std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
+    m_last_published = MOOSTime();
+
+  }
 }
 
 //---------------------------------------------------------
