@@ -51,8 +51,14 @@ ProcessConfig = ANTLER
   // add other processes here
   uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
   Run = uSimBioSensor @ NewConsole = true,XConfig=uSBSConfig
+
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
   Run = pGP @ NewConsole = true,XConfig=pGPConfig
+
+  pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
+  Run = pSamplePoints @ NewConsole = true,XConfig=pSPConfig
+
+  Run = pLonLatToWptUpdate @ NewConsole = true
 }
 //------------------------------------------------------------
 
@@ -83,6 +89,7 @@ ProcessConfig = ANTLER
 
 // add other processes here
 #include $(PLUG_DIR)/plug_uSimBioSensor.moos
+
 //--------------------------------------------------
 // pGP configuration block
 //
@@ -91,6 +98,43 @@ ProcessConfig = pGP
   AppTick   = 2
   CommsTick = 2
 
-  // process parameters
-  input_var = "SIM_DATA"
+  // define the names of input variables
+  input_var_data = "SIM_DATA"
+  input_var_sample_points = "SAMPLE_POINTS"
+  input_var_sample_points_specs = "SAMPLE_POINTS_SPECS"
+  output_var_predictions = "GP_PREDICTIONS"
+
+  // define the prediction interval (predict every X seconds)
+  prediction_interval = 300
+}
+
+//--------------------------------------------------
+// pSamplePoints configuration block
+//
+ProcessConfig = pSamplePoints
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // potential process parameters would go here
+  lawnmower_config = $(LAWNMOWER_CONFIG)
+  // define what output variable name to use
+  // for publishing list of sample points
+  output_var = SAMPLE_POINTS
+  // define what output variable name to use
+  // for publishing sample points grid spec
+  output_var_specs = SAMPLE_POINTS_SPECS
+}
+
+//--------------------------------------------------
+// pLonLatToWptUpdate configuration block
+//
+ProcessConfig = pLonLatToWptUpdate
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // specify variable names
+  input_var_lonlat = "GP_PREDICTIONS"
+  output_var_wpt_update = "WAYPOINT_UPDATES"
 }

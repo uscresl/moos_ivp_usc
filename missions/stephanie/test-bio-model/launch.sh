@@ -31,6 +31,8 @@ MSGDIR="../../../modem-msgs"
 
 PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
 
+LAWNMOWER="format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
@@ -53,7 +55,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VPORT="9001"       SHARE_LISTEN="9301"                      \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
-   PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR
+   PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR  LAWNMOWER_CONFIG=$LAWNMOWER
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1
