@@ -373,11 +373,11 @@ void GP::updateVisitedSet()
         RequestQuit();
       }
 
-      // now remove it from the unvisited set
-      m_sample_points_unvisited.erase(curr_loc_itr);
-
-      // and add the point to the visited set
+      // add the point to the visited set
       m_sample_points_visited.insert(std::pair<size_t, Eigen::VectorXd>(index, move_pt));
+
+      // and remove it from the unvisited set
+      m_sample_points_unvisited.erase(curr_loc_itr);
 
       // report
       std::cout << "moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
@@ -437,9 +437,10 @@ void GP::findNextSampleLocation()
     createCovarMatrix(cov_f, "unvisited", K_avav);
     Eigen::MatrixXd K_avav_inv = K_avav.inverse();
 
-    double best_so_far = std::numeric_limits<double>::min();
+    double best_so_far = -1*std::numeric_limits<double>::max();
     Eigen::VectorXd best_so_far_y(2);
     std::map<size_t, Eigen::VectorXd>::iterator y_itr;
+    size_t best_cnt = 1;
     for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
     {
       Eigen::VectorXd y(2);
@@ -470,6 +471,7 @@ void GP::findNextSampleLocation()
       {
         best_so_far = div;
         best_so_far_y = y;
+        best_cnt++;
       }
     }
     // TODO: store all values, return sorted list?
@@ -478,8 +480,9 @@ void GP::findNextSampleLocation()
     std::ostringstream output_stream;
     output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
     m_Comms.Notify(m_output_var_pred, output_stream.str());
-    std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
-    std::cout << GetAppName() << " :: current next best: " << std::setprecision(10) << best_so_far_y(0) << ", " << best_so_far_y(1) << std::endl;
+    std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
+    std::cout << GetAppName() << " :: current next best: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
+    std::cout << GetAppName() << " :: best_cnt: " << best_cnt << std::endl;
     m_last_published = MOOSTime();
   }
 }
