@@ -20,9 +20,8 @@
 LonLatToWptUpdate::LonLatToWptUpdate()
 {
   // class variable instantiations can go here
-  m_example1 = "";
-  m_example2 = -1;
-  m_got_aabbcc = false;
+  m_input_var_lonlat = "";
+  m_output_var_wpt_update = "";
 }
 
 //---------------------------------------------------------
@@ -51,16 +50,8 @@ bool LonLatToWptUpdate::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-    if ( key == "TEMPLATE_VAR_IN" )
-    {
+    if ( key == m_input_var_lonlat )
       handleMailLonLatToWptUpdateVarIn(sval);
-    }
-    else if ( key == "TEMPLATE_VAR_IN2" )
-    {
-      m_whatever = dval;
-      // let's check if we can quit the application
-      RequestQuit();
-    }
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
   }
@@ -83,6 +74,8 @@ bool LonLatToWptUpdate::OnConnectToServer()
 
 bool LonLatToWptUpdate::Iterate()
 {
+  // nothing here, we only run when we receive input,
+  // and handle it straight away
   return (true);
 }
 
@@ -99,6 +92,8 @@ bool LonLatToWptUpdate::OnStartUp()
   if ( !m_MissionReader.GetConfiguration(GetAppName(), sParams) )
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
 
+  initGeodesy();
+
   STRING_LIST::iterator p;
   for ( p=sParams.begin(); p!=sParams.end(); p++ )
   {
@@ -107,35 +102,13 @@ bool LonLatToWptUpdate::OnStartUp()
     std::string param = tolower(biteStringX(line, '='));
     std::string value = line;
 
-    bool handled = false;
-    if ( (param == "example2") && isNumber(value) )
-    {
-      // assuming the atof works, store the val
-      m_example2 = atof(value.c_str());
-      handled = true;
-
-      std::cout << GetAppName() << " :: set m_example2 to be: " << m_example2 << std::endl;
-
-      // let's check if we can quit the application, e.g. because we don't like
-      // the param value
-      if ( m_example2 < -99.9 )
-      {
-        std::cout << GetAppName() << " :: oh no, value is < -99.9" << std::endl;
-        return(false); // this would be the preferred way to quit in OnStartUp
-      }
-      else if ( m_example2 > 99.9 )
-      {
-        std::cout << GetAppName() << " :: oh no, value is > 99.9" << std::endl;
-        RequestQuit();
-      }
-
-    }
-    else if( param == "example1" )
-    {
-      // save string .. you might wanna check for format or something
-      m_example1 = value;
-      handled = true;
-    }
+    bool handled = true;
+    if ( (param == "input_var_lonlat") )
+      m_input_var_lonlat = toupper(value);
+    else if( param == "output_var_wpt_update" )
+      m_output_var_wpt_update = toupper(value);
+    else
+      handled = false;
 
     if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
@@ -152,8 +125,44 @@ bool LonLatToWptUpdate::OnStartUp()
 //
 void LonLatToWptUpdate::registerVariables()
 {
-  m_Comms.Register("TEMPLATE_VAR_IN", 0);
-  m_Comms.Register("TEMPLATE_VAR_IN2", 0);
+  if ( m_input_var_lonlat != "" )
+    m_Comms.Register(m_input_var_lonlat, 0);
+}
+
+//---------------------------------------------------------
+// Procedure: initGeodesy
+//            initialize MOOS Geodesy for lat/lon conversions
+//
+void LonLatToWptUpdate::initGeodesy()
+{
+  // get lat/lon origin from MOOS file
+  bool failed = false;
+  double latOrigin, longOrigin;
+  if ( !m_MissionReader.GetValue("LatOrigin", latOrigin) )
+  {
+    std::cout << GetAppName() << " :: LatOrigin not set in *.moos file." << std::endl;
+    failed = true;
+  }
+  else if ( !m_MissionReader.GetValue("LongOrigin", longOrigin) )
+  {
+    std::cout << GetAppName() << " :: LongOrigin not set in *.moos file" << std::endl;
+    failed = true;
+  }
+  else {
+    // initialize m_geodesy
+    if ( !m_geodesy.Initialise(latOrigin, longOrigin) )
+    {
+      std::cout << GetAppName() << " :: Geodesy init failed." << std::endl;
+      failed = true;
+    }
+  }
+  if ( failed )
+  {
+    std::cout << GetAppName() << " :: failed to initialize geodesy, exiting." << std::endl;
+    RequestQuit();
+  }
+  else
+    std::cout << GetAppName() << " :: Geodesy initialized: lonOrigin, latOrigin = " << longOrigin << ", " << latOrigin << std::endl;
 }
 
 //---------------------------------------------------------
@@ -161,38 +170,46 @@ void LonLatToWptUpdate::registerVariables()
 //            a place to do more advanced handling of the
 //            incoming message
 //
-bool LonLatToWptUpdate::handleMailLonLatToWptUpdateVarIn(std::string str)
+void LonLatToWptUpdate::handleMailLonLatToWptUpdateVarIn(std::string str)
 {
-  // Expected parts in string:
-  std::string aa, bb, cc;
-  
-  // Parse and handle ack message components
-  bool valid_msg = true;
-  std::string original_msg = str;
+  std::cout << GetAppName() << " :: processing mail: " << str << std::endl;
+
+  // expected format string: "<lon>,<lat>"
   // handle comma-separated string
   std::vector<std::string> svector = parseString(str, ',');
-  unsigned int idx, vsize = svector.size();
-  for ( idx = 0; idx < vsize; idx++ ) {
-    std::string param = biteStringX(svector[idx], '=');
-    std::string value = svector[idx];
-    if ( param == "aa" )
-      aa = value;
-    else if ( param == "bb" )
-      bb = value;
-    else if ( param == "cc" )
-      cc = value;
-    else
-      valid_msg = false;
-  }
+  double lon = atof(svector[0].c_str());
+  double lat = atof(svector[1].c_str());
 
-  if ( ( aa == "") || ( bb == "") || ( cc == "") )
-    valid_msg = false;
-  
-  if ( !valid_msg )
-    std::cout << GetAppName() << " :: Unhandled LonLatToWptUpdateVarIn: " << original_msg << std::endl;
+  // convert to x/y
+  double lx, ly;
+  bool converted = lonLatToUTM(lon, lat, lx, ly);
 
-  if ( valid_msg )
-    m_got_aabbcc = true;
+  // publish wpt
+  if ( converted )
+    publishWpt(lx, ly);
+}
 
-  return ( valid_msg );
+//---------------------------------------------------------
+// Procedure: publishWpt
+//            format and publish the x/y value for wpt update
+//
+void LonLatToWptUpdate::publishWpt(double lx, double ly)
+{
+  std::ostringstream output;
+  output << "points=" << lx << "," << ly;
+  Notify(m_output_var_wpt_update, output.str());
+}
+
+//---------------------------------------------------------
+// Procedure: lonLatToUTM
+//            use MOOS Geodesy to convert lon/lat to x/y
+//
+bool LonLatToWptUpdate::lonLatToUTM (double lon, double lat, double & lx, double & ly )
+{
+  bool successful = m_geodesy.LatLong2LocalUTM(lat, lon, ly, lx);
+
+  if ( !successful )
+    std::cout << GetAppName() << " :: ERROR converting lon/lat to x/y.\n";
+
+  return successful;
 }

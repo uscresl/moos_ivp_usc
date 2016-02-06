@@ -1,12 +1,12 @@
 //--------------------------------------------------
-// pLatLonToWptUpdate configuration block
+// pLonLatToWptUpdate configuration block
 //
-ProcessConfig = pLatLonToWptUpdate
+ProcessConfig = pLonLatToWptUpdate
 {
   AppTick   = 2
   CommsTick = 2
   
-  // potential process parameters would go here
-  example1 = yes
-  example2 = 100
+  // specify variable names
+  input_var_lonlat = "GP_PREDICTIONS"
+  output_var_wpt_update = "WPT_UPDATE"
 }

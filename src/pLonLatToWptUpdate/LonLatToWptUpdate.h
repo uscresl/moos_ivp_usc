@@ -10,6 +10,7 @@
 #define PLONLATTOWPTUPDATE_HEADER
 
 #include "MOOS/libMOOS/MOOSLib.h"
+#include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
 
 class LonLatToWptUpdate : public CMOOSApp
 {
@@ -26,19 +27,22 @@ class LonLatToWptUpdate : public CMOOSApp
 
     // Registration, Configuration, Mail handling utils
     void registerVariables();
-    bool handleMailLonLatToWptUpdateVarIn(std::string);
+    void handleMailLonLatToWptUpdateVarIn(std::string);
 
   private:
     // Own functions
-    void makeYourOwn();
+    void initGeodesy();
+    bool lonLatToUTM (double lon, double lat, double & lx, double & ly );
+    void publishWpt(double lx, double ly);
 
     // Configuration variables
-    std::string m_example1;
-    double m_example2;
+    std::string m_input_var_lonlat;
+    std::string m_output_var_wpt_update;
 
     // State variables
-    double m_whatever;
-    bool m_got_aabbcc;
+
+    // Class variables
+    CMOOSGeodesy m_geodesy;
 };
 
 #endif 

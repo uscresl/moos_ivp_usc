@@ -87,10 +87,11 @@ if ( MOOSGeodesy_FOUND )
   message("MOOSGeodesy_INCLUDE_DIRS:" ${MOOSGeodesy_INCLUDE_DIRS})
   message("MOOSGeodesy_LIBRARY_PATH:" ${MOOSGeodesy_LIBRARY_PATH})
   add_subdirectory(pSamplePoints)
+  # Feb'16: add process to convert a lon/lat location to x/y wpt update
+  add_subdirectory(pLonLatToWptUpdate)
 endif()
 
-# Feb'16: add process to convert a lon/lat location to x/y wpt update
-add_subdirectory(pLonLatToWptUpdate)
+
 
 ##############################################################################
 #                           END of CMakeLists.txt

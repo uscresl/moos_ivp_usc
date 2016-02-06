@@ -11,11 +11,12 @@ SET(SRC
 ADD_EXECUTABLE(pLonLatToWptUpdate ${SRC})
 
 TARGET_LINK_LIBRARIES(pLonLatToWptUpdate
-   ${MOOS_LIBRARIES}
-   geometry
-   apputil
-   mbutil
-   ${SYSTEM_LIBS}
-   # whatever other libs you need
+  ${MOOS_LIBRARIES}
+  ${MOOSGeodesy_LIBRARIES}
+  geometry
+  apputil
+  mbutil
+  ${SYSTEM_LIBS}
+  # whatever other libs you need
 )
 
