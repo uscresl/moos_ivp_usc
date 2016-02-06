@@ -51,8 +51,10 @@ ProcessConfig = ANTLER
   // add other processes here
   uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
   Run = uSimBioSensor @ NewConsole = true,XConfig=uSBSConfig
+
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
   Run = pGP @ NewConsole = true,XConfig=pGPConfig
+
   pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = true,XConfig=pSPConfig
 }
@@ -121,4 +123,3 @@ ProcessConfig = pSamplePoints
   // for publishing sample points grid spec
   output_var_specs = SAMPLE_POINTS_SPECS
 }
-
