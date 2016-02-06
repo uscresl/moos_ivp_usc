@@ -465,19 +465,21 @@ void GP::findNextSampleLocation()
       // calculate mutual information term
       double div = 0.5 * log(sigma_y_A / sigma_y_Av);
 
-      // store max
+      // store max (greedy best)
       if ( div > best_so_far )
       {
         best_so_far = div;
         best_so_far_y = y;
       }
     }
+    // TODO: store all values, return sorted list?
 
+    // publish greedy best
     std::ostringstream output_stream;
-    output_stream << "best_y=" << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
-    // TODO, use this for figuring out where to go next
+    output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
     m_Comms.Notify(m_output_var_pred, output_stream.str());
     std::cout << GetAppName() << " :: publishing " << m_output_var_pred << std::endl;
+    std::cout << GetAppName() << " :: current next best: " << std::setprecision(10) << best_so_far_y(0) << ", " << best_so_far_y(1) << std::endl;
     m_last_published = MOOSTime();
   }
 }
