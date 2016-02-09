@@ -25,6 +25,7 @@ SamplePoints::SamplePoints()
   // class variable instantiations can go here
   m_output_var_sample_points = "SAMPLE_POINTS";
   m_output_var_specs = "SAMPLE_POINTS_SPEC";
+  m_division_factor = 1;
 }
 
 //---------------------------------------------------------
@@ -104,7 +105,7 @@ bool SamplePoints::OnStartUp()
     std::string param = tolower(biteStringX(line, '='));
     std::string value = line;
 
-    bool handled = false;
+    bool handled = true;
     if ( param == "lawnmower_config" )
     {
       // save string .. you might wanna check for format or something
@@ -156,8 +157,6 @@ bool SamplePoints::OnStartUp()
       {
         calculateGridPoints(lawn_x, lawn_y, lawn_width, lawn_height, lawn_lane_width);
       }
-
-      handled = true;
     }
     else if ( param == "output_var" )
     {
@@ -167,6 +166,12 @@ bool SamplePoints::OnStartUp()
     {
       m_output_var_specs = toupper(value);
     }
+    else if ( param == "division_factor" )
+    {
+      m_division_factor = (double)atof(value.c_str());
+    }
+    else
+      handled = false;
 
     if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
@@ -235,22 +240,25 @@ void SamplePoints::calculateGridPoints(double ctr_x, double ctr_y, double width,
   double sw_corner_lat = 0;
   m_geodesy.UTM2LatLong(lawn_sw_corner_x, lawn_sw_corner_y, sw_corner_lat, sw_corner_lon);
 
+  // increase the grid resolution, by the given factor
+  double spacing = lane_width / m_division_factor;
+
   // convert lane width to lat/lon
   // length of deg lat/lon via http://www.csgnetwork.com/degreelenllavcalc.html at 34.09
   // 1 deg lat in m: 110923.99118801417m
   // 1 deg lon in m: 92287.20804979937m
   double lat_deg_to_m = 110923.99118801417;
   double lon_deg_to_m = 92287.20804979937;
-  double lw_lon = lane_width/lon_deg_to_m; // convert lane width to lon
-  double lw_lat = lane_width/lat_deg_to_m; // convert lane width to lat
+  double lw_lon = spacing/lon_deg_to_m; // convert lane width to lon
+  double lw_lat = spacing/lat_deg_to_m; // convert lane width to lat
 
   // checking
   std::cout << "SW corner: " << sw_corner_lon << ", " << sw_corner_lat << std::endl;
   std::cout << "lane_width lon, lat: " << lw_lon << ", " << lw_lat << std::endl;
 
   // calculate nr lanes
-  size_t lanes_x = std::floor(width / lane_width);
-  size_t lanes_y = std::floor(height / lane_width);
+  size_t lanes_x = std::floor(width / spacing);
+  size_t lanes_y = std::floor(height / spacing);
   std::cout << "lanes (x, y): " << lanes_x << ", " << lanes_y << std::endl;
 
   // calculate grid pts
@@ -267,7 +275,7 @@ void SamplePoints::calculateGridPoints(double ctr_x, double ctr_y, double width,
   publishGridSpecs(width, height, lane_width);
   publishGridPoints(grid_pts);
 
-  std::cout << GetAppName() << " :: Number of grid points: " << grid_pts.size();
+  std::cout << GetAppName() << " :: Number of grid points: " << grid_pts.size() << std::endl;
 }
 
 //---------------------------------------------------------

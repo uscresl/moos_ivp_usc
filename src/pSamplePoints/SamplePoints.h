@@ -40,7 +40,7 @@ class SamplePoints : public CMOOSApp
     std::string m_output_var_specs;
 
     // State variables
-    bool m_got_aabbcc;
+    double m_division_factor;
 
     // Class variables
     CMOOSGeodesy m_geodesy;

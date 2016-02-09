@@ -8,9 +8,14 @@ ProcessConfig = pSamplePoints
   
   // pass on the lawnmower params
   lawnmower_config = format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0,rows=north-south
+
+  // division factor for grid spacing (increase resolution vs lawnmower spec)
+  division_factor = 2
+
   // define what output variable name to use
   // for publishing list of sample points
   output_var = SAMPLE_POINTS
+
   // define what output variable name to use
   // for publishing sample points grid spec
   output_var_specs = SAMPLE_POINTS_SPECS
