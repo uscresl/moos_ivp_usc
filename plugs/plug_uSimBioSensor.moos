@@ -7,6 +7,6 @@ ProcessConfig = uSimBioSensor
   CommsTick = 2
   
   // process parameters
-  filename = "test.out"
+  filename = "test.csv"
   output_var = "SIM_DATA"
 }
