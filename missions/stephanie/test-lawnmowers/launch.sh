@@ -29,8 +29,15 @@ EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
 PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="../../../modem-msgs"
 
-# survey specs
+# survey area
 PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
+
+# config for lawnmower used to get pilot data for autotuning hyperparams GP
+PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=700,y=1100,width=400,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south"
+PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
+
+# config for lawnmower for GP model building
 LAWNMOWER="format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
 LAWNMOWEREW="$LAWNMOWER,rows=east-west"
 LAWNMOWERNS="$LAWNMOWER,rows=north-south"
@@ -62,7 +69,9 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
-    LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW
+    LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
+    PILOT_LAWNMOWER_NS=$PILOT_LAWNMOWER_C_NS                   \
+    PILOT_LAWNMOWER_EW=$PILOT_LAWNMOWER_C_EW
 
 #VNAME2="ferdinand"      # The second vehicle community
 #START_POS2="2800,1900"

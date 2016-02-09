@@ -89,11 +89,70 @@ Behavior = BHV_OpRegionBounceDepth
 //---------   Control behaviors   -------------
 
 Behavior = BHV_Waypoint
+{
+  name      = ns_pilot_survey
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+  endflag   = NS_PILOT_SURVEY_DONE = true
+  updates   = PILOT_WPT_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+  // do lawnmower
+  // note: x, y are middle of lawnmower area
+  points = $(PILOT_LAWNMOWER_NS)
+  order  = normal
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+
+Behavior = BHV_Waypoint
+{
+  name      = ew_pilot_survey
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+  condition = NS_PILOT_SURVEY_DONE = true
+  endflag   = PILOT_SURVEY_DONE = true
+  updates   = PILOT_WPT_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+  // do lawnmower
+//  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  points = $(PILOT_LAWNMOWER_EW)
+  order  = reverse
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+
+
+Behavior = BHV_Waypoint
 { 
   name      = ns_survey
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
+  condition = PILOT_SURVEY_DONE = true
   endflag   = NS_SURVEY_DONE = true
   updates   = WAYPOINT_UPDATES
   perpetual = false
@@ -123,6 +182,7 @@ Behavior = BHV_Waypoint
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
+  condition = PILOT_SURVEY_DONE = true
   condition = NS_SURVEY_DONE = true
   endflag   = EW_SURVEY_DONE = true
   endflag   = RETURN=true
@@ -138,7 +198,7 @@ Behavior = BHV_Waypoint
   // do lawnmower
 //  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
   points = $(LAWNMOWER_EW)
-  order  = normal
+  order  = reverse
 
   repeat = 0 // # times to repeat waypoints list
 

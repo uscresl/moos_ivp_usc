@@ -53,10 +53,10 @@ Behavior = BHV_OpRegionBounce
   condition = DEPLOY = true
 // some big box
 #ifdef VTYPE UUV
-  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:700,1300:700,940
+  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
 #endif
 #ifdef VTYPE SHIP
-    polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:700,1300:700,940
+    polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
 #endif
   max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
@@ -87,62 +87,92 @@ Behavior = BHV_OpRegionBounceDepth
 #endif
 
 //---------   Control behaviors   -------------
-#ifdef VTYPE SHIP
 Behavior = BHV_Waypoint
-{ 
-  name      = bhv_waypt_survey
+{
+  name      = ns_pilot_survey
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
-  endflag   = SURVEY_DONE = true
-  updates = WAYPOINT_UPDATES
+  endflag   = NS_PILOT_SURVEY_DONE = true
+  updates   = PILOT_WPT_UPDATES
+  perpetual = false
 
   speed = 1.5         // m/s
 
   radius = 5.0        // m
   slip_radius = 15.0  // m
-  lead = 15           // m
+  lead = 10           // m
 
-  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
-  repeat = 100 // # times to repeat waypoints list
+  // do lawnmower
+  // note: x, y are middle of lawnmower area
+  points = $(PILOT_LAWNMOWER_NS)
+  order  = normal
+
+  repeat = 0 // # times to repeat waypoints list
 
   visual_hints = nextpt_color=red, nextpt_lcolor=green
-  visual_hints = vertex_color=yellow, edge_color=gray25
-  visual_hints = vertex_size=1, edge_size=1
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
 }
-#endif
 
-#ifdef VTYPE UUV
-Behavior = BHV_WaypointSpd
+Behavior = BHV_Waypoint
 {
-  name      = bhv_waypt_spd
+  name      = ew_pilot_survey
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
-  updates = WAYPOINT_UPDATES
-  endflag   = SURVEY_DONE = true
+  condition = NS_PILOT_SURVEY_DONE = true
+  endflag   = PILOT_SURVEY_DONE = true
+  updates   = PILOT_WPT_UPDATES
+  perpetual = false
 
-  // SK: added spd control
-  // spd_radius: outer radius wherein speed is linearly decreased,
-  //             a reasonably default may be: 2*slip_radius
-  spd_radius = 30     // m
-  // max speed: outside 'spd_radius'
-  max_speed = 2.0     // m/s
-  // min speed: inside 'radius'
-  min_speed = 0.5     // m/s
+  speed = 1.5         // m/s
 
-  capture_radius = 5.0  // m
-  slip_radius = 15.0    // m
-  lead = 15             // m
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
 
-  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
-  repeat = 100 // # times to repeat waypoints list
+  // do lawnmower
+//  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  points = $(PILOT_LAWNMOWER_EW)
+  order  = reverse
+
+  repeat = 0 // # times to repeat waypoints list
 
   visual_hints = nextpt_color=red, nextpt_lcolor=green
-  visual_hints = vertex_color=yellow, edge_color=gray25
-  visual_hints = vertex_size=1, edge_size=1
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
 }
-#endif
+
+Behavior = BHV_Waypoint
+{
+  name      = adaptive_survey
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+  condition = PILOT_SURVEY_DONE = true
+  endflag   = ADAPTIVE_SURVEY_DONE = true
+  endflag   = RETURN=true
+  updates   = ADAPTIVE_WPT_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+  // backup mission for if updates do not come through
+  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  order  = normal
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+
 
 //----------------------------------------------
 Behavior = BHV_Waypoint
@@ -154,7 +184,6 @@ Behavior = BHV_Waypoint
   perpetual  = true
   endflag    = RETURN = false
   endflag    = DEPLOY = false
-  endflag    = HAZARDSET_REQUEST = true
 
   speed = 1.5
   radius = 2.0

@@ -31,7 +31,13 @@ MSGDIR="../../../modem-msgs"
 
 PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
 
-LAWNMOWER="format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+# config for static lawnmower, copied from test-lawnmowers
+LAWNMOWER_CONFIG="format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+
+# config for lawnmower used to get pilot data for autotuning hyperparams GP
+PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=700,y=1100,width=400,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south"
+PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
 
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
@@ -55,10 +61,13 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VPORT="9001"       SHARE_LISTEN="9301"                      \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
-   PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR  LAWNMOWER_CONFIG=$LAWNMOWER
+   PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
+   LAWNMOWER=$LAWNMOWER_CONFIG
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
-    START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1
+    START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
+    PILOT_LAWNMOWER_NS=$PILOT_LAWNMOWER_C_NS                   \
+    PILOT_LAWNMOWER_EW=$PILOT_LAWNMOWER_C_EW
 
 #VNAME2="ferdinand"      # The second vehicle community
 #START_POS2="2800,1900"
