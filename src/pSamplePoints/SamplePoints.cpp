@@ -249,8 +249,10 @@ void SamplePoints::calculateGridPoints(double ctr_x, double ctr_y, double width,
   // 1 deg lon in m: 92287.20804979937m
   double lat_deg_to_m = 110923.99118801417;
   double lon_deg_to_m = 92287.20804979937;
-  double lw_lon = spacing/lon_deg_to_m; // convert lane width to lon
-  double lw_lat = spacing/lat_deg_to_m; // convert lane width to lat
+
+  // convert lawnmower lane widths (m) to lon/lat
+  double lw_lon = spacing/lon_deg_to_m;
+  double lw_lat = spacing/lat_deg_to_m;
 
   // checking
   std::cout << "SW corner: " << sw_corner_lon << ", " << sw_corner_lat << std::endl;
@@ -272,7 +274,7 @@ void SamplePoints::calculateGridPoints(double ctr_x, double ctr_y, double width,
     }
   }
 
-  publishGridSpecs(width, height, lane_width);
+  publishGridSpecs(width, height, spacing);
   publishGridPoints(grid_pts);
 
   std::cout << GetAppName() << " :: Number of grid points: " << grid_pts.size() << std::endl;
