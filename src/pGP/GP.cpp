@@ -281,13 +281,20 @@ void GP::storeSamplePoints(std::string input_string)
       m_min_lat = lat;
       std::cout << GetAppName() << " :: SW Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
     }
+    if ( id_pt == sample_points.size()-1 )
+    {
+      // last location = top right corner (?)
+      m_max_lon = lon;
+      m_max_lat = lat;
+      std::cout << GetAppName() << " :: NE Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
+    }
   }
   // check / communicate what we did
   std::cout << GetAppName() << " :: stored " << m_sample_points_unvisited.size() << " sample locations" << std::endl;
 }
 
 //---------------------------------------------------------
-// Procedure: storeSamplePoints
+// Procedure: storeSamplePointsSpecs
 //            parse the string, store specs for sample locations
 //
 void GP::storeSamplePointsSpecs(std::string input_string)
@@ -331,19 +338,23 @@ void GP::updateVisitedSet()
   double lon_spacing = m_pts_grid_spacing/lon_deg_to_m; // convert lane width to lon
   double lat_spacing = m_pts_grid_spacing/lat_deg_to_m; // convert lane width to lat
 
-  // TODO: boundary conditions
-  // if just outside data grid, should be able to map to border points, if close enough
-  // currently we only have min lat/lon stored, need also max, and then check for all boundaries
+  // if just outside data grid, but close enough,
+  // should be able to map to border points
+  // buffer of 2 meters
+  double buffer_lon = 2/lon_deg_to_m;
+  double buffer_lat = 2/lat_deg_to_m;
 
-  // calculate the id of the location where the vehicle is currently
-  // at, and move it to visited
-  if ( veh_lon >= m_min_lon && veh_lat >= m_min_lat )
+  if ( veh_lon >= (m_min_lon-buffer_lon) && veh_lat >= (m_min_lat-buffer_lat) &&
+       veh_lon <= (m_max_lon+buffer_lon) && veh_lat <= (m_max_lat+buffer_lat) )
   {
+    // calculate the id of the location where the vehicle is currently
+    // at, and move it to visited
     double x_cell = (veh_lon - m_min_lon)/lon_spacing;
     double y_cell = (veh_lat - m_min_lat)/lat_spacing;
     size_t x_cell_rnd = (size_t) round(x_cell);
     size_t y_cell_rnd = (size_t) round(y_cell);
     size_t y_resolution = (size_t) round(m_pts_grid_height/m_pts_grid_spacing);
+
     // add one because of zero indexing
     y_resolution++;
     // calculate index into map (stored from SW, y first, then x)
@@ -428,6 +439,8 @@ void GP::findNextSampleLocation()
   if ( size_visited > 0 )
   {
 
+    std::clock_t begin = std::clock();
+
     // calculate covariance matrices sets, and their inverses (costly operations)
     Eigen::MatrixXd K_aa(size_visited, size_visited);
     createCovarMatrix(cov_f, "visited", K_aa);
@@ -436,6 +449,11 @@ void GP::findNextSampleLocation()
     Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
     createCovarMatrix(cov_f, "unvisited", K_avav);
     Eigen::MatrixXd K_avav_inv = K_avav.inverse();
+
+    std::clock_t end = std::clock();
+    std::cout << "Cost of calculating big covariances: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
+
+    begin = std::clock();
 
     double best_so_far = -1*std::numeric_limits<double>::max();
     Eigen::VectorXd best_so_far_y(2);
@@ -476,6 +494,9 @@ void GP::findNextSampleLocation()
     }
     // TODO: store all values, return sorted list?
 
+    end = std::clock();
+    std::cout << "Cost of calculating mixed covariances: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
+
     // publish greedy best
     std::ostringstream output_stream;
     output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
@@ -515,7 +536,7 @@ void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, 
 //            helper method for mutual information calculation
 //            calculates K_AA
 //
-void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
+void GP:: createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
 {
   // choose which map to use
   std::map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
@@ -529,13 +550,18 @@ void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const &
 
     // calc K_aa
     std::map<size_t, Eigen::VectorXd>::iterator b_itr;
-    size_t b_cnt = 0;
-    for ( b_itr = map_ref.begin(); b_itr != map_ref.end(); b_itr++, b_cnt++ )
+    size_t b_cnt = a_cnt;
+    // iterate only over triangle of matrix to reduce computation
+    for ( b_itr = a_itr; b_itr != map_ref.end(); b_itr++, b_cnt++ )
     {
       Eigen::VectorXd b(2);
       b = b_itr->second;
 
-      K_aa(a_cnt, b_cnt) = cov_f.get(a, b);
+      double current_cov_val = cov_f.get(a, b);
+      K_aa(a_cnt, b_cnt) = current_cov_val;
+      if (a_cnt != b_cnt)
+        K_aa(b_cnt, a_cnt) = current_cov_val;
     }
   }
 }
+

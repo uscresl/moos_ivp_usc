@@ -61,6 +61,8 @@ class GP : public CMOOSApp
       // sample points grid specs
    double m_min_lon;
    double m_min_lat;
+   double m_max_lon;
+   double m_max_lat;
    double m_pts_grid_width;
    double m_pts_grid_height;
    double m_pts_grid_spacing;
