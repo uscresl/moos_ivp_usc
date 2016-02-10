@@ -262,6 +262,8 @@ void SimBioSensor::readBioDataFromFile()
     size_t lon_res = (size_t)d_boundaries_map.at("lon_res");
     size_t lat_res = (size_t)d_boundaries_map.at("lat_res");
     size_t depth_res = (size_t)d_boundaries_map.at("depth_res");
+    std::cout << "resolutions: " << lon_res << "," << lat_res << "," << depth_res << std::endl;
+
     d_location_values = new double ** [lon_res];
     for ( int idlo = 0; idlo < lon_res+1; idlo++ )
     {
@@ -325,25 +327,39 @@ double SimBioSensor::getDataPoint()
   double lat_max = d_boundaries_map.at("lat_max");
   double dep_min = std::abs(d_boundaries_map.at("depth_min"));
   double dep_max = std::abs(d_boundaries_map.at("depth_max"));
+  double dep_res = d_boundaries_map.at("depth_res");
 
-  if (m_veh_lon >= lon_min && m_veh_lon <= lon_max &&
-       m_veh_lat >= lat_min && m_veh_lat <= lat_max &&
-       m_veh_depth >= dep_min && m_veh_depth <= dep_max )
+  // do calculations to figure out indices
+  double lon_step = std::abs(lon_max - lon_min) / d_boundaries_map.at("lon_res");
+  double lat_step = std::abs(lat_max - lat_min) / d_boundaries_map.at("lat_res");
+  double depth_step = std::abs(dep_max - dep_min) / dep_res;
+
+  // boundary conditions; lat/lon buffer, buffer = res/3 (third of lane)
+  double buffer_lon = std::abs(lon_step / 3.0);
+  double buffer_lat = std::abs(lat_step / 3.0);
+  double buffer_depth = std::abs( depth_step / 3.0 );
+
+  if ( m_veh_lon >= (lon_min-buffer_lon) && m_veh_lon <= (lon_max+buffer_lon) &&
+       m_veh_lat >= (lat_min-buffer_lat) && m_veh_lat <= (lat_max+buffer_lat) &&
+       m_veh_depth >= (dep_min-buffer_depth) && m_veh_depth <= (dep_max+buffer_depth) )
   {
-    // do calculations to figure out indices
-    double lon_step = std::abs(lon_max - lon_min) / d_boundaries_map.at("lon_res");
-    double lat_step = std::abs(lat_max - lat_min) / d_boundaries_map.at("lat_res");
-    double depth_step = std::abs(dep_max - dep_min) / d_boundaries_map.at("depth_res");
-
     size_t nav_lon_idx, nav_lat_idx, nav_dep_idx;
 
-    nav_lon_idx = std::floor( (m_veh_lon - lon_min) / lon_step );
-    nav_lat_idx = std::floor( (m_veh_lat - lat_min) / lat_step );
-    nav_dep_idx = std::floor( (m_veh_depth - dep_min) / depth_step );
+    std::cout << '\n' << GetAppName() << " :: vehicle lon/lat/dep: " << m_veh_lon
+              << "," << m_veh_lat << "," << m_veh_depth << std::endl;
+
+    nav_lon_idx = round( (m_veh_lon - lon_min) / lon_step );
+    nav_lat_idx = round( (m_veh_lat - lat_min) / lat_step );
+    nav_dep_idx = round( (m_veh_depth - dep_min) / depth_step );
+
+    std::cout << GetAppName() << " :: calculated index: " << nav_lon_idx
+              << "," << nav_lat_idx << "," << nav_dep_idx << std::endl;
 
     return d_location_values[nav_lon_idx][nav_lat_idx][nav_dep_idx];
   }
-  // TODO: add boundary conditions (N,E,S,W)
   else
+  {
+    std::cout << GetAppName() << " :: outside of data zone" << std::endl;
     return -1;
+  }
 }
