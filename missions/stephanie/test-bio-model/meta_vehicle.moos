@@ -120,7 +120,7 @@ ProcessConfig = pSamplePoints
   lawnmower_config = $(LAWNMOWER)
 
   // division factor for grid spacing (increase resolution vs lawnmower spec)
-  division_factor = 2
+  division_factor = 1
 
   // define what output variable name to use
   // for publishing list of sample points
