@@ -51,7 +51,7 @@ class GP : public CMOOSApp
    size_t m_prediction_interval;
 
    // State variables
-      // vehicle locatio
+      // vehicle location
    double m_lat;
    double m_lon;
    double m_dep;
@@ -66,6 +66,8 @@ class GP : public CMOOSApp
    double m_pts_grid_width;
    double m_pts_grid_height;
    double m_pts_grid_spacing;
+   // mission status
+   bool m_pilot_done;
 
    //std::vector< std::pair<double, double> > m_sample_points;
    std::map< size_t, Eigen::VectorXd > m_sample_points_unvisited;

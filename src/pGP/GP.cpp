@@ -23,6 +23,9 @@
 // check running time
 #include <ctime>
 
+// GPLib Rprop
+#include "rprop.h"
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -42,6 +45,8 @@ GP::GP() :
   m_data_added = false;
   m_last_published = std::numeric_limits<double>::max();
 
+  m_pilot_done = false;
+
   // initialize a GP for 2D input data, //TODO convert to 3D
   // using the squared exponential covariance function,
   // with additive white noise
@@ -55,7 +60,7 @@ GP::GP() :
 }
 
 //---------------------------------------------------------
-// Procedure: OnNewMail
+// Procedure: OnNewMailPILOT_SURVEY_DONE = true
 //
 // when variables are updated in the MOOSDB, 
 // there is 'new mail', check to see if
@@ -100,6 +105,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // process specs for sample points
       storeSamplePointsSpecs(sval);
     }
+    else if ( key == "PILOT_SURVEY_DONE" )
+      m_pilot_done = ( sval == "true" ) ? true : false;
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
   }
@@ -136,6 +143,27 @@ bool GP::Iterate()
 
     // update sample sets
     updateVisitedSet();
+  }
+
+  // if pilot done, optimize hyperparams
+  if ( m_pilot_done )
+  {
+    std::cout << "********************************" << std::endl;
+    std::cout << "pre-optimization hyperparams: " << m_gp.covf().get_loghyper() << std::endl;
+    std::cout << "current size GP: " << m_gp.get_sampleset_size() << std::endl;
+    // optimization
+    std::clock_t begin = std::clock();
+    libgp::RProp rprop;
+    rprop.init();
+    std::cout << "rprop initialized, running 15 iterations" << std::endl;
+    // arguments: GP, 'n' (seems to be nr iterations), verbose
+    rprop.maximize(&m_gp, 15, 0);
+    Eigen::VectorXd lh = m_gp.covf().get_loghyper();
+    std::cout << "********************************" << std::endl;
+    std::cout << "lh: " << lh << std::endl;
+    std::cout << "********************************" << std::endl;
+    std::clock_t end = std::clock();
+    std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
   }
 
   return(true);
@@ -228,6 +256,9 @@ void GP::registerVariables()
   // get sample points for GP
   m_Comms.Register(m_input_var_sample_points, 0);
   m_Comms.Register(m_input_var_sample_points_specs, 0);
+
+  // get status mission
+  m_Comms.Register("PILOT_SURVEY_DONE", 0);
 }
 
 //---------------------------------------------------------
