@@ -14,6 +14,8 @@
 
 // lib GP
 #include "gp.h"
+// use unordered map rather than map, improve efficiency
+#include <unordered_map>
 
 class GP : public CMOOSApp
 {
@@ -70,8 +72,8 @@ class GP : public CMOOSApp
    bool m_pilot_done;
 
    //std::vector< std::pair<double, double> > m_sample_points;
-   std::map< size_t, Eigen::VectorXd > m_sample_points_unvisited;
-   std::map< size_t, Eigen::VectorXd > m_sample_points_visited;
+   std::unordered_map< size_t, Eigen::VectorXd > m_sample_points_unvisited;
+   std::unordered_map< size_t, Eigen::VectorXd > m_sample_points_visited;
 
    libgp::GaussianProcess m_gp;
 };

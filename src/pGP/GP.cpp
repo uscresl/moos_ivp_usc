@@ -391,7 +391,7 @@ void GP::updateVisitedSet()
     // calculate index into map (stored from SW, y first, then x)
     size_t index = y_resolution*x_cell_rnd + y_cell_rnd;
 
-    std::map<size_t, Eigen::VectorXd>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
+    std::unordered_map<size_t, Eigen::VectorXd>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
     if ( curr_loc_itr != m_sample_points_unvisited.end() )
     {
 
@@ -488,7 +488,7 @@ void GP::findNextSampleLocation()
 
     double best_so_far = -1*std::numeric_limits<double>::max();
     Eigen::VectorXd best_so_far_y(2);
-    std::map<size_t, Eigen::VectorXd>::iterator y_itr;
+    std::unordered_map<size_t, Eigen::VectorXd>::iterator y_itr;
     size_t best_cnt = 1;
     for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
     {
@@ -547,10 +547,10 @@ void GP::findNextSampleLocation()
 void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya)
 {
   // choose which map to use
-  std::map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
+  std::unordered_map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
 
   // calculate the covariances
-  std::map<size_t, Eigen::VectorXd>::iterator a_itr;
+  std::unordered_map<size_t, Eigen::VectorXd>::iterator a_itr;
   size_t a_cnt = 0;
   for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
   {
@@ -570,9 +570,9 @@ void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, 
 void GP:: createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
 {
   // choose which map to use
-  std::map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
+  std::unordered_map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
 
-  std::map<size_t, Eigen::VectorXd>::iterator a_itr;
+  std::unordered_map<size_t, Eigen::VectorXd>::iterator a_itr;
   size_t a_cnt = 0;
   for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
   {
@@ -580,7 +580,7 @@ void GP:: createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const 
     a = a_itr->second;
 
     // calc K_aa
-    std::map<size_t, Eigen::VectorXd>::iterator b_itr;
+    std::unordered_map<size_t, Eigen::VectorXd>::iterator b_itr;
     size_t b_cnt = a_cnt;
     // iterate only over triangle of matrix to reduce computation
     for ( b_itr = a_itr; b_itr != map_ref.end(); b_itr++, b_cnt++ )
