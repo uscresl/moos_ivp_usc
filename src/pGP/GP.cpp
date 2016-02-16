@@ -62,7 +62,7 @@ GP::GP() :
 }
 
 //---------------------------------------------------------
-// Procedure: OnNewMailPILOT_SURVEY_DONE = true
+// Procedure: OnNewMail
 //
 // when variables are updated in the MOOSDB, 
 // there is 'new mail', check to see if
@@ -86,6 +86,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mdbl  = msg.IsDouble();
     bool   mstr  = msg.IsString();
 #endif
+    
+    std::cout << "m_hp_optim_running: " << m_hp_optim_running << std::endl;
     
     if ( key == m_input_var_data )
     {
@@ -150,13 +152,14 @@ bool GP::Iterate()
   // if pilot done, optimize hyperparams
   if ( m_pilot_done )
   {
-    if ( !m_hp_optim_running )
+    std::cout << "m_hp_optim_running, _done? " << m_hp_optim_running << ", " << m_hp_optim_done << std::endl;
+    if ( !m_hp_optim_running && !m_hp_optim_done )
     {
       m_hp_optim_running = true;
       // start thread for hyperparameter optimization
       m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp));
     }
-    else
+    else if ( m_hp_optim_running )
     {
       // check if the thread is done
       if ( m_future_hp_optim.wait_for(std::chrono::milliseconds(50)) == std::future_status::ready )
