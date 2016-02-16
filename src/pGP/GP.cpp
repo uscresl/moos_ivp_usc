@@ -30,7 +30,9 @@
 // Constructor
 //
 GP::GP() :
-  m_gp(2, "CovSum(CovSEiso, CovNoise)")
+  m_gp(2, "CovSum(CovSEiso, CovNoise)"),
+  m_hp_optim_running(false),
+  m_hp_optim_done(false)
 {
   // class variable instantiations can go here
   m_input_var_data = "";
@@ -95,7 +97,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       m_lon = dval;
     else if ( key == "NAV_DEPTH" )
       m_dep = dval;
-    else if ( key == m_input_var_sample_points )
+    else if ( key == m_input_var_sample_points && !m_hp_optim_running )
     {
       // process sample locations
       storeSamplePoints(sval);
@@ -116,7 +118,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
 //---------------------------------------------------------
 // Procedure: OnConnectToServer
-
+//
 bool GP::OnConnectToServer()
 {
 //  registerVariables();
@@ -130,7 +132,7 @@ bool GP::Iterate()
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
     return true;
-  else if ( m_data_added )
+  else if ( m_data_added && m_hp_optim_done )
   {
     // predict target value and variance for sample locations
     if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  && (std::abs(m_last_published - MOOSTime()) > 1) ) // every 5 min, for now
@@ -148,22 +150,21 @@ bool GP::Iterate()
   // if pilot done, optimize hyperparams
   if ( m_pilot_done )
   {
-    std::cout << "********************************" << std::endl;
-    std::cout << "pre-optimization hyperparams: " << m_gp.covf().get_loghyper() << std::endl;
-    std::cout << "current size GP: " << m_gp.get_sampleset_size() << std::endl;
-    // optimization
-    std::clock_t begin = std::clock();
-    libgp::RProp rprop;
-    rprop.init();
-    std::cout << "rprop initialized, running 15 iterations" << std::endl;
-    // arguments: GP, 'n' (seems to be nr iterations), verbose
-    rprop.maximize(&m_gp, 15, 0);
-    Eigen::VectorXd lh = m_gp.covf().get_loghyper();
-    std::cout << "********************************" << std::endl;
-    std::cout << "lh: " << lh << std::endl;
-    std::cout << "********************************" << std::endl;
-    std::clock_t end = std::clock();
-    std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
+    if ( !m_hp_optim_running )
+    {
+      // start thread for hyperparameter optimization
+      m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp));
+      m_hp_optim_running = true;
+    }
+    else
+    {
+      // check if the thread is done
+      if ( m_future_hp_optim.wait_for(std::chrono::milliseconds(50)) == std::future_status::ready )
+      {
+        m_hp_optim_done = m_future_hp_optim.get(); // should be true
+        m_hp_optim_running = false;
+      }
+    }
   }
 
   return(true);
@@ -567,7 +568,7 @@ void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, 
 //            helper method for mutual information calculation
 //            calculates K_AA
 //
-void GP:: createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
+void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
 {
   // choose which map to use
   std::unordered_map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
@@ -596,3 +597,38 @@ void GP:: createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const 
   }
 }
 
+//---------------------------------------------------------
+// Procedure: runHPOptimization()
+//            run in thread, call GP's hyperparam optimization
+//
+bool GP::runHPOptimization(libgp::GaussianProcess & gp)
+{
+  // protect GP access with mutex
+  std::lock_guard<std::mutex> lock(m_gp_mutex);
+
+  std::cout << "********************************" << std::endl;
+  std::cout << "pre-optimization hyperparams: " << gp.covf().get_loghyper() << std::endl;
+  std::cout << "current size GP: " << gp.get_sampleset_size() << std::endl;
+
+  // optimization
+  std::clock_t begin = std::clock();
+  libgp::RProp rprop;
+  rprop.init();
+  std::clock_t end = std::clock();
+
+  std::cout << "rprop initialized, " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " seconds" << std::endl;
+
+  begin = end;
+  std::cout << "Running 15 iterations" << std::endl;
+  // RProp arguments: GP, 'n' (seems to be nr iterations), verbose
+  rprop.maximize(&gp, 15, 0);
+
+  Eigen::VectorXd lh = gp.covf().get_loghyper();
+  std::cout << "********************************" << std::endl;
+  std::cout << "lh: " << lh << std::endl;
+  std::cout << "********************************" << std::endl;
+  end = std::clock();
+  std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+
+  return true;
+}
