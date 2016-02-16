@@ -152,9 +152,9 @@ bool GP::Iterate()
   {
     if ( !m_hp_optim_running )
     {
+      m_hp_optim_running = true;
       // start thread for hyperparameter optimization
       m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp));
-      m_hp_optim_running = true;
     }
     else
     {
@@ -272,6 +272,7 @@ void GP::handleMailData(double received_data)
     std::cout << GetAppName() << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
   else
   {
+    std::lock_guard<std::mutex> lock(m_gp_mutex);
     // add training data
     // Input vectors x must be provided as double[] and targets y as double.
     double x[] = {m_lon, m_lat}; //, m_dep};
@@ -461,6 +462,7 @@ void GP::findNextSampleLocation()
 
   // get covariance function from GP
   // so we can use the get() function from the CovarianceFunction
+  std::lock_guard<std::mutex> lock(m_gp_mutex);
   libgp::CovarianceFunction & cov_f = m_gp.covf();
 
   // for each y (from unvisited set only, as in greedy algorithm Krause'08)
@@ -611,6 +613,8 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   std::cout << "current size GP: " << gp.get_sampleset_size() << std::endl;
 
   // optimization
+  // there are 2 methods in gplib, conjugate gradient and RProp, the latter 
+  // should be more efficient
   std::clock_t begin = std::clock();
   libgp::RProp rprop;
   rprop.init();

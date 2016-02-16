@@ -81,7 +81,7 @@ class GP : public CMOOSApp
    std::unordered_map< size_t, Eigen::VectorXd > m_sample_points_unvisited;
    std::unordered_map< size_t, Eigen::VectorXd > m_sample_points_visited;
 
-   // GP, and protect with mutex
+   // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess m_gp;
    std::mutex m_gp_mutex;
 
