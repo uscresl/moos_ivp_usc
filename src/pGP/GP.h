@@ -46,10 +46,12 @@ class GP : public CMOOSApp
    void updateVisitedSet();
 
    void findNextSampleLocation();
-   void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
+   void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
    void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
 
    bool runHPOptimization(libgp::GaussianProcess & gp);
+
+   void addPatternToGP(double location[], double value);
 
    // Configuration variables
    std::string m_input_var_data;
@@ -78,8 +80,8 @@ class GP : public CMOOSApp
    bool m_pilot_done;
 
    //std::vector< std::pair<double, double> > m_sample_points;
-   std::unordered_map< size_t, Eigen::VectorXd > m_sample_points_unvisited;
-   std::unordered_map< size_t, Eigen::VectorXd > m_sample_points_visited;
+   std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
+   std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_visited;
 
    // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess m_gp;

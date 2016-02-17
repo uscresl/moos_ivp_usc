@@ -85,8 +85,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mdbl  = msg.IsDouble();
     bool   mstr  = msg.IsString();
 #endif
-    
-    std::cout << "mail received: " << key << std::endl;
 
     if ( key == m_input_var_data )
     {
@@ -101,12 +99,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       m_dep = dval;
     else if ( key == m_input_var_sample_points )
     {
-      // process sample locations coming pSamplePoints
+      // store list of sample locations coming pSamplePoints
       storeSamplePoints(sval);
     }
     else if ( key == m_input_var_sample_points_specs )
     {
-      // process specs for sample points
+      // store specs for sample points
       storeSamplePointsSpecs(sval);
     }
     else if ( key == "PILOT_SURVEY_DONE" )
@@ -155,13 +153,9 @@ bool GP::Iterate()
     }
   }
 
-  std::cout << "pilot done, optim done? " << m_pilot_done << ", " << m_hp_optim_done
-            << " --> " << ( m_pilot_done && !m_hp_optim_done) << std::endl;
-
   // if pilot done, optimize hyperparams
   if ( m_pilot_done && !m_hp_optim_done)
   {
-    std::cout << "m_hp_optim_running: " << m_hp_optim_running << std::endl;
     if ( !m_hp_optim_running )
     {
       // start hyperparameter optimization
@@ -291,14 +285,20 @@ void GP::handleMailData(double received_data)
     // Input vectors x must be provided as double[] and targets y as double.
     double x[] = {m_lon, m_lat}; //, m_dep};
 
-    // limit scope mutex, protect when adding data
-    std::unique_lock<std::mutex> lock(m_gp_mutex);
-    m_gp.add_pattern(x, received_data);
-    lock.unlock();
+    addPatternToGP(x, received_data);
 
     m_data_added = true;
   }
 }
+
+void GP::addPatternToGP(double location[], double value)
+{
+  // limit scope mutex, protect when adding data
+  std::unique_lock<std::mutex> lock(m_gp_mutex);
+  m_gp.add_pattern(location, value);
+  lock.unlock();
+}
+
 
 //---------------------------------------------------------
 // Procedure: storeSamplePoints
@@ -321,10 +321,10 @@ void GP::storeSamplePoints(std::string input_string)
     // 1. assume ordered as per creation (if needed, we can recalculate the v_id)
     // 2. store in a map; v_id is key, location is value
     // 3. later on, we can easily retrieve from map / store in other
-    Eigen::VectorXd loc_vec(2);
+    Eigen::Vector2d loc_vec;
     loc_vec(0) = lon;
     loc_vec(1) = lat;
-    m_sample_points_unvisited.insert( std::pair<size_t, Eigen::VectorXd>(id_pt, loc_vec) );
+    m_sample_points_unvisited.insert( std::pair<size_t, Eigen::Vector2d>(id_pt, loc_vec) );
 
     // the first location should be bottom left corner, store as minima
     if ( id_pt == 0 )
@@ -380,6 +380,9 @@ void GP::storeSamplePointsSpecs(std::string input_string)
 //
 void GP::updateVisitedSet()
 {
+  // handling data, reset state var
+  m_data_added = false;
+
   // store values in tmp to avoid change while this procedure is run
   double veh_lon = m_lon;
   double veh_lat = m_lat;
@@ -412,14 +415,11 @@ void GP::updateVisitedSet()
     // calculate index into map (stored from SW, y first, then x)
     size_t index = y_resolution*x_cell_rnd + y_cell_rnd;
 
-    std::unordered_map<size_t, Eigen::VectorXd>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
+    std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
     if ( curr_loc_itr != m_sample_points_unvisited.end() )
     {
-
-      std::clock_t begin = std::clock();
-
       // remove point from unvisited set
-      Eigen::VectorXd move_pt = m_sample_points_unvisited.at(index);
+      Eigen::Vector2d move_pt = m_sample_points_unvisited.at(index);
 
       // tmp check
       double dist_lon = std::abs(move_pt(0) - veh_lon);
@@ -437,7 +437,7 @@ void GP::updateVisitedSet()
       }
 
       // add the point to the visited set
-      m_sample_points_visited.insert(std::pair<size_t, Eigen::VectorXd>(index, move_pt));
+      m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
 
       // and remove it from the unvisited set
       m_sample_points_unvisited.erase(curr_loc_itr);
@@ -447,19 +447,10 @@ void GP::updateVisitedSet()
       std::cout << " from unvisited to visited.\n";
       std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
       std::cout << "Visited size: " << m_sample_points_visited.size() << std::endl;
-
-      std::clock_t end = std::clock();
-      std::cout << "runtime updateVisitedSet: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n'<< std::endl;
     }
   }
   else
-  {
-//    // boundary conditions
-//    std::cout << GetAppName() << " :: current vehicle location outside data grid\n";
-//    std::cout << GetAppName() << " :: lon boundary ok? " << ( veh_lon >= m_min_lon ? "yes" : "no" ) << '\n';
-//    std::cout << GetAppName() << " :: lat boundary ok? " << ( veh_lat >= m_min_lat ? "yes" : "no" ) << '\n';
     return;
-  }
 }
 
 //---------------------------------------------------------
@@ -500,9 +491,6 @@ void GP::findNextSampleLocation()
 
   if ( size_visited > 0 )
   {
-
-//    std::clock_t begin = std::clock();
-
     // calculate covariance matrices sets, and their inverses (costly operations)
     Eigen::MatrixXd K_aa(size_visited, size_visited);
     createCovarMatrix(cov_f, "visited", K_aa);
@@ -512,19 +500,13 @@ void GP::findNextSampleLocation()
     createCovarMatrix(cov_f, "unvisited", K_avav);
     Eigen::MatrixXd K_avav_inv = K_avav.inverse();
 
-    std::clock_t end = std::clock();
-//    std::cout << "Cost of calculating big covariances: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
-
-//    begin = std::clock();
-
     double best_so_far = -1*std::numeric_limits<double>::max();
-    Eigen::VectorXd best_so_far_y(2);
-    std::unordered_map<size_t, Eigen::VectorXd>::iterator y_itr;
+    Eigen::Vector2d best_so_far_y(2);
+    std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
     size_t best_cnt = 1;
     for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
     {
-      Eigen::VectorXd y(2);
-      y = y_itr->second;
+      Eigen::Vector2d y = y_itr->second;
 
       // calculate k(y,y)
       double k_yy = cov_f.get(y,y);
@@ -554,11 +536,8 @@ void GP::findNextSampleLocation()
         best_cnt++;
       }
     }
+
     // TODO: store all values, return sorted list?
-
-//    end = std::clock();
-//    std::cout << "Cost of calculating mixed covariances: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
-
     // publish greedy best
     std::ostringstream output_stream;
     output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
@@ -575,19 +554,18 @@ void GP::findNextSampleLocation()
 //            helper method for mutual information calculation
 //            calculates K_ya
 //
-void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, std::string const & set_identifier, Eigen::VectorXd & k_ya)
+void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya)
 {
   // choose which map to use
-  std::unordered_map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
+  std::unordered_map<size_t, Eigen::Vector2d> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
 
   // calculate the covariances
-  std::unordered_map<size_t, Eigen::VectorXd>::iterator a_itr;
+  std::unordered_map<size_t, Eigen::Vector2d>::iterator a_itr;
   size_t a_cnt = 0;
   for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
   {
     // calc k_ya
-    Eigen::VectorXd a(2);
-    a = a_itr->second;
+    Eigen::Vector2d a = a_itr->second;
 
     k_ya(a_cnt) = cov_f.get(y,a);
   }
@@ -601,23 +579,21 @@ void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::VectorXd y, 
 void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
 {
   // choose which map to use
-  std::unordered_map<size_t, Eigen::VectorXd> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
+  std::unordered_map<size_t, Eigen::Vector2d> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
 
-  std::unordered_map<size_t, Eigen::VectorXd>::iterator a_itr;
+  std::unordered_map<size_t, Eigen::Vector2d>::iterator a_itr;
   size_t a_cnt = 0;
   for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
   {
-    Eigen::VectorXd a(2);
-    a = a_itr->second;
+    Eigen::Vector2d a = a_itr->second;
 
     // calc K_aa
-    std::unordered_map<size_t, Eigen::VectorXd>::iterator b_itr;
+    std::unordered_map<size_t, Eigen::Vector2d>::iterator b_itr;
     size_t b_cnt = a_cnt;
     // iterate only over triangle of matrix to reduce computation
     for ( b_itr = a_itr; b_itr != map_ref.end(); b_itr++, b_cnt++ )
     {
-      Eigen::VectorXd b(2);
-      b = b_itr->second;
+      Eigen::Vector2d b = b_itr->second;
 
       double current_cov_val = cov_f.get(a, b);
       K_aa(a_cnt, b_cnt) = current_cov_val;
@@ -636,10 +612,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   // protect GP access with mutex
   std::lock_guard<std::mutex> lock(m_gp_mutex);
 
-  // try this to see if helps mutex gp
-  size_t ss_size = gp.get_sampleset_size();
-
-//  std::clock_t begin = std::clock();
+  std::clock_t begin = std::clock();
 
   // optimization
   // there are 2 methods in gplib, conjugate gradient and RProp, the latter 
@@ -647,15 +620,11 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   libgp::RProp rprop;
   rprop.init();
 
-//  std::clock_t end = std::clock();
-//  std::cout << "rprop initialized, " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " seconds" << std::endl;
-//  begin = end;
-
   // RProp arguments: GP, 'n' (seems to be nr iterations), verbose
   rprop.maximize(&gp, 10, 0);
 
-  //  end = std::clock();
-//  std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  std::clock_t end = std::clock();
+  std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   return true;
 }
