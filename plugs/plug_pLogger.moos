@@ -21,6 +21,6 @@ ProcessConfig = pLogger
 
   // Log everything, but process status
   WildCardLogging = true 
-  WildCardOmitPattern = *_STATUS
+  WildCardOmitPattern = *_STATUS,DB_VARSUMMARY
   LogAuxSrc = true
 }
