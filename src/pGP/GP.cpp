@@ -32,28 +32,27 @@
 GP::GP() :
   m_gp(2, "CovSum(CovSEiso, CovNoise)"),
   m_hp_optim_running(false),
-  m_hp_optim_done(false)
+  m_hp_optim_done(false),
+  m_pilot_done(false),
+  m_data_added(false),
+  m_input_var_data(""),
+  m_input_var_sample_points(""),
+  m_input_var_sample_points_specs(""),
+  m_output_var_pred(""),
+  m_prediction_interval(-1),
+  m_lat(0),
+  m_lon(0),
+  m_dep(0),
+  m_last_published(std::numeric_limits<double>::max())
 {
   // class variable instantiations can go here
-  m_input_var_data = "";
-  m_input_var_sample_points = "";
-  m_input_var_sample_points_specs = "";
-  m_output_var_pred = "";
-  m_prediction_interval = -1;
+  // as much as possible as function level initialization
 
-  m_lat = 0;
-  m_lon = 0;
-  m_dep = 0;
-  m_data_added = false;
-  m_last_published = std::numeric_limits<double>::max();
-
-  m_pilot_done = false;
-
-  // initialize a GP for 2D input data, //TODO convert to 3D
+  // above we initialize a GP for 2D input data, //TODO convert to 3D
   // using the squared exponential covariance function,
   // with additive white noise
 
-  // Set log-hyperparameter of the covariance function.
+  // Set log-hyperparameter of the covariance function
   Eigen::VectorXd params(m_gp.covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these can be optimized using cg or rprop
@@ -87,10 +86,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mstr  = msg.IsString();
 #endif
     
-    std::cout << "m_hp_optim_running: " << m_hp_optim_running << std::endl;
-    
+    std::cout << "mail received: " << key << std::endl;
+
     if ( key == m_input_var_data )
     {
+      // add data to GP, coming from uSimBioSensor
       handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -99,9 +99,9 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       m_lon = dval;
     else if ( key == "NAV_DEPTH" )
       m_dep = dval;
-    else if ( key == m_input_var_sample_points && !m_hp_optim_running )
+    else if ( key == m_input_var_sample_points )
     {
-      // process sample locations
+      // process sample locations coming pSamplePoints
       storeSamplePoints(sval);
     }
     else if ( key == m_input_var_sample_points_specs )
@@ -110,7 +110,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       storeSamplePointsSpecs(sval);
     }
     else if ( key == "PILOT_SURVEY_DONE" )
+    {
+      std::cout << "received PILOT_SURVEY_DONE: " << sval << std::endl;
       m_pilot_done = ( sval == "true" ) ? true : false;
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
   }
@@ -134,7 +137,13 @@ bool GP::Iterate()
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
     return true;
-  else if ( m_data_added && m_hp_optim_done )
+  else if ( m_data_added )
+  {
+    // update sample sets
+    updateVisitedSet();
+  }
+
+  if ( m_hp_optim_done )
   {
     // predict target value and variance for sample locations
     if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  && (std::abs(m_last_published - MOOSTime()) > 1) ) // every 5 min, for now
@@ -144,28 +153,31 @@ bool GP::Iterate()
       std::clock_t end = std::clock();
       std::cout << "runtime findNextSampleLocation: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
     }
-
-    // update sample sets
-    updateVisitedSet();
   }
 
+  std::cout << "pilot done, optim done? " << m_pilot_done << ", " << m_hp_optim_done
+            << " --> " << ( m_pilot_done && !m_hp_optim_done) << std::endl;
+
   // if pilot done, optimize hyperparams
-  if ( m_pilot_done )
+  if ( m_pilot_done && !m_hp_optim_done)
   {
-    std::cout << "m_hp_optim_running, _done? " << m_hp_optim_running << ", " << m_hp_optim_done << std::endl;
-    if ( !m_hp_optim_running && !m_hp_optim_done )
+    std::cout << "m_hp_optim_running: " << m_hp_optim_running << std::endl;
+    if ( !m_hp_optim_running )
     {
+      // start hyperparameter optimization
       m_hp_optim_running = true;
       // start thread for hyperparameter optimization
+      std::cout << "Starting hyperparameter optimization" << std::endl;
       m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp));
     }
-    else if ( m_hp_optim_running )
+    else
     {
       // check if the thread is done
-      if ( m_future_hp_optim.wait_for(std::chrono::milliseconds(50)) == std::future_status::ready )
+      if ( m_future_hp_optim.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
       {
         m_hp_optim_done = m_future_hp_optim.get(); // should be true
         m_hp_optim_running = false;
+        std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
       }
     }
   }
@@ -273,13 +285,17 @@ void GP::handleMailData(double received_data)
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
     std::cout << GetAppName() << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
-  else
+  else if ( !m_hp_optim_running )
   {
-    std::lock_guard<std::mutex> lock(m_gp_mutex);
     // add training data
     // Input vectors x must be provided as double[] and targets y as double.
     double x[] = {m_lon, m_lat}; //, m_dep};
+
+    // limit scope mutex, protect when adding data
+    std::unique_lock<std::mutex> lock(m_gp_mutex);
     m_gp.add_pattern(x, received_data);
+    lock.unlock();
+
     m_data_added = true;
   }
 }
@@ -452,6 +468,13 @@ void GP::updateVisitedSet()
 //
 void GP::findNextSampleLocation()
 {
+  if ( m_gp.get_sampleset_size() == 0 )
+  {
+    std::cout << GetAppName() << " :: ERROR, trying to predict without data. Exiting in 2 seconds" << std::endl;
+    sleep(2);
+    RequestQuit();
+  }
+
   // predict target value for given input, f()
   // predict variance of prediction for given input, var()
 
@@ -465,8 +488,10 @@ void GP::findNextSampleLocation()
 
   // get covariance function from GP
   // so we can use the get() function from the CovarianceFunction
-  std::lock_guard<std::mutex> lock(m_gp_mutex);
+  // use unique_lock here, such that we can release mutex after m_gp operation
+  std::unique_lock<std::mutex> lock(m_gp_mutex);
   libgp::CovarianceFunction & cov_f = m_gp.covf();
+  lock.unlock();
 
   // for each y (from unvisited set only, as in greedy algorithm Krause'08)
   // calculate the mutual information term
@@ -476,7 +501,7 @@ void GP::findNextSampleLocation()
   if ( size_visited > 0 )
   {
 
-    std::clock_t begin = std::clock();
+//    std::clock_t begin = std::clock();
 
     // calculate covariance matrices sets, and their inverses (costly operations)
     Eigen::MatrixXd K_aa(size_visited, size_visited);
@@ -488,9 +513,9 @@ void GP::findNextSampleLocation()
     Eigen::MatrixXd K_avav_inv = K_avav.inverse();
 
     std::clock_t end = std::clock();
-    std::cout << "Cost of calculating big covariances: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
+//    std::cout << "Cost of calculating big covariances: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
 
-    begin = std::clock();
+//    begin = std::clock();
 
     double best_so_far = -1*std::numeric_limits<double>::max();
     Eigen::VectorXd best_so_far_y(2);
@@ -531,8 +556,8 @@ void GP::findNextSampleLocation()
     }
     // TODO: store all values, return sorted list?
 
-    end = std::clock();
-    std::cout << "Cost of calculating mixed covariances: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
+//    end = std::clock();
+//    std::cout << "Cost of calculating mixed covariances: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
 
     // publish greedy best
     std::ostringstream output_stream;
@@ -611,31 +636,26 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   // protect GP access with mutex
   std::lock_guard<std::mutex> lock(m_gp_mutex);
 
-  std::cout << "********************************" << std::endl;
-  std::cout << "pre-optimization hyperparams: " << gp.covf().get_loghyper() << std::endl;
-  std::cout << "current size GP: " << gp.get_sampleset_size() << std::endl;
+  // try this to see if helps mutex gp
+  size_t ss_size = gp.get_sampleset_size();
+
+//  std::clock_t begin = std::clock();
 
   // optimization
   // there are 2 methods in gplib, conjugate gradient and RProp, the latter 
   // should be more efficient
-  std::clock_t begin = std::clock();
   libgp::RProp rprop;
   rprop.init();
-  std::clock_t end = std::clock();
 
-  std::cout << "rprop initialized, " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " seconds" << std::endl;
+//  std::clock_t end = std::clock();
+//  std::cout << "rprop initialized, " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " seconds" << std::endl;
+//  begin = end;
 
-  begin = end;
-  std::cout << "Running 15 iterations" << std::endl;
   // RProp arguments: GP, 'n' (seems to be nr iterations), verbose
-  rprop.maximize(&gp, 15, 0);
+  rprop.maximize(&gp, 10, 0);
 
-  Eigen::VectorXd lh = gp.covf().get_loghyper();
-  std::cout << "********************************" << std::endl;
-  std::cout << "lh: " << lh << std::endl;
-  std::cout << "********************************" << std::endl;
-  end = std::clock();
-  std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  //  end = std::clock();
+//  std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   return true;
 }
