@@ -166,7 +166,10 @@ Behavior = BHV_Waypoint
   points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
   order  = normal
 
-  repeat = 0 // # times to repeat waypoints list
+  repeat = 100 // # times to repeat waypoints list
+  // var/val pair to publish at end of each cycle
+  cycleflag = WPT_CYCLE_FINISHED=true
+  wptflag = WPT_REACHED=true
 
   visual_hints = nextpt_color=red, nextpt_lcolor=green
   visual_hints = vertex_color=yellow, edge_color=white
