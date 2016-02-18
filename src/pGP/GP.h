@@ -57,6 +57,7 @@ class GP : public CMOOSApp
    std::string m_input_var_data;
    std::string m_input_var_sample_points;
    std::string m_input_var_sample_points_specs;
+   std::string m_input_var_adaptive_trigger;
    std::string m_output_var_pred;
    size_t m_prediction_interval;
 
@@ -78,6 +79,7 @@ class GP : public CMOOSApp
    double m_pts_grid_spacing;
    // mission status
    bool m_pilot_done;
+   bool m_wpt_cycle_done;
 
    //std::vector< std::pair<double, double> > m_sample_points;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
@@ -91,6 +93,7 @@ class GP : public CMOOSApp
    std::future<bool> m_future_hp_optim;
    bool m_hp_optim_running;
    bool m_hp_optim_done;
+
 };
 
 #endif 

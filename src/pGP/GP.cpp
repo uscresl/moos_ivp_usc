@@ -38,12 +38,14 @@ GP::GP() :
   m_input_var_data(""),
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
+  m_input_var_adaptive_trigger(""),
   m_output_var_pred(""),
   m_prediction_interval(-1),
   m_lat(0),
   m_lon(0),
   m_dep(0),
-  m_last_published(std::numeric_limits<double>::max())
+  m_last_published(std::numeric_limits<double>::max()),
+  m_wpt_cycle_done(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -112,6 +114,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       std::cout << "received PILOT_SURVEY_DONE: " << sval << std::endl;
       m_pilot_done = ( sval == "true" ) ? true : false;
     }
+    else if ( key == m_input_var_adaptive_trigger )
+    {
+      m_wpt_cycle_done = true;
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
   }
@@ -144,13 +150,16 @@ bool GP::Iterate()
   if ( m_hp_optim_done )
   {
     // predict target value and variance for sample locations
-    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  && (std::abs(m_last_published - MOOSTime()) > 1) ) // every 5 min, for now
+//    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  && (std::abs(m_last_published - MOOSTime()) > 1) ) // every 5 min, for now
+    if ( m_wpt_cycle_done)
     {
       std::clock_t begin = std::clock();
       findNextSampleLocation();
       std::clock_t end = std::clock();
       std::cout << "runtime findNextSampleLocation: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
     }
+
+    // periodically, store all GP predictions
   }
 
   // if pilot done, optimize hyperparams
@@ -212,6 +221,10 @@ bool GP::OnStartUp()
     {
       m_input_var_sample_points_specs = toupper(value);
     }
+    else if ( param == "input_var_adaptive_trigger" )
+    {
+      m_input_var_adaptive_trigger = toupper(value);
+    }
     else if ( param == "output_var_predictions" )
     {
       m_output_var_pred = toupper(value);
@@ -269,6 +282,10 @@ void GP::registerVariables()
 
   // get status mission
   m_Comms.Register("PILOT_SURVEY_DONE", 0);
+
+  // get when wpt cycle finished
+  // (when to run adaptive predictions in adaptive state)
+  m_Comms.Register(m_input_var_adaptive_trigger, 0);
 }
 
 //---------------------------------------------------------
@@ -443,7 +460,7 @@ void GP::updateVisitedSet()
       m_sample_points_unvisited.erase(curr_loc_itr);
 
       // report
-      std::cout << "moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
+      std::cout << "\nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
       std::cout << " from unvisited to visited.\n";
       std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
       std::cout << "Visited size: " << m_sample_points_visited.size() << std::endl;
@@ -546,6 +563,7 @@ void GP::findNextSampleLocation()
     std::cout << GetAppName() << " :: current next best: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
     std::cout << GetAppName() << " :: best_cnt: " << best_cnt << std::endl;
     m_last_published = MOOSTime();
+    m_wpt_cycle_done = false;
   }
 }
 
