@@ -95,7 +95,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
-      m_lat = dvam_input_var_pilot_donel;
+      m_lat = dval;
     else if ( key == "NAV_LONG" )
       m_lon = dval;
     else if ( key == "NAV_DEPTH" )
