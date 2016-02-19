@@ -151,10 +151,11 @@ Behavior = BHV_Waypoint
   condition = RETURN = false
   condition = (DEPLOY = true)
   condition = PILOT_SURVEY_DONE = true
-  endflag   = ADAPTIVE_SURVEY_DONE = true
-  endflag   = RETURN=true
+//  endflag   = ADAPTIVE_SURVEY_DONE = true
+//  endflag   = RETURN=true
   updates   = ADAPTIVE_WPT_UPDATES
-  perpetual = false
+//  perpetual = false
+  perpetual = true
 
   speed = 1.5         // m/s
 
