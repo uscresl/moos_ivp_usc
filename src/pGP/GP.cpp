@@ -38,6 +38,7 @@ GP::GP() :
   m_input_var_data(""),
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
+  m_input_var_pilot_done(""),
   m_input_var_adaptive_trigger(""),
   m_output_var_pred(""),
   m_prediction_interval(-1),
@@ -45,7 +46,7 @@ GP::GP() :
   m_lon(0),
   m_dep(0),
   m_last_published(std::numeric_limits<double>::max()),
-  m_wpt_cycle_done(false)
+  m_need_nxt_wpt(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -58,7 +59,7 @@ GP::GP() :
   Eigen::VectorXd params(m_gp.covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these can be optimized using cg or rprop
-  params << 0.0, 0.0, -2.0;
+  params << -1.6, -3.6, 0.894; //1.0, 1.0, 1.0;
   m_gp.covf().set_loghyper(params);
 }
 
@@ -94,7 +95,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
-      m_lat = dval;
+      m_lat = dvam_input_var_pilot_donel;
     else if ( key == "NAV_LONG" )
       m_lon = dval;
     else if ( key == "NAV_DEPTH" )
@@ -109,14 +110,16 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // store specs for sample points
       storeSamplePointsSpecs(sval);
     }
-    else if ( key == "PILOT_SURVEY_DONE" )
+    else if ( key == m_input_var_pilot_done )
     {
-      std::cout << "received PILOT_SURVEY_DONE: " << sval << std::endl;
+      std::cout << "received " << m_input_var_pilot_done << ": " << sval << std::endl;
       m_pilot_done = ( sval == "true" ) ? true : false;
     }
     else if ( key == m_input_var_adaptive_trigger )
     {
-      m_wpt_cycle_done = true;
+      // these are flags set by the wpt behavior
+      // if we get it, it must mean a wpt/cycle was done
+      m_need_nxt_wpt = true;
     }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
@@ -137,54 +140,73 @@ bool GP::OnConnectToServer()
 //---------------------------------------------------------
 // Procedure: Iterate()
 //            happens AppTick times per second
+//
 bool GP::Iterate()
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
     return true;
-  else if ( m_data_added )
+  else
   {
-    // update sample sets
-    updateVisitedSet();
-  }
-
-  if ( m_hp_optim_done )
-  {
-    // predict target value and variance for sample locations
-//    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  && (std::abs(m_last_published - MOOSTime()) > 1) ) // every 5 min, for now
-    if ( m_wpt_cycle_done)
+    // if we received new data,
+    // then we have to change the visited/unvisited sample sets
+    if ( m_data_added )
     {
-      std::clock_t begin = std::clock();
-      findNextSampleLocation();
-      std::clock_t end = std::clock();
-      std::cout << "runtime findNextSampleLocation: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
+      // update sample sets
+      updateVisitedSet();
     }
 
-    // periodically, store all GP predictions
-  }
-
-  // if pilot done, optimize hyperparams
-  if ( m_pilot_done && !m_hp_optim_done)
-  {
-    if ( !m_hp_optim_running )
+    // when pilot is done,
+    // we want to optimize the hyperparams of the GP
+    if ( m_pilot_done && !m_hp_optim_done)
     {
-      // start hyperparameter optimization
-      m_hp_optim_running = true;
-      // start thread for hyperparameter optimization
-      std::cout << "Starting hyperparameter optimization" << std::endl;
-      m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp));
-    }
-    else
-    {
-      // check if the thread is done
-      if ( m_future_hp_optim.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
+      if ( !m_hp_optim_running )
       {
-        m_hp_optim_done = m_future_hp_optim.get(); // should be true
-        m_hp_optim_running = false;
-        std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
+        // start hyperparameter optimization
+        m_hp_optim_running = true;
+
+        // start thread for hyperparameter optimization,
+        // because this will take a while..
+        std::cout << "Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
+        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp));
+      }
+      else
+      {
+        // check if the thread is done
+        if ( m_future_hp_optim.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
+        {
+          m_hp_optim_done = m_future_hp_optim.get(); // should be true
+          if ( !m_hp_optim_done )
+            std::cout << "ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+          m_hp_optim_running = false;
+          std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
+        }
       }
     }
-  }
 
+    // when hyperparameter optimization is done,
+    // we want to run adaptive; find next sample locations
+    if ( m_hp_optim_done )
+    {
+      // predict target value and variance for sample locations
+      //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
+      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1) )
+      {
+        std::clock_t begin = std::clock();
+        findNextSampleLocation();
+        std::clock_t end = std::clock();
+        std::cout << "runtime findNextSampleLocation: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
+      }
+
+      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1) )
+      {
+        std::cout << "resetting nxt wpt need" << std::endl;
+        m_need_nxt_wpt = false;
+      }
+
+      // periodically, store all GP predictions
+      //TODO
+    }
+  }
   return(true);
 }
 
@@ -220,6 +242,11 @@ bool GP::OnStartUp()
     else if ( param == "input_var_sample_points_specs")
     {
       m_input_var_sample_points_specs = toupper(value);
+    }
+    else if ( param == "input_var_pilot_done" )
+    {
+      // PILOT_SURVEY_DONE
+      m_input_var_pilot_done = toupper(value);
     }
     else if ( param == "input_var_adaptive_trigger" )
     {
@@ -281,7 +308,7 @@ void GP::registerVariables()
   m_Comms.Register(m_input_var_sample_points_specs, 0);
 
   // get status mission
-  m_Comms.Register("PILOT_SURVEY_DONE", 0);
+  m_Comms.Register(m_input_var_pilot_done, 0);
 
   // get when wpt cycle finished
   // (when to run adaptive predictions in adaptive state)
@@ -298,10 +325,9 @@ void GP::handleMailData(double received_data)
     std::cout << GetAppName() << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
   else if ( !m_hp_optim_running )
   {
-    // add training data
+    // add training data (if not running hyperparameter optimization)
     // Input vectors x must be provided as double[] and targets y as double.
     double x[] = {m_lon, m_lat}; //, m_dep};
-
     addPatternToGP(x, received_data);
 
     m_data_added = true;
@@ -311,9 +337,13 @@ void GP::handleMailData(double received_data)
 void GP::addPatternToGP(double location[], double value)
 {
   // limit scope mutex, protect when adding data
-  std::unique_lock<std::mutex> lock(m_gp_mutex);
+//  std::unique_lock<std::mutex> mlock(m_gp_mutex);
+  std::cout << "adding data" << std::endl;
+  if ( m_hp_optim_done )
+    std::cout << "size GP: " << m_gp.get_sampleset_size() << std::endl;
   m_gp.add_pattern(location, value);
-  lock.unlock();
+  std::cout << "data added" << std::endl;
+//  mlock.unlock();
 }
 
 
@@ -385,7 +415,6 @@ void GP::storeSamplePointsSpecs(std::string input_string)
     else
       std::cout << GetAppName() << " :: error, unhandled part of sample points specs: " << param << std::endl;
   }
-  // tmp
   std::cout << GetAppName() << " :: width, height, spacing: " << m_pts_grid_width << ", " <<
                m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
 }
@@ -438,20 +467,8 @@ void GP::updateVisitedSet()
       // remove point from unvisited set
       Eigen::Vector2d move_pt = m_sample_points_unvisited.at(index);
 
-      // tmp check
-      double dist_lon = std::abs(move_pt(0) - veh_lon);
-      double dist_lat = std::abs(move_pt(1)- veh_lat);
-      double dist_lon_m = dist_lon*lon_deg_to_m;
-      double dist_lat_m = dist_lat*lat_deg_to_m;
-
-      if ( dist_lon_m > m_pts_grid_spacing || dist_lat_m > m_pts_grid_spacing )
-      {
-        std::cout << GetAppName() << " :: ERROR: distance to chosen sample point is bigger than the grid spacing\n";
-        std::cout << GetAppName() << " :: Distance to chosen point: " << dist_lon_m << " " << dist_lat_m << '\n';
-        std::cout << GetAppName() << " :: Quitting in 2 seconds." << std::endl;
-        sleep(2);
-        RequestQuit();
-      }
+      // check if the sampled point was nearby, if not, there's something wrong
+      checkDistanceToSampledPoint(veh_lon, veh_lat, lat_deg_to_m, lon_deg_to_m, move_pt);
 
       // add the point to the visited set
       m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
@@ -463,11 +480,33 @@ void GP::updateVisitedSet()
       std::cout << "\nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
       std::cout << " from unvisited to visited.\n";
       std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
-      std::cout << "Visited size: " << m_sample_points_visited.size() << std::endl;
+      std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
     }
   }
   else
     return;
+}
+
+//---------------------------------------------------------
+// Procedure: checkDistanceToSampledPoint
+//            we check if, after conversion, the distance
+//            of sampled point to vehicle location is reasonable
+//
+void GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, double lat_deg_to_m, double lon_deg_to_m, Eigen::Vector2d move_pt)
+{
+  double dist_lon = std::abs(move_pt(0) - veh_lon);
+  double dist_lat = std::abs(move_pt(1)- veh_lat);
+  double dist_lon_m = dist_lon*lon_deg_to_m;
+  double dist_lat_m = dist_lat*lat_deg_to_m;
+
+  if ( dist_lon_m > m_pts_grid_spacing || dist_lat_m > m_pts_grid_spacing )
+  {
+    std::cout << GetAppName() << " :: ERROR: distance to chosen sample point is bigger than the grid spacing\n";
+    std::cout << GetAppName() << " :: Distance to chosen point: " << dist_lon_m << " " << dist_lat_m << '\n';
+    std::cout << GetAppName() << " :: Quitting in 2 seconds." << std::endl;
+    sleep(2);
+    RequestQuit();
+  }
 }
 
 //---------------------------------------------------------
@@ -476,12 +515,7 @@ void GP::updateVisitedSet()
 //
 void GP::findNextSampleLocation()
 {
-  if ( m_gp.get_sampleset_size() == 0 )
-  {
-    std::cout << GetAppName() << " :: ERROR, trying to predict without data. Exiting in 2 seconds" << std::endl;
-    sleep(2);
-    RequestQuit();
-  }
+  checkGPHasData();
 
   // predict target value for given input, f()
   // predict variance of prediction for given input, var()
@@ -497,9 +531,9 @@ void GP::findNextSampleLocation()
   // get covariance function from GP
   // so we can use the get() function from the CovarianceFunction
   // use unique_lock here, such that we can release mutex after m_gp operation
-  std::unique_lock<std::mutex> lock(m_gp_mutex);
+//  std::unique_lock<std::mutex> lock(m_gp_mutex);
   libgp::CovarianceFunction & cov_f = m_gp.covf();
-  lock.unlock();
+//  lock.unlock();
 
   // for each y (from unvisited set only, as in greedy algorithm Krause'08)
   // calculate the mutual information term
@@ -516,6 +550,7 @@ void GP::findNextSampleLocation()
     Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
     createCovarMatrix(cov_f, "unvisited", K_avav);
     Eigen::MatrixXd K_avav_inv = K_avav.inverse();
+    // TODO replace inverses using Cholesky decomposition
 
     double best_so_far = -1*std::numeric_limits<double>::max();
     Eigen::Vector2d best_so_far_y(2);
@@ -555,15 +590,34 @@ void GP::findNextSampleLocation()
     }
 
     // TODO: store all values, return sorted list?
+
     // publish greedy best
     std::ostringstream output_stream;
     output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
     m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+    // app feedback
     std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
     std::cout << GetAppName() << " :: current next best: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
     std::cout << GetAppName() << " :: best_cnt: " << best_cnt << std::endl;
+
+    // update state vars
     m_last_published = MOOSTime();
-    m_wpt_cycle_done = false;
+    m_need_nxt_wpt = false;
+  }
+}
+
+//---------------------------------------------------------
+// Procedure: checkGPHasData
+//            check that the GP has been filled, else quit
+//
+void GP::checkGPHasData()
+{
+  if ( m_gp.get_sampleset_size() == 0 )
+  {
+    std::cout << GetAppName() << " :: ERROR, trying to predict without data. Exiting in 2 seconds" << std::endl;
+    sleep(2);
+    RequestQuit();
   }
 }
 
@@ -628,7 +682,7 @@ void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const &
 bool GP::runHPOptimization(libgp::GaussianProcess & gp)
 {
   // protect GP access with mutex
-  std::lock_guard<std::mutex> lock(m_gp_mutex);
+//  std::lock_guard<std::mutex> lock(m_gp_mutex);
 
   std::clock_t begin = std::clock();
 

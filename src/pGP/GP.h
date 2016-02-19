@@ -53,12 +53,18 @@ class GP : public CMOOSApp
 
    void addPatternToGP(double location[], double value);
 
+   // helper/test functions
+   void checkDistanceToSampledPoint(double veh_lon, double veh_lat, double lat_deg_to_m, double lon_deg_to_m, Eigen::Vector2d move_pt);
+   void checkGPHasData();
+
    // Configuration variables
    std::string m_input_var_data;
    std::string m_input_var_sample_points;
    std::string m_input_var_sample_points_specs;
+   std::string m_input_var_pilot_done;
    std::string m_input_var_adaptive_trigger;
    std::string m_output_var_pred;
+
    size_t m_prediction_interval;
 
    // State variables
@@ -79,7 +85,7 @@ class GP : public CMOOSApp
    double m_pts_grid_spacing;
    // mission status
    bool m_pilot_done;
-   bool m_wpt_cycle_done;
+   bool m_need_nxt_wpt;
 
    //std::vector< std::pair<double, double> > m_sample_points;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;

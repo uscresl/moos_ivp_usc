@@ -7,11 +7,12 @@ ProcessConfig = pGP
   CommsTick = 2
   
   // define the names of input variables
-  input_var_data = "SIM_DATA"
-  input_var_sample_points = "SAMPLE_POINTS"
-  input_var_sample_points_specs = "SAMPLE_POINTS_SPECS"
-  input_var_adaptive_trigger = "WPT_CYCLE_FINISHED"
-  output_var_predictions = "GP_PREDICTIONS"
+  input_var_data = SIM_DATA
+  input_var_sample_points = SAMPLE_POINTS
+  input_var_sample_points_specs = SAMPLE_POINTS_SPECS
+  input_var_pilot_done = PILOT_SURVEY_DONE
+  input_var_adaptive_trigger = WPT_CYCLE_FINISHED
+  output_var_predictions = GP_PREDICTIONS
 
   // define the prediction interval (predict every X seconds)
   prediction_interval = 300
