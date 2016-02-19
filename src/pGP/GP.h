@@ -53,6 +53,8 @@ class GP : public CMOOSApp
 
    void addPatternToGP(double location[], double value);
 
+   void logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
+
    // helper/test functions
    void checkDistanceToSampledPoint(double veh_lon, double veh_lat, double lat_deg_to_m, double lon_deg_to_m, Eigen::Vector2d move_pt);
    void checkGPHasData();

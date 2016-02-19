@@ -59,7 +59,7 @@ GP::GP() :
   Eigen::VectorXd params(m_gp.covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these can be optimized using cg or rprop
-  params << -1.6, -3.6, 0.894; //1.0, 1.0, 1.0;
+  params << -7.52, 3.79, 1.05; //1.0, 1.0, 1.0; //-1.6, 3.6, 1.23;
   m_gp.covf().set_loghyper(params);
 }
 
@@ -338,11 +338,11 @@ void GP::addPatternToGP(double location[], double value)
 {
   // limit scope mutex, protect when adding data
 //  std::unique_lock<std::mutex> mlock(m_gp_mutex);
-  std::cout << "adding data" << std::endl;
-  if ( m_hp_optim_done )
-    std::cout << "size GP: " << m_gp.get_sampleset_size() << std::endl;
+//  std::cout << "adding data" << std::endl;
+//  if ( m_hp_optim_done )
+//    std::cout << "size GP: " << m_gp.get_sampleset_size() << std::endl;
   m_gp.add_pattern(location, value);
-  std::cout << "data added" << std::endl;
+//  std::cout << "data added" << std::endl;
 //  mlock.unlock();
 }
 
@@ -692,11 +692,18 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   libgp::RProp rprop;
   rprop.init();
 
-  // RProp arguments: GP, 'n' (seems to be nr iterations), verbose
-  rprop.maximize(&gp, 10, 0);
+  // RProp arguments: GP, 'n' (nr iterations), verbose
+  rprop.maximize(&gp, 15, 0);
 
   std::clock_t end = std::clock();
   std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   return true;
+}
+
+void GP::logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov )
+{
+  // convert GP mean to log GP mean (lognormal mean)
+  lgp_mean = exp(gp_mean + gp_cov/2.0);
+  lgp_cov = (lgp_mean*lgp_mean) * (exp(gp_cov) - 1.0);
 }
