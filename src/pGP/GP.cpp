@@ -59,7 +59,7 @@ GP::GP() :
   Eigen::VectorXd params(m_gp.covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these can be optimized using cg or rprop
-  params << 1.0, 0.1, 0.1; //-1.6, 3.6, 1.23; -7.52, 3.79, 1.05;
+  params << 1.0, 1.0, 1.0; //0.1, 0.1; //-1.6, 3.6, 1.23; -7.52, 3.79, 1.05;
   m_gp.covf().set_loghyper(params);
 }
 
@@ -342,12 +342,18 @@ void GP::addPatternToGP(double location[], double value)
 {
   // limit scope mutex, protect when adding data
   // because this is now happening in a detached thread
-  std::unique_lock<std::mutex> mlock(m_gp_mutex);
-  // log GP: take log (ln) of measurement
-  double log_val = log(value);
-  m_gp.add_pattern(location, log_val);
-  // release mutex
-  mlock.unlock();
+  std::unique_lock<std::mutex> ap_lock(m_gp_mutex);
+  if ( ap_lock )
+  {
+    // log GP: take log (ln) of measurement
+    double log_val = log(value);
+    m_gp.add_pattern(location, log_val);
+    // release mutex
+    ap_lock.unlock();
+  }
+  else
+    std::cout << "could not get lock to add: " << location[0] << ","
+              << location[1] << "," << value << std::endl;
 }
 
 //---------------------------------------------------------
@@ -532,10 +538,13 @@ void GP::findNextSampleLocation()
   // get covariance function from GP
   // so we can use the get() function from the CovarianceFunction
   // use unique_lock here, such that we can release mutex after m_gp operation
-  std::unique_lock<std::mutex> lock(m_gp_mutex);
+  std::unique_lock<std::mutex> fnsl_lock(m_gp_mutex, std::defer_lock);
+  while ( !fnsl_lock.try_lock() ) {
+    std::cout << "trying to get lock for findNextSampleLocation" << std::endl;
+  }
   checkGPHasData();
   libgp::CovarianceFunction & cov_f = m_gp.covf();
-  lock.unlock();
+  fnsl_lock.unlock();
 
   // for each y (from unvisited set only, as in greedy algorithm Krause'08)
   // calculate the mutual information term
@@ -559,15 +568,10 @@ void GP::findNextSampleLocation()
     // construct a vector of target values for the unvisited locations
     // using the GP
     std::cout << "Get target values for unvisited points" << std::endl;
-    std::unordered_map<size_t, Eigen::Vector2d>::iterator av_itr;
-    Eigen::VectorXd t_av(size_visited);
-    size_t t_cnt = 0;
-    for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, t_cnt++ )
-    {
-      double av_loc[2] = {av_itr->second(0), av_itr->second(1)};
-      t_av(t_cnt) = m_gp.f(av_loc);
-    }
+    Eigen::VectorXd t_av(size_unvisited);
+    getTgtValUnvisited(t_av);
 
+    std::cout << "Calculate MI" << std::endl;
     double best_so_far = -1*std::numeric_limits<double>::max();
     Eigen::Vector2d best_so_far_y(2);
     std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
@@ -600,13 +604,13 @@ void GP::findNextSampleLocation()
       double sigma_y_Av = k_yy - mat_ops_result;
 
       // predictive mean of unvisited set -- TODO check?
-      double pred_mean_Av = k_yav.transpose() * K_avav_inv * t_av;
+      double pred_mean_yAv = k_yav.transpose() * K_avav_inv * t_av;
 
       // convert to log GP
       double mean_yA_lGP, var_yA_lGP; // visited set
       logGPfromGP(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
       double mean_yAv_lGP, var_yAv_lGP; // unvisited set
-      logGPfromGP(pred_mean_Av, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
+      logGPfromGP(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
 
       // calculate mutual information term
 //      double div = 0.5 * log(sigma_y_A / sigma_y_Av);
@@ -637,6 +641,27 @@ void GP::findNextSampleLocation()
     m_last_published = MOOSTime();
     m_need_nxt_wpt = false;
   }
+}
+
+//---------------------------------------------------------
+// Procedure: getTgtValUnvisited
+//            construct vector with target values for
+//            unvisited points, as extracted from GP
+//
+void GP::getTgtValUnvisited(Eigen::VectorXd & t_av)
+{
+  std::unique_lock<std::mutex> tgt_val_lock(m_gp_mutex, std::defer_lock);
+  std::unordered_map<size_t, Eigen::Vector2d>::iterator av_itr;
+  size_t t_cnt = 0;
+  // use unique_lock here, such that we can release mutex after m_gp operation
+  while ( !tgt_val_lock.try_lock() )
+    std::cout << "trying to get lock for t_av calculation" << std::endl;
+  for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, t_cnt++ )
+  {
+    double av_loc[2] = {av_itr->second(0), av_itr->second(1)};
+    t_av(t_cnt) = m_gp.f(av_loc);
+  }
+  tgt_val_lock.unlock();
 }
 
 //---------------------------------------------------------
@@ -714,7 +739,12 @@ void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const &
 bool GP::runHPOptimization(libgp::GaussianProcess & gp)
 {
   // protect GP access with mutex
-//  std::lock_guard<std::mutex> lock(m_gp_mutex);
+  std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
+  while ( !hp_lock.try_lock() )
+  {
+    std::cout << "trying to get lock for HP optim" << std::endl;
+  }
+  std::cout << "obtained lock, continuing HP optimization" << std::endl;
 
   std::clock_t begin = std::clock();
 
@@ -729,6 +759,8 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
 
   std::clock_t end = std::clock();
   std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+
+  hp_lock.unlock();
 
   return true;
 }

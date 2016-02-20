@@ -48,6 +48,7 @@ class GP : public CMOOSApp
    void findNextSampleLocation();
    void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
    void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
+   void getTgtValUnvisited(Eigen::VectorXd & t_av);
 
    bool runHPOptimization(libgp::GaussianProcess & gp);
 
