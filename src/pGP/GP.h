@@ -45,16 +45,19 @@ class GP : public CMOOSApp
    void storeSamplePointsSpecs(std::string input_string);
    void updateVisitedSet();
 
+   void addPatternToGP(double location[], double value);
+
+   bool runHPOptimization(libgp::GaussianProcess & gp);
+
    void findNextSampleLocation();
    void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
    void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
    void getTgtValUnvisited(Eigen::VectorXd & t_av);
-
-   bool runHPOptimization(libgp::GaussianProcess & gp);
-
-   void addPatternToGP(double location[], double value);
-
+   Eigen::Vector2d calcMICriterion(Eigen::VectorXd t_av, libgp::CovarianceFunction& cov_f, Eigen::MatrixXd K_avav_inv);
+   //, size_t size_unvisited, Eigen::Vector2d & best_so_far_y, double & best_so_far);
    void logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
+
+   void publishNextBestPosition(Eigen::Vector2d best_so_far_y);
 
    // helper/test functions
    void checkDistanceToSampledPoint(double veh_lon, double veh_lat, double lat_deg_to_m, double lon_deg_to_m, Eigen::Vector2d move_pt);
@@ -103,6 +106,8 @@ class GP : public CMOOSApp
    bool m_hp_optim_running;
    bool m_hp_optim_done;
 
+   // future for result MI criterion calculations
+   std::future<Eigen::Vector2d> m_future_next_pt;
 };
 
 #endif 

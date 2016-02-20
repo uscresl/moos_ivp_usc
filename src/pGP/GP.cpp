@@ -539,9 +539,9 @@ void GP::findNextSampleLocation()
   // so we can use the get() function from the CovarianceFunction
   // use unique_lock here, such that we can release mutex after m_gp operation
   std::unique_lock<std::mutex> fnsl_lock(m_gp_mutex, std::defer_lock);
-  while ( !fnsl_lock.try_lock() ) {
-    std::cout << "trying to get lock for findNextSampleLocation" << std::endl;
-  }
+  while ( !fnsl_lock.try_lock() ) {}
+//    std::cout << "trying to get lock for findNextSampleLocation" << std::endl;
+//  }
   checkGPHasData();
   libgp::CovarianceFunction & cov_f = m_gp.covf();
   fnsl_lock.unlock();
@@ -572,75 +572,97 @@ void GP::findNextSampleLocation()
     getTgtValUnvisited(t_av);
 
     std::cout << "Calculate MI" << std::endl;
-    double best_so_far = -1*std::numeric_limits<double>::max();
-    Eigen::Vector2d best_so_far_y(2);
-    std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
-    size_t best_cnt = 1;
-    for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
-    {
-      Eigen::Vector2d y = y_itr->second;
+    m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, t_av, std::ref(cov_f), K_avav_inv);
+//    calcMICriterion(t_av, cov_f, K_avav_inv, size_unvisited, best_so_far_y, best_so_far);
 
-      // calculate k(y,y)
-      double k_yy = cov_f.get(y,y);
+    // publish greedy best
+    publishNextBestPosition(m_future_next_pt.get());
+  }
+}
 
-      // calculate covariance with visited set
+//---------------------------------------------------------
+// Procedure: publishNextBestPosition
+//            call Notify & publish location
+//
+void GP::publishNextBestPosition(Eigen::Vector2d best_so_far_y)
+{
+  // app feedback
+  std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
+  std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
+
+  std::ostringstream output_stream;
+  output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
+  m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+  // update state vars
+  m_last_published = MOOSTime();
+  m_need_nxt_wpt = false;
+}
+
+//---------------------------------------------------------
+// Procedure: calcMICriterion
+//            do the MI criterion calculation and find best y
+//
+Eigen::Vector2d GP::calcMICriterion(Eigen::VectorXd t_av, libgp::CovarianceFunction& cov_f, Eigen::MatrixXd K_avav_inv)
+//                         , size_t size_unvisited, Eigen::Vector2d & best_so_far_y, double & best_so_far)
+{
+  size_t size_unvisited = m_sample_points_unvisited.size();
+  double best_so_far = -1*std::numeric_limits<double>::max();
+  Eigen::Vector2d best_so_far_y(2);
+
+  std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
+  size_t best_cnt = 1;
+  for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
+  {
+    Eigen::Vector2d y = y_itr->second;
+
+    // calculate k(y,y)
+    double k_yy = cov_f.get(y,y);
+
+    // calculate covariance with visited set
 //      Eigen::VectorXd k_ya(size_visited);
 //      createCovarVector(cov_f, y, "visited", k_ya);
 //      // TODO: add noise term?
 //      double mat_ops_result = k_ya.transpose() * K_aa_inv * k_ya;
 //      double sigma_y_A = k_yy - mat_ops_result;
 
-      // covariance with visited set should be the predictive covariance
-      // from the GP
-      double y_loc[2] = {y(0), y(1)};
-      double pred_mean_yA = m_gp.f(y_loc);
-      double pred_cov_yA = m_gp.var(y_loc);
+    // covariance with visited set should be the predictive covariance
+    // from the GP
+    double y_loc[2] = {y(0), y(1)};
+    double pred_mean_yA = m_gp.f(y_loc);
+    double pred_cov_yA = m_gp.var(y_loc);
 
-      // calculate covariance with unvisited set
-      Eigen::VectorXd k_yav(size_unvisited);
-      createCovarVector(cov_f, y, "unvisited", k_yav);
-      // TODO add noise term in both equations! TODO TODO
-      double mat_ops_result = k_yav.transpose() * K_avav_inv * k_yav;
-      double sigma_y_Av = k_yy - mat_ops_result;
+    // calculate covariance with unvisited set
+    Eigen::VectorXd k_yav(size_unvisited);
+    createCovarVector(cov_f, y, "unvisited", k_yav);
+    // TODO add noise term in both equations! TODO TODO
+    double mat_ops_result = k_yav.transpose() * K_avav_inv * k_yav;
+    double sigma_y_Av = k_yy - mat_ops_result;
 
-      // predictive mean of unvisited set -- TODO check?
-      double pred_mean_yAv = k_yav.transpose() * K_avav_inv * t_av;
+    // predictive mean of unvisited set -- TODO check?
+    double pred_mean_yAv = k_yav.transpose() * K_avav_inv * t_av;
 
-      // convert to log GP
-      double mean_yA_lGP, var_yA_lGP; // visited set
-      logGPfromGP(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
-      double mean_yAv_lGP, var_yAv_lGP; // unvisited set
-      logGPfromGP(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
+    // convert to log GP
+    double mean_yA_lGP, var_yA_lGP; // visited set
+    logGPfromGP(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
+    double mean_yAv_lGP, var_yAv_lGP; // unvisited set
+    logGPfromGP(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
 
-      // calculate mutual information term
+    // calculate mutual information term
 //      double div = 0.5 * log(sigma_y_A / sigma_y_Av);
-      double div = 0.5 * log( var_yA_lGP / var_yAv_lGP );
+    double div = 0.5 * log( var_yA_lGP / var_yAv_lGP );
 
-      // store max (greedy best)
-      if ( div > best_so_far )
-      {
-        best_so_far = div;
-        best_so_far_y = y;
-        best_cnt++;
-      }
+    // store max (greedy best)
+    if ( div > best_so_far )
+    {
+      best_so_far = div;
+      best_so_far_y = y;
+      best_cnt++;
     }
-
-    // TODO: store all values, return sorted list?
-
-    // publish greedy best
-    std::ostringstream output_stream;
-    output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
-    m_Comms.Notify(m_output_var_pred, output_stream.str());
-
-    // app feedback
-    std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
-    std::cout << GetAppName() << " :: current next best: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
-    std::cout << GetAppName() << " :: best_cnt: " << best_cnt << std::endl;
-
-    // update state vars
-    m_last_published = MOOSTime();
-    m_need_nxt_wpt = false;
   }
+  std::cout << GetAppName() << " :: best_cnt: " << best_cnt << std::endl;
+  // TODO: store all values, return sorted list?
+  return best_so_far_y;
 }
 
 //---------------------------------------------------------
@@ -654,8 +676,8 @@ void GP::getTgtValUnvisited(Eigen::VectorXd & t_av)
   std::unordered_map<size_t, Eigen::Vector2d>::iterator av_itr;
   size_t t_cnt = 0;
   // use unique_lock here, such that we can release mutex after m_gp operation
-  while ( !tgt_val_lock.try_lock() )
-    std::cout << "trying to get lock for t_av calculation" << std::endl;
+  while ( !tgt_val_lock.try_lock() ) {}
+//    std::cout << "trying to get lock for t_av calculation" << std::endl;
   for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, t_cnt++ )
   {
     double av_loc[2] = {av_itr->second(0), av_itr->second(1)};
@@ -740,10 +762,10 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
 {
   // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
-  while ( !hp_lock.try_lock() )
-  {
-    std::cout << "trying to get lock for HP optim" << std::endl;
-  }
+  while ( !hp_lock.try_lock() ){}
+//  {
+//    std::cout << "trying to get lock for HP optim" << std::endl;
+//  }
   std::cout << "obtained lock, continuing HP optimization" << std::endl;
 
   std::clock_t begin = std::clock();
