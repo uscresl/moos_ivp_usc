@@ -53,7 +53,7 @@ class GP : public CMOOSApp
    void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
    void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
    void getTgtValUnvisited(Eigen::VectorXd & t_av);
-   Eigen::Vector2d calcMICriterion(Eigen::VectorXd t_av, libgp::CovarianceFunction& cov_f, Eigen::MatrixXd K_avav_inv);
+   Eigen::Vector2d calcMICriterion(libgp::CovarianceFunction& cov_f);
    //, size_t size_unvisited, Eigen::Vector2d & best_so_far_y, double & best_so_far);
    void logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
 
@@ -92,6 +92,7 @@ class GP : public CMOOSApp
    // mission status
    bool m_pilot_done;
    bool m_need_nxt_wpt;
+   bool m_finding_nxt;
 
    //std::vector< std::pair<double, double> > m_sample_points;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;

@@ -46,7 +46,8 @@ GP::GP() :
   m_lon(0),
   m_dep(0),
   m_last_published(std::numeric_limits<double>::max()),
-  m_need_nxt_wpt(false)
+  m_need_nxt_wpt(false),
+  m_finding_nxt(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -189,22 +190,30 @@ bool GP::Iterate()
     {
       // predict target value and variance for sample locations
       //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
-      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1) )
+      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1.0) )
       {
-        std::clock_t begin = std::clock();
-        findNextSampleLocation();
-        std::clock_t end = std::clock();
-        std::cout << "runtime findNextSampleLocation: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n' << std::endl;
+        if ( !m_finding_nxt )
+          findNextSampleLocation();
+        else
+        {
+          // get result from future
+          if ( m_future_next_pt.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
+          {
+            // publish greedy best
+            publishNextBestPosition(m_future_next_pt.get());
+            m_finding_nxt = false;
+          }
+        }
       }
 
-      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1) )
+      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) < 1.0) )
       {
         std::cout << "resetting nxt wpt need" << std::endl;
         m_need_nxt_wpt = false;
       }
 
       // periodically, store all GP predictions
-      //TODO
+      // TODO
     }
   }
   return(true);
@@ -323,13 +332,12 @@ void GP::handleMailData(double received_data)
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
     std::cout << GetAppName() << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
-  else if ( !m_hp_optim_running )
+  else if ( !m_hp_optim_running && !m_need_nxt_wpt )
   {
     // add training data (if not running hyperparameter optimization)
     // Input vectors x must be provided as double[] and targets y as double.
     double x[] = {m_lon, m_lat}; //, m_dep};
 
-//    addPatternToGP(x, received_data);
     // try with threading
     std::thread ap_thread(&GP::addPatternToGP, this, x, received_data);
     ap_thread.detach();
@@ -470,6 +478,10 @@ void GP::updateVisitedSet()
     // calculate index into map (stored from SW, y first, then x)
     size_t index = y_resolution*x_cell_rnd + y_cell_rnd;
 
+    std::unique_lock<std::mutex> map_lock(m_gp_mutex, std::defer_lock);
+
+    while ( !map_lock.try_lock() ){}
+
     std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
     if ( curr_loc_itr != m_sample_points_unvisited.end() )
     {
@@ -491,6 +503,8 @@ void GP::updateVisitedSet()
       std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
       std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
     }
+
+    map_lock.unlock();
   }
   else
     return;
@@ -548,35 +562,12 @@ void GP::findNextSampleLocation()
 
   // for each y (from unvisited set only, as in greedy algorithm Krause'08)
   // calculate the mutual information term
-  size_t size_visited = m_sample_points_visited.size();
-  size_t size_unvisited = m_sample_points_unvisited.size();
-
-  if ( size_visited > 0 )
+  if ( m_sample_points_visited.size() > 0 )
   {
-    // calculate covariance matrices sets, and their inverses (costly operations)
-    std::cout << "Calculate covariance matrices" << std::endl;
-
-//    Eigen::MatrixXd K_aa(size_visited, size_visited);
-//    createCovarMatrix(cov_f, "visited", K_aa);
-//    Eigen::MatrixXd K_aa_inv = K_aa.inverse();
-
-    Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
-    createCovarMatrix(cov_f, "unvisited", K_avav);
-    Eigen::MatrixXd K_avav_inv = K_avav.inverse();
-    // TODO replace inverses using Cholesky decomposition
-
-    // construct a vector of target values for the unvisited locations
-    // using the GP
-    std::cout << "Get target values for unvisited points" << std::endl;
-    Eigen::VectorXd t_av(size_unvisited);
-    getTgtValUnvisited(t_av);
-
     std::cout << "Calculate MI" << std::endl;
-    m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, t_av, std::ref(cov_f), K_avav_inv);
+    m_finding_nxt = true;
+    m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
 //    calcMICriterion(t_av, cov_f, K_avav_inv, size_unvisited, best_so_far_y, best_so_far);
-
-    // publish greedy best
-    publishNextBestPosition(m_future_next_pt.get());
   }
 }
 
@@ -603,15 +594,40 @@ void GP::publishNextBestPosition(Eigen::Vector2d best_so_far_y)
 // Procedure: calcMICriterion
 //            do the MI criterion calculation and find best y
 //
-Eigen::Vector2d GP::calcMICriterion(Eigen::VectorXd t_av, libgp::CovarianceFunction& cov_f, Eigen::MatrixXd K_avav_inv)
-//                         , size_t size_unvisited, Eigen::Vector2d & best_so_far_y, double & best_so_far)
+Eigen::Vector2d GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
 {
+  // calculate covariance matrices sets, and their inverses (costly operations)
+  std::cout << "Calculate covariance matrices" << std::endl;
+
+  std::unique_lock<std::mutex> mi_lock(m_gp_mutex, std::defer_lock);
+  // use unique_lock here, such that we can release mutex after m_gp operation
+  while ( !mi_lock.try_lock() ) {}
+
   size_t size_unvisited = m_sample_points_unvisited.size();
+
+//    Eigen::MatrixXd K_aa(size_visited, size_visited);
+//    createCovarMatrix(cov_f, "visited", K_aa);
+//    Eigen::MatrixXd K_aa_inv = K_aa.inverse();
+
+  Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
+  createCovarMatrix(cov_f, "unvisited", K_avav);
+  Eigen::MatrixXd K_avav_inv = K_avav.inverse();
+
+  // TODO replace inverses using Cholesky decomposition
+
+  // construct a vector of target values for the unvisited locations
+  // using the GP
+  std::cout << "Get target values for unvisited points" << std::endl;
+  Eigen::VectorXd t_av(size_unvisited);
+  getTgtValUnvisited(t_av);
+
   double best_so_far = -1*std::numeric_limits<double>::max();
   Eigen::Vector2d best_so_far_y(2);
-
   std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
   size_t best_cnt = 1;
+
+  std::cout << "calc for all y" << std::endl;
+  std::clock_t begin = std::clock();
   for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
   {
     Eigen::Vector2d y = y_itr->second;
@@ -660,7 +676,13 @@ Eigen::Vector2d GP::calcMICriterion(Eigen::VectorXd t_av, libgp::CovarianceFunct
       best_cnt++;
     }
   }
+  std::clock_t end = std::clock();
+  std::cout << "MI crit calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+
   std::cout << GetAppName() << " :: best_cnt: " << best_cnt << std::endl;
+
+  mi_lock.unlock();
+
   // TODO: store all values, return sorted list?
   return best_so_far_y;
 }
@@ -672,18 +694,13 @@ Eigen::Vector2d GP::calcMICriterion(Eigen::VectorXd t_av, libgp::CovarianceFunct
 //
 void GP::getTgtValUnvisited(Eigen::VectorXd & t_av)
 {
-  std::unique_lock<std::mutex> tgt_val_lock(m_gp_mutex, std::defer_lock);
   std::unordered_map<size_t, Eigen::Vector2d>::iterator av_itr;
   size_t t_cnt = 0;
-  // use unique_lock here, such that we can release mutex after m_gp operation
-  while ( !tgt_val_lock.try_lock() ) {}
-//    std::cout << "trying to get lock for t_av calculation" << std::endl;
   for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, t_cnt++ )
   {
     double av_loc[2] = {av_itr->second(0), av_itr->second(1)};
     t_av(t_cnt) = m_gp.f(av_loc);
   }
-  tgt_val_lock.unlock();
 }
 
 //---------------------------------------------------------
