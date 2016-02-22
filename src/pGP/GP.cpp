@@ -26,6 +26,9 @@
 // GPLib Rprop
 #include "rprop.h"
 
+// write to file
+#include <fstream>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -46,6 +49,7 @@ GP::GP() :
   m_lon(0),
   m_dep(0),
   m_last_published(std::numeric_limits<double>::max()),
+  m_last_pred_save(std::numeric_limits<double>::max()),
   m_need_nxt_wpt(false),
   m_finding_nxt(false)
 {
@@ -212,8 +216,13 @@ bool GP::Iterate()
         m_need_nxt_wpt = false;
       }
 
-      // periodically, store all GP predictions
-      // TODO
+      // periodically (every 300s = 5min), store all GP predictions
+      if ( m_hp_optim_done && ( (size_t)std::floor(MOOSTime()) % 300 == 0 ) && (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) )
+      {
+        std::thread pred_store(&GP::makeAndStorePredictions, this);
+        pred_store.detach();
+        m_last_pred_save = MOOSTime();
+      }
     }
   }
   return(true);
@@ -273,6 +282,10 @@ bool GP::OnStartUp()
         std::cout << GetAppName() << " :: ERROR, invalid prediction interval, needs to be > 0" << std::endl;
         RequestQuit();
       }
+    }
+    else if ( param == "output_filename_prefix" )
+    {
+      m_output_filename_prefix = value;
     }
     else
       handled = false;
@@ -374,6 +387,13 @@ void GP::storeSamplePoints(std::string input_string)
   // separate by semicolon
   std::vector<std::string> sample_points = parseString(input_string, ';');
   // for each, add to vector
+  m_sample_locations.reserve(sample_points.size());
+
+  std::ofstream ofstream_loc;
+  std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
+  ofstream_loc.open(m_file_loc, std::ios::out);
+  bool first = true;
+
   for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
   {
     std::string location = sample_points.at(id_pt);
@@ -389,6 +409,13 @@ void GP::storeSamplePoints(std::string input_string)
     loc_vec(0) = lon;
     loc_vec(1) = lat;
     m_sample_points_unvisited.insert( std::pair<size_t, Eigen::Vector2d>(id_pt, loc_vec) );
+    // copy the points to have all sample points for easier processing for predictions
+    m_sample_locations.push_back(std::pair<double, double>(lon, lat));
+    // save to file
+    if ( !first )
+      ofstream_loc << "; ";
+    first = false;
+    ofstream_loc << lon << ", " << lat;
 
     // the first location should be bottom left corner, store as minima
     if ( id_pt == 0 )
@@ -405,6 +432,7 @@ void GP::storeSamplePoints(std::string input_string)
       std::cout << GetAppName() << " :: NE Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
     }
   }
+  ofstream_loc.close();
   // check / communicate what we did
   std::cout << GetAppName() << " :: stored " << m_sample_points_unvisited.size() << " sample locations" << std::endl;
 }
@@ -556,18 +584,20 @@ void GP::findNextSampleLocation()
   while ( !fnsl_lock.try_lock() ) {}
 //    std::cout << "trying to get lock for findNextSampleLocation" << std::endl;
 //  }
-  checkGPHasData();
-  libgp::CovarianceFunction & cov_f = m_gp.covf();
-  fnsl_lock.unlock();
-
-  // for each y (from unvisited set only, as in greedy algorithm Krause'08)
-  // calculate the mutual information term
-  if ( m_sample_points_visited.size() > 0 )
+  if ( checkGPHasData() )
   {
-    std::cout << "Calculate MI" << std::endl;
-    m_finding_nxt = true;
-    m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
-//    calcMICriterion(t_av, cov_f, K_avav_inv, size_unvisited, best_so_far_y, best_so_far);
+    libgp::CovarianceFunction & cov_f = m_gp.covf();
+    fnsl_lock.unlock();
+
+    // for each y (from unvisited set only, as in greedy algorithm Krause'08)
+    // calculate the mutual information term
+    if ( m_sample_points_visited.size() > 0 )
+    {
+      std::cout << "Calculate MI" << std::endl;
+      m_finding_nxt = true;
+      m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
+  //    calcMICriterion(t_av, cov_f, K_avav_inv, size_unvisited, best_so_far_y, best_so_far);
+    }
   }
 }
 
@@ -696,6 +726,7 @@ void GP::getTgtValUnvisited(Eigen::VectorXd & t_av)
 {
   std::unordered_map<size_t, Eigen::Vector2d>::iterator av_itr;
   size_t t_cnt = 0;
+  std::cout << "sanity check: " << t_av.size() << " " << m_sample_points_unvisited.size() << std::endl;
   for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, t_cnt++ )
   {
     double av_loc[2] = {av_itr->second(0), av_itr->second(1)};
@@ -707,14 +738,11 @@ void GP::getTgtValUnvisited(Eigen::VectorXd & t_av)
 // Procedure: checkGPHasData
 //            check that the GP has been filled, else quit
 //
-void GP::checkGPHasData()
+bool GP::checkGPHasData()
 {
   if ( m_gp.get_sampleset_size() == 0 )
-  {
-    std::cout << GetAppName() << " :: ERROR, trying to predict without data. Exiting in 2 seconds" << std::endl;
-    sleep(2);
-    RequestQuit();
-  }
+    return false;
+  return true;
 }
 
 //---------------------------------------------------------
@@ -780,9 +808,6 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   while ( !hp_lock.try_lock() ){}
-//  {
-//    std::cout << "trying to get lock for HP optim" << std::endl;
-//  }
   std::cout << "obtained lock, continuing HP optimization" << std::endl;
 
   std::clock_t begin = std::clock();
@@ -809,4 +834,49 @@ void GP::logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & 
   // convert GP mean to log GP mean (lognormal mean)
   lgp_mean = exp(gp_mean + gp_cov/2.0);
   lgp_cov = (lgp_mean*lgp_mean) * (exp(gp_cov) - 1.0);
+}
+
+void GP::makeAndStorePredictions()
+{
+  // make a copy of the GP and use that below, to limit lock time
+  std::unique_lock<std::mutex> write_lock(m_gp_mutex, std::defer_lock);
+  while ( !write_lock.try_lock() ) {}
+  std::cout << "store predictions" << std::endl;
+  if ( !checkGPHasData() )
+    return;
+  libgp::GaussianProcess gp_copy(m_gp);
+  write_lock.unlock();
+
+  // prepare file actions
+  std::ofstream ofstream_pm, ofstream_pv;
+  std::string m_file_pm = (m_output_filename_prefix + "_pred_mean.csv");
+  std::string m_file_pv = (m_output_filename_prefix + "_pred_var.csv");
+  ofstream_pm.open(m_file_pm, std::ios::app);
+  ofstream_pv.open(m_file_pv, std::ios::app);
+
+  // make predictions
+  std::vector< std::pair<double, double> >::iterator loc_itr;
+  bool first = true;
+
+  for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
+  {
+    double loc[2] {loc_itr->first, loc_itr->second};
+    double pred_mean = gp_copy.f(loc);
+    double pred_var = gp_copy.var(loc);
+    // save to file, storing predictions
+    if ( !first )
+    {
+      ofstream_pm << ", ";
+      ofstream_pv << ", ";
+    }
+    first = false;
+    ofstream_pm << pred_mean;
+    ofstream_pv << pred_var;
+  }
+  ofstream_pm << '\n';
+  ofstream_pv << '\n';
+
+  ofstream_pm.close();
+  ofstream_pv.close();
+  std::cout << "done saving predictions to file" << std::endl;
 }

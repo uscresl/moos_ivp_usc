@@ -59,9 +59,11 @@ class GP : public CMOOSApp
 
    void publishNextBestPosition(Eigen::Vector2d best_so_far_y);
 
+   void makeAndStorePredictions();
+
    // helper/test functions
    void checkDistanceToSampledPoint(double veh_lon, double veh_lat, double lat_deg_to_m, double lon_deg_to_m, Eigen::Vector2d move_pt);
-   void checkGPHasData();
+   bool checkGPHasData();
 
    // Configuration variables
    std::string m_input_var_data;
@@ -70,6 +72,7 @@ class GP : public CMOOSApp
    std::string m_input_var_pilot_done;
    std::string m_input_var_adaptive_trigger;
    std::string m_output_var_pred;
+   std::string m_output_filename_prefix;
 
    size_t m_prediction_interval;
 
@@ -81,6 +84,7 @@ class GP : public CMOOSApp
       // process state
    bool m_data_added;
    double m_last_published;
+   double m_last_pred_save;
       // sample points grid specs
    double m_min_lon;
    double m_min_lat;
@@ -97,6 +101,7 @@ class GP : public CMOOSApp
    //std::vector< std::pair<double, double> > m_sample_points;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_visited;
+   std::vector< std::pair<double, double> > m_sample_locations;
 
    // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess m_gp;
