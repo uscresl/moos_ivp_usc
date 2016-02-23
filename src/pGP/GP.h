@@ -45,7 +45,7 @@ class GP : public CMOOSApp
    void storeSamplePointsSpecs(std::string input_string);
    void updateVisitedSet();
 
-   void addPatternToGP(double location[], double value);
+   void addPatternToGP(double value);
 
    bool runHPOptimization(libgp::GaussianProcess & gp);
 
