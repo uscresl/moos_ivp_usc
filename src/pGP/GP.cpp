@@ -51,10 +51,19 @@ GP::GP() :
   m_last_published(std::numeric_limits<double>::max()),
   m_last_pred_save(std::numeric_limits<double>::max()),
   m_need_nxt_wpt(false),
-  m_finding_nxt(false)
+  m_finding_nxt(false),
+  m_lon_spacing(0.0),
+  m_lat_spacing(0.0),
+  m_buffer_lon(0.0),
+  m_buffer_lat(0.0),
+  m_y_resolution(0.0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
+
+  // TODO move this to library?
+  m_lat_deg_to_m = 110923.99118801417;
+  m_lon_deg_to_m = 92287.20804979937;
 
   // above we initialize a GP for 2D input data, //TODO convert to 3D
   // using the squared exponential covariance function,
@@ -108,21 +117,25 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == m_input_var_sample_points )
     {
       // store list of sample locations coming pSamplePoints
+      // (done once)
       storeSamplePoints(sval);
     }
     else if ( key == m_input_var_sample_points_specs )
     {
       // store specs for sample points
+      // (done once)
       storeSamplePointsSpecs(sval);
     }
     else if ( key == m_input_var_pilot_done )
     {
+      // check when pilot is done (once)
       std::cout << "received " << m_input_var_pilot_done << ": " << sval << std::endl;
       m_pilot_done = ( sval == "true" ) ? true : false;
     }
     else if ( key == m_input_var_adaptive_trigger )
     {
-      // these are flags set by the wpt behavior
+      // check when adaptive waypoint reached
+      // these are flags set by the adaptive wpt behavior
       // if we get it, it must mean a wpt/cycle was done
       m_need_nxt_wpt = true;
     }
@@ -176,8 +189,9 @@ bool GP::Iterate()
       }
       else
       {
+        // running HP optimization
         // check if the thread is done
-        if ( m_future_hp_optim.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
+        if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
         {
           m_hp_optim_done = m_future_hp_optim.get(); // should be true
           if ( !m_hp_optim_done )
@@ -204,7 +218,7 @@ bool GP::Iterate()
         else
         {
           // see if we can get result from future
-          if ( m_future_next_pt.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
+          if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
           {
             // publish greedy best
             publishNextBestPosition(m_future_next_pt.get());
@@ -352,11 +366,15 @@ void GP::handleMailData(double received_data)
     // if not running hyperparameter optimization or calculating nxt wpt
     // add training data
 
-    // try with threading
+    // try with threading, because this becomes more costly as GP grows
 //    addPatternToGP(received_data);
     std::thread ap_thread(&GP::addPatternToGP, this, received_data);
     ap_thread.detach();
 
+    // note, strictly speaking we should check if the function is done,
+    // rather than stating here that a data point has been added
+    // however, this is used to move points between visited sets, which
+    // is independent of the data measured, so should be ok.
     m_data_added = true;
   }
 }
@@ -368,14 +386,13 @@ void GP::addPatternToGP(double value)
 
   // log GP: take log (ln) of measurement
   double log_val = log(value);
+  // Input vectors x must be provided as double[] and targets y as double.
+  double location[] = {m_lon, m_lat}; //, m_dep};
 
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
   // obtain lock
   while ( !ap_lock.try_lock() ) {}
-
-  // Input vectors x must be provided as double[] and targets y as double.
-  double location[] = {m_lon, m_lat}; //, m_dep};
-
+  // add new data point to GP
   m_gp.add_pattern(location, log_val);
   // release mutex
   ap_lock.unlock();
@@ -430,7 +447,7 @@ void GP::storeSamplePoints(std::string input_string)
     }
     if ( id_pt == sample_points.size()-1 )
     {
-      // last location = top right corner (?)
+      // last location = top right corner, store as maxima
       m_max_lon = lon;
       m_max_lat = lat;
       std::cout << GetAppName() << " :: NE Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
@@ -460,7 +477,10 @@ void GP::storeSamplePointsSpecs(std::string input_string)
     else if ( param == "height" )
       m_pts_grid_height = value;
     else if ( param == "lane_width")
+    {
       m_pts_grid_spacing = value;
+      calcLonLatSpacingAndBuffers();
+    }
     else
       std::cout << GetAppName() << " :: error, unhandled part of sample points specs: " << param << std::endl;
   }
@@ -482,36 +502,19 @@ void GP::updateVisitedSet()
   double veh_lon = m_lon;
   double veh_lat = m_lat;
 
-  // TODO move this to library?
-  double lat_deg_to_m = 110923.99118801417;
-  double lon_deg_to_m = 92287.20804979937;
-  double lon_spacing = m_pts_grid_spacing/lon_deg_to_m; // convert lane width to lon
-  double lat_spacing = m_pts_grid_spacing/lat_deg_to_m; // convert lane width to lat
-
-  // if just outside data grid, but close enough,
-  // should be able to map to border points
-  // buffer of 2 meters
-  double buffer_lon = 2.0/lon_deg_to_m;
-  double buffer_lat = 2.0/lat_deg_to_m;
-
-  if ( veh_lon >= (m_min_lon-buffer_lon) && veh_lat >= (m_min_lat-buffer_lat) &&
-       veh_lon <= (m_max_lon+buffer_lon) && veh_lat <= (m_max_lat+buffer_lat) )
+  if ( veh_lon >= (m_min_lon-m_buffer_lon) && veh_lat >= (m_min_lat-m_buffer_lat) &&
+       veh_lon <= (m_max_lon+m_buffer_lon) && veh_lat <= (m_max_lat+m_buffer_lat) )
   {
     // calculate the id of the location where the vehicle is currently
     // at, and move it to visited
-    double x_cell = (veh_lon - m_min_lon)/lon_spacing;
-    double y_cell = (veh_lat - m_min_lat)/lat_spacing;
-    size_t x_cell_rnd = (size_t) round(x_cell);
-    size_t y_cell_rnd = (size_t) round(y_cell);
-    size_t y_resolution = (size_t) round(m_pts_grid_height/m_pts_grid_spacing);
+    size_t x_cell_rnd = (size_t) round((veh_lon - m_min_lon)/m_lon_spacing);
+    size_t y_cell_rnd = (size_t) round((veh_lat - m_min_lat)/m_lat_spacing);
 
-    // add one because of zero indexing
-    y_resolution++;
     // calculate index into map (stored from SW, y first, then x)
-    size_t index = y_resolution*x_cell_rnd + y_cell_rnd;
+    size_t index = m_y_resolution*x_cell_rnd + y_cell_rnd;
 
+    // add mutex for changing of global maps
     std::unique_lock<std::mutex> map_lock(m_gp_mutex, std::defer_lock);
-
     while ( !map_lock.try_lock() ){}
 
     std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
@@ -521,7 +524,7 @@ void GP::updateVisitedSet()
       Eigen::Vector2d move_pt = m_sample_points_unvisited.at(index);
 
       // check if the sampled point was nearby, if not, there's something wrong
-      checkDistanceToSampledPoint(veh_lon, veh_lat, lat_deg_to_m, lon_deg_to_m, move_pt);
+      checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
 
       // add the point to the visited set
       m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
@@ -547,12 +550,12 @@ void GP::updateVisitedSet()
 //            we check if, after conversion, the distance
 //            of sampled point to vehicle location is reasonable
 //
-void GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, double lat_deg_to_m, double lon_deg_to_m, Eigen::Vector2d move_pt)
+void GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt)
 {
   double dist_lon = std::abs(move_pt(0) - veh_lon);
   double dist_lat = std::abs(move_pt(1)- veh_lat);
-  double dist_lon_m = dist_lon*lon_deg_to_m;
-  double dist_lat_m = dist_lat*lat_deg_to_m;
+  double dist_lon_m = dist_lon*m_lon_deg_to_m;
+  double dist_lat_m = dist_lat*m_lat_deg_to_m;
 
   if ( dist_lon_m > m_pts_grid_spacing || dist_lat_m > m_pts_grid_spacing )
   {
@@ -585,9 +588,9 @@ void GP::findNextSampleLocation()
   // so we can use the get() function from the CovarianceFunction
   // use unique_lock here, such that we can release mutex after m_gp operation
   std::unique_lock<std::mutex> fnsl_lock(m_gp_mutex, std::defer_lock);
-  while ( !fnsl_lock.try_lock() ) {}
-//    std::cout << "trying to get lock for findNextSampleLocation" << std::endl;
-//  }
+  while ( !fnsl_lock.try_lock() ) {
+    std::cout << "trying to get lock for findNextSampleLocation" << std::endl;
+  }
   if ( checkGPHasData() )
   {
     libgp::CovarianceFunction & cov_f = m_gp.covf();
@@ -599,6 +602,8 @@ void GP::findNextSampleLocation()
     {
       std::cout << "Calculate MI" << std::endl;
       m_finding_nxt = true;
+      // use threading because this is a costly operation that would otherwise
+      // interfere with the MOOS app rate
       m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
   //    calcMICriterion(t_av, cov_f, K_avav_inv, size_unvisited, best_so_far_y, best_so_far);
     }
@@ -641,6 +646,7 @@ Eigen::Vector2d GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
 
   size_t size_unvisited = m_sample_points_unvisited.size();
 
+  // note; replaced with using predictions from GP
 //    Eigen::MatrixXd K_aa(size_visited, size_visited);
 //    createCovarMatrix(cov_f, "visited", K_aa);
 //    Eigen::MatrixXd K_aa_inv = K_aa.inverse();
@@ -679,7 +685,8 @@ Eigen::Vector2d GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
 //      double sigma_y_A = k_yy - mat_ops_result;
 
     // covariance with visited set should be the predictive covariance
-    // from the GP
+    // from the GP (note, GP actually contains more data pts .. but at least
+    //              the visited locations)
     double y_loc[2] = {y(0), y(1)};
     double pred_mean_yA = m_gp.f(y_loc);
     double pred_cov_yA = m_gp.var(y_loc);
@@ -835,6 +842,10 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   return true;
 }
 
+//---------------------------------------------------------
+// Procedure: logGPfromGP
+//            convert pred mean/var from GP to pred mean/var for log GP
+//
 void GP::logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov )
 {
   // convert GP mean to log GP mean (lognormal mean)
@@ -842,6 +853,10 @@ void GP::logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & 
   lgp_cov = (lgp_mean*lgp_mean) * (exp(gp_cov) - 1.0);
 }
 
+//---------------------------------------------------------
+// Procedure: makeAndStorePredictions
+//            file writing
+//
 void GP::makeAndStorePredictions()
 {
   // make a copy of the GP and use that below, to limit lock time
@@ -885,4 +900,27 @@ void GP::makeAndStorePredictions()
 
   std::cout << "done saving predictions to file" << std::endl;
   // copy of GP gets destroyed when this function exits
+}
+
+//---------------------------------------------------------
+// Procedure: calcLonLatSpacingAndBuffers
+//            separate out these calculations
+//            such that we only do them once
+//
+void GP::calcLonLatSpacingAndBuffers()
+{
+  // convert lane widths in meters to lon/lat
+  m_lon_spacing = m_pts_grid_spacing/m_lon_deg_to_m;
+  m_lat_spacing = m_pts_grid_spacing/m_lat_deg_to_m;
+
+  // calculate the amount of y vertices
+  m_y_resolution = (size_t) round(m_pts_grid_height/m_pts_grid_spacing);
+  // add one because of zero indexing
+  m_y_resolution++;
+
+  // if just outside data grid, but close enough,
+  // should be able to map to border points
+  // buffer of 2 meters (TODO make parameter?)
+  m_buffer_lon = 2.0/m_lon_deg_to_m;
+  m_buffer_lat = 2.0/m_lat_deg_to_m;
 }

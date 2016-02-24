@@ -62,8 +62,9 @@ class GP : public CMOOSApp
    void makeAndStorePredictions();
 
    // helper/test functions
-   void checkDistanceToSampledPoint(double veh_lon, double veh_lat, double lat_deg_to_m, double lon_deg_to_m, Eigen::Vector2d move_pt);
+   void checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt);
    bool checkGPHasData();
+   void calcLonLatSpacingAndBuffers();
 
    // Configuration variables
    std::string m_input_var_data;
@@ -93,6 +94,13 @@ class GP : public CMOOSApp
    double m_pts_grid_width;
    double m_pts_grid_height;
    double m_pts_grid_spacing;
+   double m_lon_spacing;
+   double m_lat_spacing;
+   double m_buffer_lon;
+   double m_buffer_lat;
+   double m_y_resolution;
+   double m_lon_deg_to_m;
+   double m_lat_deg_to_m;
    // mission status
    bool m_pilot_done;
    bool m_need_nxt_wpt;
