@@ -367,9 +367,9 @@ void GP::handleMailData(double received_data)
     // add training data
 
     // try with threading, because this becomes more costly as GP grows
-//    addPatternToGP(received_data);
-    std::thread ap_thread(&GP::addPatternToGP, this, received_data);
-    ap_thread.detach();
+    addPatternToGP(received_data);
+//    std::thread ap_thread(&GP::addPatternToGP, this, received_data);
+//    ap_thread.detach();
 
     // note, strictly speaking we should check if the function is done,
     // rather than stating here that a data point has been added
@@ -389,13 +389,14 @@ void GP::addPatternToGP(double value)
   // Input vectors x must be provided as double[] and targets y as double.
   double location[] = {m_lon, m_lat}; //, m_dep};
 
-  std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
+//  std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
   // obtain lock
-  while ( !ap_lock.try_lock() ) {}
+//  while ( !ap_lock.try_lock() ) {}
   // add new data point to GP
+  std::cout << "adding point" << std::endl;
   m_gp.add_pattern(location, log_val);
   // release mutex
-  ap_lock.unlock();
+//  ap_lock.unlock();
 }
 
 //---------------------------------------------------------
@@ -513,6 +514,8 @@ void GP::updateVisitedSet()
     // calculate index into map (stored from SW, y first, then x)
     size_t index = m_y_resolution*x_cell_rnd + y_cell_rnd;
 
+    std::cout << "update visited set" << std::endl;
+
     // add mutex for changing of global maps
     std::unique_lock<std::mutex> map_lock(m_gp_mutex, std::defer_lock);
     while ( !map_lock.try_lock() ){}
@@ -520,6 +523,7 @@ void GP::updateVisitedSet()
     std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
     if ( curr_loc_itr != m_sample_points_unvisited.end() )
     {
+      std::cout << "update visited set *for real*" << std::endl;
       // remove point from unvisited set
       Eigen::Vector2d move_pt = m_sample_points_unvisited.at(index);
 
@@ -573,6 +577,7 @@ void GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vect
 //
 void GP::findNextSampleLocation()
 {
+  std::cout << "find nxt sample loc" << std::endl;
   // predict target value for given input, f()
   // predict variance of prediction for given input, var()
 
