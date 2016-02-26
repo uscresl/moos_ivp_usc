@@ -7,7 +7,7 @@ ProcessConfig = uFldNodeBroker
   CommsTick = 1
 
 //  TRY_SHORE_HOST = pshare_route=multicast_9
-  TRY_SHORE_HOST = pshare_route=$(SERVER_HOST):9300 // & multicast_1//$(SHARE_LISTEN)
+  TRY_SHORE_HOST = pshare_route=$(SERVER_HOST):$(SERVER_LISTEN) // & multicast_1//$(SHARE_LISTEN)
 //  TRY_SHORE_HOST = pshare_route=multicast_1
 
   BRIDGE = src=VIEW_POLYGON
