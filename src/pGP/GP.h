@@ -120,6 +120,7 @@ class GP : public CMOOSApp
    // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess m_gp;
    std::mutex m_gp_mutex;
+   std::mutex m_sample_maps_mutex;
 
    // hyperparam optimization in multi-threading
    std::future<bool> m_future_hp_optim;

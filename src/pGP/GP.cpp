@@ -528,7 +528,7 @@ void GP::updateVisitedSet()
     size_t index = m_y_resolution*x_cell_rnd + y_cell_rnd;
 
     // add mutex for changing of global maps
-    std::unique_lock<std::mutex> map_lock(m_gp_mutex, std::defer_lock);
+    std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
     while ( !map_lock.try_lock() ){}
 
     std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
@@ -609,7 +609,6 @@ void GP::findNextSampleLocation()
 //  }
   if ( checkGPHasData() )
   {
-    libgp::CovarianceFunction & cov_f = m_gp.covf();
 //    fnsl_lock.unlock();
 
     // for each y (from unvisited set only, as in greedy algorithm Krause'08)
@@ -620,7 +619,10 @@ void GP::findNextSampleLocation()
       // use threading because this is a costly operation that would otherwise
       // interfere with the MOOS app rate
       if ( m_use_MI )
+      {
+        libgp::CovarianceFunction & cov_f = m_gp.covf();
         m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
+      }
       else
         m_future_next_pt = std::async(std::launch::async, &GP::calcMECriterion, this);
     }
@@ -674,8 +676,17 @@ Eigen::Vector2d GP::calcMECriterion()
 
   std::cout << "calc max entropy, size unvisited: " << m_sample_points_unvisited.size() << std::endl;
 
+  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+  while ( !map_lock.try_lock() ){}
+
+  // make copy of map to use instead of map,
+  // such that we do not have to lock it for long
+  std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
+  unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
+  map_lock.unlock();
+
   // for each unvisited location
-  for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
+  for ( y_itr = unvisited_map_copy.begin(); y_itr != unvisited_map_copy.end(); y_itr++ )
   {
     // get unvisited location
     Eigen::Vector2d y = y_itr->second;
