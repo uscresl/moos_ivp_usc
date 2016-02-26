@@ -56,7 +56,8 @@ GP::GP() :
   m_lat_spacing(0.0),
   m_buffer_lon(0.0),
   m_buffer_lat(0.0),
-  m_y_resolution(0.0)
+  m_y_resolution(0.0),
+  m_use_MI(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -73,7 +74,10 @@ GP::GP() :
   Eigen::VectorXd params(m_gp.covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these can be optimized using cg or rprop
-  params << 1.0, 1.0, 1.0; //0.1, 0.1; //-1.6, 3.6, 1.23; -7.52, 3.79, 1.05;
+  // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
+  // signal: from 0 to ca 30, log scale <0 to 1.5
+  // noise: let's set 10x smaller than signal
+  params << 0.001, 0.1, 0.01; //0.1, 0.1; //-1.6, 3.6, 1.23; -7.52, 3.79, 1.05;
   m_gp.covf().set_loghyper(params);
 }
 
@@ -138,6 +142,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // these are flags set by the adaptive wpt behavior
       // if we get it, it must mean a wpt/cycle was done
       m_need_nxt_wpt = true;
+
+//      // make sure we mark the reached location as visited
+//      // thread this call to make sure it does not break the mail cycle
+//      std::thread update_visited(&GP::updateVisitedSet, this);
+//      update_visited.detach();
+//      updateVisitedSet();
     }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
@@ -170,7 +180,10 @@ bool GP::Iterate()
     if ( m_data_added )
     {
       // update sample sets
-      updateVisitedSet();
+      // thread this call to make sure it does not interfere with the iterate cycle
+      std::thread update_visited(&GP::updateVisitedSet, this);
+      update_visited.detach();
+//      updateVisitedSet();
     }
 
     // when pilot is done,
@@ -220,9 +233,9 @@ bool GP::Iterate()
           // see if we can get result from future
           if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
           {
+            m_finding_nxt = false;
             // publish greedy best
             publishNextBestPosition(m_future_next_pt.get());
-            m_finding_nxt = false;
           }
         }
       }
@@ -367,9 +380,9 @@ void GP::handleMailData(double received_data)
     // add training data
 
     // try with threading, because this becomes more costly as GP grows
-    addPatternToGP(received_data);
-//    std::thread ap_thread(&GP::addPatternToGP, this, received_data);
-//    ap_thread.detach();
+//    addPatternToGP(received_data);
+    std::thread ap_thread(&GP::addPatternToGP, this, received_data);
+    ap_thread.detach();
 
     // note, strictly speaking we should check if the function is done,
     // rather than stating here that a data point has been added
@@ -389,14 +402,14 @@ void GP::addPatternToGP(double value)
   // Input vectors x must be provided as double[] and targets y as double.
   double location[] = {m_lon, m_lat}; //, m_dep};
 
-//  std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
+  std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
   // obtain lock
-//  while ( !ap_lock.try_lock() ) {}
+  while ( !ap_lock.try_lock() ) {}
   // add new data point to GP
   std::cout << "adding point" << std::endl;
   m_gp.add_pattern(location, log_val);
   // release mutex
-//  ap_lock.unlock();
+  ap_lock.unlock();
 }
 
 //---------------------------------------------------------
@@ -505,7 +518,7 @@ void GP::updateVisitedSet()
 
   if ( veh_lon >= (m_min_lon-m_buffer_lon) && veh_lat >= (m_min_lat-m_buffer_lat) &&
        veh_lon <= (m_max_lon+m_buffer_lon) && veh_lat <= (m_max_lat+m_buffer_lat) )
-  {
+  { 
     // calculate the id of the location where the vehicle is currently
     // at, and move it to visited
     size_t x_cell_rnd = (size_t) round((veh_lon - m_min_lon)/m_lon_spacing);
@@ -514,8 +527,6 @@ void GP::updateVisitedSet()
     // calculate index into map (stored from SW, y first, then x)
     size_t index = m_y_resolution*x_cell_rnd + y_cell_rnd;
 
-    std::cout << "update visited set" << std::endl;
-
     // add mutex for changing of global maps
     std::unique_lock<std::mutex> map_lock(m_gp_mutex, std::defer_lock);
     while ( !map_lock.try_lock() ){}
@@ -523,7 +534,7 @@ void GP::updateVisitedSet()
     std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
     if ( curr_loc_itr != m_sample_points_unvisited.end() )
     {
-      std::cout << "update visited set *for real*" << std::endl;
+      std::cout << "update visited set" << std::endl;
       // remove point from unvisited set
       Eigen::Vector2d move_pt = m_sample_points_unvisited.at(index);
 
@@ -592,29 +603,30 @@ void GP::findNextSampleLocation()
   // get covariance function from GP
   // so we can use the get() function from the CovarianceFunction
   // use unique_lock here, such that we can release mutex after m_gp operation
-  std::unique_lock<std::mutex> fnsl_lock(m_gp_mutex, std::defer_lock);
-  while ( !fnsl_lock.try_lock() ) {
-    std::cout << "trying to get lock for findNextSampleLocation" << std::endl;
-  }
+//  std::unique_lock<std::mutex> fnsl_lock(m_gp_mutex, std::defer_lock);
+//  while ( !fnsl_lock.try_lock() ) {}
+//    std::cout << "trying to get lock for findNextSampleLocation" << std::endl;
+//  }
   if ( checkGPHasData() )
   {
     libgp::CovarianceFunction & cov_f = m_gp.covf();
-    fnsl_lock.unlock();
+//    fnsl_lock.unlock();
 
     // for each y (from unvisited set only, as in greedy algorithm Krause'08)
     // calculate the mutual information term
     if ( m_sample_points_visited.size() > 0 )
     {
-      std::cout << "Calculate MI" << std::endl;
       m_finding_nxt = true;
       // use threading because this is a costly operation that would otherwise
       // interfere with the MOOS app rate
-      m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
-  //    calcMICriterion(t_av, cov_f, K_avav_inv, size_unvisited, best_so_far_y, best_so_far);
+      if ( m_use_MI )
+        m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
+      else
+        m_future_next_pt = std::async(std::launch::async, &GP::calcMECriterion, this);
     }
   }
-  if ( fnsl_lock.owns_lock() )
-    fnsl_lock.unlock();
+//  if ( fnsl_lock.owns_lock() )
+//    fnsl_lock.unlock();
 }
 
 //---------------------------------------------------------
@@ -634,6 +646,60 @@ void GP::publishNextBestPosition(Eigen::Vector2d best_so_far_y)
   // update state vars
   m_last_published = MOOSTime();
   m_need_nxt_wpt = false;
+}
+
+//---------------------------------------------------------
+// Procedure: calcMECriterion
+//            calculate maximum entropy
+//            for every unvisited location,
+//            and pick best (greedy)
+//
+Eigen::Vector2d GP::calcMECriterion()
+{
+  std::clock_t begin = std::clock();
+  Eigen::Vector2d best_so_far_y(2);
+  double best_so_far = -1*std::numeric_limits<double>::max();
+  std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
+
+  std::cout << "try for lock max entropy" << std::endl;
+
+  // lock for access to m_gp
+  std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
+  // use unique_lock here, such that we can release mutex after m_gp operation
+  while ( !gp_lock.try_lock() ) {}
+
+  std::cout << "calc max entropy, size unvisited: " << m_sample_points_unvisited.size() << std::endl;
+
+  // for each unvisited location
+  for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
+  {
+    // get unvisited location
+    Eigen::Vector2d y = y_itr->second;
+    double y_loc[2] = {y(0), y(1)};
+
+    // calculate its posterior entropy
+    double pred_mean = m_gp.f(y_loc);
+    double pred_cov = m_gp.var(y_loc);
+//    std::cout << "pred_cov = " << pred_cov << std::endl;
+    double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
+    double post_entropy = var_part + pred_mean;
+//    std::cout << "compare var to mean effect: " << var_part << " " << pred_mean << std::endl;
+
+    if ( post_entropy > best_so_far )
+    {
+//      std::cout << "updated best" << std::endl;
+      best_so_far = post_entropy;
+      best_so_far_y = y;
+    }
+  }
+
+  std::clock_t end = std::clock();
+  std::cout << "Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+
+  // release lock
+  gp_lock.unlock();
+
+  return best_so_far_y;
 }
 
 //---------------------------------------------------------

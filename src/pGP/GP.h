@@ -50,12 +50,17 @@ class GP : public CMOOSApp
    bool runHPOptimization(libgp::GaussianProcess & gp);
 
    void findNextSampleLocation();
+
+   // mutual information
+   Eigen::Vector2d calcMICriterion(libgp::CovarianceFunction& cov_f);
    void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
    void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
    void getTgtValUnvisited(Eigen::VectorXd & t_av);
-   Eigen::Vector2d calcMICriterion(libgp::CovarianceFunction& cov_f);
    //, size_t size_unvisited, Eigen::Vector2d & best_so_far_y, double & best_so_far);
    void logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
+
+   // maximum entropy
+   Eigen::Vector2d calcMECriterion();
 
    void publishNextBestPosition(Eigen::Vector2d best_so_far_y);
 
@@ -76,6 +81,7 @@ class GP : public CMOOSApp
    std::string m_output_filename_prefix;
 
    size_t m_prediction_interval;
+   bool m_use_MI;
 
    // State variables
       // vehicle location
