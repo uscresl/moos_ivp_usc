@@ -667,6 +667,10 @@ Eigen::Vector2d GP::calcMECriterion()
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
   while ( !gp_lock.try_lock() ) {}
+  std::cout << "make copy GP" << std::endl;
+  libgp::GaussianProcess gp_copy(m_gp);
+  // release lock
+  gp_lock.unlock();
 
   std::cout << "calc max entropy, size unvisited: " << m_sample_points_unvisited.size() << std::endl;
 
@@ -678,8 +682,8 @@ Eigen::Vector2d GP::calcMECriterion()
     double y_loc[2] = {y(0), y(1)};
 
     // calculate its posterior entropy
-    double pred_mean = m_gp.f(y_loc);
-    double pred_cov = m_gp.var(y_loc);
+    double pred_mean = gp_copy.f(y_loc);
+    double pred_cov = gp_copy.var(y_loc);
 //    std::cout << "pred_cov = " << pred_cov << std::endl;
     double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
     double post_entropy = var_part + pred_mean;
@@ -695,9 +699,6 @@ Eigen::Vector2d GP::calcMECriterion()
 
   std::clock_t end = std::clock();
   std::cout << "Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-
-  // release lock
-  gp_lock.unlock();
 
   return best_so_far_y;
 }
