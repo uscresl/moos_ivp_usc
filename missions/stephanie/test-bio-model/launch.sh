@@ -57,7 +57,7 @@ MODEMID1="1"
 VTYPE1="UUV" # UUV, SHIP
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME1  START_POS=$START_POS1  START_HDG=$START_HEADING \
-   VPORT="9001"       SHARE_LISTEN="9301"                      \
+   VPORT="9001"       SHARE_LISTEN="9301" SERVER_LISTEN="9300" \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
