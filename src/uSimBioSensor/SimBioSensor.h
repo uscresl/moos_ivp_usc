@@ -32,6 +32,15 @@ class SimBioSensor : public CMOOSApp
    void readBioDataFromFile();
    double getDataPoint();
 
+   // MOOS vars
+   double m_veh_lon;
+   double m_veh_lat;
+   double m_veh_depth;
+
+   bool m_new_lon;
+   bool m_new_lat;
+   bool m_new_dep;
+
    // Configuration variables
    std::string m_filename;
    std::string m_output_var;
@@ -40,10 +49,9 @@ class SimBioSensor : public CMOOSApp
    bool m_file_read;
    bool m_nav_data_received;
 
-   // MOOS vars
-   double m_veh_lon;
-   double m_veh_lat;
-   double m_veh_depth;
+   double m_lon_step;
+   double m_lat_step;
+   double m_depth_step;
 
    // data read from file
    std::map<std::string, double> d_boundaries_map; // lon_min lon_max lon_res

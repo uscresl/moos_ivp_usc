@@ -1,6 +1,6 @@
 // MOOS community specs (doesn't matter for unit test)
 ServerHost = localhost
-ServerPort = 9000
+ServerPort = 5000
 Community  = ecomapper
 
 // warp? (increase sim speed, ok as long as no process reads system time)
@@ -63,8 +63,8 @@ ProcessConfig = uSimBioSensor
   CommsTick = 2
 
   // process parameters
-  filename = "test.out"
-  output_var = "SIM_DATA"
+  filename = test.csv
+  output_var = SIM_DATA
 }
 
 ProcessConfig = uTimerScript
@@ -76,11 +76,15 @@ ProcessConfig = uTimerScript
   verbose= true// or {false}
 
   // Declaration of random var macro expanded in event values
-  randvar= varname=ANG, min=0, max=359, key=at_reset
+  randvar= varname=LON, min=-117.809, max=-117.806, key=at_reset
+  randvar= varname=LAT, min=34.0876, max=34.0892, key=at_reset
+  randvar= varname=DEP, min=1, max=14, key=at_reset
 
   // Event(s) are the key components of the script
 //  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
-  event = var=NODE_REPORT_LOCAL, val="LON=-117.810,LAT=34.0786,DEP=4.5", time=10
+  event = var=NAV_LONG, val=$[LON], time=10
+  event = var=NAV_LAT, val=$[LAT], time=10
+  event = var=NAV_DEPTH, val=$[DEP], time=10    
 
   // If true script is paused upon launch
   paused = false
@@ -88,7 +92,7 @@ ProcessConfig = uTimerScript
   // Maximum number of resets allowed
   reset_max= nolimit// or in range [0,inf)
   // A point when the script is reset
-  reset_time= none// or {all-posted} or range (0,inf)
+  reset_time= all-posted// or {all-posted} or range (0,inf)
   // A MOOS variable for receiving reset cues
   reset_var= UTS_RESET// or other MOOS variable
 
