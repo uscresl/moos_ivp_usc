@@ -89,7 +89,6 @@ class GP : public CMOOSApp
    double m_lon;
    double m_dep;
       // process state
-//   bool m_data_added;
    bool m_pause_data_adding;
    double m_last_published;
    double m_last_pred_save;
