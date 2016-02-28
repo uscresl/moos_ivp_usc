@@ -1,6 +1,6 @@
 // MOOS community specs (doesn't matter for unit test)
 ServerHost = localhost
-ServerPort = 9000
+ServerPort = 5000
 Community  = test
 
 // warp? (increase sim speed, ok as long as no process reads system time)
@@ -62,8 +62,19 @@ ProcessConfig = pGP
   AppTick   = 2
   CommsTick = 2
 
-  // process parameters
-  input_var = "SIM_DATA"
+  // define the names of input variables
+  input_var_data = SIM_DATA
+  input_var_sample_points = SAMPLE_POINTS
+  input_var_sample_points_specs = SAMPLE_POINTS_SPECS
+  input_var_pilot_done = PILOT_SURVEY_DONE
+  input_var_adaptive_trigger = WPT_REACHED
+  output_var_predictions = GP_PREDICTIONS
+
+  // define the filename for saving GP predictions
+  output_filename_prefix = unit_test
+
+  // define the prediction interval (predict every X seconds)
+  prediction_interval = 300
 }
 
 ProcessConfig = uTimerScript
@@ -75,7 +86,7 @@ ProcessConfig = uTimerScript
   verbose = true// or {false}
 
   // Declaration of random var macro expanded in event values
-  randvar = varname=VAL, min=0, max=30, key=at_reset
+  randvar = varname=VAL, min=0, max=30, key=at_post
   randvar = varname=LAT, min=34.020000, max=34.040000, key=at_reset
   randvar = varname=LON, min=-118.290000, max=-118.270000, key=at_reset
   randvar = varname=DEP, min=0, max=15, key=at_reset
@@ -83,9 +94,19 @@ ProcessConfig = uTimerScript
   // Event(s) are the key components of the script
 //  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
   event = var=NAV_LAT, val=$[LAT], time=1
-  event = var=NAV_LON, val=$[LON], time=1
+  event = var=NAV_LONG, val=$[LON], time=1
   event = var=NAV_DEPTH, val=$[DEP], time=1
-  event = var=SIM_DATA, val=$[VAL], time=1
+  event = var=SIM_DATA, val=$[VAL], time=5
+  event = var=SIM_DATA, val=$[VAL], time=5
+  event = var=SIM_DATA, val=$[VAL], time=15
+
+  event = var=SAMPLE_POINTS, val="-117.809667078311,34.0874537159634;-117.809667078311,34.0875438677862;-117.809667078311,34.087634019609;-117.809667078311,34.0877241714319;-117.809667078311,34.0878143232547;-117.809667078311,34.0879044750775;-117.809667078311,34.0879946269003;-117.809667078311,34.0880847787231;-117.809667078311,34.0881749305459;", time=1
+  event = var=SAMPLE_POINTS_SPECS, val="width=400,height=200,lane_width=10", time=1
+
+  // status mission
+  event = var=PILOT_SURVEY_DONE, val="true", time=100
+
+  event = var=WPT_REACHED, val="true", time=200
 
   // If true script is paused upon launch
   paused = false
@@ -101,5 +122,5 @@ ProcessConfig = uTimerScript
   status_var = UTS_STATUS // or other MOOS variable
 
   // Rate at which time is accelerated in execuing the script
-  time_warp = $(WARP)
+  time_warp = 1
 }
