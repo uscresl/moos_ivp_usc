@@ -8,6 +8,8 @@ initialize   AVOID = true
 
 initialize   MOOS_MANUAL_OVERRIDE=false
 
+initialize   HP_OPTIM_DONE=false
+
 // quick fix opregion altitude requirement
 #ifdef VTYPE UUV
 initialize   NAV_ALTITUDE=100
@@ -45,19 +47,15 @@ Behavior = BHV_AvoidCollision
 
 Behavior = BHV_OpRegionBounce
 {
-// not really used, just some big square, because we want to
-// simulate sensing the environment rather than forcing constraints
+  // not really used, just some big square, because we want to
+  // simulate sensing the environment rather than forcing constraints
   name = bhv_opregion_bounce
   pwt = 200
   duration = no-time-limit
   condition = DEPLOY = true
-// some big box
-#ifdef VTYPE UUV
-  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
-#endif
-#ifdef VTYPE SHIP
+  // some big box
     polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
-#endif
+
   max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
   max_time = 23400
@@ -144,13 +142,34 @@ Behavior = BHV_Waypoint
   visual_hints = vertex_size=3, edge_size=2
 }
 
+Behavior = BHV_Loiter
+{
+  name = loiter_hp_optim
+  pwt = 100
+  condition = RETURN = false
+  condition = DEPLOY = true
+  condition = PILOT_SURVEY_DONE = true
+  condition = HP_OPTIM_DONE = false
+  perpetual = true
+
+  speed = 1.5
+
+  clockwise = true
+  capture_radius = 2
+  slip_radius = 5
+  acquire_dist = 10  
+  
+  polygon = $(HP_LOITER)
+}
+
+#ifdef ADAPTIVE_WPTS yes
 Behavior = BHV_Waypoint
 {
   name      = adaptive_survey
   pwt       = 100
   condition = RETURN = false
   condition = (DEPLOY = true)
-  condition = PILOT_SURVEY_DONE = true
+  condition = HP_OPTIM_DONE = true
 //  endflag   = ADAPTIVE_SURVEY_DONE = true
 //  endflag   = RETURN=true
   updates   = ADAPTIVE_WPT_UPDATES
@@ -176,7 +195,70 @@ Behavior = BHV_Waypoint
   visual_hints = vertex_color=yellow, edge_color=white
   visual_hints = vertex_size=3, edge_size=2
 }
+#endif
 
+#ifdef ADAPTIVE_WPTS no
+Behavior = BHV_Waypoint
+{ 
+  name      = ns_survey
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+  condition = HP_OPTIM_DONE = true
+  endflag   = NS_SURVEY_DONE = true
+  updates   = WAYPOINT_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+//  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  // do lawnmower
+  // note: x, y are middle of lawnmower area
+  points = $(LAWNMOWER_NS)
+  order  = normal
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+
+Behavior = BHV_Waypoint
+{ 
+  name      = ew_survey
+  pwt       = 100
+  condition = RETURN = false
+  condition = (DEPLOY = true)
+  condition = HP_OPTIM_DONE = true
+  condition = NS_SURVEY_DONE = true
+  endflag   = EW_SURVEY_DONE = true
+  endflag   = RETURN=true
+  updates   = WAYPOINT_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+  // do lawnmower
+//  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
+  points = $(LAWNMOWER_EW)
+  order  = reverse
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+#endif
 
 //----------------------------------------------
 Behavior = BHV_Waypoint
