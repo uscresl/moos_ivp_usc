@@ -68,7 +68,8 @@ GP::GP() :
   m_finding_nxt(false),
   m_gp(2, "CovSum(CovSEiso, CovNoise)"),
   m_hp_optim_running(false),
-  m_hp_optim_done(false)
+  m_hp_optim_done(false),
+  m_data_mail_counter(1)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -128,7 +129,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // the waypoint (if not, maybe change this to add once)
       // similarly for when we are calculating the hyperparameters
       // although this is outside the area so should not be a problem anyway
-      if ( !m_pause_data_adding && !m_hp_optim_running )
+      m_data_mail_counter++;
+      if ( !m_pause_data_adding && !m_hp_optim_running && (m_data_mail_counter % 2 == 0) )
         handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -214,6 +216,7 @@ bool GP::Iterate()
             std::cout << "ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
           m_hp_optim_running = false;
           std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
+          m_Comms.Notify("HP_OPTIM_DONE","true");
         }
       }
     }

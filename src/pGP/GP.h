@@ -130,6 +130,9 @@ class GP : public CMOOSApp
 
    // future for result MI criterion calculations
    std::future<Eigen::Vector2d> m_future_next_pt;
+
+   // to add only every other data point
+   size_t m_data_mail_counter;
 };
 
 #endif 
