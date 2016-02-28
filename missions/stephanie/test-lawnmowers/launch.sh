@@ -37,7 +37,7 @@ PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=700,y=1100,width=4
 PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south"
 PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
 
-# config for lawnmower for GP model building
+# config for lawnmower for actual GP model building
 LAWNMOWER="format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
 LAWNMOWEREW="$LAWNMOWER,rows=east-west"
 LAWNMOWERNS="$LAWNMOWER,rows=north-south"
