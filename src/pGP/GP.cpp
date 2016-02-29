@@ -89,7 +89,10 @@ GP::GP() :
   // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
   // signal: from 0 to ca 30, log scale <0 to 1.5
   // noise: let's set 10x smaller than signal
-  params << 0.001, 0.1, 0.01; //0.1, 0.1; //-1.6, 3.6, 1.23; -7.52, 3.79, 1.05;
+  params << 9.333925733, 0.8794590766, -1.349260918;
+//            8.560328686, 0.6699470766, -1.379052918;
+//            7.974861866, 0.6585562112, -1.478665344;
+//            0.000001, 0.01, 0.0001; //0.1, 0.1; //-1.6, 3.6, 1.23; -7.52, 3.79, 1.05;
   m_gp.covf().set_loghyper(params);
 }
 
@@ -383,30 +386,40 @@ void GP::handleMailData(double received_data)
     // if not running hyperparameter optimization or calculating nxt wpt
     // add training data
 
-    // get the current location, such that we can pass it on to the functions
+    // get the current vehicle location, such that we can pass it on to the functions
     // that add the data and update the (un)visited maps,
     // which can run in parallel
-    double lon = m_lon;
-    double lat = m_lat;
-    double location[] = {lon, lat}; //, m_dep};
+    double veh_lon = m_lon;
+    double veh_lat = m_lat;
 
     // try with threading, because this becomes more costly as GP grows
     // TODO pass into queue and run different function as thread to handle queue?
-    std::thread ap_thread(&GP::addPatternToGP, this, received_data, location);
+    std::thread ap_thread(&GP::addPatternToGP, this, received_data, veh_lon, veh_lat);
     ap_thread.detach();
 
     // if we received new data,
     // then we have to change the visited/unvisited sample sets
     // thread this call to make sure it does not interfere with the mail cycle
-    std::thread update_visited(&GP::updateVisitedSet, this, location);
-    update_visited.detach();
+
+    // grab lon and lat from location array
+    int index = get_index_for_map(veh_lon, veh_lat);
+    if ( index >= 0 )
+    {
+      bool update_needed = need_to_update_maps((size_t)index);
+      if ( update_needed )
+      {
+        std::thread update_visited(&GP::updateVisitedSet, this, veh_lon, veh_lat, (size_t)index);
+        update_visited.detach();
+      }
+    }
   }
 }
 
-void GP::addPatternToGP(double value, double * location)
+void GP::addPatternToGP(double value, double veh_lon, double veh_lat)
 {
   // limit scope mutex, protect when adding data
   // because this is now happening in a detached thread
+  double location[2] = {veh_lon, veh_lat};
 
   // log GP: take log (ln) of measurement
   double log_val = log(value);
@@ -416,7 +429,6 @@ void GP::addPatternToGP(double value, double * location)
   // obtain lock
   while ( !ap_lock.try_lock() ) {}
   // add new data point to GP
-//  std::cout << "adding point" << std::endl;
   m_gp.add_pattern(location, log_val);
   // release mutex
   ap_lock.unlock();
@@ -437,7 +449,6 @@ void GP::storeSamplePoints(std::string input_string)
   std::ofstream ofstream_loc;
   std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
   ofstream_loc.open(m_file_loc, std::ios::out);
-//  bool first = true;
 
   for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
   {
@@ -457,9 +468,6 @@ void GP::storeSamplePoints(std::string input_string)
     // copy the points to have all sample points for easier processing for predictions
     m_sample_locations.push_back(std::pair<double, double>(lon, lat));
     // save to file
-//    if ( !first )
-//      ofstream_loc << "; ";
-//    first = false;
     ofstream_loc << std::setprecision(15) << lon << ", " << lat << '\n';
 
     // the first location should be bottom left corner, store as minima
@@ -513,58 +521,76 @@ void GP::storeSamplePointsSpecs(std::string input_string)
 }
 
 //---------------------------------------------------------
-// Procedure: updateVisitedSet
-//            given current vehicle location, move locations
-//            from unvisited to visited set
+// Procedure: need_to_update_maps
+//            check if location's grid index is in unvisited map
 //
-void GP::updateVisitedSet(double * location)
+bool GP::need_to_update_maps(size_t grid_index)
 {
-  // grab lon and lat from location array
-  double veh_lon = location[0];
-  double veh_lat = location[1];
+    // add mutex for changing of global maps
+    std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+    while ( !map_lock.try_lock() ){}
+    std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
+    map_lock.unlock();
 
+    return ( curr_loc_itr != m_sample_points_unvisited.end() );
+}
+
+//---------------------------------------------------------
+// Procedure: get_index_for_map
+//            calculate the grid index for the vehicle location
+//
+int GP::get_index_for_map(double veh_lon, double veh_lat)
+{
   if ( veh_lon >= (m_min_lon-m_buffer_lon) && veh_lat >= (m_min_lat-m_buffer_lat) &&
        veh_lon <= (m_max_lon+m_buffer_lon) && veh_lat <= (m_max_lat+m_buffer_lat) )
-  { 
+  {
     // calculate the id of the location where the vehicle is currently
     // at, and move it to visited
     size_t x_cell_rnd = (size_t) round((veh_lon - m_min_lon)/m_lon_spacing);
     size_t y_cell_rnd = (size_t) round((veh_lat - m_min_lat)/m_lat_spacing);
 
     // calculate index into map (stored from SW, y first, then x)
-    size_t index = m_y_resolution*x_cell_rnd + y_cell_rnd;
+    int index = m_y_resolution*x_cell_rnd + y_cell_rnd;
 
-    // add mutex for changing of global maps
-    std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-    while ( !map_lock.try_lock() ){}
-
-    std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
-    if ( curr_loc_itr != m_sample_points_unvisited.end() )
-    {
-//      std::cout << "update visited set" << std::endl;
-      // remove point from unvisited set
-      Eigen::Vector2d move_pt = m_sample_points_unvisited.at(index);
-
-      // check if the sampled point was nearby, if not, there's something wrong
-      checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
-
-      // add the point to the visited set
-      m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
-
-      // and remove it from the unvisited set
-      m_sample_points_unvisited.erase(curr_loc_itr);
-
-      // report
-      std::cout << "\nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
-      std::cout << " from unvisited to visited.\n";
-      std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
-      std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
-    }
-
-    map_lock.unlock();
+    return index;
   }
-  else
-    return;
+  return -1;
+}
+
+//---------------------------------------------------------
+// Procedure: updateVisitedSet
+//            given current vehicle location, move locations
+//            from unvisited to visited set
+//
+void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
+{
+  // add mutex for changing of global maps
+  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+  while ( !map_lock.try_lock() ){}
+
+  std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
+  if ( curr_loc_itr != m_sample_points_unvisited.end() )
+  {
+    // remove point from unvisited set
+    Eigen::Vector2d move_pt = curr_loc_itr->second;
+
+    // check if the sampled point was nearby, if not, there's something wrong
+    checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
+
+    // add the point to the visited set
+    m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
+
+    // and remove it from the unvisited set
+    m_sample_points_unvisited.erase(curr_loc_itr);
+
+    // report
+    std::cout << "\nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
+    std::cout << " from unvisited to visited.\n";
+    std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
+    std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
+  }
+
+  map_lock.unlock();
 }
 
 //---------------------------------------------------------
@@ -575,7 +601,7 @@ void GP::updateVisitedSet(double * location)
 void GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt)
 {
   double dist_lon = std::abs(move_pt(0) - veh_lon);
-  double dist_lat = std::abs(move_pt(1)- veh_lat);
+  double dist_lat = std::abs(move_pt(1) - veh_lat);
   double dist_lon_m = dist_lon*m_lon_deg_to_m;
   double dist_lat_m = dist_lat*m_lat_deg_to_m;
 
@@ -917,6 +943,18 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   std::clock_t end = std::clock();
   std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
+//  // test own idea HPs
+
+//  // Set log-hyperparameter of the covariance function
+//  Eigen::VectorXd params(m_gp.covf().get_param_dim());
+//  // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
+//  // note, these can be optimized using cg or rprop
+//  // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
+//  // signal: from 0 to ca 30, log scale <0 to 1.5
+//  // noise: let's set 10x smaller than signal
+//  params << 0.000001, 0.01, 0.0001;
+//  m_gp.covf().set_loghyper(params);
+
   hp_lock.unlock();
 
   return true;
@@ -953,6 +991,10 @@ void GP::makeAndStorePredictions()
   ofstream_pm.open(m_file_pm, std::ios::app);
   ofstream_pv.open(m_file_pv, std::ios::app);
 
+  // check status GP
+  std::cout << "HPs: " << gp_copy.covf().get_loghyper() << std::endl;
+  std::cout << "GP size: " << gp_copy.get_sampleset_size() << std::endl;
+
   // make predictions
   std::vector< std::pair<double, double> >::iterator loc_itr;
   bool first = true;
@@ -960,8 +1002,9 @@ void GP::makeAndStorePredictions()
   for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
   {
     double loc[2] {loc_itr->first, loc_itr->second};
-    double pred_mean = gp_copy.f(loc);
-    double pred_var = gp_copy.var(loc);
+    double pred_mean; // = gp_copy.f(loc);
+    double pred_var; // = gp_copy.var(loc);
+    gp_copy.f_and_var(loc, pred_mean, pred_var);
 
     // convert to lGP mean and variance
     // to get back in the 'correct' scale for comparison to generated data

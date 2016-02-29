@@ -43,9 +43,9 @@ class GP : public CMOOSApp
    void handleMailData(double received_data);
    void storeSamplePoints(std::string input_string);
    void storeSamplePointsSpecs(std::string input_string);
-   void updateVisitedSet(double * location);
+   void updateVisitedSet(double veh_lon, double veh_lat, size_t index );
 
-   void addPatternToGP(double value, double * location);
+   void addPatternToGP(double value, double veh_lon, double veh_lat);
 
    bool runHPOptimization(libgp::GaussianProcess & gp);
 
@@ -67,6 +67,8 @@ class GP : public CMOOSApp
    void makeAndStorePredictions();
 
    // helper/test functions
+   bool need_to_update_maps(size_t grid_index);
+   int get_index_for_map(double veh_lon, double veh_lat);
    void checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt);
    bool checkGPHasData();
    void calcLonLatSpacingAndBuffers();
