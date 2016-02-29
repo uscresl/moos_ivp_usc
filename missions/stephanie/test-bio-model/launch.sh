@@ -42,11 +42,11 @@ PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
 # loiter for during hyperparameter optimization
 HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
 
+# config for lawnmower for actual GP model building
+LAWNMOWER="format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+
 if [ "${ADAPTIVE}" = "no" ] ; then
   # lawnmower
-
-  # config for lawnmower for actual GP model building
-  LAWNMOWER="format=lawnmower,label=east-west-survey,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
   LAWNMOWEREW="$LAWNMOWER,rows=east-west"
   LAWNMOWERNS="$LAWNMOWER,rows=north-south"  
   # ports
