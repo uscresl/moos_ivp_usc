@@ -253,7 +253,10 @@ bool GP::Iterate()
 
       // periodically (every 300s = 5min), store all GP predictions
       // only after pilot done, first 300 seconds after pilot done time
-      if ( m_hp_optim_done && ( (size_t)std::floor(MOOSTime()-m_pilot_done_time) % 300 == 0 ) && (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) )
+      // make sure we store the GP right after HP optimization for comparison
+      if ( m_hp_optim_done && (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
+           ( (MOOSTime()-m_pilot_done_time < 2) ||
+             ((size_t)std::floor(MOOSTime()-m_pilot_done_time) % 300 == 0) ) )
       {
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
