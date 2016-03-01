@@ -20,12 +20,12 @@
 //---------------------------------------------------------
 // Constructor
 //
-SamplePoints::SamplePoints()
+SamplePoints::SamplePoints() :
+  m_output_var_sample_points("SAMPLE_POINTS"),
+  m_output_var_specs("SAMPLE_POINTS_SPEC"),
+  m_division_factor(1)
 {
   // class variable instantiations can go here
-  m_output_var_sample_points = "SAMPLE_POINTS";
-  m_output_var_specs = "SAMPLE_POINTS_SPEC";
-  m_division_factor = 1;
 }
 
 //---------------------------------------------------------
@@ -266,9 +266,9 @@ void SamplePoints::calculateGridPoints(double ctr_x, double ctr_y, double width,
   // calculate grid pts
   std::vector< std::pair<double,double> > grid_pts;
   // note; one more vertex than there are lanes
-  for ( int d_x = 0; d_x < lanes_x+1; d_x++ )
+  for ( size_t d_x = 0; d_x < lanes_x+1; d_x++ )
   {
-    for ( int d_y = 0; d_y < lanes_y+1; d_y++ )
+    for ( size_t d_y = 0; d_y < lanes_y+1; d_y++ )
     {
       grid_pts.push_back(std::pair<double,double>(sw_corner_lon + d_x * lw_lon, sw_corner_lat + d_y * lw_lat));
     }
