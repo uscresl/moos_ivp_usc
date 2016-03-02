@@ -69,7 +69,9 @@ GP::GP() :
   m_gp(2, "CovSum(CovSEiso, CovNoise)"),
   m_hp_optim_running(false),
   m_hp_optim_done(false),
-  m_data_mail_counter(1)
+  m_data_mail_counter(1),
+  m_return(false),
+  m_finished(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -168,6 +170,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // if we get it, it must mean a wpt/cycle was done
       m_need_nxt_wpt = true;
     }
+    else if ( key == "RETURN" )
+    {
+      m_return = ( sval == "true" ) ? true : false;
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
   }
@@ -196,7 +202,7 @@ bool GP::Iterate()
   {
     // when pilot is done,
     // we want to optimize the hyperparams of the GP
-    if ( m_pilot_done && !m_hp_optim_done)
+    if ( m_pilot_done && !m_hp_optim_done && !m_return && !m_finished )
     {
       if ( !m_hp_optim_running )
       {
@@ -206,7 +212,7 @@ bool GP::Iterate()
         // start thread for hyperparameter optimization,
         // because this will take a while..
         std::cout << "Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
-        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp));
+        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 20);
       }
       else
       {
@@ -226,7 +232,7 @@ bool GP::Iterate()
 
     // when hyperparameter optimization is done,
     // we want to run adaptive; find next sample locations
-    if ( m_hp_optim_done )
+    if ( m_hp_optim_done && !m_return && !m_finished)
     {
       // predict target value and variance for sample locations
       //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
@@ -261,6 +267,41 @@ bool GP::Iterate()
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
         m_last_pred_save = MOOSTime();
+      }
+    }
+
+    // when returning, do a final HP optimization
+    if ( m_return && !m_finished )
+    {
+      if ( !m_hp_optim_running )
+      {
+        // start hyperparameter optimization
+        m_hp_optim_running = true;
+
+        // start thread for hyperparameter optimization,
+        // because this will take a while..
+        std::cout << "Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
+        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 10);
+      }
+      else
+      {
+        // running HP optimization
+        // check if the thread is done
+        if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+        {
+          m_hp_optim_done = m_future_hp_optim.get(); // should be true
+          if ( !m_hp_optim_done )
+            std::cout << "ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+          m_hp_optim_running = false;
+          std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
+          m_Comms.Notify("HP_OPTIM_DONE","true");
+
+          // store predictions one last time
+          std::thread pred_store(&GP::makeAndStorePredictions, this);
+          pred_store.detach();
+
+          m_finished = true;
+        }
       }
     }
   }
@@ -374,6 +415,9 @@ void GP::registerVariables()
   // get when wpt cycle finished
   // (when to run adaptive predictions in adaptive state)
   m_Comms.Register(m_input_var_adaptive_trigger, 0);
+
+  // check when returning to base, to do final HP optim
+  m_Comms.Register("RETURN", 0);
 }
 
 //---------------------------------------------------------
@@ -925,7 +969,7 @@ void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const &
 // Procedure: runHPOptimization()
 //            run in thread, call GP's hyperparam optimization
 //
-bool GP::runHPOptimization(libgp::GaussianProcess & gp)
+bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 {
   // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
@@ -941,7 +985,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp)
   rprop.init();
 
   // RProp arguments: GP, 'n' (nr iterations), verbose
-  rprop.maximize(&gp, 20, 0);
+  rprop.maximize(&gp, nr_iterations, 0);
 
   std::clock_t end = std::clock();
   std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
