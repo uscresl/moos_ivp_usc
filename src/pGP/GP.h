@@ -47,7 +47,7 @@ class GP : public CMOOSApp
 
    void addPatternToGP(double value, double veh_lon, double veh_lat);
 
-   bool runHPOptimization(libgp::GaussianProcess & gp);
+   bool runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations);
 
    void findNextSampleLocation();
 
@@ -135,6 +135,10 @@ class GP : public CMOOSApp
 
    // to add only every other data point
    size_t m_data_mail_counter;
+
+   // check when returning to base
+   bool m_return;
+   bool m_finished;
 };
 
 #endif 
