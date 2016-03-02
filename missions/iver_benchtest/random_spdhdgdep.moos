@@ -58,6 +58,10 @@ ProcessConfig = pIverBenchTest
     AppTick   = 1
     CommsTick = 1
 
+    CommandHeading = true
+    CommandSpeed = false
+    CommandDepth = true
+
     CommTimeout = 2
 }
 
@@ -81,7 +85,7 @@ ProcessConfig = iOceanServerComms
     DVL = true
 
     //Request general CTD data?
-    CTD = false
+    CTD = true
 
     //Request data string from YSI Sonde?
     YSI = false
@@ -95,10 +99,5 @@ ProcessConfig = iOceanServerComms
     //Constraints
     CommTimeout =  2 //seconds
     ServoFilter =  0 //ticks
-
-    //Choose what to command (for bench test)
-    CommandSpeed = false
-    CommandHeading = true
-    CommandDepth = true
 }
 

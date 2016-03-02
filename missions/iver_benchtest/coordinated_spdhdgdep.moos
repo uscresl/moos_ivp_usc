@@ -122,7 +122,7 @@ ProcessConfig = iOceanServerComms
     DVL = true
 
     //Request general CTD data?
-    CTD = false
+    CTD = true
 
     //Request data string from YSI Sonde?
     YSI = false
@@ -136,9 +136,4 @@ ProcessConfig = iOceanServerComms
     //Constraints
     CommTimeout =  10 //seconds
     ServoFilter =  0 //ticks
-
-    //Choose what to command (for bench test)
-    CommandSpeed = false
-    CommandHeading = true
-    CommandDepth = true
 }
