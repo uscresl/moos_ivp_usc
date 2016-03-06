@@ -24,9 +24,9 @@ ProcessConfig = ANTLER
   Run = pLogger       @ NewConsole = false
 
   // add uTimerScript for generating consistent desired spd/hdg/depth
-  Run = uTimerScript  @ NewConsole = true
+  Run = uTimerScript  @ NewConsole = false
   // add the frontseat interface
-  Run = iOceanServerComms @ NewConsole = true
+  Run = iOceanServerComms @ NewConsole = false
 }
 
 // Log what we do

@@ -20,10 +20,10 @@ ProcessConfig = ANTLER
   Run = pLogger       @ NewConsole = false
   
   // add the bench test for generating random desired spd/hdg/depth
-  Run = pIverBenchTest @ NewConsole = true
+  Run = pIverBenchTest @ NewConsole = false
   
   // add the frontseat interface
-  Run = iOceanServerComms @ NewConsole = true
+  Run = iOceanServerComms @ NewConsole = false
 }
 
 // put configs below
@@ -88,10 +88,10 @@ ProcessConfig = iOceanServerComms
     CTD = true
 
     //Request data string from YSI Sonde?
-    YSI = false
+    YSI = true
 
     //Are we in salt water?  (Used for YSI sound velocity calculation.)
-    SaltWater = true
+    SaltWater = false
 
     //Post NAV_* variables?
     PostNav = true
