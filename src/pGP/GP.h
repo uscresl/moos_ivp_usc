@@ -21,6 +21,9 @@
 #include <thread>
 #include <future>
 
+// std queue for FIFO queue
+#include <queue>
+
 class GP : public CMOOSApp
 {
  public:
@@ -46,6 +49,7 @@ class GP : public CMOOSApp
    void updateVisitedSet(double veh_lon, double veh_lat, size_t index );
 
    void addPatternToGP(double value, double veh_lon, double veh_lat);
+   void dataAddingThread();
 
    bool runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations);
 
@@ -124,6 +128,9 @@ class GP : public CMOOSApp
    libgp::GaussianProcess m_gp;
    std::mutex m_gp_mutex;
    std::mutex m_sample_maps_mutex;
+
+   // create queue for adding of points to GP
+   std::queue< std::vector<double> > m_queue_data_points_for_gp;
 
    // hyperparam optimization in multi-threading
    std::future<bool> m_future_hp_optim;

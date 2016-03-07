@@ -387,6 +387,9 @@ bool GP::OnStartUp()
 
   registerVariables();
 
+  std::thread data_thread(&GP::dataAddingThread, this);
+  data_thread.detach();
+
   return(true);
 }
 
@@ -441,23 +444,49 @@ void GP::handleMailData(double received_data)
 
     // try with threading, because this becomes more costly as GP grows
     // TODO pass into queue and run different function as thread to handle queue?
-    std::thread ap_thread(&GP::addPatternToGP, this, received_data, veh_lon, veh_lat);
-    ap_thread.detach();
+    std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
+    m_queue_data_points_for_gp.push(nw_data_pt);
 
-    // if we received new data,
-    // then we have to change the visited/unvisited sample sets
-    // thread this call to make sure it does not interfere with the mail cycle
+//    std::thread ap_thread(&GP::addPatternToGP, this, received_data, veh_lon, veh_lat);
+//    ap_thread.detach();
 
-    // grab lon and lat from location array
-    int index = get_index_for_map(veh_lon, veh_lat);
-    if ( index >= 0 )
+//    // if we received new data,
+//    // then we have to change the visited/unvisited sample sets
+//    // thread this call to make sure it does not interfere with the mail cycle
+
+//    // grab lon and lat from location array
+//    int index = get_index_for_map(veh_lon, veh_lat);
+//    if ( index >= 0 )
+//    {
+//      bool update_needed = need_to_update_maps((size_t)index);
+//      if ( update_needed )
+//      {
+//        std::thread update_visited(&GP::updateVisitedSet, this, veh_lon, veh_lat, (size_t)index);
+//        update_visited.detach();
+//      }
+//    }
+  }
+}
+
+void GP::dataAddingThread()
+{
+  while ( !m_finished )
+  {
+    if ( m_queue_data_points_for_gp.empty() )
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    else
     {
-      bool update_needed = need_to_update_maps((size_t)index);
-      if ( update_needed )
-      {
-        std::thread update_visited(&GP::updateVisitedSet, this, veh_lon, veh_lat, (size_t)index);
-        update_visited.detach();
-      }
+      // process data point
+      std::vector<double> data_pt = m_queue_data_points_for_gp.front();
+      m_queue_data_points_for_gp.pop();
+      double veh_lon = data_pt[0];
+      double veh_lat = data_pt[1];
+      // add data pt
+      addPatternToGP(veh_lon, veh_lat, data_pt[2]);
+      // update visited set if needed
+      int index = get_index_for_map(veh_lon, veh_lat);
+      if ( index >= 0 && need_to_update_maps((size_t)index) )
+        updateVisitedSet(veh_lon, veh_lat, (size_t)index);
     }
   }
 }
