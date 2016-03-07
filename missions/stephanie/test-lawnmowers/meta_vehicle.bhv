@@ -53,8 +53,8 @@ Behavior = BHV_OpRegionBounce
   pwt = 200
   duration = no-time-limit
   condition = DEPLOY = true
-// some big box
-  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940    polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
+  // some big box
+  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
   max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
   max_time = 23400
