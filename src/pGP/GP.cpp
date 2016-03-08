@@ -251,7 +251,7 @@ bool GP::Iterate()
           {
             m_finding_nxt = false;
             // publish greedy best
-            publishNextBestPosition(m_future_next_pt.get());
+            publishNextBestPosition(); //m_future_next_pt.get());
             m_pause_data_adding = false;
           }
         }
@@ -491,7 +491,7 @@ void GP::dataAddingThread()
   }
 }
 
-void GP::addPatternToGP(double value, double veh_lon, double veh_lat)
+void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
 {
   // limit scope mutex, protect when adding data
   // because this is now happening in a detached thread
@@ -725,8 +725,10 @@ void GP::findNextSampleLocation()
 // Procedure: publishNextBestPosition
 //            call Notify & publish location
 //
-void GP::publishNextBestPosition(Eigen::Vector2d best_so_far_y)
+void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
 {
+  Eigen::Vector2d best_so_far_y = m_future_next_pt.get();
+
   // app feedback
   std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
   std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';

@@ -48,7 +48,7 @@ class GP : public CMOOSApp
    void storeSamplePointsSpecs(std::string input_string);
    void updateVisitedSet(double veh_lon, double veh_lat, size_t index );
 
-   void addPatternToGP(double value, double veh_lon, double veh_lat);
+   void addPatternToGP(double veh_lon, double veh_lat, double value);
    void dataAddingThread();
 
    bool runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations);
@@ -66,7 +66,7 @@ class GP : public CMOOSApp
    // maximum entropy
    Eigen::Vector2d calcMECriterion();
 
-   void publishNextBestPosition(Eigen::Vector2d best_so_far_y);
+   void publishNextBestPosition(); //Eigen::Vector2d best_so_far_y);
 
    void makeAndStorePredictions();
 
