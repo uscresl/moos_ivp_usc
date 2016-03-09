@@ -1,0 +1,13 @@
+// modem id, vehicle name (should be community name), vehicle type, other aliases
+0, broadcast, broadcast
+1, anna, ship
+2, bernard, ship
+3, cornelis, ship
+4, dirk, ship
+5, eduard, ship
+6, ferdinand, auv
+7, gerard, auv
+8, hendrik, auv
+9, isaak, auv
+10, jan, auv
+31, topside, ship

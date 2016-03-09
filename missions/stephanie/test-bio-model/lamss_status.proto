@@ -1,0 +1,68 @@
+import "goby/acomms/protobuf/dccl_option_extensions.proto";
+import "goby/common/protobuf/option_extensions.proto";
+message LamssStatus { 
+	option (dccl.msg).id = 20;
+	option (dccl.msg).max_bytes = 32;
+	optional double Timestamp = 1 [(dccl.field).codec="_time", (dccl.field).in_head=true];
+	optional int32 Node = 2 [(dccl.field).max=31, (dccl.field).min=0, (dccl.field).in_head=true];
+	optional int32 _dest_id = 3 [(dccl.field).max=31, (dccl.field).min=0, (dccl.field).in_head=true];
+	optional string MessageType = 4 [default="LAMSS_STATUS", (dccl.field).static_value="LAMSS_STATUS", (dccl.field).codec="_static"];
+	optional double nav_x = 5 [(dccl.field).max=250000, (dccl.field).min=-100000, (dccl.field).precision=0];
+	optional double nav_y = 6 [(dccl.field).max=250000, (dccl.field).min=-100000, (dccl.field).precision=0];
+	optional double Speed = 7 [(dccl.field).max=20.0, (dccl.field).min=-2.0, (dccl.field).precision=1];
+	optional double Heading = 8 [(dccl.field).max=360.00, (dccl.field).min=0.00, (dccl.field).precision=2];
+	optional double Depth = 9 [(dccl.field).max=6400.0, (dccl.field).min=0.0, (dccl.field).precision=1];
+	optional double Altitude = 10 [(dccl.field).max=5000.0, (dccl.field).min=-10.0, (dccl.field).precision=1];
+	optional double Pitch = 11 [(dccl.field).max=1.57, (dccl.field).min=-1.57, (dccl.field).precision=2];
+	optional double Roll = 12 [(dccl.field).max=1.57, (dccl.field).min=-1.57, (dccl.field).precision=2];
+	optional Mission_StateEnum Mission_State = 13;
+	enum Mission_StateEnum{ 
+		 MISSION_STATE_FALSE = 0; 
+		 MISSION_STATE_DEPLOY = 1; 
+		 MISSION_STATE_PROSECUTE = 2; 
+		 MISSION_STATE_unknown = 3; 
+	} 
+	optional Deploy_ModeEnum Deploy_Mode = 14;
+	enum Deploy_ModeEnum{ 
+		 DEPLOY_MODE_LOITER = 0; 
+		 DEPLOY_MODE_RETURN = 1; 
+		 DEPLOY_MODE_RACETRACK = 2; 
+		 DEPLOY_MODE_ZIGZAG = 3; 
+		 DEPLOY_MODE_LAWNMOWER = 4; 
+		 DEPLOY_MODE_TRAIL = 5; 
+		 DEPLOY_MODE_STATION_KEEP = 6; 
+	} 
+	optional Depth_ModeEnum Depth_Mode = 15;
+	enum Depth_ModeEnum{ 
+		 DEPTH_MODE_SINGLE = 0; 
+		 DEPTH_MODE_DUAL = 1; 
+		 DEPTH_MODE_YOYO = 2; 
+		 DEPTH_MODE_ADAPTIVE_YOYO = 3; 
+		 DEPTH_MODE_ADAPTIVE_ACOMMS = 4; 
+		 DEPTH_MODE_BOTTOM_FOLLOWING = 5; 
+	} 
+	optional Prosecute_TypeEnum Prosecute_Type = 16;
+	enum Prosecute_TypeEnum{ 
+		 PROSECUTE_TYPE_ADAPTIVE = 0; 
+		 PROSECUTE_TYPE_TMA_ZIGZAG = 1; 
+		 PROSECUTE_TYPE_POLYGON = 2; 
+		 PROSECUTE_TYPE_unknown = 3; 
+	} 
+	optional Collaboration_ModeEnum Collaboration_Mode = 17;
+	enum Collaboration_ModeEnum{ 
+		 COLLABORATION_MODE_OFF = 0; 
+		 COLLABORATION_MODE_SYNCH = 1; 
+		 COLLABORATION_MODE_COLLABORATING = 2; 
+	} 
+	optional Sonar_ControlEnum Sonar_Control = 18;
+	enum Sonar_ControlEnum{ 
+		 SONAR_CONTROL_ON = 0; 
+		 SONAR_CONTROL_OFF = 1; 
+	} 
+	optional double Secs_to_GPS = 19 [(dccl.field).max=5110.000000, (dccl.field).min=-5120.000000, (dccl.field).precision=-1];
+//	optional int32 Max_Cline_Depth = 20 [(dccl.field).max=255, (dccl.field).min=0];
+//	optional int32 Min_Cline_Depth = 21 [(dccl.field).max=255, (dccl.field).min=0];
+//	optional int32 Ctr_Cline_Depth = 22 [(dccl.field).max=255, (dccl.field).min=0];
+  optional double allowable_width = 20 [(dccl.field).max=1000.0, (dccl.field).min=0.0, (dccl.field).precision=2, default = nan];
+  optional double allowable_height = 21 [(dccl.field).max=100.0, (dccl.field).min=0.0, (dccl.field).precision=2, default = nan];
+} 

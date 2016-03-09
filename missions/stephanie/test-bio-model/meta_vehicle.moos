@@ -107,7 +107,7 @@ ProcessConfig = pGP
   output_var_predictions = GP_PREDICTIONS
 
   // define the filename for saving GP predictions
-  output_filename_prefix = predictions
+  output_filename_prefix = $(PREDICTIONS_PREFIX)
 
   // define the prediction interval (predict every X seconds)
   prediction_interval = 300
