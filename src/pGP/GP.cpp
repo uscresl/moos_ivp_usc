@@ -36,7 +36,6 @@ GP::GP() :
   m_input_var_data(""),
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
-  m_input_var_pilot_done(""),
   m_input_var_adaptive_trigger(""),
   m_output_var_pred(""),
   m_output_filename_prefix(""),
@@ -62,7 +61,6 @@ GP::GP() :
   m_y_resolution(0.0),
   m_lon_deg_to_m(0.0),
   m_lat_deg_to_m(0.0),
-  m_pilot_done(false),
   m_pilot_done_time(0.0),
   m_need_nxt_wpt(false),
   m_finding_nxt(false),
@@ -70,8 +68,8 @@ GP::GP() :
   m_hp_optim_running(false),
   m_hp_optim_done(false),
   m_data_mail_counter(1),
-  m_return(false),
-  m_finished(false)
+  m_finished(false),
+  m_hp_optim_mode_cnt(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -156,13 +154,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // (done once)
       storeSamplePointsSpecs(sval);
     }
-    else if ( key == m_input_var_pilot_done )
-    {
-      // check when pilot is done (once)
-      std::cout << "received " << m_input_var_pilot_done << ": " << sval << std::endl;
-      m_pilot_done = ( sval == "true" ) ? true : false;
-      m_pilot_done_time = MOOSTime();
-    }
     else if ( key == m_input_var_adaptive_trigger )
     {
       // check when adaptive waypoint reached
@@ -170,9 +161,15 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // if we get it, it must mean a wpt/cycle was done
       m_need_nxt_wpt = true;
     }
-    else if ( key == "RETURN" )
+    else if ( key == "MODE" )
     {
-      m_return = ( sval == "true" ) ? true : false;
+      // check the mission state for whether we need to do HP optimization
+      if ( sval.find("HP_OPTIM") != std::string::npos )
+      {
+        m_hp_optim_mode_cnt++;
+        if ( m_hp_optim_mode_cnt == 1 )
+          m_pilot_done_time = MOOSTime();
+      }
     }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
@@ -202,7 +199,7 @@ bool GP::Iterate()
   {
     // when pilot is done,
     // we want to optimize the hyperparams of the GP
-    if ( m_pilot_done && !m_hp_optim_done && !m_return && !m_finished )
+    if ( m_hp_optim_mode_cnt == 1 && !m_hp_optim_done && !m_finished )
     {
       if ( !m_hp_optim_running )
       {
@@ -225,14 +222,14 @@ bool GP::Iterate()
             std::cout << "ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
           m_hp_optim_running = false;
           std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
-          m_Comms.Notify("HP_OPTIM_DONE","true");
+          m_Comms.Notify("STAGE","survey");
         }
       }
     }
 
     // when hyperparameter optimization is done,
     // we want to run adaptive; find next sample locations
-    if ( m_hp_optim_done && !m_return && !m_finished)
+    if ( m_hp_optim_done && m_hp_optim_mode_cnt < 2 && !m_finished)
     {
       // predict target value and variance for sample locations
       //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
@@ -271,7 +268,7 @@ bool GP::Iterate()
     }
 
     // when returning, do a final HP optimization
-    if ( m_return && !m_finished )
+    if ( m_hp_optim_mode_cnt == 2 && !m_finished )
     {
       if ( !m_hp_optim_running )
       {
@@ -294,7 +291,7 @@ bool GP::Iterate()
             std::cout << "ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
           m_hp_optim_running = false;
           std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
-          m_Comms.Notify("HP_OPTIM_DONE","true");
+          m_Comms.Notify("STAGE","return");
 
           // store predictions one last time
           std::thread pred_store(&GP::makeAndStorePredictions, this);
@@ -340,11 +337,6 @@ bool GP::OnStartUp()
     else if ( param == "input_var_sample_points_specs")
     {
       m_input_var_sample_points_specs = toupper(value);
-    }
-    else if ( param == "input_var_pilot_done" )
-    {
-      // PILOT_SURVEY_DONE
-      m_input_var_pilot_done = toupper(value);
     }
     else if ( param == "input_var_adaptive_trigger" )
     {
@@ -413,14 +405,11 @@ void GP::registerVariables()
   m_Comms.Register(m_input_var_sample_points_specs, 0);
 
   // get status mission
-  m_Comms.Register(m_input_var_pilot_done, 0);
+  m_Comms.Register("MODE", 0);
 
   // get when wpt cycle finished
   // (when to run adaptive predictions in adaptive state)
   m_Comms.Register(m_input_var_adaptive_trigger, 0);
-
-  // check when returning to base, to do final HP optim
-  m_Comms.Register("RETURN", 0);
 }
 
 //---------------------------------------------------------

@@ -81,7 +81,6 @@ class GP : public CMOOSApp
    std::string m_input_var_data;
    std::string m_input_var_sample_points;
    std::string m_input_var_sample_points_specs;
-   std::string m_input_var_pilot_done;
    std::string m_input_var_adaptive_trigger;
    std::string m_output_var_pred;
    std::string m_output_filename_prefix;
@@ -114,7 +113,6 @@ class GP : public CMOOSApp
    double m_lon_deg_to_m;
    double m_lat_deg_to_m;
    // mission status
-   bool m_pilot_done;
    double m_pilot_done_time;
    bool m_need_nxt_wpt;
    bool m_finding_nxt;
@@ -143,9 +141,10 @@ class GP : public CMOOSApp
    // to add only every other data point
    size_t m_data_mail_counter;
 
+   // mission states,
    // check when returning to base
-   bool m_return;
    bool m_finished;
+   size_t m_hp_optim_mode_cnt;
 };
 
 #endif 
