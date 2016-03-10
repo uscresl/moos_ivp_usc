@@ -158,8 +158,12 @@ Behavior = BHV_Waypoint
   name      = ew_pilot_survey
   pwt       = 100
   condition = MODE==PILOT_EW
-  endflag   = PILOT=false
+  // go to GP HP optimization
   endflag   = STAGE=hpoptim
+  // prep for next surveys
+  endflag   = PILOT=false
+  endflag   = DIRECTION=northsouth
+
   updates   = PILOT_WPT_UPDATES
   perpetual = false
 
