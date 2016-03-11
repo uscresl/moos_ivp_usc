@@ -6,6 +6,9 @@ ProcessConfig = pGP
   AppTick   = 2
   CommsTick = 2
   
+  // GP or log GP?
+  use_log_gp = true
+
   // define the names of input & output variables
   input_var_data = SIM_DATA
   input_var_sample_points = SAMPLE_POINTS

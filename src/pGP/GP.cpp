@@ -41,6 +41,7 @@ GP::GP() :
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
   m_use_MI(false),
+  m_use_log_gp(true),
   m_lat(0),
   m_lon(0),
   m_dep(0),
@@ -359,6 +360,11 @@ bool GP::OnStartUp()
     {
       m_output_filename_prefix = value;
     }
+    else if ( param == "use_log_gp" )
+    {
+      m_use_log_gp = (value == "true" ? true : false);
+      std::cout << GetAppName() << " :: using log GP? " << (m_use_log_gp ? "yes" : "no") << std::endl;
+    }
     else
       handled = false;
 
@@ -487,14 +493,15 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   double location[2] = {veh_lon, veh_lat};
 
   // log GP: take log (ln) of measurement
-  double log_val = log(value);
+  double save_val = m_use_log_gp ? log(value) : value;
+
   // Input vectors x must be provided as double[] and targets y as double.
 
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
   // obtain lock
   while ( !ap_lock.try_lock() ) {}
   // add new data point to GP
-  m_gp.add_pattern(location, log_val);
+  m_gp.add_pattern(location, save_val);
   // release mutex
   ap_lock.unlock();
 }
@@ -779,10 +786,18 @@ Eigen::Vector2d GP::calcMECriterion()
     // calculate its posterior entropy
     double pred_mean = gp_copy.f(y_loc);
     double pred_cov = gp_copy.var(y_loc);
-//    std::cout << "pred_cov = " << pred_cov << std::endl;
-    double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
-    double post_entropy = var_part + pred_mean;
-//    std::cout << "compare var to mean effect: " << var_part << " " << pred_mean << std::endl;
+
+    // normal distribution
+    //  1/2 ln ( 2*pi*e*sigma^2 )
+    double post_entropy;
+    if ( !m_use_log_gp )
+      post_entropy = log( 2 * M_PI * exp(1) * pred_cov);
+    else
+    {
+      // lognormal distribution
+      double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
+      post_entropy = var_part + pred_mean;
+    }
 
     if ( post_entropy > best_so_far )
     {
@@ -876,15 +891,24 @@ Eigen::Vector2d GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
     // predictive mean of unvisited set -- TODO check?
     double pred_mean_yAv = k_yav.transpose() * K_avav_inv * t_av;
 
-    // convert to log GP
-    double mean_yA_lGP, var_yA_lGP; // visited set
-    logGPfromGP(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
-    double mean_yAv_lGP, var_yAv_lGP; // unvisited set
-    logGPfromGP(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
-
     // calculate mutual information term
-//      double div = 0.5 * log(sigma_y_A / sigma_y_Av);
-    double div = 0.5 * log( var_yA_lGP / var_yAv_lGP );
+    double div;
+    if ( m_use_log_gp )
+    {
+      // convert to log GP
+      double mean_yA_lGP, var_yA_lGP; // visited set
+      logGPfromGP(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
+      double mean_yAv_lGP, var_yAv_lGP; // unvisited set
+      logGPfromGP(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
+
+      // TODO change for log GP, incorp mean, current incorrect (is for GP)
+      div = 0.5 * log( var_yA_lGP / var_yAv_lGP );
+    }
+    else
+    {
+      // double div = 0.5 * log(sigma_y_A / sigma_y_Av);
+      div = 0.5 * log ( pred_cov_yA / sigma_y_Av );
+    }
 
     // store max (greedy best)
     if ( div > best_so_far )
@@ -1052,15 +1076,21 @@ void GP::makeAndStorePredictions()
   write_lock.unlock();
 
   // prepare file actions
-  std::ofstream ofstream_pm, ofstream_pv;
-  std::string m_file_pm = (m_output_filename_prefix + "_pred_mean.csv");
-  std::string m_file_pv = (m_output_filename_prefix + "_pred_var.csv");
-  ofstream_pm.open(m_file_pm, std::ios::app);
-  ofstream_pv.open(m_file_pv, std::ios::app);
+  std::ofstream ofstream_pm, ofstream_pv, ofstream_mu, ofstream_s2;
 
-  // check status GP
-  std::cout << "HPs: " << gp_copy.covf().get_loghyper() << std::endl;
-  std::cout << "GP size: " << gp_copy.get_sampleset_size() << std::endl;
+  if ( m_use_log_gp )
+  {
+    // params lognormal distr
+    std::string m_file_pm = (m_output_filename_prefix + "_pred_mean.csv");
+    std::string m_file_pv = (m_output_filename_prefix + "_pred_var.csv");
+    ofstream_pm.open(m_file_pm, std::ios::app);
+    ofstream_pv.open(m_file_pv, std::ios::app);
+  }
+  // params normal distr
+  std::string m_file_mu = (m_output_filename_prefix + "_pred_mu.csv");
+  std::string m_file_s2 = (m_output_filename_prefix + "_pred_sigma2.csv");
+  ofstream_mu.open(m_file_mu, std::ios::app);
+  ofstream_s2.open(m_file_s2, std::ios::app);
 
   // make predictions
   std::vector< std::pair<double, double> >::iterator loc_itr;
@@ -1073,26 +1103,46 @@ void GP::makeAndStorePredictions()
     double pred_var; // = gp_copy.var(loc);
     gp_copy.f_and_var(loc, pred_mean, pred_var);
 
-    // convert to lGP mean and variance
-    // to get back in the 'correct' scale for comparison to generated data
     double pred_mean_lGP, pred_var_lGP;
-    logGPfromGP(pred_mean, pred_var, pred_mean_lGP, pred_var_lGP);
+    if ( m_use_log_gp )
+    {
+      // convert to lGP mean and variance
+      // to get back in the 'correct' scale for comparison to generated data
+      logGPfromGP(pred_mean, pred_var, pred_mean_lGP, pred_var_lGP);
+    }
 
     // save to file, storing predictions
     if ( !first )
     {
-      ofstream_pm << ", ";
-      ofstream_pv << ", ";
+      if ( m_use_log_gp )
+      {
+        ofstream_pm << ", ";
+        ofstream_pv << ", ";
+      }
+      ofstream_mu << ", ";
+      ofstream_s2 << ", ";
     }
     first = false;
-    ofstream_pm << pred_mean_lGP;
-    ofstream_pv << pred_var_lGP;
+    if ( m_use_log_gp )
+    {
+      ofstream_pm << pred_mean_lGP;
+      ofstream_pv << pred_var_lGP;
+    }
+    ofstream_mu << pred_mean;
+    ofstream_s2 << pred_var;
   }
-  ofstream_pm << '\n';
-  ofstream_pv << '\n';
+  if ( m_use_log_gp )
+  {
+    ofstream_pm << '\n';
+    ofstream_pv << '\n';
+    ofstream_pm.close();
+    ofstream_pv.close();
+  }
 
-  ofstream_pm.close();
-  ofstream_pv.close();
+  ofstream_mu << '\n';
+  ofstream_s2 << '\n';
+  ofstream_mu.close();
+  ofstream_s2.close();
 
   std::cout << "done saving predictions to file" << std::endl;
   // copy of GP gets destroyed when this function exits

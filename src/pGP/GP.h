@@ -89,6 +89,7 @@ class GP : public CMOOSApp
    bool m_use_MI;
 
    // State variables
+   bool m_use_log_gp;
       // vehicle location
    double m_lat;
    double m_lon;
