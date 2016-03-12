@@ -83,17 +83,17 @@ GP::GP() :
   // using the squared exponential covariance function,
   // with additive white noise
 
-  // Set log-hyperparameter of the covariance function
+  // Set (log of) hyperparameters of the covariance function
   Eigen::VectorXd params(m_gp.covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
-  // note, these can be optimized using cg or rprop
+  // note, these will be optimized using cg or rprop
   // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
+  //               0.002^2=0.000004, ln() = -12.4292
   // signal: from 0 to ca 30, log scale <0 to 1.5
+  //         stdev 1.5, ln() = 0.4055
   // noise: let's set 10x smaller than signal
-  params << 9.333925733, 0.8794590766, -1.349260918;
-//            8.560328686, 0.6699470766, -1.379052918;
-//            7.974861866, 0.6585562112, -1.478665344;
-//            0.000001, 0.01, 0.0001; //0.1, 0.1; //-1.6, 3.6, 1.23; -7.52, 3.79, 1.05;
+  //        stdev 0.15, ln() = -1.8971
+  params << -12.4292, 0.4055, -1.8971;
   m_gp.covf().set_loghyper(params);
 }
 
@@ -1045,6 +1045,14 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 //  // noise: let's set 10x smaller than signal
 //  params << 0.000001, 0.01, 0.0001;
 //  m_gp.covf().set_loghyper(params);
+
+  // test write to file
+  begin = std::clock();
+  std::stringstream filenm;
+  filenm << "hp_optim_" << nr_iterations;
+  gp.write(filenm.str().c_str());
+  end = std::clock();
+  std::cout << "write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   hp_lock.unlock();
 
