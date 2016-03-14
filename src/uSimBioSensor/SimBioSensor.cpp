@@ -27,6 +27,10 @@
 #include <boost/foreach.hpp>
 #include <boost/tokenizer.hpp>
 
+// sensor noise
+#include <random>
+#include <chrono>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -147,9 +151,15 @@ bool SimBioSensor::Iterate()
 
   if ( m_file_read && m_nav_data_received )
   {
+    // get ground truth
     double dat = getDataPoint();
     if ( m_output_var != "" && dat > 0 )
     {
+      // add sensor noise
+      dat = addSensorNoise(dat);
+      // invert negative values
+      dat = (dat < 0 ? -1*dat : dat);
+      // publish to MOOSDB
       std::cout << GetAppName() << " :: publishing data: " << dat << std::endl;
       m_Comms.Notify(m_output_var, dat);
     }
@@ -379,4 +389,18 @@ double SimBioSensor::getDataPoint()
     std::cout << GetAppName() << " :: outside of data zone" << std::endl;
     return -1;
   }
+}
+
+double SimBioSensor::addSensorNoise(double value)
+{
+  // create a seed, different at every time step
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  // start a seeded random number generator
+  std::default_random_engine generator(seed);
+  // create normal distribution with mean 0.0 and std_dev 1.0
+  std::normal_distribution<double> distribution(0.0, 1.5);
+  // grab a random number from the distribution
+  double noise = distribution(generator);
+  std::cout << "Adding noise: " << noise << std::endl;
+  return (value + noise);
 }

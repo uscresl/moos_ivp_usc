@@ -31,6 +31,7 @@ class SimBioSensor : public CMOOSApp
    // Own functions
    void readBioDataFromFile();
    double getDataPoint();
+   double addSensorNoise(double value);
 
    // MOOS vars
    double m_veh_lon;
