@@ -97,6 +97,14 @@ GP::GP() :
   m_gp.covf().set_loghyper(params);
 }
 
+GP::~GP()
+{
+  if ( m_ofstream_pm.is_open() )
+    m_ofstream_pm.close();
+  if ( m_ofstream_pv.is_open() )
+    m_ofstream_pv.close();
+}
+
 //---------------------------------------------------------
 // Procedure: OnNewMail
 //
@@ -255,12 +263,12 @@ bool GP::Iterate()
         }
       }
 
-      // periodically (every 300s = 5min), store all GP predictions
-      // only after pilot done, first 300 seconds after pilot done time
+      // periodically (every 600s = 10min), store all GP predictions
+      // only after pilot done, first 600 seconds after pilot done time
       // make sure we store the GP right after HP optimization for comparison
       if ( m_hp_optim_done && (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
            ( (MOOSTime()-m_pilot_done_time < 2) ||
-             ((size_t)std::floor(MOOSTime()-m_pilot_done_time) % 300 == 0) ) )
+             ((size_t)std::floor(MOOSTime()-m_pilot_done_time) % 600 == 0) ) )
       {
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
@@ -359,6 +367,12 @@ bool GP::OnStartUp()
     else if ( param == "output_filename_prefix" )
     {
       m_output_filename_prefix = value;
+
+      // prepare file actions
+      std::string file_pm = (m_output_filename_prefix + "_pred_mean.csv");
+      std::string file_pv = (m_output_filename_prefix + "_pred_var.csv");
+      m_ofstream_pm.open(file_pm, std::ios::app);
+      m_ofstream_pv.open(file_pv, std::ios::app);
     }
     else if ( param == "use_log_gp" )
     {
@@ -492,6 +506,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   // because this is now happening in a detached thread
   double location[2] = {veh_lon, veh_lat};
 
+  // GP: pass in value
   // log GP: take log (ln) of measurement
   double save_val = m_use_log_gp ? log(value) : value;
 
@@ -1034,19 +1049,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   std::clock_t end = std::clock();
   std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
-//  // test own idea HPs
-
-//  // Set log-hyperparameter of the covariance function
-//  Eigen::VectorXd params(m_gp.covf().get_param_dim());
-//  // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
-//  // note, these can be optimized using cg or rprop
-//  // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
-//  // signal: from 0 to ca 30, log scale <0 to 1.5
-//  // noise: let's set 10x smaller than signal
-//  params << 0.000001, 0.01, 0.0001;
-//  m_gp.covf().set_loghyper(params);
-
-  // test write to file
+  // write new HP to file
   begin = std::clock();
   std::stringstream filenm;
   filenm << "hp_optim_" << nr_iterations;
@@ -1083,27 +1086,12 @@ void GP::makeAndStorePredictions()
   libgp::GaussianProcess gp_copy(m_gp);
   write_lock.unlock();
 
-  // prepare file actions
-  std::ofstream ofstream_pm, ofstream_pv, ofstream_mu, ofstream_s2;
-
-  if ( m_use_log_gp )
-  {
-    // params lognormal distr
-    std::string m_file_pm = (m_output_filename_prefix + "_pred_mean.csv");
-    std::string m_file_pv = (m_output_filename_prefix + "_pred_var.csv");
-    ofstream_pm.open(m_file_pm, std::ios::app);
-    ofstream_pv.open(m_file_pv, std::ios::app);
-  }
-  // params normal distr
-  std::string m_file_mu = (m_output_filename_prefix + "_pred_mu.csv");
-  std::string m_file_s2 = (m_output_filename_prefix + "_pred_sigma2.csv");
-  ofstream_mu.open(m_file_mu, std::ios::app);
-  ofstream_s2.open(m_file_s2, std::ios::app);
-
   // make predictions
+  std::clock_t begin = std::clock();
   std::vector< std::pair<double, double> >::iterator loc_itr;
-  bool first = true;
-
+  // get the predictive mean and var values for all sample locations
+  std::vector<double> all_pred_means;
+  std::vector<double> all_pred_vars;
   for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
   {
     double loc[2] {loc_itr->first, loc_itr->second};
@@ -1114,45 +1102,58 @@ void GP::makeAndStorePredictions()
     double pred_mean_lGP, pred_var_lGP;
     if ( m_use_log_gp )
     {
+      // params lognormal distr
       // convert to lGP mean and variance
       // to get back in the 'correct' scale for comparison to generated data
       logGPfromGP(pred_mean, pred_var, pred_mean_lGP, pred_var_lGP);
     }
 
-    // save to file, storing predictions
-    if ( !first )
-    {
-      if ( m_use_log_gp )
-      {
-        ofstream_pm << ", ";
-        ofstream_pv << ", ";
-      }
-      ofstream_mu << ", ";
-      ofstream_s2 << ", ";
-    }
-    first = false;
     if ( m_use_log_gp )
     {
-      ofstream_pm << pred_mean_lGP;
-      ofstream_pv << pred_var_lGP;
+      all_pred_means.push_back(pred_mean_lGP);
+      all_pred_vars.push_back(pred_var_lGP);
     }
-    ofstream_mu << pred_mean;
-    ofstream_s2 << pred_var;
+    else
+    {
+      all_pred_means.push_back(pred_mean);
+      all_pred_vars.push_back(pred_var);
+    }
   }
-  if ( m_use_log_gp )
+  std::clock_t end = std::clock();
+  std::cout << "runtime make predictions: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+
+  begin = std::clock();
+  // grab file writing mutex
+  std::unique_lock<std::mutex> file_write_lock(m_file_writing_mutex, std::defer_lock);
+  while ( !file_write_lock.try_lock() ){}
+  // write to file
+  for ( size_t vector_idx = 0; vector_idx < all_pred_means.size(); ++vector_idx )
   {
-    ofstream_pm << '\n';
-    ofstream_pv << '\n';
-    ofstream_pm.close();
-    ofstream_pv.close();
+    // save to file, storing predictions
+    if ( vector_idx > 0 )
+    {
+      m_ofstream_pm << ", ";
+      m_ofstream_pv << ", ";
+    }
+    m_ofstream_pm << all_pred_means[vector_idx];
+    m_ofstream_pv << all_pred_vars[vector_idx];
+  }
+  m_ofstream_pm << '\n';
+  m_ofstream_pv << '\n';
+
+  if ( m_finished )
+  {
+    m_ofstream_pm.close();
+    m_ofstream_pv.close();
   }
 
-  ofstream_mu << '\n';
-  ofstream_s2 << '\n';
-  ofstream_mu.close();
-  ofstream_s2.close();
+  file_write_lock.unlock();
+
+  end = std::clock();
+  std::cout << "runtime save to file: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   std::cout << "done saving predictions to file" << std::endl;
+
   // copy of GP gets destroyed when this function exits
 }
 
