@@ -96,10 +96,12 @@ Behavior = BHV_OpRegionBounce
   polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
   max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
-  max_time = 23400
+  max_time = 25200
+
   trigger_entry_time = 1.0
   trigger_exit_time = 1.0
   visual_hints = edge_size=2.0,vertex_size=2.0
+
   // bounce additions
   bounce_buffer = 20 // meters, when to start bouncing
   bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
