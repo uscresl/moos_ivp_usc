@@ -58,7 +58,7 @@ ProcessConfig = ANTLER
   pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = true,XConfig=pSPConfig
 
-  Run = pLonLatToWptUpdate @ NewConsole = true
+  Run = pLonLatToWptUpdate @ NewConsole = false
 }
 //------------------------------------------------------------
 
@@ -106,13 +106,18 @@ ProcessConfig = pGP
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
   input_var_adaptive_trigger = WPT_REACHED
+  input_var_share_data = INCOMING_DATA
   output_var_predictions = GP_PREDICTIONS
+  output_var_share_data = SHARE_DATA
 
   // define the filename for saving GP predictions
   output_filename_prefix = $(PREDICTIONS_PREFIX)
 
   // define the prediction interval (predict every X seconds)
   prediction_interval = 300
+
+  // number of vehicles (data exchange?)
+  nr_vehicles = $(NR_VEHICLES)
 }
 
 //--------------------------------------------------
