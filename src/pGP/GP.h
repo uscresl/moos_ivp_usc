@@ -44,8 +44,8 @@ class GP : public CMOOSApp
  private: 
    // Own functions
    void handleMailData(double received_data);
-   void storeSamplePoints(std::string input_string);
-   void storeSamplePointsSpecs(std::string input_string);
+   void handleMailSamplePoints(std::string input_string);
+   void handleMailSamplePointsSpecs(std::string input_string);
    void updateVisitedSet(double veh_lon, double veh_lat, size_t index );
 
    void addPatternToGP(double veh_lon, double veh_lat, double value);
@@ -70,6 +70,10 @@ class GP : public CMOOSApp
 
    void makeAndStorePredictions();
 
+   void storeDataForSending(double vlon, double vlat, double data);
+   void sendData();
+   size_t handleMailReceivedDataPts(std::string incoming_data);
+
    // helper/test functions
    bool need_to_update_maps(size_t grid_index);
    int get_index_for_map(double veh_lon, double veh_lat);
@@ -82,13 +86,16 @@ class GP : public CMOOSApp
    std::string m_input_var_sample_points;
    std::string m_input_var_sample_points_specs;
    std::string m_input_var_adaptive_trigger;
+   std::string m_input_var_share_data;
    std::string m_output_var_pred;
    std::string m_output_filename_prefix;
+   std::string m_output_var_share_data;
 
    size_t m_prediction_interval;
    bool m_use_MI;
 
    // State variables
+   std::string m_veh_name;
    bool m_use_log_gp;
       // vehicle location
    double m_lat;
@@ -150,6 +157,16 @@ class GP : public CMOOSApp
 
    // file writing
    std::ofstream m_ofstream_pm, m_ofstream_pv;
+
+   // nr of vehicles (for determining data exchange)
+   size_t m_num_vehicles;
+
+   // vectors for storing data for sending
+   std::vector< std::string > m_data_to_send;
+   size_t m_data_pt_counter;
+   size_t m_data_send_reserve;
+   bool m_received_shared_data;
+   std::future<size_t> m_future_received_data_pts_added;
 };
 
 #endif 

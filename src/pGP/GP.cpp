@@ -37,10 +37,13 @@ GP::GP() :
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
   m_input_var_adaptive_trigger(""),
+  m_input_var_share_data(""),
   m_output_var_pred(""),
   m_output_filename_prefix(""),
+  m_output_var_share_data(""),
   m_prediction_interval(-1),
   m_use_MI(false),
+  m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
   m_lon(0),
@@ -70,7 +73,11 @@ GP::GP() :
   m_hp_optim_done(false),
   m_data_mail_counter(1),
   m_finished(false),
-  m_hp_optim_mode_cnt(0)
+  m_hp_optim_mode_cnt(0),
+  m_num_vehicles(1),
+  m_data_pt_counter(0),
+  m_data_send_reserve(0),
+  m_received_shared_data(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -155,13 +162,13 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       // store list of sample locations coming pSamplePoints
       // (done once)
-      storeSamplePoints(sval);
+      handleMailSamplePoints(sval);
     }
     else if ( key == m_input_var_sample_points_specs )
     {
       // store specs for sample points
       // (done once)
-      storeSamplePointsSpecs(sval);
+      handleMailSamplePointsSpecs(sval);
     }
     else if ( key == m_input_var_adaptive_trigger )
     {
@@ -180,12 +187,32 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           m_pilot_done_time = MOOSTime();
       }
     }
+    else if ( key == m_input_var_share_data )
+    {
+
+      // handle
+      std::string incoming_data_string = sval;
+      size_t index_colon = incoming_data_string.find_first_of(':');
+      if ( incoming_data_string.substr(0, index_colon) != m_veh_name )
+      {
+        m_received_shared_data = true;
+
+        // extract actual data
+        std::string incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
+
+        // handle data, spawn off a thread
+        m_future_received_data_pts_added = std::async(std::launch::async, &GP::handleMailReceivedDataPts, this, incoming_data);
+      }
+      else
+        std::cout << "skipping my own data" << std::endl;
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
   }
 
   return(true);
 }
+
 
 //---------------------------------------------------------
 // Procedure: OnConnectToServer
@@ -379,6 +406,19 @@ bool GP::OnStartUp()
       m_use_log_gp = (value == "true" ? true : false);
       std::cout << GetAppName() << " :: using log GP? " << (m_use_log_gp ? "yes" : "no") << std::endl;
     }
+    else if ( param == "nr_vehicles" )
+    {
+      m_num_vehicles = (size_t)atoi(value.c_str());
+      std::cout << GetAppName() << " :: nr_vehicles: " << m_num_vehicles << std::endl;
+    }
+    else if ( param == "output_var_share_data" )
+    {
+      m_output_var_share_data = toupper(value);
+    }
+    else if ( param == "input_var_share_data" )
+    {
+      m_input_var_share_data = toupper(value);
+    }
     else
       handled = false;
 
@@ -395,6 +435,13 @@ bool GP::OnStartUp()
   {
     std::cout << GetAppName() << " :: ERROR, missing output variable name, exiting." << std::endl;
     RequestQuit();
+  }
+
+  // store vehicle name
+  if ( !m_MissionReader.GetValue("Community",m_veh_name) )
+  {
+     m_veh_name = "error";
+     std::cout << GetAppName() << " :: Unable to retrieve vehicle name! What is 'Community' set to?" << std::endl;
   }
 
   registerVariables();
@@ -430,6 +477,9 @@ void GP::registerVariables()
   // get when wpt cycle finished
   // (when to run adaptive predictions in adaptive state)
   m_Comms.Register(m_input_var_adaptive_trigger, 0);
+
+  // data sharing
+  m_Comms.Register(m_input_var_share_data, 0);
 }
 
 //---------------------------------------------------------
@@ -456,24 +506,9 @@ void GP::handleMailData(double received_data)
     std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
     m_queue_data_points_for_gp.push(nw_data_pt);
 
-//    std::thread ap_thread(&GP::addPatternToGP, this, received_data, veh_lon, veh_lat);
-//    ap_thread.detach();
-
-//    // if we received new data,
-//    // then we have to change the visited/unvisited sample sets
-//    // thread this call to make sure it does not interfere with the mail cycle
-
-//    // grab lon and lat from location array
-//    int index = get_index_for_map(veh_lon, veh_lat);
-//    if ( index >= 0 )
-//    {
-//      bool update_needed = need_to_update_maps((size_t)index);
-//      if ( update_needed )
-//      {
-//        std::thread update_visited(&GP::updateVisitedSet, this, veh_lon, veh_lat, (size_t)index);
-//        update_visited.detach();
-//      }
-//    }
+    // if we need to exchange data, then store for this purpose
+    if ( m_num_vehicles > 1 )
+      storeDataForSending(veh_lon, veh_lat, received_data);
   }
 }
 
@@ -521,11 +556,58 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   ap_lock.unlock();
 }
 
+void GP::storeDataForSending(double vlon, double vlat, double data)
+{
+  // save the data point in a vector that we will send
+  std::ostringstream data_str_stream;
+  data_str_stream << vlon << "," << vlat << "," << data;
+
+  if ( m_data_pt_counter > m_data_send_reserve || m_data_pt_counter == 0 )
+  {
+    // preallocate vector memory
+    m_data_send_reserve += 1750;
+    m_data_to_send.reserve(m_data_send_reserve);
+  }
+
+  m_data_to_send.push_back(data_str_stream.str());
+
+  m_data_pt_counter++;
+}
+
+
 //---------------------------------------------------------
-// Procedure: storeSamplePoints
+// Procedure: handleMailReceivedDataPts
+//            taken the received data, and add them to the GP
+//
+size_t GP::handleMailReceivedDataPts(std::string incoming_data)
+{
+  // take ownership of m_gp
+  std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
+  while ( !gp_lock.try_lock() ) {}
+
+  // parse string
+
+  // 1. split all data points into a vector
+  std::vector<std::string> sample_points = parseString(incoming_data, ';');
+  // 2. for each, add to GP
+  for ( std::string & data_pt_str : sample_points )
+  {
+    std::vector<std::string> data_pt_components = parseString(data_pt_str, ',');
+    double loc [2] = {atof(data_pt_components[0].c_str()), atof(data_pt_components[1].c_str())};
+    m_gp.add_pattern(loc, atof(data_pt_components[2].c_str()));
+  }
+
+  // release lock
+  gp_lock.unlock();
+
+  return sample_points.size();
+}
+
+//---------------------------------------------------------
+// Procedure: handleMailSamplePoints
 //            parse the string, store the sample locations
 //
-void GP::storeSamplePoints(std::string input_string)
+void GP::handleMailSamplePoints(std::string input_string)
 {
   // input: semicolon separated string of comma separated locations
   // separate by semicolon
@@ -581,7 +663,7 @@ void GP::storeSamplePoints(std::string input_string)
 // Procedure: storeSamplePointsSpecs
 //            parse the string, store specs for sample locations
 //
-void GP::storeSamplePointsSpecs(std::string input_string)
+void GP::handleMailSamplePointsSpecs(std::string input_string)
 {
   // input: comma-separated list of param=value pairs
   // separate by comma
@@ -606,6 +688,7 @@ void GP::storeSamplePointsSpecs(std::string input_string)
   std::cout << GetAppName() << " :: width, height, spacing: " << m_pts_grid_width << ", " <<
                m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
 }
+
 
 //---------------------------------------------------------
 // Procedure: need_to_update_maps
@@ -1030,10 +1113,34 @@ void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const &
 //
 bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 {
+  bool data_processed = false;
+  // first share and wait for data,
+  // in case there are multiple vehicles
+  if ( m_num_vehicles > 1 )
+  {
+    // share data
+    sendData();
+
+    // wait for received data to be processed
+    while ( !data_processed )
+    {
+      if ( m_received_shared_data )
+      {
+        if ( m_future_received_data_pts_added.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+          data_processed = true;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::cout << "data_processed? " << std::endl;
+    std::cout << "*added: " << m_future_received_data_pts_added.get() << " data points." << std::endl;
+    m_received_shared_data = false;
+  }
+
   // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   while ( !hp_lock.try_lock() ){}
   std::cout << "obtained lock, continuing HP optimization" << std::endl;
+  std::cout << "current size GP: " << gp.get_sampleset_size() << std::endl;
 
   std::clock_t begin = std::clock();
 
@@ -1052,7 +1159,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   // write new HP to file
   begin = std::clock();
   std::stringstream filenm;
-  filenm << "hp_optim_" << nr_iterations;
+  filenm << "hp_optim_" << m_veh_name << "_" << nr_iterations;
   gp.write(filenm.str().c_str());
   end = std::clock();
   std::cout << "write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
@@ -1061,6 +1168,44 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 
   return true;
 }
+
+void GP::sendData()
+{
+  // we need to chunk the data because pShare has a limit of 64K per message
+  // 2000 points should be ca. 53K, so let's try that first
+  // (should be ca. the amount to send at first HP optimization point)
+  // note; 2000 seemed to stretch it, some complaint of 48kB,
+  // let's do 1750, should be conservative enough
+  size_t msg_cnt = 0;
+  size_t nr_points = 1750;
+  std::cout << "**sending " << m_data_pt_counter << " points!" << std::endl;
+  while ( m_data_pt_counter != 0 )
+  {
+    if ( m_data_pt_counter < 1750 )
+      nr_points = m_data_pt_counter;
+
+    // get data chunk
+    std::ostringstream data_string_stream;
+
+    // add vehicle name, because broadcast is also received by sending vehicle
+    data_string_stream << m_veh_name << ":";
+
+    std::copy(m_data_to_send.begin()+(msg_cnt*1750), m_data_to_send.begin()+(msg_cnt*1750+nr_points), std::ostream_iterator<std::string>(data_string_stream,";"));
+
+    // send msg
+    Notify(m_output_var_share_data,data_string_stream.str());
+
+    msg_cnt++;
+    m_data_pt_counter = m_data_pt_counter - nr_points;
+  }
+
+  // remove data from vector
+  m_data_to_send.clear();
+
+  // reset counter
+  m_data_pt_counter = 0;
+}
+
 
 //---------------------------------------------------------
 // Procedure: logGPfromGP
