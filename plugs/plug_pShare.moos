@@ -9,6 +9,10 @@ ProcessConfig = pShare
   input = route =  $(SERVER_HOST):$(SHARE_LISTEN)
       //& multicast_1
 
+#ifdef MISSION_FILE_PSHARE
+  #include $(MISSION_FILE_PSHARE)
+#endif
+
 //  input = route =  localhost:$(SHARE_LISTEN) & multicast_1 & multicast_2
 //  input = route =  127.0.0.1:$(SHARE_LISTEN) & multicast_1 & multicast_2
 
