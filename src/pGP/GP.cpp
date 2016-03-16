@@ -196,15 +196,19 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( incoming_data_string.substr(0, index_colon) != m_veh_name )
       {
         m_received_shared_data = true;
+        std::cout << "received data from other vehicle" << std::endl;
 
         // extract actual data
         std::string incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
 
-        // handle data, spawn off a thread
-        m_future_received_data_pts_added = std::async(std::launch::async, &GP::handleMailReceivedDataPts, this, incoming_data);
+        m_incoming_data_to_be_added.push_back(incoming_data);
       }
       else
         std::cout << "skipping my own data" << std::endl;
+    }
+    else if ( key == "LOITER_DIST_TO_POLY" )
+    {
+      m_loiter_dist_to_poly = dval;
     }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
@@ -480,6 +484,7 @@ void GP::registerVariables()
 
   // data sharing
   m_Comms.Register(m_input_var_share_data, 0);
+  m_Comms.Register("LOITER_DIST_TO_POLY",0);
 }
 
 //---------------------------------------------------------
@@ -1114,27 +1119,39 @@ void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const &
 bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 {
   bool data_processed = false;
+  size_t pts_added = 0;
   // first share and wait for data,
   // in case there are multiple vehicles
   if ( m_num_vehicles > 1 )
   {
+    // 1. when the vehicles are at the surface and at the HP loiter
+    while ( !(m_dep < 0.1 && m_loiter_dist_to_poly < 20) )
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     // share data
     sendData();
 
-    // wait for received data to be processed
+    // 2. wait for received data to be processed
     while ( !data_processed )
     {
       if ( m_received_shared_data )
       {
-        if ( m_future_received_data_pts_added.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-          data_processed = true;
+        while ( !m_incoming_data_to_be_added.empty() )
+        {
+          std::string data = m_incoming_data_to_be_added.back();
+          m_incoming_data_to_be_added.pop_back();
+          pts_added += handleMailReceivedDataPts(data);
+        }
+
+        data_processed = true;
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      else
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    std::cout << "data_processed? " << std::endl;
-    std::cout << "*added: " << m_future_received_data_pts_added.get() << " data points." << std::endl;
+    std::cout << "*added: " << pts_added << " data points." << std::endl;
     m_received_shared_data = false;
   }
+
+  // 3. run hyperparameter optimization
 
   // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
@@ -1201,7 +1218,6 @@ void GP::sendData()
 
   // remove data from vector
   m_data_to_send.clear();
-
   // reset counter
   m_data_pt_counter = 0;
 }

@@ -167,6 +167,8 @@ class GP : public CMOOSApp
    size_t m_data_send_reserve;
    bool m_received_shared_data;
    std::future<size_t> m_future_received_data_pts_added;
+   std::vector<std::string> m_incoming_data_to_be_added;
+   double m_loiter_dist_to_poly;
 };
 
 #endif 
