@@ -565,7 +565,7 @@ void GP::storeDataForSending(double vlon, double vlat, double data)
 {
   // save the data point in a vector that we will send
   std::ostringstream data_str_stream;
-  data_str_stream << vlon << "," << vlat << "," << data;
+  data_str_stream << std::setprecision(15) << vlon << "," << vlat << "," << data;
 
   if ( m_data_pt_counter > m_data_send_reserve || m_data_pt_counter == 0 )
   {
@@ -599,8 +599,15 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
   {
     std::vector<std::string> data_pt_components = parseString(data_pt_str, ',');
     double loc [2] = {atof(data_pt_components[0].c_str()), atof(data_pt_components[1].c_str())};
-    m_gp.add_pattern(loc, atof(data_pt_components[2].c_str()));
+
+    double data = atof(data_pt_components[2].c_str());
+    double save_val = m_use_log_gp ? log(data) : data;
+
+    m_gp.add_pattern(loc, save_val);
   }
+
+//  m_gp.update_alpha();
+//  m_gp.compute();
 
   // release lock
   gp_lock.unlock();
@@ -1213,7 +1220,7 @@ void GP::sendData()
     Notify(m_output_var_share_data,data_string_stream.str());
 
     msg_cnt++;
-    m_data_pt_counter = m_data_pt_counter - nr_points;
+    m_data_pt_counter -= nr_points;
   }
 
   // remove data from vector
