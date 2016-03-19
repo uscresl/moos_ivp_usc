@@ -168,8 +168,10 @@ ProcessConfig = uTimerScript
 
   verbose = true
 
-//  randvar = varname=PUBTIME, min=6352, max=6375, key=at_post
-  event = var=STAGE,val="hpoptim",time=6360
+  // lawnmower duration ca 6362-6375
+  // lawnmower start at 2339-2472, avg 2211
+  // 2211+bnds = 8571-8586
+  event = var=STAGE,val="hpoptim",time=8571-8586
 
   reset_max = 0
 //  reset_time = all-posted
@@ -177,6 +179,6 @@ ProcessConfig = uTimerScript
 
   status_var = UTS_STATUS
 
-  time_warp=$(WARP)
+//  time_warp=$(WARP)
 }
 #endif

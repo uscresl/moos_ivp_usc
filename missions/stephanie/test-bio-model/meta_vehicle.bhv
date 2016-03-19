@@ -93,7 +93,7 @@ Behavior = BHV_OpRegionBounce
   duration = no-time-limit
   condition = MODE==MISSION
 
-  polygon = label,OpRegion:400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
+  polygon = label,OpRegion:400,920:400,1045:480,1215:600,1300:1000,1300:1000,920
   max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
   max_time = 25200
