@@ -565,12 +565,13 @@ void GP::storeDataForSending(double vlon, double vlat, double data)
 {
   // save the data point in a vector that we will send
   std::ostringstream data_str_stream;
-  data_str_stream << std::setprecision(15) << vlon << "," << vlat << "," << data;
+  data_str_stream << std::setprecision(10) << vlon << "," << vlat << ","
+                  << std::setprecision(5) << data;
 
   if ( m_data_pt_counter > m_data_send_reserve || m_data_pt_counter == 0 )
   {
     // preallocate vector memory
-    m_data_send_reserve += 1750;
+    m_data_send_reserve += 1500;
     m_data_to_send.reserve(m_data_send_reserve);
   }
 
@@ -1199,13 +1200,13 @@ void GP::sendData()
   // 2000 points should be ca. 53K, so let's try that first
   // (should be ca. the amount to send at first HP optimization point)
   // note; 2000 seemed to stretch it, some complaint of 48kB,
-  // let's do 1750, should be conservative enough
+  // let's do 1500, should be conservative enough
   size_t msg_cnt = 0;
-  size_t nr_points = 1750;
+  size_t nr_points = 1500;
   std::cout << "**sending " << m_data_pt_counter << " points!" << std::endl;
   while ( m_data_pt_counter != 0 )
   {
-    if ( m_data_pt_counter < 1750 )
+    if ( m_data_pt_counter < 1500 )
       nr_points = m_data_pt_counter;
 
     // get data chunk
@@ -1214,7 +1215,7 @@ void GP::sendData()
     // add vehicle name, because broadcast is also received by sending vehicle
     data_string_stream << m_veh_name << ":";
 
-    std::copy(m_data_to_send.begin()+(msg_cnt*1750), m_data_to_send.begin()+(msg_cnt*1750+nr_points), std::ostream_iterator<std::string>(data_string_stream,";"));
+    std::copy(m_data_to_send.begin()+(msg_cnt*1500), m_data_to_send.begin()+(msg_cnt*1500+nr_points), std::ostream_iterator<std::string>(data_string_stream,";"));
 
     // send msg
     Notify(m_output_var_share_data,data_string_stream.str());
