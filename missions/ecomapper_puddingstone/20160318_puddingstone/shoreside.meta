@@ -1,0 +1,93 @@
+// MOOS community specs
+//CHECK: ip address shoreside laptop
+//TODO: add to script
+ServerHost = $(SERVER_HOST) //192.168.0.206 //1.117
+ServerPort = $(VPORT) //9100
+Community  = $(VNAME) //shoreside
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = $(WARP) //1
+
+// Location: Puddingstone full
+//TODO add to file setup
+LatOrigin  = 34.0784000000111
+LongOrigin = -117.815
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = false
+  Run = uProcessWatch @ NewConsole = true
+
+  // behaviors
+  Run = pMarineViewer @ NewConsole = true
+  
+  Run = pShare        @ NewConsole = true
+}
+
+#include $(PLUG_DIR)/plug_pLogger.moos
+
+// visualization
+#include $(PLUG_DIR)/plug_pMarineViewer.moos
+
+//----------------------------------------------------------------------------
+ProcessConfig = uProcessWatch
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  WATCH = pLogger
+  WATCH = pMarineViewer
+  WATCH = pShare
+}
+
+//---------------------------------------------------------
+// pShare Config Block  (Created from Plugin)
+
+ProcessConfig = pShare
+{
+  AppTick    = 4
+  CommsTick  = 4
+
+  //CHECK: IP address shoreside laptop
+  //TODO add to script
+  input = route = $(SERVER_HOST):9400 //192.168.0.206:9400
+      //& multicast_1
+
+//  input = route =  localhost:$(SHARE_LISTEN) & multicast_1 & multicast_2
+//  input = route =  127.0.0.1:$(SHARE_LISTEN) & multicast_1 & multicast_2
+
+  // =======================================================
+  // Usage Info below
+  // =======================================================
+
+  // Simple forward of X to A on channel 8
+  // output = src_name = X,dest_name=A, route=multicast_8
+ 
+  // Simple forward of Y to B on a udp address
+  // output = src_name=Y, dest_name=B, route=localhost:9300
+ 
+  // Simple forward of Z to Z on a named address (no renaming)
+  // output = src_name = Z, route = oceanai.mit.edu:9020
+
+  // Setting up an input
+  // input = route = multicast_9
+  // input = route = localhost:$(SHARE_LISTEN) & multicast_9
+
+  // Setting up lots of inputs at once
+  // input = route = "localhost:9069 & multicast_19 & multicast_65"
+
+  // if in simulation, we want to pass the node_reports to pMarineViewer,
+  // purely for visualization, then add this:
+//  output = NODE_REPORT_LOCAL->NODE_REPORT:localhost:9400
+//  output = VIEW_*->localhost:9400
+  
+  // temporary until acomms set up
+  // share positions vehicles between one another
+//  output = NODE_REPORT_LOCAL->NODE_REPORT:multicast_2
+  // share allowable width with underwater vehicles
+//  output = ALLOWABLE_WIDTH_FORM->ALLOWABLE_WIDTH:multicast_2
+}
