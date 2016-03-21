@@ -618,9 +618,6 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     m_gp.add_pattern(loc, save_val);
   }
 
-//  m_gp.update_alpha();
-//  m_gp.compute();
-
   // release lock
   gp_lock.unlock();
 
@@ -1260,14 +1257,14 @@ void GP::logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & 
 void GP::makeAndStorePredictions()
 {
   // make a copy of the GP and use that below, to limit lock time
-  std::unique_lock<std::mutex> write_lock(m_gp_mutex, std::defer_lock);
-  while ( !write_lock.try_lock() ) {}
+  std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
+  while ( !gp_lock.try_lock() ) {}
   std::cout << "store predictions" << std::endl;
   libgp::GaussianProcess gp_copy(m_gp);
-  write_lock.unlock();
+  gp_lock.unlock();
 
   std::clock_t begin = std::clock();
-  // make predictions
+
   std::vector< std::pair<double, double> >::iterator loc_itr;
   // get the predictive mean and var values for all sample locations
   std::vector<double> all_pred_means;
@@ -1280,12 +1277,13 @@ void GP::makeAndStorePredictions()
   all_pred_vars.reserve(nr_sample_locations);
   all_pred_mu.reserve(nr_sample_locations);
   all_pred_sigma2.reserve(nr_sample_locations);
+
   // make predictions for all sample locations
   for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
   {
     double loc[2] {loc_itr->first, loc_itr->second};
-    double pred_mean; // = gp_copy.f(loc);
-    double pred_var; // = gp_copy.var(loc);
+    double pred_mean;
+    double pred_var;
     gp_copy.f_and_var(loc, pred_mean, pred_var);
 
     double pred_mean_lGP, pred_var_lGP;
