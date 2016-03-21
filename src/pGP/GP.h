@@ -157,6 +157,7 @@ class GP : public CMOOSApp
 
    // file writing
    std::ofstream m_ofstream_pm, m_ofstream_pv;
+   std::ofstream m_ofstream_pmu, m_ofstream_psigma2;
 
    // nr of vehicles (for determining data exchange)
    size_t m_num_vehicles;

@@ -110,6 +110,10 @@ GP::~GP()
     m_ofstream_pm.close();
   if ( m_ofstream_pv.is_open() )
     m_ofstream_pv.close();
+  if ( m_ofstream_pmu.is_open() )
+    m_ofstream_pmu.close();
+  if ( m_ofstream_psigma2.is_open() )
+    m_ofstream_psigma2.close();
 }
 
 //---------------------------------------------------------
@@ -404,6 +408,13 @@ bool GP::OnStartUp()
       std::string file_pv = (m_output_filename_prefix + "_pred_var.csv");
       m_ofstream_pm.open(file_pm, std::ios::app);
       m_ofstream_pv.open(file_pv, std::ios::app);
+      if ( m_use_log_gp )
+      {
+        std::string file_pmu = (m_output_filename_prefix + "_post_mu.csv");
+        std::string file_psigma = (m_output_filename_prefix + "_post_sigma2.csv");
+        m_ofstream_pmu.open(file_pmu, std::ios::app);
+        m_ofstream_psigma2.open(file_psigma, std::ios::app);
+      }
     }
     else if ( param == "use_log_gp" )
     {
@@ -1255,12 +1266,21 @@ void GP::makeAndStorePredictions()
   libgp::GaussianProcess gp_copy(m_gp);
   write_lock.unlock();
 
-  // make predictions
   std::clock_t begin = std::clock();
+  // make predictions
   std::vector< std::pair<double, double> >::iterator loc_itr;
   // get the predictive mean and var values for all sample locations
   std::vector<double> all_pred_means;
   std::vector<double> all_pred_vars;
+  std::vector<double> all_pred_mu;
+  std::vector<double> all_pred_sigma2;
+  // pre-alloc vectors
+  size_t nr_sample_locations = m_sample_locations.size();
+  all_pred_means.reserve(nr_sample_locations);
+  all_pred_vars.reserve(nr_sample_locations);
+  all_pred_mu.reserve(nr_sample_locations);
+  all_pred_sigma2.reserve(nr_sample_locations);
+  // make predictions for all sample locations
   for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
   {
     double loc[2] {loc_itr->first, loc_itr->second};
@@ -1281,6 +1301,8 @@ void GP::makeAndStorePredictions()
     {
       all_pred_means.push_back(pred_mean_lGP);
       all_pred_vars.push_back(pred_var_lGP);
+      all_pred_mu.push_back(pred_mean);
+      all_pred_sigma2.push_back(pred_var);
     }
     else
     {
@@ -1296,24 +1318,44 @@ void GP::makeAndStorePredictions()
   std::unique_lock<std::mutex> file_write_lock(m_file_writing_mutex, std::defer_lock);
   while ( !file_write_lock.try_lock() ){}
   // write to file
-  for ( size_t vector_idx = 0; vector_idx < all_pred_means.size(); ++vector_idx )
+  for ( size_t vector_idx = 0; vector_idx < nr_sample_locations; ++vector_idx )
   {
     // save to file, storing predictions
     if ( vector_idx > 0 )
     {
       m_ofstream_pm << ", ";
       m_ofstream_pv << ", ";
+      if ( m_use_log_gp )
+      {
+        m_ofstream_pmu << ", ";
+        m_ofstream_psigma2 << ", ";
+      }
     }
     m_ofstream_pm << all_pred_means[vector_idx];
     m_ofstream_pv << all_pred_vars[vector_idx];
+    if ( m_use_log_gp )
+    {
+      m_ofstream_pmu << all_pred_mu[vector_idx];
+      m_ofstream_psigma2 << all_pred_sigma2[vector_idx];
+    }
   }
   m_ofstream_pm << '\n';
   m_ofstream_pv << '\n';
+  if ( m_use_log_gp )
+  {
+    m_ofstream_pmu << '\n';
+    m_ofstream_psigma2 << '\n';
+  }
 
   if ( m_finished )
   {
     m_ofstream_pm.close();
     m_ofstream_pv.close();
+    if ( m_use_log_gp )
+    {
+      m_ofstream_pmu.close();
+      m_ofstream_psigma2.close();
+    }
   }
 
   file_write_lock.unlock();
