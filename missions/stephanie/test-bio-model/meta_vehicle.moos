@@ -122,6 +122,9 @@ ProcessConfig = pGP
 
   // number of vehicles (data exchange?)
   nr_vehicles = $(NR_VEHICLES)
+
+  // elementary coordination (implicit): share data at set intervals
+  timed_data_sharing = true
 }
 
 //--------------------------------------------------

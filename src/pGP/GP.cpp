@@ -306,9 +306,12 @@ bool GP::Iterate()
       // if we are doing timed data sharing,
       if ( m_timed_data_sharing )
       {
-        // then let's kick this off 1 minute before the storing (next bit)
+        // the vehicles may not be done with the pilot at the same time,
+        // so let's time this based on MOOSTime(), and assume that clocks are
+        // synchronised (to be verified)
+        // note; may need to add buffer to block out x seconds after hpoptim_done
         if ( m_num_vehicles > 1 && m_hp_optim_done &&
-             ((size_t) ((size_t)std::floor(MOOSTime()) + 60 - m_pilot_done_time) % 600) == 0 &&
+             ( (size_t)std::floor(MOOSTime()) % 600 ) == 0 &&
              !m_data_sharing_activated )
         {
           // switch to data sharing mode, to switch bhv to surface
