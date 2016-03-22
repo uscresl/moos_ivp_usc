@@ -171,7 +171,7 @@ ProcessConfig = uTimerScript
   // lawnmower duration ca 6362-6375
   // lawnmower start at 2339-2472, avg 2211
   // 2211+bnds = 8571-8586
-  event = var=STAGE,val="hpoptim",time=8571:8586
+  event = var=STAGE,val="hpoptim",time=8571:8660
 
   reset_max = 0
 //  reset_time = all-posted
