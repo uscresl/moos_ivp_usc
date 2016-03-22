@@ -30,6 +30,10 @@ Set MODE = SURVEY {
   MODE = MISSION
   STAGE = survey
 }
+Set MODE = SURFACE_DATA_SHARING {
+  MODE = MISSION
+  STAGE = data_sharing
+}
 Set MODE = HP_OPTIM {
   MODE = MISSION
   STAGE = hpoptim
@@ -203,6 +207,7 @@ Behavior = BHV_Loiter
   polygon = $(HP_LOITER)
 }
 
+// adaptive survey /////////////////////////////////////////////////////////////
 #ifdef ADAPTIVE_WPTS yes
 Behavior = BHV_Waypoint
 {
@@ -232,8 +237,35 @@ Behavior = BHV_Waypoint
   visual_hints = vertex_color=yellow, edge_color=white
   visual_hints = vertex_size=3, edge_size=2
 }
+// add bhv for data sharing on surface
+Behavior = BHV_Waypoint
+{
+  name = data_sharing_wpt
+  pwt  = 100
+  condition = MODE==SURFACE_DATA_SHARING
+
+  updates = ADAPTIVE_WPT_UPDATES
+  perpetual = true
+
+  speed = 1.5
+
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+  // backup mission for if updates do not come through
+  points = $(WAYPOINTS)
+  order  = normal
+
+  repeat = 100 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+// need depth bhv for data sharing on surface (see bottom)
 #endif
 
+// lawnmower survey ////////////////////////////////////////////////////////////
 #ifdef ADAPTIVE_WPTS no
 Behavior = BHV_Waypoint
 { 
@@ -289,7 +321,7 @@ Behavior = BHV_Waypoint
 }
 #endif
 
-//----------------------------------------------
+// return //////////////////////////////////////////////////////////////////////
 Behavior = BHV_Waypoint
 {
   name       = bhv_waypt_return
@@ -305,6 +337,7 @@ Behavior = BHV_Waypoint
   points = $(START_POS)
 }
 
+// UUV - depth bhvs ////////////////////////////////////////////////////////////
 #ifdef VTYPE UUV
 //----------------------------------------------
 // survey
@@ -333,6 +366,21 @@ Behavior = BHV_ConstantDepth
   basewidth = 2     // m
   summitdelta = 20  // m
 }
+// depth during surface data sharing
+#ifdef ADAPTIVE_WPTS yes
+Behavior = BHV_ConstantDepth
+{
+  name      = bhv_data_sharing_depth
+  pwt       = 100
+  duration  = no-time-limit
+  condition = MODE==SURFACE_DATA_SHARING
+
+  depth = 0  // m
+  peakwidth = 3     // m
+  basewidth = 2     // m
+  summitdelta = 20  // m
+}
+#endif
 // depth during return
 Behavior = BHV_ConstantDepth
 {
