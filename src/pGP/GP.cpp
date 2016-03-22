@@ -304,41 +304,47 @@ bool GP::Iterate()
       }
 
       // if we are doing timed data sharing,
-      // then let's kick this off 1 minute before the storing (next bit)
-      if ( ((size_t) ((size_t)std::floor(MOOSTime()) + 60 - m_pilot_done_time) % 600) == 0 &&
-           !m_data_sharing_activated )
+      if ( m_timed_data_sharing )
       {
-        // switch to data sharing mode, to switch bhv to surface
-        Notify("STAGE","data_sharing");
-        m_data_sharing_activated = true;
-      }
-      if ( m_data_sharing_activated && !m_sending_data )
-      {
-        // send data
-        m_sending_data = true;
-        sendData();
-      }
-      // next: check if data received, then switch mode back to survey
-      if ( m_data_sharing_activated && m_received_shared_data)
-      {
-        if ( !m_waiting )
+        // then let's kick this off 1 minute before the storing (next bit)
+        if ( m_num_vehicles > 1 && m_hp_optim_done &&
+             ((size_t) ((size_t)std::floor(MOOSTime()) + 60 - m_pilot_done_time) % 600) == 0 &&
+             !m_data_sharing_activated )
         {
-          // data received, need to add
-          // TODO make sure we only kick this off once
-          m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
+          // switch to data sharing mode, to switch bhv to surface
+          Notify("STAGE","data_sharing");
+          m_data_sharing_activated = true;
         }
-        else
+        if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1)
         {
-          if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+          // send data
+          m_sending_data = true;
+          sendData();
+        }
+        // next: check if data received, then switch mode back to survey
+        if ( m_data_sharing_activated && m_received_shared_data )
+        {
+          if ( !m_waiting )
           {
-            size_t pts_added = m_future_received_data_processed.get();
-            std::cout << " added: " << pts_added << " data points" << std::endl;
-            Notify("STAGE","survey");
-            m_data_sharing_activated = false;
-            m_received_shared_data = false;
-            m_sending_data = false;
+            // data received, need to add
+            // TODO make sure we only kick this off once
+            m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
+            m_waiting = true;
           }
-          // else, continue waiting
+          else
+          {
+            if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+            {
+              size_t pts_added = m_future_received_data_processed.get();
+              std::cout << " added: " << pts_added << " data points" << std::endl;
+              Notify("STAGE","survey");
+              m_data_sharing_activated = false;
+              m_received_shared_data = false;
+              m_sending_data = false;
+              m_waiting = false;
+            }
+            // else, continue waiting
+          }
         }
       }
 
