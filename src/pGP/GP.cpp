@@ -77,7 +77,11 @@ GP::GP() :
   m_num_vehicles(1),
   m_data_pt_counter(0),
   m_data_send_reserve(0),
-  m_received_shared_data(false)
+  m_received_shared_data(false),
+  m_timed_data_sharing(false),
+  m_data_sharing_activated(false),
+  m_sending_data(false),
+  m_waiting(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -153,7 +157,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // similarly for when we are calculating the hyperparameters
       // although this is outside the area so should not be a problem anyway
       m_data_mail_counter++;
-      if ( !m_pause_data_adding && !m_hp_optim_running && (m_data_mail_counter % 2 == 0) )
+      if ( !m_pause_data_adding && !m_hp_optim_running &&
+           (m_data_mail_counter % 2 == 0) && !m_data_sharing_activated)
         handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -273,7 +278,7 @@ bool GP::Iterate()
 
     // when hyperparameter optimization is done,
     // we want to run adaptive; find next sample locations
-    if ( m_hp_optim_done && m_hp_optim_mode_cnt < 2 && !m_finished)
+    if ( m_hp_optim_done && m_hp_optim_mode_cnt < 2 && !m_finished )
     {
       // predict target value and variance for sample locations
       //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
@@ -298,10 +303,49 @@ bool GP::Iterate()
         }
       }
 
+      // if we are doing timed data sharing,
+      // then let's kick this off 1 minute before the storing (next bit)
+      if ( ((size_t) ((size_t)std::floor(MOOSTime()) + 60 - m_pilot_done_time) % 600) == 0 &&
+           !m_data_sharing_activated )
+      {
+        // switch to data sharing mode, to switch bhv to surface
+        Notify("STAGE","data_sharing");
+        m_data_sharing_activated = true;
+      }
+      if ( m_data_sharing_activated && !m_sending_data )
+      {
+        // send data
+        m_sending_data = true;
+        sendData();
+      }
+      // next: check if data received, then switch mode back to survey
+      if ( m_data_sharing_activated && m_received_shared_data)
+      {
+        if ( !m_waiting )
+        {
+          // data received, need to add
+          // TODO make sure we only kick this off once
+          m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
+        }
+        else
+        {
+          if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+          {
+            size_t pts_added = m_future_received_data_processed.get();
+            std::cout << " added: " << pts_added << " data points" << std::endl;
+            Notify("STAGE","survey");
+            m_data_sharing_activated = false;
+            m_received_shared_data = false;
+            m_sending_data = false;
+          }
+          // else, continue waiting
+        }
+      }
+
       // periodically (every 600s = 10min), store all GP predictions
       // only after pilot done, first 600 seconds after pilot done time
       // make sure we store the GP right after HP optimization for comparison
-      if ( m_hp_optim_done && (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
+      if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
            ( (MOOSTime()-m_pilot_done_time < 2) ||
              ((size_t)std::floor(MOOSTime()-m_pilot_done_time) % 600 == 0) ) )
       {
@@ -309,7 +353,7 @@ bool GP::Iterate()
         pred_store.detach();
         m_last_pred_save = MOOSTime();
       }
-    }
+    } // if, after hyperparam optim done
 
     // when returning, do a final HP optimization
     if ( m_hp_optim_mode_cnt == 2 && !m_finished )
@@ -433,6 +477,10 @@ bool GP::OnStartUp()
     else if ( param == "input_var_share_data" )
     {
       m_input_var_share_data = toupper(value);
+    }
+    else if ( param == "timed_data_sharing" )
+    {
+      m_timed_data_sharing = (value == "true" ? true : false);
     }
     else
       handled = false;
@@ -1132,6 +1180,18 @@ void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const &
 // Procedure: runHPOptimization()
 //            run in thread, call GP's hyperparam optimization
 //
+size_t GP::processReceivedData()
+{
+  size_t pts_added = 0;
+  while ( !m_incoming_data_to_be_added.empty() )
+  {
+    std::string data = m_incoming_data_to_be_added.back();
+    m_incoming_data_to_be_added.pop_back();
+    pts_added += handleMailReceivedDataPts(data);
+  }
+  return pts_added;
+}
+
 bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 {
   bool data_processed = false;
@@ -1151,13 +1211,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
     {
       if ( m_received_shared_data )
       {
-        while ( !m_incoming_data_to_be_added.empty() )
-        {
-          std::string data = m_incoming_data_to_be_added.back();
-          m_incoming_data_to_be_added.pop_back();
-          pts_added += handleMailReceivedDataPts(data);
-        }
-
+        pts_added += processReceivedData();
         data_processed = true;
       }
       else

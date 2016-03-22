@@ -81,6 +81,8 @@ class GP : public CMOOSApp
    bool checkGPHasData();
    void calcLonLatSpacingAndBuffers();
 
+   size_t processReceivedData();
+
    // Configuration variables
    std::string m_input_var_data;
    std::string m_input_var_sample_points;
@@ -170,6 +172,13 @@ class GP : public CMOOSApp
    std::future<size_t> m_future_received_data_pts_added;
    std::vector<std::string> m_incoming_data_to_be_added;
    double m_loiter_dist_to_poly;
+
+   // times data sharing
+   bool m_timed_data_sharing;
+   bool m_data_sharing_activated;
+   bool m_sending_data;
+   std::future<size_t> m_future_received_data_processed;
+   bool m_waiting;
 };
 
 #endif 
