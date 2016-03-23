@@ -71,6 +71,7 @@ class GP : public CMOOSApp
    void makeAndStorePredictions();
 
    void storeDataForSending(double vlon, double vlat, double data);
+   void sendReady();
    void sendData();
    size_t handleMailReceivedDataPts(std::string incoming_data);
 
@@ -179,6 +180,8 @@ class GP : public CMOOSApp
    bool m_sending_data;
    std::future<size_t> m_future_received_data_processed;
    bool m_waiting;
+   bool m_received_ready;
+   std::string m_output_var_ready_for_data_sharing;
 };
 
 #endif 
