@@ -122,6 +122,14 @@ ProcessConfig = pGP
 
   // number of vehicles (data exchange?)
   nr_vehicles = $(NR_VEHICLES)
+
+  // elementary coordination (implicit): share data at set intervals
+#ifdef ADAPTIVE_WPTS yes
+  timed_data_sharing = true
+  output_var_ready_for_data_sharing = DATA_SHARING_READY
+#else
+  timed_data_sharing = false
+#endif
 }
 
 //--------------------------------------------------

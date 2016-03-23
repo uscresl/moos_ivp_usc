@@ -81,7 +81,9 @@ GP::GP() :
   m_timed_data_sharing(false),
   m_data_sharing_activated(false),
   m_sending_data(false),
-  m_waiting(false)
+  m_waiting(false),
+  m_received_ready(false),
+  m_output_var_ready_for_data_sharing("")
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -130,7 +132,8 @@ GP::~GP()
 bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 {
   MOOSMSG_LIST::iterator p;
-  for(p=NewMail.begin(); p!=NewMail.end(); p++) {
+  for(p=NewMail.begin(); p!=NewMail.end(); p++)
+  {
     CMOOSMsg &msg = *p;
     std::string key   = msg.GetKey();
     std::string sval  = msg.GetString();
@@ -216,8 +219,17 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         std::cout << "skipping my own data" << std::endl;
     }
     else if ( key == "LOITER_DIST_TO_POLY" )
-    {
       m_loiter_dist_to_poly = dval;
+    else if ( key == m_output_var_ready_for_data_sharing )
+    {
+      std::cout << "received READY from: " << sval << std::endl;
+      if ( sval != m_veh_name )
+      {
+        std::cout << "processing READY" << std::endl;
+        m_received_ready = true;
+      }
+      else
+        std::cout << "not processing own READY" << std::endl;
     }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
@@ -306,22 +318,41 @@ bool GP::Iterate()
       // if we are doing timed data sharing,
       if ( m_timed_data_sharing )
       {
-        // then let's kick this off 1 minute before the storing (next bit)
-        if ( m_num_vehicles > 1 && m_hp_optim_done &&
-             ((size_t) ((size_t)std::floor(MOOSTime()) + 60 - m_pilot_done_time) % 600) == 0 &&
+        // the vehicles may not be done with the pilot at the same time,
+        // so let's time this based on MOOSTime(), and assume that clocks are
+        // synchronised (to be verified)
+        // note; may need to add buffer to block out x seconds after hpoptim_done
+        if ( m_num_vehicles > 1 &&
+             ( (size_t)std::floor(MOOSTime()) % 600 ) == 0 &&
              !m_data_sharing_activated )
         {
           // switch to data sharing mode, to switch bhv to surface
           Notify("STAGE","data_sharing");
           m_data_sharing_activated = true;
         }
+        // when at the surface, send data
+        // TODO add handshake?
         if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1)
         {
           // send data
-          m_sending_data = true;
-          sendData();
+          if ( m_received_ready )
+          {
+            // other vehicle already ready to exchange data
+            sendReady();
+            m_sending_data = true;
+            sendData();
+          }
+          else
+          {
+            // this vehicle ready to exchange data, other vehicle not yet,
+            // keep sending that we are ready:
+            // every 10 seconds, notify that we are ready for data exchange
+            if ( (size_t)std::floor(MOOSTime()) % 10 == 0 )
+              sendReady();
+          }
         }
-        // next: check if data received, then switch mode back to survey
+        // next: check if received data added,
+        // if so, then switch mode back to survey
         if ( m_data_sharing_activated && m_received_shared_data )
         {
           if ( !m_waiting )
@@ -348,6 +379,7 @@ bool GP::Iterate()
         }
       }
 
+      // TODO; change how this is done, given how data sharing is done?
       // periodically (every 600s = 10min), store all GP predictions
       // only after pilot done, first 600 seconds after pilot done time
       // make sure we store the GP right after HP optimization for comparison
@@ -487,6 +519,10 @@ bool GP::OnStartUp()
     else if ( param == "timed_data_sharing" )
     {
       m_timed_data_sharing = (value == "true" ? true : false);
+    }
+    else if ( param == "output_var_ready_for_data_sharing")
+    {
+      m_output_var_ready_for_data_sharing = toupper(value);
     }
     else
       handled = false;
@@ -1262,6 +1298,20 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   return true;
 }
 
+//---------------------------------------------------------
+// Procedure: sendReady()
+//            notify other vehicles that this one is ready
+//            for data exchange
+//
+void GP::sendReady()
+{
+  Notify(m_output_var_ready_for_data_sharing,m_veh_name);
+}
+
+//---------------------------------------------------------
+// Procedure: sendData()
+//            send data in chunks (via pShare)
+//
 void GP::sendData()
 {
   // we need to chunk the data because pShare has a limit of 64K per message
