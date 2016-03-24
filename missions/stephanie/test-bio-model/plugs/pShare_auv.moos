@@ -2,3 +2,6 @@
 // pGP publishes SHARE_DATA and should also read INCOMING_DATA
 input = route=multicast_1
 output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=multicast_1
+
+input = route=localhost:5000
+output = DATA_HANDSHAKE->localhost:5000

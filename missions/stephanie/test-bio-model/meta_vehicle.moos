@@ -46,7 +46,7 @@ ProcessConfig = ANTLER
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
-  Run = pShare @ NewConsole = false
+  Run = pShare @ NewConsole = true
 
   // add other processes here
   uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
@@ -126,7 +126,7 @@ ProcessConfig = pGP
   // elementary coordination (implicit): share data at set intervals
 #ifdef ADAPTIVE_WPTS yes
   timed_data_sharing = true
-  output_var_ready_for_data_sharing = DATA_SHARING_READY
+  output_var_handshake_data_sharing = DATA_HANDSHAKE
 #else
   timed_data_sharing = false
 #endif

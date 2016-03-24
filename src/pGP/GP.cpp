@@ -83,7 +83,7 @@ GP::GP() :
   m_sending_data(false),
   m_waiting(false),
   m_received_ready(false),
-  m_output_var_ready_for_data_sharing("")
+  m_output_var_handshake_data_sharing("")
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -220,7 +220,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == "LOITER_DIST_TO_POLY" )
       m_loiter_dist_to_poly = dval;
-    else if ( key == m_output_var_ready_for_data_sharing )
+    else if ( key == m_output_var_handshake_data_sharing )
     {
       std::cout << "received READY from: " << sval << std::endl;
       if ( sval != m_veh_name )
@@ -341,6 +341,8 @@ bool GP::Iterate()
             sendReady();
             m_sending_data = true;
             sendData();
+            // reset for next time
+            m_received_ready = false;
           }
           else
           {
@@ -369,6 +371,7 @@ bool GP::Iterate()
               size_t pts_added = m_future_received_data_processed.get();
               std::cout << " added: " << pts_added << " data points" << std::endl;
               Notify("STAGE","survey");
+              // resets for next time
               m_data_sharing_activated = false;
               m_received_shared_data = false;
               m_sending_data = false;
@@ -520,9 +523,9 @@ bool GP::OnStartUp()
     {
       m_timed_data_sharing = (value == "true" ? true : false);
     }
-    else if ( param == "output_var_ready_for_data_sharing")
+    else if ( param == "output_var_handshake_data_sharing")
     {
-      m_output_var_ready_for_data_sharing = toupper(value);
+      m_output_var_handshake_data_sharing = toupper(value);
     }
     else
       handled = false;
@@ -586,6 +589,7 @@ void GP::registerVariables()
   // data sharing
   m_Comms.Register(m_input_var_share_data, 0);
   m_Comms.Register("LOITER_DIST_TO_POLY",0);
+  m_Comms.Register(m_output_var_handshake_data_sharing,0);
 }
 
 //---------------------------------------------------------
@@ -1305,7 +1309,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 //
 void GP::sendReady()
 {
-  Notify(m_output_var_ready_for_data_sharing,m_veh_name);
+  Notify(m_output_var_handshake_data_sharing,m_veh_name);
 }
 
 //---------------------------------------------------------
