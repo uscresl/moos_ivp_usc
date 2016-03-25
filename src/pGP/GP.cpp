@@ -1266,8 +1266,8 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
     {
       // this vehicle ready to exchange data, other vehicle not yet,
       // keep sending that we are ready:
-      // every 15 seconds, notify that we are ready for data exchange
-      if ( (size_t)std::floor(MOOSTime()) % 15 == 0 )
+      // every 30 seconds, notify that we are ready for data exchange
+      if ( (size_t)std::floor(MOOSTime()) % 30 == 0 )
         sendReady();
     }
 
