@@ -126,10 +126,11 @@ ProcessConfig = pGP
   // elementary coordination (implicit): share data at set intervals
 #ifdef ADAPTIVE_WPTS yes
   timed_data_sharing = true
-  output_var_handshake_data_sharing = DATA_HANDSHAKE
 #else
   timed_data_sharing = false
 #endif
+  output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
+  input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
 }
 
 //--------------------------------------------------

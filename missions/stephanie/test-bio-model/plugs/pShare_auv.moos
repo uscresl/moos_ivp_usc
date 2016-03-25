@@ -1,7 +1,7 @@
 // set up input and output channel for sharing collected data
 // pGP publishes SHARE_DATA and should also read INCOMING_DATA
-input = route=multicast_1
-output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=multicast_1
+//input = route=$(SERVER_HOST):$(SHARE_LISTEN)
+output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_OTHER)
 
-input = route=localhost:5000
-output = DATA_HANDSHAKE->localhost:5000
+//input = route=$(SERVER_HOST):$(SHARE_LISTEN)
+output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_OTHER)

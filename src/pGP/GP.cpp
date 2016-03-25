@@ -201,7 +201,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == m_input_var_share_data )
     {
-
       // handle
       std::string incoming_data_string = sval;
       size_t index_colon = incoming_data_string.find_first_of(':');
@@ -220,16 +219,16 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == "LOITER_DIST_TO_POLY" )
       m_loiter_dist_to_poly = dval;
-    else if ( key == m_output_var_handshake_data_sharing )
+    else if ( key == m_input_var_handshake_data_sharing )
     {
-      std::cout << "received READY from: " << sval << std::endl;
       if ( sval != m_veh_name )
       {
-        std::cout << "processing READY" << std::endl;
-        m_received_ready = true;
+        if ( m_dep < 0.1 ) // simulate that we only received on surface
+        {
+          std::cout << "received READY from: " << sval << std::endl;
+          m_received_ready = true;
+        }
       }
-      else
-        std::cout << "not processing own READY" << std::endl;
     }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
@@ -335,9 +334,10 @@ bool GP::Iterate()
         if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1)
         {
           // send data
-          if ( m_received_ready )
+          if ( m_received_ready && m_dep < 0.1 )
           {
             // other vehicle already ready to exchange data
+            // send that we are ready, when we are at the surface
             sendReady();
             m_sending_data = true;
             sendData();
@@ -346,11 +346,14 @@ bool GP::Iterate()
           }
           else
           {
-            // this vehicle ready to exchange data, other vehicle not yet,
-            // keep sending that we are ready:
-            // every 10 seconds, notify that we are ready for data exchange
-            if ( (size_t)std::floor(MOOSTime()) % 10 == 0 )
-              sendReady();
+            if ( m_dep < 0.1 ) // send only when at surface
+            {
+              // this vehicle ready to exchange data, other vehicle not yet,
+              // keep sending that we are ready:
+              // every 10 seconds, notify that we are ready for data exchange
+              if ( (size_t)std::floor(MOOSTime()) % 10 == 0 )
+                sendReady();
+            }
           }
         }
         // next: check if received data added,
@@ -523,9 +526,13 @@ bool GP::OnStartUp()
     {
       m_timed_data_sharing = (value == "true" ? true : false);
     }
-    else if ( param == "output_var_handshake_data_sharing")
+    else if ( param == "output_var_handshake_data_sharing" )
     {
       m_output_var_handshake_data_sharing = toupper(value);
+    }
+    else if ( param == "input_var_handshake_data_sharing" )
+    {
+      m_input_var_handshake_data_sharing = toupper(value);
     }
     else
       handled = false;
@@ -589,7 +596,7 @@ void GP::registerVariables()
   // data sharing
   m_Comms.Register(m_input_var_share_data, 0);
   m_Comms.Register("LOITER_DIST_TO_POLY",0);
-  m_Comms.Register(m_output_var_handshake_data_sharing,0);
+  m_Comms.Register(m_input_var_handshake_data_sharing,0);
 }
 
 //---------------------------------------------------------
@@ -1246,11 +1253,27 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   // in case there are multiple vehicles
   if ( m_num_vehicles > 1 )
   {
-    // 1. when the vehicles are at the surface and at the HP loiter
+    // 1. when the vehicle is at the surface and at the HP loiter
     while ( !(m_dep < 0.1 && m_loiter_dist_to_poly < 20) )
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    // handshake
+    // if already received ready, let it be known we are ready, then proceed
+    if ( m_received_ready )
+      sendReady();
+    // if not received ready, let it be known we are ready, until other also is
+    while ( !m_received_ready )
+    {
+      // this vehicle ready to exchange data, other vehicle not yet,
+      // keep sending that we are ready:
+      // every 15 seconds, notify that we are ready for data exchange
+      if ( (size_t)std::floor(MOOSTime()) % 15 == 0 )
+        sendReady();
+    }
+
     // share data
     sendData();
+    m_received_ready = false;
 
     // 2. wait for received data to be processed
     while ( !data_processed )
