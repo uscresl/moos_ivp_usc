@@ -66,6 +66,7 @@ GP::GP() :
   m_lon_deg_to_m(0.0),
   m_lat_deg_to_m(0.0),
   m_pilot_done_time(0.0),
+  m_hp_optim_done_time(0.0),
   m_need_nxt_wpt(false),
   m_finding_nxt(false),
   m_gp(2, "CovSum(CovSEiso, CovNoise)"),
@@ -281,6 +282,7 @@ bool GP::Iterate()
           if ( !m_hp_optim_done )
             std::cout << "ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
           m_hp_optim_running = false;
+          m_hp_optim_done_time = MOOSTime();
           std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
           m_Comms.Notify("STAGE","survey");
         }
@@ -387,10 +389,11 @@ bool GP::Iterate()
 
       // TODO; change how this is done, given how data sharing is done?
       // periodically (every 600s = 10min), store all GP predictions
-      // only after pilot done, first 600 seconds after pilot done time
+      // only after pilot done, first one 600 seconds after HP optimiz done
       // (storing of GP right after HP optimization is started in runHPOptimization)
-      if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_pilot_done_time) % 600 == 0) )
+      if ( m_hp_optim_done &&
+           (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
+           ((size_t)std::floor(MOOSTime()-m_hp_optim_done_time) % 600 == 0) )
       {
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
@@ -1327,7 +1330,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   filenm << "hp_optim_" << m_veh_name << "_" << nr_iterations;
   gp.write(filenm.str().c_str());
   end = std::clock();
-  std::cout << "write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  std::cout << "HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   hp_lock.unlock();
 

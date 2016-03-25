@@ -125,6 +125,7 @@ class GP : public CMOOSApp
    double m_lat_deg_to_m;
    // mission status
    double m_pilot_done_time;
+   double m_hp_optim_done_time;
    bool m_need_nxt_wpt;
    bool m_finding_nxt;
 
