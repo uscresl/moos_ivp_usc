@@ -388,10 +388,9 @@ bool GP::Iterate()
       // TODO; change how this is done, given how data sharing is done?
       // periodically (every 600s = 10min), store all GP predictions
       // only after pilot done, first 600 seconds after pilot done time
-      // make sure we store the GP right after HP optimization for comparison
+      // (storing of GP right after HP optimization is started in runHPOptimization)
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ( (MOOSTime()-m_pilot_done_time < 2) ||
-             ((size_t)std::floor(MOOSTime()-m_pilot_done_time) % 600 == 0) ) )
+           ((size_t)std::floor(MOOSTime()-m_pilot_done_time) % 600 == 0) )
       {
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
@@ -1331,6 +1330,11 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   std::cout << "write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   hp_lock.unlock();
+
+  // first save of predictions
+  std::thread pred_store(&GP::makeAndStorePredictions, this);
+  pred_store.detach();
+  m_last_pred_save = MOOSTime();
 
   return true;
 }
