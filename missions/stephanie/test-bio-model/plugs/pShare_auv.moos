@@ -1,7 +1,8 @@
-// set up input and output channel for sharing collected data
-// pGP publishes SHARE_DATA and should also read INCOMING_DATA
-//input = route=$(SERVER_HOST):$(SHARE_LISTEN)
-output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_OTHER)
+// set up input and output channels for sharing collected data.
+// pGP publishes SHARE_DATA and should read it as INCOMING_DATA
+//     publishes SEND_DATA_HANDSHAKE and should read it as RECEIVE_DATA_HANDSHAKE
 
-//input = route=$(SERVER_HOST):$(SHARE_LISTEN)
-output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_OTHER)
+input = route=$(SERVER_HOST):$(SHARE_LISTEN_GP)
+
+output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_OTHER_GP)
+output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_OTHER_GP)
