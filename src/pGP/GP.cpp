@@ -1258,17 +1258,27 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // handshake
-    // if already received ready, let it be known we are ready, then proceed
+    
+    // if received ready, let it be known we are ready as well
     if ( m_received_ready )
       sendReady();
+    
     // if not received ready, let it be known we are ready, until other also is
+    size_t prev_sent = 0;
     while ( !m_received_ready )
     {
       // this vehicle ready to exchange data, other vehicle not yet,
       // keep sending that we are ready:
       // every 30 seconds, notify that we are ready for data exchange
-      if ( (size_t)std::floor(MOOSTime()) % 30 == 0 )
+      // note; we are not in a mail cycle here, so make sure we do only once
+      //       per time slot
+      size_t time_moos = (size_t)std::floor(MOOSTime());
+      if ( time_moos % 30 == 0 && time_moos-prev_sent > 1 )
+      {
         sendReady();
+        prev_sent = time_moos;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
     }
 
     // share data
