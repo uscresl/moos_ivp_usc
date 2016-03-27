@@ -84,7 +84,8 @@ GP::GP() :
   m_sending_data(false),
   m_waiting(false),
   m_received_ready(false),
-  m_output_var_handshake_data_sharing("")
+  m_output_var_handshake_data_sharing(""),
+  m_last_ready_sent(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -334,12 +335,14 @@ bool GP::Iterate()
         // when at the surface, send data
         if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1)
         {
+          size_t moos_t = (size_t)std::floor(MOOSTime());
           // send data
           if ( m_received_ready && m_dep < 0.1 )
           {
             // other vehicle already ready to exchange data
             // send that we are ready, when we are at the surface
             sendReady();
+            m_last_ready_sent = moos_t;
             m_sending_data = true;
             sendData();
             // reset for next time
@@ -352,14 +355,18 @@ bool GP::Iterate()
               // this vehicle ready to exchange data, other vehicle not yet,
               // keep sending that we are ready:
               // every 10 seconds, notify that we are ready for data exchange
-              if ( (size_t)std::floor(MOOSTime()) % 10 == 0 )
+              if ( moos_t % 30 == 0 &&
+                   moos_t - m_last_ready_sent > 1 )
+              {
                 sendReady();
+                m_last_ready_sent = moos_t;
+              }
             }
           }
         }
         // next: check if received data added,
         // if so, then switch mode back to survey
-        if ( m_data_sharing_activated && m_received_shared_data )
+        if ( m_data_sharing_activated && m_sending_data && m_received_shared_data )
         {
           if ( !m_waiting )
           {
@@ -375,12 +382,14 @@ bool GP::Iterate()
               size_t pts_added = m_future_received_data_processed.get();
               std::cout << " added: " << pts_added << " data points" << std::endl;
               Notify("STAGE","survey");
+
               // resets for next time
               m_data_sharing_activated = false;
               m_received_shared_data = false;
               m_sending_data = false;
               m_waiting = false;
               m_need_nxt_wpt = true;
+              m_received_ready = false;
             }
             // else, continue waiting
           }
