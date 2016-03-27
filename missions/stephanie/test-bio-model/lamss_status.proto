@@ -63,6 +63,6 @@ message LamssStatus {
 //	optional int32 Max_Cline_Depth = 20 [(dccl.field).max=255, (dccl.field).min=0];
 //	optional int32 Min_Cline_Depth = 21 [(dccl.field).max=255, (dccl.field).min=0];
 //	optional int32 Ctr_Cline_Depth = 22 [(dccl.field).max=255, (dccl.field).min=0];
-  optional double allowable_width = 20 [(dccl.field).max=1000.0, (dccl.field).min=0.0, (dccl.field).precision=2, default = nan];
-  optional double allowable_height = 21 [(dccl.field).max=100.0, (dccl.field).min=0.0, (dccl.field).precision=2, default = nan];
+//  optional double allowable_width = 20 [(dccl.field).max=1000.0, (dccl.field).min=0.0, (dccl.field).precision=2, default = nan];
+//  optional double allowable_height = 21 [(dccl.field).max=100.0, (dccl.field).min=0.0, (dccl.field).precision=2, default = nan];
 } 
