@@ -48,7 +48,7 @@ PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
 PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
 PILOT_LM_2="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
 PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
-PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"LAWMMOWERNS2
+PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
 fi
 
 # loiter for during hyperparameter optimization
@@ -115,6 +115,17 @@ WAYPOINTS1="455,980:455,965:430,965:430,980:455,980"
 MODEMID1="1"
 VTYPE1="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX1="anna_predictions"
+
+# The second vehicle community
+VNAME2="ferdinand"
+START_DEPTH2="5"
+START_POS2="450,950"
+WAYPOINTS2="455,980:455,965:430,965:430,980:455,980"
+MODEMID2="6"
+VTYPE2="UUV" # UUV, SHIP
+PREDICTIONS_PREFIX2="ferdinand_predictions"
+PSHARE_FERD="./plugs/pShare_auv.moos"
+
 if [ $NUM_VEHICLES -ge 2 ] ; then
 PSHARE_ANNA="./plugs/pShare_auv.moos"
 fi
@@ -138,20 +149,11 @@ nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     PILOT_LAWNMOWER_NS=$PILOT_LAWNMOWER_C_NS                   \
     PILOT_LAWNMOWER_EW=$PILOT_LAWNMOWER_C_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
-    HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE
+    HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
+    OTHER_VEHICLE=$VNAME2
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
-# The second vehicle community
-VNAME2="ferdinand"
-START_DEPTH2="5"
-START_POS2="450,950"
-WAYPOINTS2="455,980:455,965:430,965:430,980:455,980"
-MODEMID2="2"
-VTYPE2="UUV" # UUV, SHIP
-PREDICTIONS_PREFIX2="ferdinand_predictions"
-if [ $NUM_VEHICLES -ge 2 ] ; then
-PSHARE_FERD="./plugs/pShare_auv.moos"
-fi
+
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME2  START_POS=$START_POS2  START_HDG=$START_HEADING \
    VPORT=$FERDINAND_VPORT SHARE_LISTEN=$FERDINAND_LISTEN SHARE_LISTEN_GP=$FERDINAND_LISTEN_GP \
@@ -168,7 +170,8 @@ nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     PILOT_LAWNMOWER_NS=$PILOT_LM_2_NS                   \
     PILOT_LAWNMOWER_EW=$PILOT_LM_2_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS2 LAWNMOWER_EW=$LAWNMOWEREW2        \
-    HP_LOITER=$HP_LOITER_CONFIG2  ADAPTIVE_WPTS=$ADAPTIVE
+    HP_LOITER=$HP_LOITER_CONFIG2  ADAPTIVE_WPTS=$ADAPTIVE        \
+    OTHER_VEHICLE=$VNAME1
 fi
 
 if [ ${JUST_MAKE} = "yes" ] ; then
