@@ -38,15 +38,16 @@ ProcessConfig = ANTLER
   Run = pNodeReporter      @ NewConsole = false
 
   // collision avoidance
-  Run = pBasicContactMgr   @ NewConsole = false
+  Run = pBasicContactMgr   @ NewConsole = true
 
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
-  Run = pAcommsHandler @ NewConsole=false,XConfig=pAcommsHandlerConfig ~ pAcommsHandler
+  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig
+  
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
-  Run = pShare @ NewConsole = true
+  Run = pShare @ NewConsole = false
 
   // add other processes here
   uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black

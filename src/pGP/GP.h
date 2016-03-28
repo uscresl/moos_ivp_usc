@@ -184,6 +184,7 @@ class GP : public CMOOSApp
    bool m_received_ready;
    std::string m_input_var_handshake_data_sharing;
    std::string m_output_var_handshake_data_sharing;
+   size_t m_last_ready_sent;
 };
 
 #endif 

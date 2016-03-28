@@ -84,7 +84,8 @@ GP::GP() :
   m_sending_data(false),
   m_waiting(false),
   m_received_ready(false),
-  m_output_var_handshake_data_sharing("")
+  m_output_var_handshake_data_sharing(""),
+  m_last_ready_sent(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -295,7 +296,7 @@ bool GP::Iterate()
     {
       // predict target value and variance for sample locations
       //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
-      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1.0) )
+      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1.0) && !m_data_sharing_activated  )
       {
         if ( !m_finding_nxt )
         {
@@ -332,15 +333,16 @@ bool GP::Iterate()
           m_data_sharing_activated = true;
         }
         // when at the surface, send data
-        // TODO add handshake?
         if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1)
         {
+          size_t moos_t = (size_t)std::floor(MOOSTime());
           // send data
           if ( m_received_ready && m_dep < 0.1 )
           {
             // other vehicle already ready to exchange data
             // send that we are ready, when we are at the surface
             sendReady();
+            m_last_ready_sent = moos_t;
             m_sending_data = true;
             sendData();
             // reset for next time
@@ -353,14 +355,18 @@ bool GP::Iterate()
               // this vehicle ready to exchange data, other vehicle not yet,
               // keep sending that we are ready:
               // every 10 seconds, notify that we are ready for data exchange
-              if ( (size_t)std::floor(MOOSTime()) % 10 == 0 )
+              if ( moos_t % 30 == 0 &&
+                   moos_t - m_last_ready_sent > 1 )
+              {
                 sendReady();
+                m_last_ready_sent = moos_t;
+              }
             }
           }
         }
         // next: check if received data added,
         // if so, then switch mode back to survey
-        if ( m_data_sharing_activated && m_received_shared_data )
+        if ( m_data_sharing_activated && m_sending_data && m_received_shared_data )
         {
           if ( !m_waiting )
           {
@@ -376,11 +382,14 @@ bool GP::Iterate()
               size_t pts_added = m_future_received_data_processed.get();
               std::cout << " added: " << pts_added << " data points" << std::endl;
               Notify("STAGE","survey");
+
               // resets for next time
               m_data_sharing_activated = false;
               m_received_shared_data = false;
               m_sending_data = false;
               m_waiting = false;
+              m_need_nxt_wpt = true;
+              m_received_ready = false;
             }
             // else, continue waiting
           }
@@ -391,8 +400,7 @@ bool GP::Iterate()
       // periodically (every 600s = 10min), store all GP predictions
       // only after pilot done, first one 600 seconds after HP optimiz done
       // (storing of GP right after HP optimization is started in runHPOptimization)
-      if ( m_hp_optim_done &&
-           (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
+      if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
            ((size_t)std::floor(MOOSTime()-m_hp_optim_done_time) % 600 == 0) )
       {
         std::thread pred_store(&GP::makeAndStorePredictions, this);
@@ -644,8 +652,10 @@ void GP::dataAddingThread()
       m_queue_data_points_for_gp.pop();
       double veh_lon = data_pt[0];
       double veh_lat = data_pt[1];
+
       // add data pt
       addPatternToGP(veh_lon, veh_lat, data_pt[2]);
+
       // update visited set if needed
       int index = get_index_for_map(veh_lon, veh_lat);
       if ( index >= 0 && need_to_update_maps((size_t)index) )
@@ -713,12 +723,26 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
   for ( std::string & data_pt_str : sample_points )
   {
     std::vector<std::string> data_pt_components = parseString(data_pt_str, ',');
-    double loc [2] = {atof(data_pt_components[0].c_str()), atof(data_pt_components[1].c_str())};
+    double veh_lon = atof(data_pt_components[0].c_str());
+    double veh_lat = atof(data_pt_components[1].c_str());
+
+    double loc [2] = {veh_lon, veh_lat};
 
     double data = atof(data_pt_components[2].c_str());
     double save_val = m_use_log_gp ? log(data) : data;
 
     m_gp.add_pattern(loc, save_val);
+
+    // update visited set if needed
+    int index = get_index_for_map(veh_lon, veh_lat);
+    if ( index >= 0 && need_to_update_maps((size_t)index) )
+      updateVisitedSet(veh_lon, veh_lat, (size_t)index);
+
+    // run via data adding thread? no, we want to make sure they've been added,
+    // and not doing anything else anyway
+//    std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
+//    m_queue_data_points_for_gp.push(nw_data_pt);
+
   }
 
   // release lock

@@ -71,22 +71,41 @@ Behavior = BHV_AvoidCollision
   name       = bhv_avdcollision
   pwt        = 200 // higher weight
   condition  = MODE==MISSION
-  updates    = CONTACT_INFO
-  endflag    = CONTACT_RESOLVED = $[CONTACT]
-  templating = spawn
+//  updates    = CONTACT_INFO
+//  endflag    = CONTACT_RESOLVED = $[CONTACT]
+//  templating = spawn
+  templating = disallowed
+  duration = no-time-limit
+  perpetual = true
 
-             contact = to-be-set
-    on_no_contact_ok = true
-         extrapolate = true
-               decay = 30,60
+  // name or identifier of contact to be avoided
+//  contact = to-be-set
+  contact = $(OTHER_VEHICLE)
 
-        pwt_outer_dist = 15
-        pwt_inner_dist = 10
-        completed_dist = 16
-     min_util_cpa_dist = 5
-     max_util_cpa_dist = 15
-             pwt_grade = linear
-   bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
+  // if false, helm error is posted if no contact information exists
+  on_no_contact_ok = true
+  // if true, contact position is extrapolated from last position and trajectory
+  extrapolate = true
+  // time interval during which extrapolated position slows to halt
+  decay = 30,60
+
+  // range to contact, outside which 0 priority weight
+  pwt_outer_dist = 20
+  // range to contact, within which max priority weight
+  pwt_inner_dist = 10
+  // grade of priority growth (linear, quadratic, quasi)
+  pwt_grade = linear
+
+  // range to contact, outside which behavior completes and dies
+  completed_dist = 20
+
+  // range to contact, below which is considered collision
+  min_util_cpa_dist = 5
+  // range to contact, outside which a maneuver has max utility
+  max_util_cpa_dist = 15
+
+  // color code configuration
+  bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
 }
 Behavior = BHV_OpRegionBounce
 {
