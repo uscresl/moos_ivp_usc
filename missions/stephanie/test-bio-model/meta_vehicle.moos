@@ -38,7 +38,7 @@ ProcessConfig = ANTLER
   Run = pNodeReporter      @ NewConsole = false
 
   // collision avoidance
-  Run = pBasicContactMgr   @ NewConsole = true
+  Run = pBasicContactMgr   @ NewConsole = false
 
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
@@ -51,18 +51,21 @@ ProcessConfig = ANTLER
 
   // add other processes here
   uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
-  Run = uSimBioSensor @ NewConsole = true,XConfig=uSBSConfig
+  Run = uSimBioSensor @ NewConsole = false
+  //true,XConfig=uSBSConfig
 
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
   Run = pGP @ NewConsole = true,XConfig=pGPConfig
 
   pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
-  Run = pSamplePoints @ NewConsole = true,XConfig=pSPConfig
+  Run = pSamplePoints @ NewConsole = false
+  //true,XConfig=pSPConfig
 
   Run = pLonLatToWptUpdate @ NewConsole = false
   
   #ifdef ADAPTIVE_WPTS yes
-  Run = uTimerScript @ NewConsole = true
+  Run = uTimerScript @ NewConsole = false
+  //true
   #endif
 }
 //------------------------------------------------------------
@@ -181,7 +184,12 @@ ProcessConfig = uTimerScript
   // lawnmower duration ca 6362-6375
   // lawnmower start at 2339-2472, avg 2211
   // 2211+bnds = 8571-8586
+#ifdef NR_VEHICLES 1
   event = var=STAGE,val="hpoptim",time=8571:8660
+#endif
+#ifdef NR_VEHICLES 2
+  event = var=STAGE,val="hpoptim",time=5216:5448
+#endif
 
   reset_max = 0
 //  reset_time = all-posted
