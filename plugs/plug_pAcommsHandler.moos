@@ -331,22 +331,22 @@ ProcessConfig = pAcommsHandler
     // currently there is ack for moos poke, not used in this sim, keeping total to 3s
     #ifdef NR_VEHICLES 2
     slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
-    slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 2  rate: 0 type: DATA slot_seconds: 3 }
     #endif
     #ifdef NR_VEHICLES 3
     slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
-    slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
-    slot { src: 7  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 2  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 3  rate: 0 type: DATA slot_seconds: 3 }
     #endif
     #ifdef NR_VEHICLES 4
     slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
-    slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
-    slot { src: 7  rate: 0 type: DATA slot_seconds: 3 }
-    slot { src: 8  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 2  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 3  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 4  rate: 0 type: DATA slot_seconds: 3 }
     #endif
     #ifndef NR_VEHICLES
     slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
-    slot { src: 6  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 2  rate: 0 type: DATA slot_seconds: 3 }
     #endif
     // 20141120:1136: rate changed from 1 to 0
   }
