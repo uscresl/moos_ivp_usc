@@ -9,16 +9,13 @@ initialize   AVOID = true
 initialize   MOOS_MANUAL_OVERRIDE=false
 
 // quick fix opregion altitude requirement
-#ifdef VTYPE UUV
 initialize   NAV_ALTITUDE=100
-#endif
 
 //****************************************************************************//
 // Behaviors
 //
 
 //---------   Safety behaviors   -------------
-#ifdef VTYPE UUV
 Behavior = BHV_AvoidCollision
 {
   name       = bhv_avdcollision
@@ -41,7 +38,6 @@ Behavior = BHV_AvoidCollision
              pwt_grade = linear
    bearing_line_config = white:0, green:0.65, yellow:0.8, red:1.0
 }
-#endif
 
 Behavior = BHV_OpRegionBounce
 {
@@ -51,13 +47,8 @@ Behavior = BHV_OpRegionBounce
   pwt = 200
   duration = no-time-limit
   condition = DEPLOY = true
-// some big box
-#ifdef VTYPE UUV
+  // some big box
   polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
-#endif
-#ifdef VTYPE SHIP
-    polygon = label,OpRegion:2100,1800:2100,2600:3100,2600:3100,1800
-#endif
   max_depth = 50 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
   max_time = 23400
@@ -69,7 +60,6 @@ Behavior = BHV_OpRegionBounce
   bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
   no_zone_factor = .2
 }
-#ifdef VTYPE UUV
 Behavior = BHV_OpRegionBounceDepth
 {
   name = bhv_opregion_depth_bounce
@@ -84,10 +74,8 @@ Behavior = BHV_OpRegionBounceDepth
   // no_zone_factor: used for: no_zone = buffer * no_zone_factor
   no_zone_factor = .2
 }
-#endif
 
 //---------   Control behaviors   -------------
-#ifdef VTYPE SHIP
 Behavior = BHV_Waypoint
 { 
   name      = bhv_waypt_survey
@@ -107,42 +95,9 @@ Behavior = BHV_Waypoint
   repeat = 100 // # times to repeat waypoints list
 
   visual_hints = nextpt_color=red, nextpt_lcolor=green
-  visual_hints = vertex_color=yellow, edge_color=gray25
-  visual_hints = vertex_size=1, edge_size=1
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=2, edge_size=2
 }
-#endif
-
-#ifdef VTYPE UUV
-Behavior = BHV_WaypointSpd
-{
-  name      = bhv_waypt_spd
-  pwt       = 100
-  condition = RETURN = false
-  condition = (DEPLOY = true)
-  updates = WAYPOINT_UPDATES
-  endflag   = SURVEY_DONE = true
-
-  // SK: added spd control
-  // spd_radius: outer radius wherein speed is linearly decreased,
-  //             a reasonably default may be: 2*slip_radius
-  spd_radius = 30     // m
-  // max speed: outside 'spd_radius'
-  max_speed = 2.0     // m/s
-  // min speed: inside 'radius'
-  min_speed = 0.5     // m/s
-
-  capture_radius = 5.0  // m
-  slip_radius = 15.0    // m
-  lead = 15             // m
-
-  points = $(WAYPOINTS) //-155,-65:76,-65:76,-90:-155,-90
-  repeat = 100 // # times to repeat waypoints list
-
-  visual_hints = nextpt_color=red, nextpt_lcolor=green
-  visual_hints = vertex_color=yellow, edge_color=gray25
-  visual_hints = vertex_size=1, edge_size=1
-}
-#endif
 
 //----------------------------------------------
 Behavior = BHV_Waypoint
@@ -162,7 +117,6 @@ Behavior = BHV_Waypoint
   points = $(START_POS)
 }
 
-#ifdef VTYPE UUV
 //----------------------------------------------
 Behavior = BHV_ConstantDepth
 {
@@ -176,4 +130,3 @@ Behavior = BHV_ConstantDepth
   basewidth = 2     // m
   summitdelta = 20  // m
 }
-#endif

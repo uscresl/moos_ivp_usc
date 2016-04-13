@@ -26,13 +26,23 @@ done
 #-------------------------------------------------------
 # simulation set-up
 EXP_LOCATION="santafe" # santafe, arrowhead
-PLUGDIR="../../../plugs" # no leading slash
+PLUGDIR="../../plugs" # no leading slash
+PROTO_MSG_DIR="./msgs"
 
-SERVERHOST="localhost" #"localhost"
-nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
-   VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
-   SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST       \
-   LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR
+SHORE_VPORT="9000"
+ANNA_VPORT="9001"
+BERN_VPORT="9002"
+
+SHORE_LISTEN="9300"
+ANNA_LISTEN="9301"
+BERN_LISTEN="9302"
+
+SERVERHOST="localhost"
+
+nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP  \
+   VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"         \
+   VPORT=$SHORE_VPORT SHARE_LISTEN=$SHORE_LISTEN SERVER_HOST=$SERVERHOST \
+   LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR  MSG_DIR=$PROTO_MSG_DIR
 
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
@@ -45,28 +55,31 @@ MODEMID1="1"
 VTYPE1="UUV" # UUV, SHIP
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME1  START_POS=$START_POS1  START_HDG=$START_HEADING \
-   VPORT="9001"       SHARE_LISTEN="9301"                      \
+   VPORT=$ANNA_VPORT       SHARE_LISTEN=$ANNA_LISTEN           \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
-   SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
-   PLUG_DIR=$PLUGDIR
+   SERVER_HOST=$SERVERHOST  SERVER_LISTEN=$SHORE_LISTEN        \
+   LOCATION=$EXP_LOCATION                                      \
+   PLUG_DIR=$PLUGDIR  MSG_DIR=$PROTO_MSG_DIR
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1
 
-#VNAME2="ferdinand"      # The second vehicle community
-#START_POS2="2800,1900"
-#WAYPOINTS2="2800,1900"
-#START_DEPTH2="10"
-#MODEMID2="6"
-#VTYPE2="UUV" # UUV, SHIP
-#nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
-#   VNAME=$VNAME2  START_POS=$START_POS2  START_HDG=$START_HEADING \
-#   VPORT="9002"       SHARE_LISTEN="9302"                      \
-#   VTYPE=$VTYPE2      MODEMID=$MODEMID2                        \
-#   SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION
-#nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
-#    START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
-#    START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2
+VNAME2="bernard"      # The second vehicle community
+START_POS2="1400,280"
+WAYPOINTS2="1400,280:1350,200:1400,280"
+START_DEPTH2="0"
+MODEMID2="2"
+VTYPE2="UUV" # UUV, SHIP
+nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
+   VNAME=$VNAME2  START_POS=$START_POS2  START_HDG=$START_HEADING \
+   VPORT=$BERN_VPORT       SHARE_LISTEN=$BERN_LISTEN           \
+   VTYPE=$VTYPE2      MODEMID=$MODEMID2                        \
+   SERVER_HOST=$SERVERHOST  SERVER_LISTEN=$SHORE_LISTEN        \
+   LOCATION=$EXP_LOCATION                                      \
+   PLUG_DIR=$PLUGDIR  MSG_DIR=$PROTO_MSG_DIR
+nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
+    START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
+    START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2
 
 
 if [ ${JUST_MAKE} = "yes" ] ; then
@@ -84,9 +97,9 @@ pAntler targ_$VNAME1.moos > log_$VNAME1.log &
 #>& /dev/null &
 sleep .25
 
-#printf "Launching $VNAME2 MOOS Community (WARP=%s) \n" $TIME_WARP
-#pAntler targ_$VNAME2.moos > log_$VNAME2.log &
-#sleep .25
+printf "Launching $VNAME2 MOOS Community (WARP=%s) \n" $TIME_WARP
+pAntler targ_$VNAME2.moos > log_$VNAME2.log &
+sleep .25
 
 printf "Done \n"
 
