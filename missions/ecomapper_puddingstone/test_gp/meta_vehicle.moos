@@ -1,0 +1,209 @@
+//*******************************************************
+// Vehicle Configuration File
+// a community for the auv (sim and real)
+//
+
+NoNetwork = true
+ServerHost = $(SERVER_HOST)
+ServerPort = $(VPORT)
+Community  = $(VNAME)
+
+#ifdef SIMULATION yes
+Simulation  = true
+#endif
+
+#include $(PLUG_DIR)/plug_origin_warp.moos
+
+//--------------------------------------------------------
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  // moos db, moos util apps
+  Run = MOOSDB             @ NewConsole = false
+  Run = pLogger            @ NewConsole = false
+#ifdef SIMULATION yes
+  Run = uProcessWatch      @ NewConsole = true
+#else
+  Run = uProcessWatch      @ NewConsole = false
+#endif
+
+#ifdef SIMULATION yes
+  // vehicle sim
+  Run = uSimMarine         @ NewConsole = false
+  Run = pMarinePID         @ NewConsole = false
+#else
+  Run = iOceanServerComms  @ NewConsole = false
+#endif
+
+  // behaviors
+  Run = pHelmIvP           @ NewConsole = false
+
+  // generate 'node reports'
+  Run = pNodeReporter      @ NewConsole = false
+
+  // collision avoidance
+  Run = pBasicContactMgr   @ NewConsole = false
+
+  // communications
+  Run = pHostInfo @ NewConsole = false ~ pHostInfo
+  Run = uFldNodeBroker @ NewConsole = false
+  Run = uFldMessageHandler @ NewConsole = false
+  Run = pShare @ NewConsole = false
+
+  // add other processes here
+#ifdef SIMULATION yes
+  uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
+  Run = uSimBioSensor @ NewConsole = false
+  //true,XConfig=uSBSConfig
+#endif
+
+  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+
+  pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
+  Run = pSamplePoints @ NewConsole = false
+  //true,XConfig=pSPConfig
+
+  Run = pLonLatToWptUpdate @ NewConsole = false
+
+  #ifdef ADAPTIVE_WPTS yes
+  Run = uTimerScript @ NewConsole = false
+  //true
+  #endif
+}
+//--------------------------------------------------------
+
+// utils ///////////////////////////////////////////////////////////////////////
+#include $(PLUG_DIR)/plug_pLogger.moos
+#include $(PLUG_DIR)/plug_uProcessWatch.moos
+
+// vehicle simulation //////////////////////////////////////////////////////////
+#ifdef SIMULATION yes
+#include $(PLUG_DIR)/plug_uSimMarine.moos
+#include $(PLUG_DIR)/plug_pMarinePID.moos
+#else
+#include $(PLUG_DIR)/plug_iOceanServerComms.moos
+#endif
+
+// behaviors ///////////////////////////////////////////////////////////////////
+#include $(PLUG_DIR)/plug_pHelmIvP.moos
+
+// generate 'node reports' /////////////////////////////////////////////////////
+#include $(PLUG_DIR)/plug_pNodeReporter.moos
+
+// collision avoidance /////////////////////////////////////////////////////////
+// node_reports are passed via uFldNodeBroker and pShare through shoreside
+#include $(PLUG_DIR)/plug_pBasicContactMgr.moos
+
+// communications //////////////////////////////////////////////////////////////
+#include $(PLUG_DIR)/plug_pHostInfo.moos
+#include $(PLUG_DIR)/plug_uFldNodeBroker.moos
+#include $(PLUG_DIR)/plug_uFldMessageHandler.moos
+#include $(PLUG_DIR)/plug_pShare.moos
+
+// add other processes here ////////////////////////////////////////////////////
+#include $(PLUG_DIR)/plug_uSimBioSensor.moos
+
+//--------------------------------------------------
+// pGP configuration block
+//
+ProcessConfig = pGP
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // GP or log GP?
+  use_log_gp = true
+
+  // define the names of input variables
+  input_var_data = SIM_DATA
+  input_var_sample_points = SAMPLE_POINTS
+  input_var_sample_points_specs = SAMPLE_POINTS_SPECS
+  input_var_adaptive_trigger = WPT_REACHED
+  input_var_share_data = INCOMING_DATA
+  output_var_predictions = GP_PREDICTIONS
+  output_var_share_data = SHARE_DATA
+
+  // define the filename for saving GP predictions
+  output_filename_prefix = $(PREDICTIONS_PREFIX)
+
+  // define the prediction interval (predict every X seconds)
+  prediction_interval = 300
+
+  // number of vehicles (data exchange?)
+  nr_vehicles = $(NR_VEHICLES)
+
+  // elementary coordination (implicit): share data at set intervals
+#ifdef ADAPTIVE_WPTS yes
+  timed_data_sharing = true
+#else
+  timed_data_sharing = false
+#endif
+  output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
+  input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
+}
+
+//--------------------------------------------------
+// pSamplePoints configuration block
+//
+ProcessConfig = pSamplePoints
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // potential process parameters would go here
+  lawnmower_config = $(LAWNMOWER_CONFIG)
+
+  // division factor for grid spacing (increase resolution vs lawnmower spec)
+  division_factor = 2
+
+  // define what output variable name to use
+  // for publishing list of sample points
+  output_var = SAMPLE_POINTS
+
+  // define what output variable name to use
+  // for publishing sample points grid spec
+  output_var_specs = SAMPLE_POINTS_SPECS
+}
+
+//--------------------------------------------------
+// pLonLatToWptUpdate configuration block
+//
+ProcessConfig = pLonLatToWptUpdate
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // specify variable names
+  input_var_lonlat = GP_PREDICTIONS
+  output_var_wpt_update = ADAPTIVE_WPT_UPDATES
+}
+
+#ifdef ADAPTIVE_WPTS yes
+ProcessConfig = uTimerScript
+{
+  AppTick = 4
+  CommsTick = 4
+
+  verbose = true
+
+  // lawnmower duration ca 6362-6375
+  // lawnmower start at 2339-2472, avg 2211
+  // 2211+bnds = 8571-8586
+#ifdef NR_VEHICLES 1
+  event = var=STAGE,val="hpoptim",time=8571:8660
+#endif
+#ifdef NR_VEHICLES 2
+  event = var=STAGE,val="hpoptim",time=4934:5167
+#endif
+
+  reset_max = 0
+//  reset_time = all-posted
+  reset_var = UTS_RESET
+
+  status_var = UTS_STATUS
+
+//  time_warp=$(WARP)
+}
+#endif
