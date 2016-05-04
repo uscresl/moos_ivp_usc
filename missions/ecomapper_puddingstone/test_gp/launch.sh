@@ -33,6 +33,10 @@ for ARGI; do
     fi
 done
 
+if [ "${SIMULATION_MODE}" = "no" ] ; then
+TIME_WARP=1
+fi
+
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
@@ -67,10 +71,20 @@ ANNA_LISTEN="9301"
 ANNA_LISTEN_GP="9401"
 ANNA_VPORT="9001"
 
+# hostnames
 SERVERHOST="localhost"
+# TODO: check auto config with ShoreBroker/NodeBroker
+if [ "${SIMULATION_MODE}" = "no" ] ; then
+  SERVERHOST_EM="192.168.10.11"
+  SERVERHOST_SS="192.168.10.150"
+else
+  SERVERHOST_EM=$SERVERHOST
+  SERVERHOST_SS=$SERVERHOST
+fi
+
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="../../../data"        \
-   SHARE_LISTEN=$SHORE_LISTEN VPORT=$SHORE_VPORT SERVER_HOST=$SERVERHOST  \
+   SHARE_LISTEN=$SHORE_LISTEN VPORT=$SHORE_VPORT SERVER_HOST=$SERVERHOST_SS  \
    LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR   SERVER_LISTEN=$WATER_LISTEN  \
    PAINT_SEGLIST=$PAINTSEGLIST  SIMULATION=$SIMULATION_MODE
 
@@ -90,7 +104,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VPORT=$ANNA_VPORT SHARE_LISTEN=$ANNA_LISTEN SHARE_LISTEN_GP=$ANNA_LISTEN_GP \
    SHARE_OTHER_GP=$FERDINAND_LISTEN_GP  SERVER_LISTEN=$SHORE_LISTEN \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1 \
-   SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
+   SERVER_HOST=$SERVERHOST_EM  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
