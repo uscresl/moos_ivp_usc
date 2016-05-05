@@ -1,19 +1,19 @@
 #!/bin/bash
 
 # run 10 simulations
-for idx in `seq 1 12`; do
+for idx in `seq 1 10`; do
 	# start sim
-	./launch.sh --2auvs -a 5 &
-	sleep 10 && uPokeDB targ_shoreside.moos "DEPLOY_ALL=true"
+	./launch.sh --2auvs -a 2 &
+	sleep 30 && uPokeDB targ_shoreside.moos "DEPLOY_ALL=true"
 
 	# wait for sim to run, then end it
-	sleep 3600 && ./kill.sh
+	sleep 4000 && ./kill.sh
 
 	# move log files to dir
-	sleep 2 && ./mv_logs_to_dir.sh 0327_2auvsadp_parallel_$idx
+	sleep 5 && ./mv_logs_to_dir.sh 0329_2auvsadp_tds_$idx
 
 	# clean up whatever remains
-	sleep 2 && ./clean.sh
+	sleep 5 && ./clean.sh
 done
 
 

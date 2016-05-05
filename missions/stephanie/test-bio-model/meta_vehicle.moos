@@ -188,7 +188,7 @@ ProcessConfig = uTimerScript
   event = var=STAGE,val="hpoptim",time=8571:8660
 #endif
 #ifdef NR_VEHICLES 2
-  event = var=STAGE,val="hpoptim",time=5216:5448
+  event = var=STAGE,val="hpoptim",time=4934:5167
 #endif
 
   reset_max = 0
