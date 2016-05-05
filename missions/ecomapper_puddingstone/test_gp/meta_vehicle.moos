@@ -48,7 +48,9 @@ ProcessConfig = ANTLER
   // communications
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
+#ifdef SIMULATION yes
   Run = uFldMessageHandler @ NewConsole = false
+#endif
   Run = pShare @ NewConsole = false
 
   // add other processes here
@@ -98,12 +100,16 @@ ProcessConfig = ANTLER
 
 // communications //////////////////////////////////////////////////////////////
 #include $(PLUG_DIR)/plug_pHostInfo.moos
-#include $(PLUG_DIR)/plug_uFldNodeBroker.moos
+#include plugs/plug_uFldNodeBroker.moos
+#ifdef SIMULATION yes
 #include $(PLUG_DIR)/plug_uFldMessageHandler.moos
-#include $(PLUG_DIR)/plug_pShare.moos
+#endif
+    #include plugs/plug_pShare.moos
 
 // add other processes here ////////////////////////////////////////////////////
+#ifdef SIMULATION yes
 #include $(PLUG_DIR)/plug_uSimBioSensor.moos
+#endif
 
 //--------------------------------------------------
 // pGP configuration block
