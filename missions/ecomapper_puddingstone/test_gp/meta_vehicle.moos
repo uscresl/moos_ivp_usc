@@ -123,7 +123,11 @@ ProcessConfig = pGP
   use_log_gp = true
 
   // define the names of input variables
+#ifdef SIMULATION yes
   input_var_data = SIM_DATA
+#else
+  input_var_data = YSI_CHL
+#endif
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
   input_var_adaptive_trigger = WPT_REACHED

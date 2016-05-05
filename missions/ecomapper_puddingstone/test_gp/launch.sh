@@ -13,7 +13,7 @@ for ARGI; do
         printf "%s [SWITCHES] [time_warp]   \n" $0
         printf "  --just_build, -j  \n" 
         printf "  --adaptive, -a    \n" 
-        printf "  --2auvs           \n" 
+#        printf "  --2auvs           \n"
         printf "  --simulation, -s  \n" 
         printf "  --help, -h        \n" 
         exit 0;
@@ -23,8 +23,8 @@ for ARGI; do
         JUST_MAKE="yes"
     elif [ "${ARGI}" = "--adaptive" -o "${ARGI}" = "-a" ] ; then
         ADAPTIVE="yes"
-    elif [ "${ARGI}" = "--2auvs" ] ; then
-        NUM_VEHICLES=2
+#    elif [ "${ARGI}" = "--2auvs" ] ; then
+#        NUM_VEHICLES=2
     elif [ "${ARGI}" = "--simulation" -o "${ARGI}" = "-s" ] ; then
         SIMULATION_MODE="yes"
     else 
