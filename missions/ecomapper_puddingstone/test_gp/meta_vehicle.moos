@@ -100,11 +100,11 @@ ProcessConfig = ANTLER
 
 // communications //////////////////////////////////////////////////////////////
 #include $(PLUG_DIR)/plug_pHostInfo.moos
-#include plugs/plug_uFldNodeBroker.moos
+#include $(PLUG_DIR)/plug_uFldNodeBroker.moos
 #ifdef SIMULATION yes
 #include $(PLUG_DIR)/plug_uFldMessageHandler.moos
 #endif
-    #include plugs/plug_pShare.moos
+#include $(PLUG_DIR)/plug_pShare.moos
 
 // add other processes here ////////////////////////////////////////////////////
 #ifdef SIMULATION yes
