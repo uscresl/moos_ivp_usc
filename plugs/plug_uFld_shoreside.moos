@@ -6,15 +6,11 @@ ProcessConfig = uFldShoreBroker
   AppTick       = 1
   CommsTick     = 1
 
+  // quick bridge; all starting with:
   qbridge  = DEPLOY, RETURN, NODE_MESSAGE
-
-//  QBRIDGE = NODE_MESSAGE
-  //BRIDGE = src=SIM_OCEANENV_REPORT
-//  BRIDGE = src=CRS_RANGE_REPORT_$V, alias=CRS_RANGE_REPORT
-
-//  BRIDGE = src=DEPLOY_ALL, alias=DEPLOY
 }
 
+#ifdef SIMULATION yes
 //--------------------------------------------------
 // uFldNodeComms Configuration Block
 //
@@ -23,9 +19,10 @@ ProcessConfig = uFldNodeComms
   AppTick       = 2
   CommsTick     = 2
 
-  COMMS_RANGE      = 500 // TODO: reduce more?
-  CRITICAL_RANGE   = 0//25
+  COMMS_RANGE      = 500 // m
+  CRITICAL_RANGE   = 0 // 25 // m
   MIN_MSG_INTERVAL = 0
   MAX_MSG_LENGTH   = 10000
   GROUPS           = true
 }
+#endif

@@ -1,6 +1,6 @@
 //--------------------------------------------------------
-// uProcessWatch Configuration Block (Created from Plugin)
-
+// uProcessWatch Configuration Block
+//
 ProcessConfig = uProcessWatch
 {
   AppTick   = 2
@@ -16,10 +16,4 @@ ProcessConfig = uProcessWatch
   WATCH  = pNodeReporter
   WATCH  = pMarinePID
   WATCH  = pHelmIvP
-
-//#ifdef VTYPE SHIP
-//  WATCH  = pMaxFormationWidth
-//#endif
 }
-
-
