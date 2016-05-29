@@ -1,0 +1,35 @@
+import "dccl/protobuf/option_extensions.proto";
+//import "goby/common/protobuf/option_extensions.proto";
+message Data { 
+	option (dccl.msg).id = 25; // http://gobysoft.org/wiki/DcclIdTable
+	option (dccl.msg).max_bytes = 64; // rate 0
+	optional double Timestamp = 1 [(dccl.field).codec="_time", (dccl.field).in_head=true];
+	optional int32 Node = 2 [(dccl.field).max=31, (dccl.field).min=0, (dccl.field).in_head=true];
+	optional int32 _dest_id = 3 [(dccl.field).max=31, (dccl.field).min=0, (dccl.field).in_head=true];
+	optional string MessageType = 4 [default="DATA", (dccl.field).static_value="DATA", (dccl.field).codec="_static"];
+	// origin specified south-west of operating area, vehicles should be in positive space
+	optional double nav_x1 = 5 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double nav_y1 = 6 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double Depth1 = 7 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double data1 = 8 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double nav_x2 = 9 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double nav_y2 = 10 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double Depth2 = 11 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double data2 = 12 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double nav_x3 = 13 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double nav_y3 = 14 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double Depth3 = 15 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double data3 = 16 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double nav_x4 = 17 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double nav_y4 = 18 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double Depth4 = 19 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double data4 = 20 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double nav_x5 = 21 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double nav_y5 = 22 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double Depth5 = 23 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double data5 = 24 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double nav_x6 = 25 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double nav_y6 = 26 [(dccl.field).max=10000, (dccl.field).min=0, (dccl.field).precision=1];
+	optional double Depth6 = 27 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+	optional double data6 = 28 [(dccl.field).max=100.0, (dccl.field).min=-1.0, (dccl.field).precision=1];
+}
