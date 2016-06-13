@@ -39,7 +39,7 @@ done
 # simulation set-up
 EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
 PLUGDIR="../../../plugs" # no leading slash
-MSGDIR="../../../modem-msgs"
+MSGDIR="../../../proto"
 
 PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
 
