@@ -128,7 +128,7 @@ ProcessConfig = pGP
   nr_vehicles = $(NR_VEHICLES)
 
   // elementary coordination (implicit): share data at set intervals
-#ifdef ADAPTIVE_WPTS yes
+#ifdef USE_TDS yes
   timed_data_sharing = true
 #else
   timed_data_sharing = false

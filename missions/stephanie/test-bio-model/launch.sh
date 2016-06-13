@@ -5,6 +5,8 @@
 TIME_WARP=1
 JUST_MAKE="no"
 ADAPTIVE="no"
+TDS="no"
+ACOMMS="no"
 NUM_VEHICLES=1
 
 for ARGI; do
@@ -19,6 +21,10 @@ for ARGI; do
         JUST_MAKE="yes"
     elif [ "${ARGI}" = "--adaptive" -o "${ARGI}" = "-a" ] ; then
         ADAPTIVE="yes"
+    elif [ "${ARGI}" = "--tds" -o "${ARGI}" = "-t" ] ; then
+        TDS="yes"
+    elif [ "${ARGI}" = "--acomms" -o "${ARGI}" = "-c" ] ; then
+        ACOMMS="yes"
     elif [ "${ARGI}" = "--2auvs" ] ; then
         NUM_VEHICLES=2
     else 
@@ -137,7 +143,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
-   ADAPTIVE_WPTS=$ADAPTIVE
+   ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS
 if [ $NUM_VEHICLES -ge 2 ] ; then
 PILOT_LAWNMOWER_C_NS=$PILOT_LM_1_NS
 PILOT_LAWNMOWER_C_EW=$PILOT_LM_1_EW
@@ -162,7 +168,7 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX2 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
-   ADAPTIVE_WPTS=$ADAPTIVE
+   ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2                    \

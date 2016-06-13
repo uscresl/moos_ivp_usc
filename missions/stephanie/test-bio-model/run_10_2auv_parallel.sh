@@ -3,7 +3,7 @@
 # run 10 simulations
 for idx in `seq 1 10`; do
 	# start sim
-	./launch.sh --2auvs -a 2 &
+	./launch.sh --2auvs 2 &
 	sleep 30 && uPokeDB targ_shoreside.moos "DEPLOY_ALL=true"
 
 	# wait for sim to run, then end it
