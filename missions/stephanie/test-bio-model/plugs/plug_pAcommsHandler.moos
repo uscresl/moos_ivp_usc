@@ -12,9 +12,9 @@ ProcessConfig = pAcommsHandler
       algorithm {  name: "to_upper"  output_virtual_field: 100  primary_field: 4  }
     }
   }
-  load_proto_file: "$(MSG_DIR)/status_min.proto"
+  load_proto_file: "$(MSG_DIR)/status_and_data.proto"
   translator_entry {
-    protobuf_name: "Status"
+    protobuf_name: "StatusData"
     trigger {
       type: TRIGGER_TIME
       period: 5
@@ -73,6 +73,12 @@ ProcessConfig = pAcommsHandler
       moos_var: "NAV_ROLL"
       format: "%12%"
     }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "SIM_DATA"
+      format: "%13%"
+    }
+    // publish
     publish {
       technique: TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT
       moos_var: "STATUS_IN"
@@ -204,6 +210,16 @@ ProcessConfig = pAcommsHandler
         primary_field: 2
       }
     }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "%101%_DATA"
+      format: "%13%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 101
+        primary_field: 2
+      }
+    }
     use_short_enum: true
   }
 
@@ -214,7 +230,7 @@ ProcessConfig = pAcommsHandler
       role { type: TIMESTAMP  field: "_time" }
     }
     // prev: value base 1.5, ttl 300, blackout_time 10
-    message_entry { protobuf_name: "Status" ack: false blackout_time: 0 max_queue: 1 ttl: 300 value_base: 1.5
+    message_entry { protobuf_name: "StatusData" ack: false blackout_time: 0 max_queue: 1 ttl: 300 value_base: 1.5
       role { type: SOURCE_ID field: "Node" }
       role { type: DESTINATION_ID field: "_dest_id" }
       role { type: TIMESTAMP field: "Timestamp" }

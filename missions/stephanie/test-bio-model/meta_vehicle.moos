@@ -89,7 +89,11 @@ ProcessConfig = ANTLER
 #include $(PLUG_DIR)/plug_pBasicContactMgr.moos
 
 // simulate acoustic communications
+#ifdef USE_ACOMMS yes
+#include plugs/plug_pAcommsHandler.moos
+#else
 #include $(PLUG_DIR)/plug_pAcommsHandler.moos
+#endif
 #include $(PLUG_DIR)/plug_pHostInfo.moos
 #include $(PLUG_DIR)/plug_uFldNodeBroker.moos
 #include $(PLUG_DIR)/plug_uFldMessageHandler.moos
