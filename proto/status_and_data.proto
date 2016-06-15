@@ -1,7 +1,7 @@
 import "dccl/protobuf/option_extensions.proto";
 message StatusData { 
-  option (dccl.msg) = { id: 24 // http://gobysoft.org/wiki/DcclIdTable
-                        max_bytes: 32 // rate 0
+  option (dccl.msg) = { id: 24           // http://gobysoft.org/wiki/DcclIdTable
+                        max_bytes: 32    // rate 0
                         codec_version: 3 // use default DCCL3 codecs
                       };
   optional double Timestamp = 1 [(dccl.field) = {codec:"_time" in_head:true}];
