@@ -91,6 +91,8 @@ if ( MOOSGeodesy_FOUND )
   add_subdirectory(pLonLatToWptUpdate)
 endif()
 
+# Jun'16: add process to republish data for easy import into acomms msg
+add_subdirectory(pRePublishDataPtWithNav)
 
 
 ##############################################################################
