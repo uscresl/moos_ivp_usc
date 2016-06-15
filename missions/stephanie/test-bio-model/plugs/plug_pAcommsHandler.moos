@@ -75,8 +75,43 @@ ProcessConfig = pAcommsHandler
     }
     create {
       technique: TECHNIQUE_FORMAT
-      moos_var: "SIM_DATA"
+      moos_var: "DATA_X1"
       format: "%13%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "DATA_Y1"
+      format: "%14%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "DATA_DEPTH1"
+      format: "%15%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "DATA_VAL1"
+      format: "%16%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "DATA_X2"
+      format: "%17%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "DATA_Y2"
+      format: "%18%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "DATA_DEPTH2"
+      format: "%19%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "DATA_VAL2"
+      format: "%20%"
     }
     // publish
     publish {
@@ -212,8 +247,8 @@ ProcessConfig = pAcommsHandler
     }
     publish {
       technique: TECHNIQUE_FORMAT
-      moos_var: "%101%_DATA"
-      format: "%13%"
+      moos_var: "%101%_DATA_ALL"
+      format: "x1=%13%,y1=%14%,z1=%15%,d1=%16%,x2=%17%,y2=%18%,z2=%19%,d2=%20%"
       algorithm {
         name: "modem_id2name"
         output_virtual_field: 101
