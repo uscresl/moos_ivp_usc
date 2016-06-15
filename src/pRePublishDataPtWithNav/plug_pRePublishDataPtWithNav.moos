@@ -1,0 +1,12 @@
+//--------------------------------------------------
+// pRePublishDataPtWithNav configuration block
+//
+ProcessConfig = pRePublishDataPtWithNav
+{
+  AppTick   = 2
+  CommsTick = 2
+  
+  // potential process parameters would go here
+  data_var_name = "DATA_IN"
+  nr_data_points = 4
+}
