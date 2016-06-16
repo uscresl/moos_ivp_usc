@@ -7,7 +7,7 @@ message StatusData {
   optional double Timestamp = 1 [(dccl.field) = {codec:"_time" in_head:true}];
   optional int32 Node = 2 [(dccl.field) = {max:31 min:0 in_head:true}];
   optional int32 _dest_id = 3 [(dccl.field) = {max:31 min:0 in_head:true}];
-  optional string MessageType = 4 [default="LAMSS_STATUS", (dccl.field) = {static_value:"LAMSS_STATUS" codec:"_static"}];
+  optional string MessageType = 4 [default="STATUS_AND_DATA", (dccl.field) = {static_value:"STATUS_AND_DATA" codec:"_static"}];
   // origin specified south-west of operating area, vehicles should be in positive space
   optional double nav_x = 5 [(dccl.field) = {max:10000 min:0 precision:1}];
   optional double nav_y = 6 [(dccl.field) = {max:10000 min:0 precision:1}];
@@ -17,13 +17,13 @@ message StatusData {
   optional double Altitude = 10 [(dccl.field) = {max:500.0 min:-10.0 precision:1}];
   optional double Pitch = 11 [(dccl.field) = {max:1.57 min:-1.57 precision:2}];
   optional double Roll = 12 [(dccl.field) = {max:1.57 min:-1.57 precision:2}];
-  optional double nav_x1 = 13 [(dccl.field) = {max:10000 min:0 precision:1}];
-  optional double nav_y1 = 14 [(dccl.field) = {max:10000 min:0 precision:1}];
-  optional double nav_depth1 = 15 [(dccl.field) = {max:100.0 min:-1.0 precision:1}];
-  optional double data1 = 16 [(dccl.field) = {max:100.0 min:-1.0 precision:1}];
-  optional double nav_x2 = 17 [(dccl.field) = {max:10000 min:0 precision:1}];
-  optional double nav_y2 = 18 [(dccl.field) = {max:10000 min:0 precision:1}];
-  optional double nav_depth2 = 19 [(dccl.field) = {max:100.0 min:-1.0 precision:1}];
-  optional double data2 = 20 [(dccl.field) = {max:100.0 min:-1.0 precision:1}];
+  optional double data_x1 = 13 [(dccl.field) = {max:10000 min:0 precision:1}];
+  optional double data_y1 = 14 [(dccl.field) = {max:10000 min:0 precision:1}];
+  optional double data_depth1 = 15 [(dccl.field) = {max:100.0 min:-1.0 precision:1}];
+  optional double data_val1 = 16 [(dccl.field) = {max:100.0 min:-1.0 precision:2}];
+  optional double data_x2 = 17 [(dccl.field) = {max:10000 min:0 precision:1}];
+  optional double data_y2 = 18 [(dccl.field) = {max:10000 min:0 precision:1}];
+  optional double data_depth2 = 19 [(dccl.field) = {max:100.0 min:-1.0 precision:1}];
+  optional double data_val2 = 20 [(dccl.field) = {max:100.0 min:-1.0 precision:2}];
 }
 
