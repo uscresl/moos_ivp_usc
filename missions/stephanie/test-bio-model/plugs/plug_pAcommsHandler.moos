@@ -254,6 +254,11 @@ ProcessConfig = pAcommsHandler
         output_virtual_field: 101
         primary_field: 2
       }
+      algorithm {
+        name: "to_upper"
+        output_virtual_field: 101
+        primary_field: 2
+      }
     }
     use_short_enum: true
   }
