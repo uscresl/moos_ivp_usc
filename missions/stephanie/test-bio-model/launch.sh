@@ -8,6 +8,7 @@ ADAPTIVE="no"
 TDS="no"
 ACOMMS="no"
 NUM_VEHICLES=1
+RUN_SIMULATION="yes"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
@@ -108,7 +109,7 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="../../../data"        \
    SHARE_LISTEN=$SHORE_LISTEN VPORT=$SHORE_VPORT SERVER_HOST=$SERVERHOST       \
    LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR     \
-   PAINT_SEGLIST=$PAINTSEGLIST
+   PAINT_SEGLIST=$PAINTSEGLIST   SIMULATION=$RUN_SIMULATION
 
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
