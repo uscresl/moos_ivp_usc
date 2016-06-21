@@ -176,7 +176,7 @@ ProcessConfig = pMarineViewer
 
   // tiff img background?
   tiff_view = true
-  tiff_file     = /home/stephanie/moos-ivp-usc/data/maps/puddingstone_all.tif
+  tiff_file     = ../../data/maps/puddingstone_all.tif
 
   // where to focus
   set_pan_x            = 2375
