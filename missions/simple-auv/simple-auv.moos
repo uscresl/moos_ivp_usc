@@ -6,10 +6,9 @@ Community  = ecomapper
 // warp? (increase sim speed, ok as long as no process reads system time)
 MOOSTimeWarp = 20
 
-// Location
-LatOrigin  = 36.729529
-LongOrigin = -122.026634
-
+// Location: Puddingstone full
+LatOrigin  = 34.0784000000111
+LongOrigin = -117.815
 
 //****************************************************************************//
 // Base Processes
@@ -68,8 +67,8 @@ ProcessConfig = uSimMarine
   prefix = NAV
 
   // specify start position
-  start_x       = 0
-  start_y       = 0
+  start_x       = 450
+  start_y       = 940
   start_heading = 0
   start_speed   = 0
   start_depth   = 0
@@ -176,13 +175,13 @@ ProcessConfig = pMarineViewer
   CommsTick  = 4
 
   // tiff img background?
-  tiff_view = false
-//  TIFF_FILE            = forrest19.tif
+  tiff_view = true
+  tiff_file     = /home/stephanie/moos-ivp-usc/data/maps/puddingstone_all.tif
 
   // where to focus
-  set_pan_x            = 160
-  set_pan_y            = -160
-  zoom                 = 2
+  set_pan_x            = 2375
+  set_pan_y            = -540
+  zoom                 = 0.94
 
   vehicles_shape_scale = 1.5
   vehicles_name_viewable = names

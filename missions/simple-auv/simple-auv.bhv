@@ -27,7 +27,7 @@ Behavior = BHV_WaypointSpd
   updates   = WPT_UPDATE
 
   // bhv params
-  points = 60,-40 : 60,-160 : 150,-160 : 180,-100 : 150,-40
+  points = 355,935:300,1010:455,1060:445,970
   capture_radius = 5.0
   slip_radius = 15.0
   capture_line = true
