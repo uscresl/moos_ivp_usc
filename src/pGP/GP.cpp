@@ -138,6 +138,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
   {
     CMOOSMsg &msg = *p;
     std::string key   = msg.GetKey();
+
     std::string sval  = msg.GetString();
     // separate way for getting the double val (sval was not working for DB_UPTIME)
     double dval  = msg.GetDouble();
@@ -232,8 +233,13 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         }
       }
     }
+    else if ( key == "INCOMING_DATA_ACOMMS" )
+    {
+      handleMailDataAcomms(sval);
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
+
   }
 
   return(true);
@@ -459,6 +465,8 @@ bool GP::OnStartUp()
   if (!m_MissionReader.GetConfiguration(GetAppName(), sParams))
     std::cout << GetAppName() << " :: No config block found for " << GetAppName();
 
+  initGeodesy();
+
   STRING_LIST::iterator p;
   for (p=sParams.begin(); p!=sParams.end(); p++)
   {
@@ -578,6 +586,43 @@ bool GP::OnStartUp()
 }
 
 //---------------------------------------------------------
+// Procedure: initGeodesy
+//            initialize MOOS Geodesy for lat/lon conversions
+//
+void GP::initGeodesy()
+{
+  // get lat/lon origin from MOOS file
+  bool failed = false;
+  double latOrigin, longOrigin;
+  if ( !m_MissionReader.GetValue("LatOrigin", latOrigin) )
+  {
+    std::cout << GetAppName() << " :: LatOrigin not set in *.moos file." << std::endl;
+    failed = true;
+  }
+  else if ( !m_MissionReader.GetValue("LongOrigin", longOrigin) )
+  {
+    std::cout << GetAppName() << " :: LongOrigin not set in *.moos file" << std::endl;
+    failed = true;
+  }
+  else {
+    // initialize m_geodesy
+    if ( !m_geodesy.Initialise(latOrigin, longOrigin) )
+    {
+      std::cout << GetAppName() << " :: Geodesy init failed." << std::endl;
+      failed = true;
+    }
+  }
+  if ( failed )
+  {
+    std::cout << GetAppName() << " :: failed to initialize geodesy, exiting." << std::endl;
+    RequestQuit();
+  }
+  else
+    std::cout << GetAppName() << " :: Geodesy initialized: lonOrigin, latOrigin = " << longOrigin << ", " << latOrigin << std::endl;
+}
+
+
+//---------------------------------------------------------
 // Procedure: registerVariables
 //            at startup, let the MOOSDB know what you want
 //            to receive
@@ -607,6 +652,14 @@ void GP::registerVariables()
   m_Comms.Register(m_input_var_share_data, 0);
   m_Comms.Register("LOITER_DIST_TO_POLY",0);
   m_Comms.Register(m_input_var_handshake_data_sharing,0);
+
+  // get data from other vehicles
+  m_Comms.Register("INCOMING_DATA_ACOMMS",0);
+
+  std::cout << GetAppName() << " :: Done registering, registered for: " << std::endl;
+  std::set<std::string> get_registered = m_Comms.GetRegistered();
+  for ( auto registered : get_registered )
+    std::cout << registered << std::endl;
 }
 
 //---------------------------------------------------------
@@ -639,72 +692,6 @@ void GP::handleMailData(double received_data)
   }
 }
 
-void GP::dataAddingThread()
-{
-  while ( !m_finished )
-  {
-    if ( m_queue_data_points_for_gp.empty() )
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    else
-    {
-      // process data point
-      std::vector<double> data_pt = m_queue_data_points_for_gp.front();
-      m_queue_data_points_for_gp.pop();
-      double veh_lon = data_pt[0];
-      double veh_lat = data_pt[1];
-
-      // add data pt
-      addPatternToGP(veh_lon, veh_lat, data_pt[2]);
-
-      // update visited set if needed
-      int index = get_index_for_map(veh_lon, veh_lat);
-      if ( index >= 0 && need_to_update_maps((size_t)index) )
-        updateVisitedSet(veh_lon, veh_lat, (size_t)index);
-    }
-  }
-}
-
-void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
-{
-  // limit scope mutex, protect when adding data
-  // because this is now happening in a detached thread
-  double location[2] = {veh_lon, veh_lat};
-
-  // GP: pass in value
-  // log GP: take log (ln) of measurement
-  double save_val = m_use_log_gp ? log(value) : value;
-
-  // Input vectors x must be provided as double[] and targets y as double.
-
-  std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
-  // obtain lock
-  while ( !ap_lock.try_lock() ) {}
-  // add new data point to GP
-  m_gp.add_pattern(location, save_val);
-  // release mutex
-  ap_lock.unlock();
-}
-
-void GP::storeDataForSending(double vlon, double vlat, double data)
-{
-  // save the data point in a vector that we will send
-  std::ostringstream data_str_stream;
-  data_str_stream << std::setprecision(10) << vlon << "," << vlat << ","
-                  << std::setprecision(5) << data;
-
-  if ( m_data_pt_counter > m_data_send_reserve || m_data_pt_counter == 0 )
-  {
-    // preallocate vector memory
-    m_data_send_reserve += 1500;
-    m_data_to_send.reserve(m_data_send_reserve);
-  }
-
-  m_data_to_send.push_back(data_str_stream.str());
-
-  m_data_pt_counter++;
-}
-
-
 //---------------------------------------------------------
 // Procedure: handleMailReceivedDataPts
 //            taken the received data, and add them to the GP
@@ -719,6 +706,7 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 
   // 1. split all data points into a vector
   std::vector<std::string> sample_points = parseString(incoming_data, ';');
+
   // 2. for each, add to GP
   for ( std::string & data_pt_str : sample_points )
   {
@@ -836,6 +824,133 @@ void GP::handleMailSamplePointsSpecs(std::string input_string)
   std::cout << GetAppName() << " :: width, height, spacing: " << m_pts_grid_width << ", " <<
                m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
 }
+
+//---------------------------------------------------------
+// Procedure: handleMailDataAcomms(std::string css)
+//            take incoming comma-separated string (css)
+//            parse, and if not from self, add data to GP
+//
+void GP::handleMailDataAcomms(std::string css)
+{
+  std::vector<std::string> incoming_str = parseString(css,',');
+  std::string name = incoming_str[0].substr(5,incoming_str[0].length()-1);
+  if ( name != m_veh_name )
+  {
+    if ( css == m_last_acomms_string )
+    {
+      std::cout << GetAppName() << " :: received the same data through acomms, ignoring" << std::endl;
+      return;
+    }
+    m_last_acomms_string = css;
+
+    std::cout << "Received data from: " << name << std::endl;
+    // add to data adding queue
+    for ( size_t cnt = 0; cnt < (incoming_str.size()-1)/4; cnt++ )
+    {
+      // grab data value for current i
+      std::string d_str = incoming_str[cnt*4+4];
+      double d_i = atof(d_str.substr(d_str.find('=')+1, d_str.length()).c_str());
+
+      if ( d_i > 0 )
+      {
+        // grab x,y,z for current i
+        std::string x_str = incoming_str[cnt*4+1];
+        std::string y_str = incoming_str[cnt*4+2];
+        std::string z_str = incoming_str[cnt*4+3];
+        // get the values from the xi=XX string
+        double x_i = atof(x_str.substr(x_str.find('=')+1, x_str.length()).c_str());
+        double y_i = atof(y_str.substr(y_str.find('=')+1, y_str.length()).c_str());
+        double z_i = atof(z_str.substr(z_str.find('=')+1, z_str.length()).c_str());
+
+        // convert x,y to lon,lat
+        double lon, lat;
+        bool converted = utmToLonLat(x_i, y_i, lon, lat);
+        // add to data adding queue
+        if ( converted )
+        {
+          std::cout << "adding: " << lon << "," << lat << "," << d_i << std::endl;
+          std::vector<double> nw_data_pt{lon, lat, d_i};
+          m_queue_data_points_for_gp.push(nw_data_pt);
+        }
+      }
+      else
+        std::cout << GetAppName() << " :: received invalid data, ignoring" << std::endl;
+
+    }
+
+  }
+}
+
+
+void GP::dataAddingThread()
+{
+  while ( !m_finished )
+  {
+    if ( m_queue_data_points_for_gp.empty() )
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    else
+    {
+      // process data point
+      std::vector<double> data_pt = m_queue_data_points_for_gp.front();
+      m_queue_data_points_for_gp.pop();
+      double veh_lon = data_pt[0];
+      double veh_lat = data_pt[1];
+
+      // add data pt
+      addPatternToGP(veh_lon, veh_lat, data_pt[2]);
+
+      // update visited set if needed
+      int index = get_index_for_map(veh_lon, veh_lat);
+      if ( index >= 0 && need_to_update_maps((size_t)index) )
+        updateVisitedSet(veh_lon, veh_lat, (size_t)index);
+    }
+  }
+}
+
+void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
+{
+  // limit scope mutex, protect when adding data
+  // because this is now happening in a detached thread
+  double location[2] = {veh_lon, veh_lat};
+
+  // GP: pass in value
+  // log GP: take log (ln) of measurement
+  double save_val = m_use_log_gp ? log(value) : value;
+
+  // Input vectors x must be provided as double[] and targets y as double.
+
+  std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
+  // obtain lock
+  while ( !ap_lock.try_lock() ) {}
+  // add new data point to GP
+  m_gp.add_pattern(location, save_val);
+  // release mutex
+  ap_lock.unlock();
+}
+
+void GP::storeDataForSending(double vlon, double vlat, double data)
+{
+  // save the data point in a vector that we will send
+  std::ostringstream data_str_stream;
+  data_str_stream << std::setprecision(10) << vlon << "," << vlat << ","
+                  << std::setprecision(5) << data;
+
+  if ( m_data_pt_counter > m_data_send_reserve || m_data_pt_counter == 0 )
+  {
+    // preallocate vector memory
+    m_data_send_reserve += 1500;
+    m_data_to_send.reserve(m_data_send_reserve);
+  }
+
+  m_data_to_send.push_back(data_str_stream.str());
+
+  m_data_pt_counter++;
+}
+
+
+
+
+
 
 
 //---------------------------------------------------------
@@ -1566,3 +1681,34 @@ void GP::calcLonLatSpacingAndBuffers()
   m_buffer_lon = 2.0/m_lon_deg_to_m;
   m_buffer_lat = 2.0/m_lat_deg_to_m;
 }
+
+
+
+//---------------------------------------------------------
+// Procedure: lonLatToUTM
+//            use MOOS Geodesy to convert lon/lat to x/y
+//
+bool GP::lonLatToUTM (double lon, double lat, double & lx, double & ly )
+{
+  bool successful = m_geodesy.LatLong2LocalUTM(lat, lon, ly, lx);
+
+  if ( !successful )
+    std::cout << GetAppName() << " :: ERROR converting lon/lat to x/y.\n";
+
+  return successful;
+}
+
+//---------------------------------------------------------
+// Procedure: utmToLonLat
+//            use MOOS Geodesy to convert x/y to lon/lat
+//
+bool GP::utmToLonLat (double lx, double ly, double & lon, double & lat )
+{
+  bool successful = m_geodesy.UTM2LatLong(lx, ly, lat, lon);
+
+  if ( !successful )
+    std::cout << GetAppName() << " :: ERROR converting x/y to lon/lat.\n";
+
+  return successful;
+}
+

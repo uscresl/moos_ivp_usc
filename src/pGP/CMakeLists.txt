@@ -14,6 +14,7 @@ ADD_EXECUTABLE(pGP ${SRC})
 
 TARGET_LINK_LIBRARIES(pGP
    ${MOOS_LIBRARIES}
+   ${MOOSGeodesy_LIBRARIES}
    geometry
    apputil
    mbutil

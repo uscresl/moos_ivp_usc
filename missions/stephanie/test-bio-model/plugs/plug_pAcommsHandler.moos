@@ -247,15 +247,15 @@ ProcessConfig = pAcommsHandler
     }
     publish {
       technique: TECHNIQUE_FORMAT
-      moos_var: "%101%_DATA_ALL"
-      format: "x1=%13%,y1=%14%,z1=%15%,d1=%16%,x2=%17%,y2=%18%,z2=%19%,d2=%20%"
+      moos_var: "INCOMING_DATA_ACOMMS"
+      format: "name=%101%,x1=%13%,y1=%14%,z1=%15%,d1=%16%,x2=%17%,y2=%18%,z2=%19%,d2=%20%"
       algorithm {
         name: "modem_id2name"
         output_virtual_field: 101
         primary_field: 2
       }
       algorithm {
-        name: "to_upper"
+        name: "to_lower"
         output_virtual_field: 101
         primary_field: 2
       }

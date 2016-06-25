@@ -66,18 +66,6 @@ if ( Boost_FOUND )
   ADD_SUBDIRECTORY(uSimBioSensor)
 endif()
 
-# Jan'16: add process for GP generation
-FIND_PACKAGE(LibGP)
-if ( LIBGP_FOUND )
-#  message("     found LibGP")
-#  message("     include dirs: " ${LIBGP_INCLUDE_DIRS})
-#  message("     target link dirs: " ${LIBGP_LIBRARIES})
-  include_directories(${LIBGP_INCLUDE_DIRS})
-  add_subdirectory(pGP)
-else()
-  message("LibGP not found. Did you set the GPLIB_LOCATION environment variable?")
-endif()
-
 # Jan'16: add process to determine sample points for GP
 # need MOOS Geodesy for conversion x/y/lon/lat
 find_package(MOOSGeodesy)
@@ -93,6 +81,20 @@ endif()
 
 # Jun'16: add process to republish data for easy import into acomms msg
 add_subdirectory(pRePublishDataPtWithNav)
+
+# Jan'16/Jun'16: add process for GP generation, Jun; now also dependent on geodesy
+FIND_PACKAGE(LibGP)
+if ( LIBGP_FOUND AND MOOSGeodesy_FOUND )
+#  message("     found LibGP")
+#  message("     include dirs: " ${LIBGP_INCLUDE_DIRS})
+#  message("     target link dirs: " ${LIBGP_LIBRARIES})
+  include_directories(${LIBGP_INCLUDE_DIRS})
+  include_directories(${MOOSGeodesy_INCLUDE_DIRS})
+  link_directories(${MOOSGeodesy_LIBRARY_PATH})
+  add_subdirectory(pGP)
+else()
+  message("LibGP not found. Did you set the GPLIB_LOCATION environment variable?")
+endif()
 
 
 ##############################################################################

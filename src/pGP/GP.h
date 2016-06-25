@@ -24,6 +24,9 @@
 // std queue for FIFO queue
 #include <queue>
 
+// geodesy for conversion x/y to lon/lat
+#include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
+
 class GP : public CMOOSApp
 {
  public:
@@ -43,6 +46,8 @@ class GP : public CMOOSApp
 
  private: 
    // Own functions
+   void initGeodesy();
+
    void handleMailData(double received_data);
    void handleMailSamplePoints(std::string input_string);
    void handleMailSamplePointsSpecs(std::string input_string);
@@ -70,10 +75,14 @@ class GP : public CMOOSApp
 
    void makeAndStorePredictions();
 
+   // data sending surface
    void storeDataForSending(double vlon, double vlat, double data);
    void sendReady();
    void sendData();
    size_t handleMailReceivedDataPts(std::string incoming_data);
+
+   // data sending acomms
+   void handleMailDataAcomms(std::string css);
 
    // helper/test functions
    bool need_to_update_maps(size_t grid_index);
@@ -81,10 +90,14 @@ class GP : public CMOOSApp
    void checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt);
    bool checkGPHasData();
    void calcLonLatSpacingAndBuffers();
+   bool lonLatToUTM (double lon, double lat, double & lx, double & ly );
+   bool utmToLonLat (double lx, double ly, double & lon, double & lat );
 
    size_t processReceivedData();
 
    // Configuration variables
+   CMOOSGeodesy m_geodesy;
+
    std::string m_input_var_data;
    std::string m_input_var_sample_points;
    std::string m_input_var_sample_points_specs;
@@ -185,6 +198,9 @@ class GP : public CMOOSApp
    std::string m_input_var_handshake_data_sharing;
    std::string m_output_var_handshake_data_sharing;
    size_t m_last_ready_sent;
+
+   // acomms data sharing
+   std::string m_last_acomms_string;
 };
 
 #endif 
