@@ -31,4 +31,7 @@ ProcessConfig = pGP
   timed_data_sharing = false
   output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
   input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
+
+  // data sharing through acomms
+  acomms_sharing = true
 }

@@ -143,6 +143,13 @@ ProcessConfig = pGP
 #endif
   output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
   input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
+
+  // data sharing through acomms
+#ifdef USE_ACOMMS yes
+  acomms_sharing = true
+#else
+  acomms_sharing = false
+#endif
 }
 
 //--------------------------------------------------

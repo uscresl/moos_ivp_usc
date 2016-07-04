@@ -200,6 +200,7 @@ class GP : public CMOOSApp
    size_t m_last_ready_sent;
 
    // acomms data sharing
+   bool m_acomms_sharing;
    std::string m_last_acomms_string;
 };
 

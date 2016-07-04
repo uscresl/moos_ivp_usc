@@ -85,7 +85,9 @@ GP::GP() :
   m_waiting(false),
   m_received_ready(false),
   m_output_var_handshake_data_sharing(""),
-  m_last_ready_sent(0)
+  m_last_ready_sent(0),
+  m_acomms_sharing(false),
+  m_last_acomms_string("")
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -552,6 +554,10 @@ bool GP::OnStartUp()
     {
       m_input_var_handshake_data_sharing = toupper(value);
     }
+    else if ( param == "acomms_sharing" )
+    {
+      m_acomms_sharing = (value == "true" ? true : false);
+    }
     else
       handled = false;
 
@@ -834,51 +840,57 @@ void GP::handleMailDataAcomms(std::string css)
 {
   std::vector<std::string> incoming_str = parseString(css,',');
   std::string name = incoming_str[0].substr(5,incoming_str[0].length()-1);
-  if ( name != m_veh_name )
+
+  // do not do anything if this is my own message, or I am running HP optim
+  // or I am finished
+  if ( name == m_veh_name || m_hp_optim_running || m_finished )
+    return;
+
+  // if we immediately get the exact same data string, do not process
+  if ( css == m_last_acomms_string )
   {
-    if ( css == m_last_acomms_string )
-    {
-      std::cout << GetAppName() << " :: received the same data through acomms, ignoring" << std::endl;
-      return;
-    }
-    m_last_acomms_string = css;
-
-    std::cout << "Received data from: " << name << std::endl;
-    // add to data adding queue
-    for ( size_t cnt = 0; cnt < (incoming_str.size()-1)/4; cnt++ )
-    {
-      // grab data value for current i
-      std::string d_str = incoming_str[cnt*4+4];
-      double d_i = atof(d_str.substr(d_str.find('=')+1, d_str.length()).c_str());
-
-      if ( d_i > 0 )
-      {
-        // grab x,y,z for current i
-        std::string x_str = incoming_str[cnt*4+1];
-        std::string y_str = incoming_str[cnt*4+2];
-        std::string z_str = incoming_str[cnt*4+3];
-        // get the values from the xi=XX string
-        double x_i = atof(x_str.substr(x_str.find('=')+1, x_str.length()).c_str());
-        double y_i = atof(y_str.substr(y_str.find('=')+1, y_str.length()).c_str());
-        double z_i = atof(z_str.substr(z_str.find('=')+1, z_str.length()).c_str());
-
-        // convert x,y to lon,lat
-        double lon, lat;
-        bool converted = utmToLonLat(x_i, y_i, lon, lat);
-        // add to data adding queue
-        if ( converted )
-        {
-          std::cout << "adding: " << lon << "," << lat << "," << d_i << std::endl;
-          std::vector<double> nw_data_pt{lon, lat, d_i};
-          m_queue_data_points_for_gp.push(nw_data_pt);
-        }
-      }
-      else
-        std::cout << GetAppName() << " :: received invalid data, ignoring" << std::endl;
-
-    }
-
+    std::cout << GetAppName() << " :: received the same data through acomms, ignoring" << std::endl;
+    return;
   }
+  m_last_acomms_string = css;
+
+  std::cout << "Received data from: " << name << std::endl;
+
+  // for all data points in this string,
+  // add to data adding queue
+  for ( size_t cnt = 0; cnt < (incoming_str.size()-1)/4; cnt++ )
+  {
+    // grab data value for current i
+    std::string d_str = incoming_str[cnt*4+4];
+    double d_i = atof(d_str.substr(d_str.find('=')+1, d_str.length()).c_str());
+
+    // if data is valid, process
+    if ( d_i > 0 )
+    {
+      // grab x,y,z for current i
+      std::string x_str = incoming_str[cnt*4+1];
+      std::string y_str = incoming_str[cnt*4+2];
+      std::string z_str = incoming_str[cnt*4+3];
+      // get the values from the xi=XX string
+      double x_i = atof(x_str.substr(x_str.find('=')+1, x_str.length()).c_str());
+      double y_i = atof(y_str.substr(y_str.find('=')+1, y_str.length()).c_str());
+      double z_i = atof(z_str.substr(z_str.find('=')+1, z_str.length()).c_str());
+
+      // convert x,y to lon,lat
+      double lon, lat;
+      bool converted = utmToLonLat(x_i, y_i, lon, lat);
+      // add to data adding queue
+      if ( converted )
+      {
+        std::cout << "adding: " << lon << "," << lat << "," << d_i << std::endl;
+        std::vector<double> nw_data_pt{lon, lat, d_i};
+        m_queue_data_points_for_gp.push(nw_data_pt);
+      }
+    }
+    else
+      std::cout << GetAppName() << " :: received invalid data, ignoring" << std::endl;
+  }
+
 }
 
 
@@ -946,10 +958,6 @@ void GP::storeDataForSending(double vlon, double vlat, double data)
 
   m_data_pt_counter++;
 }
-
-
-
-
 
 
 
@@ -1390,11 +1398,13 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 {
   bool data_processed = false;
   size_t pts_added = 0;
+
   // first share and wait for data,
   // in case there are multiple vehicles
+  // and data has not yet been shared through acomms
   if ( m_num_vehicles > 1 )
   {
-    // 1. when the vehicle is at the surface and at the HP loiter
+    // 1. wait until the vehicle is at the surface and at the HP loiter
     while ( !(m_dep < 0.1 && m_loiter_dist_to_poly < 20) )
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
@@ -1422,23 +1432,26 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
       }
     }
 
-    // share data
-    sendData();
-    m_received_ready = false;
-
-    // 2. wait for received data to be processed
-    while ( !data_processed )
+    // share data, if not already shared through acomms
+    if ( !m_acomms_sharing )
     {
-      if ( m_received_shared_data )
+      sendData();
+      m_received_ready = false;
+
+      // 2. wait for received data to be processed
+      while ( !data_processed )
       {
-        pts_added += processReceivedData();
-        data_processed = true;
+        if ( m_received_shared_data )
+        {
+          pts_added += processReceivedData();
+          data_processed = true;
+        }
+        else
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
-      else
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::cout << "*added: " << pts_added << " data points." << std::endl;
+      m_received_shared_data = false;
     }
-    std::cout << "*added: " << pts_added << " data points." << std::endl;
-    m_received_shared_data = false;
   }
 
   // 3. run hyperparameter optimization
