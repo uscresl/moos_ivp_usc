@@ -10,7 +10,7 @@ for idx in `seq 1 10`; do
 	sleep 4000 && ./kill.sh
 
 	# move log files to dir
-	sleep 5 && ./mv_logs_to_dir.sh 0329_2auvsadp_tds_$idx
+	sleep 5 && ./mv_logs_to_dir.sh 20160706_2auvsadp_acomms_$idx
 
 	# clean up whatever remains
 	sleep 5 && ./clean.sh
