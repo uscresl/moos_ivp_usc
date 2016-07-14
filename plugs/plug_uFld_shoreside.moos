@@ -19,10 +19,19 @@ ProcessConfig = uFldNodeComms
   AppTick       = 2
   CommsTick     = 2
 
-  COMMS_RANGE      = 500 // m
-  CRITICAL_RANGE   = 0 // 25 // m
-  MIN_MSG_INTERVAL = 0
-  MAX_MSG_LENGTH   = 10000
-  GROUPS           = true
+  // range within which node_report and node_message are shared
+  comms_range      = 500 // m
+  // range within which node_report messages are always shared
+  critical_range   = 0 // 25 // m
+  // minimum wait time between successful sends from a given source node
+  min_msg_interval = 0
+  // maximum message length (default: 1000)
+  // SK note; we set this high, and let goby deal with packaging
+  max_msg_length   = 10000
+  // allow to share between vehicles with same group name only
+  // SK note; irrelevant for current simulations
+  groups = true
+  // drop percentage; probabilistically drop X percent of the message
+  drop_percentage = 100
 }
 #endif
