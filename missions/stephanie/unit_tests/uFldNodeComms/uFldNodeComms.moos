@@ -1,0 +1,129 @@
+// MOOS community specs (doesn't matter for unit test)
+ServerHost = localhost
+ServerPort = 5000
+Community  = ecomapper
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = 1
+
+// Location (doesn't matter for unit test)
+LatOrigin  = 36.729529
+LongOrigin = -122.026634
+
+//****************************************************************************//
+// Base Processes
+//
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = true
+
+  Run = uFldNodeComms @ NewConsole = true
+
+  // simulate NODE_REPORT and NODE_MESSAGE
+  Run = uTimerScript  @ NewConsole = true
+
+  // visualize comms traces
+  Run = pMarineViewer @ NewConsole = true
+}
+
+// Logging tool (MOOSEssentials)
+ProcessConfig = pLogger
+{
+  AppTick   = 8
+  CommsTick = 8
+
+  Path = ./
+  AsyncLog = true
+  FileTimeStamp = true
+
+  BridgeFrequency = 0
+  // For variables that are published in a bundle on their first post,
+  // explicitly declare their logging request
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
+  Log = APPCASE @ 0 NOSYNC
+
+  // Log everything
+  LogAuxSrc = true
+  WildCardLogging = true
+  //WildCardOmitPattern = *_STATUS
+  WildCardExclusionLog = true
+}
+
+//****************************************************************************//
+// TESTING
+
+//--------------------------------------------------
+// uFldNodeComms Configuration Block
+//
+ProcessConfig = uFldNodeComms
+{
+  AppTick       = 2
+  CommsTick     = 2
+
+  // range within which node_report and node_message are shared
+  comms_range      = 500 // m
+  // range within which node_report messages are always shared
+  critical_range   = 0 // 25 // m
+  // minimum wait time between successful sends from a given source node
+  min_msg_interval = 0
+  // maximum message length (default: 1000)
+  // SK note; we set this high, and let goby deal with packaging
+  max_msg_length   = 10000
+  // allow to share between vehicles with same group name only
+  // SK note; irrelevant for current simulations
+  groups = true
+  // drop percentage; probabilistically drop X percent of the message
+  drop_percentage = 100
+}
+
+// simulate NODE_REPORT and NODE_MESSAGE
+ProcessConfig = uTimerScript
+{
+  AppTick= 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose = true// or {false}
+
+//  // Declaration of random var macro expanded in event values
+//  randvar = varname=LON, min=-117.809, max=-117.806, key=at_reset
+//  randvar = varname=LAT, min=34.0876, max=34.0892, key=at_reset
+//  randvar = varname=DEP, min=1, max=14, key=at_reset
+
+//  // Event(s) are the key components of the script
+////  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
+//  event = var=NAV_LONG, val=$[LON], time=10
+//  event = var=NAV_LAT, val=$[LAT], time=10
+//  event = var=NAV_DEPTH, val=$[DEP], time=10
+
+  // NODE_REPORT
+  event = var=NODE_REPORT,val="NAME=anna,X=500.09,Y=1181.3,SPD=1.5,HDG=0,DEP=10,LAT=34.08908867,LON=-117.80968167,TYPE=UUV,GROUP=survey,MODE=MODE@MISSION:SURVEY:PILOT:PILOT_NS,ALLSTOP=clear,INDEX=1234,YAW=1.5707963,TIME=2936519481.74,LENGTH=4",time=1
+
+  event = var=NODE_REPORT,val="NAME=bernard,X=450,Y=950,SPD=0,HDG=230,DEP=0,LAT=34.08699925,LON=-117.81020472,TYPE=UUV,GROUP=survey,MODE=MODE@NOT_DEPLOYED,ALLSTOP=NothingToDo,INDEX=6,YAW=-2.443461,TIME=2936519236.02,LENGTH=4",time=1
+
+  // NODE_MESSAGE
+  event = var=NODE_MESSAGE,val="src_node=bernard,dest_node=all,var_name=ACOMMS_UFIELD_DRIVER_IN,string_val=0802100018c0fecdd7fad79b053000380160206800721230d5a5060095113a4a2cd9590b34114f0100f1010000000000000840880201",time=1
+
+  event = var=NODE_MESSAGE,val="src_node=anna,dest_node=all,var_name=ACOMMS_UFIELD_DRIVER_IN,string_val=080110001880ddcfe1fad79b053000380160206800721230eba50400cd103a4a2cd9590b34114f0100f1010000000000000840880200",time=1
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max = nolimit// or in range [0,inf)
+  // A point when the script is reset
+  reset_time = all-posted// or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+  reset_var = UTS_RESET// or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var = UTS_STATUS // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp = $(WARP)
+}
