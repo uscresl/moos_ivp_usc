@@ -31,7 +31,9 @@ ProcessConfig = uFldNodeComms
   // allow to share between vehicles with same group name only
   // SK note; irrelevant for current simulations
   groups = true
+#ifdef DROP_PERCENTAGE
   // drop percentage; probabilistically drop X percent of the message
-  drop_percentage = 100
+  drop_percentage = $(DROP_PERCENTAGE)
+#endif
 }
 #endif
