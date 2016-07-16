@@ -69,7 +69,7 @@ ProcessConfig = ANTLER
   #endif
 
   #ifdef USE_ACOMMS yes
-  Run = pRePublishDataPtWithNav @ NewConsole = true
+  Run = pRePublishDataPtWithNav @ NewConsole = false
   #endif
 }
 //------------------------------------------------------------

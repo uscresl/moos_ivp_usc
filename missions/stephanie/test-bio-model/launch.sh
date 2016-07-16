@@ -104,12 +104,16 @@ else
   BERNARD_VPORT="9002"
 fi
 
+# percentage of messages to drop in uFldNodeComms
+DROP_PCT=50
+
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="../../../data"        \
    SHARE_LISTEN=$SHORE_LISTEN VPORT=$SHORE_VPORT SERVER_HOST=$SERVERHOST       \
-   LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR     \
-   PAINT_SEGLIST=$PAINTSEGLIST   SIMULATION=$RUN_SIMULATION
+   LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR   \
+   PAINT_SEGLIST=$PAINTSEGLIST   SIMULATION=$RUN_SIMULATION     \
+   DROP_PERCENTAGE=$DROP_PCT
 
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
