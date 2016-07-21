@@ -58,7 +58,7 @@ ProcessConfig = pMarineViewer
   CommsTick  = 4
 
   tiff_viewable = true
-  tiff_file     = /home/stephanie/moos-ivp-usc/data/maps/puddingstone_all.tif
+  tiff_file     = ../../../data/maps/puddingstone_all.tif
 
 //  // store the img for alogview
 //  log_the_image = true
