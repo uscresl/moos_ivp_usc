@@ -239,6 +239,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       handleMailDataAcomms(sval);
     }
+    else if ( key == "NODE_REPORT")
+    {
+      handleMailNodeReports(sval);
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
 
@@ -662,6 +666,9 @@ void GP::registerVariables()
   // get data from other vehicles
   m_Comms.Register("INCOMING_DATA_ACOMMS",0);
 
+  // get other vehicles' locations
+  m_Comms.Register("NODE_REPORT",0);
+
   std::cout << GetAppName() << " :: Done registering, registered for: " << std::endl;
   std::set<std::string> get_registered = m_Comms.GetRegistered();
   for ( auto registered : get_registered )
@@ -893,7 +900,61 @@ void GP::handleMailDataAcomms(std::string css)
 
 }
 
+//---------------------------------------------------------
+// Procedure: handleMailNodeReports(const std::string &input_string)
+//            take incoming comma-separated string (css)
+//            parse, and if not from self, store vehicle location
+//
+void GP::handleMailNodeReports(const std::string &input_string)
+{
+  // eg. NAME=anna,LAT=0,LON=10
+  std::vector<std::string> str_tok = parseString(input_string, ',');
 
+  // init vars for data we want
+  double veh_lon, veh_lat;
+  std::string veh_nm;
+
+  // for each var=val pair, store only those we are interested in
+  // quit if it is our own node_report
+  for ( std::string const & varval : str_tok )
+  {
+    size_t equal_index = varval.find('=');
+    if ( equal_index == std::string::npos )
+    {
+      std::cout << "ERROR: cannot find '=' in string NODE_REPORT" << std::endl;
+      return;
+    }
+    std::string var = varval.substr(0,equal_index);
+    std::string val = varval.substr(equal_index+1,varval.length());
+
+    if ( var == "NAME" && val == m_veh_name )
+      return;
+
+    if ( var == "NAME" )
+      veh_nm = val;
+    else if ( var == "LON" )
+      veh_lon = atof(val.c_str());
+    else if ( var == "LAT" )
+      veh_lat = atof(val.c_str());
+  }
+
+  if ( veh_nm != "" )
+  {
+    // store the vehicle info
+    m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
+    std::cout << GetAppName() << " :: stored the following location for " << veh_nm << ":\n";
+    std::pair<double,double> fnd_itm = m_other_vehicles.find(veh_nm)->second;
+    std::cout << fnd_itm.first << "," << fnd_itm.second << std::endl;
+  }
+}
+
+
+//---------------------------------------------------------
+// Procedure: dataAddingThread()
+//            continuously check the data point queue to see
+//            if points need to be added to the GP, if so
+//            then call func to add points to GP
+//
 void GP::dataAddingThread()
 {
   while ( !m_finished )
@@ -919,6 +980,11 @@ void GP::dataAddingThread()
   }
 }
 
+//---------------------------------------------------------
+// Procedure: addPatternToGP(double veh_lon, double veh_lat, double value)
+//            function to add points to GP, using mutex so as
+//            to not disturb when other processes are reading from GP
+//
 void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
 {
   // limit scope mutex, protect when adding data
@@ -940,6 +1006,12 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   ap_lock.unlock();
 }
 
+
+//---------------------------------------------------------
+// Procedure: storeDataForSending(double vlon, double vlat, double data)
+//            for interval-based data sharing, push back data points that have
+//            not been shared yet
+//
 void GP::storeDataForSending(double vlon, double vlat, double data)
 {
   // save the data point in a vector that we will send
@@ -958,7 +1030,6 @@ void GP::storeDataForSending(double vlon, double vlat, double data)
 
   m_data_pt_counter++;
 }
-
 
 
 //---------------------------------------------------------

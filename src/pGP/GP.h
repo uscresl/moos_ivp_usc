@@ -51,6 +51,8 @@ class GP : public CMOOSApp
    void handleMailData(double received_data);
    void handleMailSamplePoints(std::string input_string);
    void handleMailSamplePointsSpecs(std::string input_string);
+   void handleMailNodeReports(std::string const & input_string);
+
    void updateVisitedSet(double veh_lon, double veh_lat, size_t index );
 
    void addPatternToGP(double veh_lon, double veh_lat, double value);
@@ -202,6 +204,9 @@ class GP : public CMOOSApp
    // acomms data sharing
    bool m_acomms_sharing;
    std::string m_last_acomms_string;
+
+   // keep track of other vehicles' positions
+   std::map< std::string, std::pair<double,double> > m_other_vehicles;
 };
 
 #endif 
