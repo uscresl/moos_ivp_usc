@@ -243,6 +243,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       handleMailNodeReports(sval);
     }
+    else if ( key == "TEST_VORONOI" )
+      calcVoronoi();
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
 
@@ -668,6 +670,9 @@ void GP::registerVariables()
 
   // get other vehicles' locations
   m_Comms.Register("NODE_REPORT",0);
+
+  // tmp test voronoi partitioning
+  m_Comms.Register("TEST_VORONOI",0);
 
   std::cout << GetAppName() << " :: Done registering, registered for: " << std::endl;
   std::set<std::string> get_registered = m_Comms.GetRegistered();
@@ -1796,3 +1801,49 @@ bool GP::utmToLonLat (double lx, double ly, double & lon, double & lat )
   return successful;
 }
 
+//---------------------------------------------------------
+// Procedure: calcVoronoi
+//            given all other vehicles (stored in map),
+//            find the points within voronoi region,
+//            over the unvisited set
+//
+void GP::calcVoronoi()
+{
+  // clear out previous set
+  m_voronoi_region.clear();
+
+  // for all points in the unvisited set
+  for ( auto pt : m_sample_points_unvisited )
+  {
+    Eigen::Vector2d pt_loc = pt.second;
+    // calculate distance to all vehicles, including self,
+    // and determine which is closest
+    double min_dist = std::numeric_limits<double>::max();
+    std::string closest_vehicle;
+    if ( m_other_vehicles.size() > 0 )
+    {
+      for ( auto veh : m_other_vehicles )
+      {
+        double veh_lon = (veh.second).first;
+        double veh_lat = (veh.second).second;
+        double dist_pt_to_veh = (pt_loc(0)-veh_lon)*(pt_loc(0)-veh_lon) + (pt_loc(1)-veh_lat)*(pt_loc(1)-veh_lat);
+        if ( dist_pt_to_veh < min_dist )
+        {
+          min_dist = dist_pt_to_veh;
+          closest_vehicle = veh.first;
+        }
+      }
+    }
+    // calculate distance to oneself
+    double dist_to_self = (pt_loc(0)-m_lon)*(pt_loc(0)-m_lon) + (pt_loc(1)-m_lat)*(pt_loc(1)-m_lat);
+    if ( dist_to_self < min_dist )
+    {
+      closest_vehicle = m_veh_name;
+      // only in this case do we add the location to our Voronoi set
+      m_voronoi_region.push_back(pt_loc);
+    }
+    else
+      std::cout << "point should be for vehicle: " << closest_vehicle << std::endl;
+  }
+  std::cout << "my set has: " << m_voronoi_region.size() << " sample locations out of " << m_sample_points_unvisited.size() << std::endl;
+}

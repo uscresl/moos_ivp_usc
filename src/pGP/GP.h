@@ -86,6 +86,9 @@ class GP : public CMOOSApp
    // data sending acomms
    void handleMailDataAcomms(std::string css);
 
+   // calculate Voronoi regions
+   void calcVoronoi();
+
    // helper/test functions
    bool need_to_update_maps(size_t grid_index);
    int get_index_for_map(double veh_lon, double veh_lat);
@@ -207,6 +210,7 @@ class GP : public CMOOSApp
 
    // keep track of other vehicles' positions
    std::map< std::string, std::pair<double,double> > m_other_vehicles;
+   std::vector<Eigen::Vector2d> m_voronoi_region;
 };
 
 #endif 
