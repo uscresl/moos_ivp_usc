@@ -212,7 +212,9 @@ class GP : public CMOOSApp
 
    // keep track of other vehicles' positions
    std::map< std::string, std::pair<double,double> > m_other_vehicles;
-   std::vector<Eigen::Vector2d> m_voronoi_region;
+   //std::vector<Eigen::Vector2d> m_voronoi_region;
+   std::unordered_map<size_t, Eigen::Vector2d> m_voronoi_region;
+
 };
 
 #endif 

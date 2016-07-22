@@ -1817,66 +1817,48 @@ void GP::calcVoronoi()
   double own_lon = m_lon;
   double own_lat = m_lat;
 
-  // if own vehicle is not in sample area, we need to choose a location
-  // for it in the sampling region
-  // this should only happen at the start of the adaptive sampling (right?)
-  if ( !inSampleRectangle(own_lon, own_lat, false) )
+  // if own vehicle is not in sample area,
+  // we set Voronoi region to be whole area
+  // this should only happen at the start of the adaptive sampling
+  if ( !inSampleRectangle(own_lon, own_lat, true) )
+    m_voronoi_region.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
+  else
   {
-    // heuristic ..
-    // we should need to deconflict with other vehicle positions,
-    // and if we need to generate locations for them, we also need to
-    // deconflict with that
-    // 1. take random location in survey area
-
-    // generate random number between 0 and 100:
-    double rand_lon, rand_lat;
-    bool first = true;
-    // 2. redo if conflicting
-    while ( first || inConflict(rand_lon, rand_lat) )
+    // else, split sample area, given other vehicles
+    // for all points in the unvisited set
+    for ( auto pt : m_sample_points_unvisited )
     {
-      first = false;
-      rand_lon = m_min_lon + rand() * m_lon_spacing;
-      rand_lat = m_min_lat + rand() * m_lat_spacing;
-    }
-    own_lon = rand_lon;
-    own_lat = rand_lat;
-  }
-
-  // TODO TODO this is not gonna work,because other vehicle may take random
-  // position, and then we calculate differently. Need more static strategy
-
-  // for all points in the unvisited set
-  for ( auto pt : m_sample_points_unvisited )
-  {
-    Eigen::Vector2d pt_loc = pt.second;
-    // calculate distance to all vehicles, including self,
-    // and determine which is closest
-    double min_dist = std::numeric_limits<double>::max();
-    std::string closest_vehicle;
-    if ( m_other_vehicles.size() > 0 )
-    {
-      for ( auto veh : m_other_vehicles )
+      size_t pt_key = pt.first;
+      Eigen::Vector2d pt_loc = pt.second;
+      // calculate distance to all vehicles, including self,
+      // and determine which is closest
+      double min_dist = std::numeric_limits<double>::max();
+      std::string closest_vehicle;
+      if ( m_other_vehicles.size() > 0 )
       {
-        double veh_lon = (veh.second).first;
-        double veh_lat = (veh.second).second;
-        double dist_pt_to_veh = (pt_loc(0)-veh_lon)*(pt_loc(0)-veh_lon) + (pt_loc(1)-veh_lat)*(pt_loc(1)-veh_lat);
-        if ( dist_pt_to_veh < min_dist )
+        for ( auto veh : m_other_vehicles )
         {
-          min_dist = dist_pt_to_veh;
-          closest_vehicle = veh.first;
+          double veh_lon = (veh.second).first;
+          double veh_lat = (veh.second).second;
+          double dist_pt_to_veh = (pt_loc(0)-veh_lon)*(pt_loc(0)-veh_lon) + (pt_loc(1)-veh_lat)*(pt_loc(1)-veh_lat);
+          if ( dist_pt_to_veh < min_dist )
+          {
+            min_dist = dist_pt_to_veh;
+            closest_vehicle = veh.first;
+          }
         }
       }
+      // calculate distance to oneself
+      double dist_to_self = (pt_loc(0)-own_lon)*(pt_loc(0)-own_lon) + (pt_loc(1)-own_lat)*(pt_loc(1)-own_lat);
+      if ( dist_to_self < min_dist )
+      {
+        closest_vehicle = m_veh_name;
+        // only in this case do we add the location to our Voronoi set
+        m_voronoi_region.insert(std::pair<size_t, Eigen::Vector2d>(pt_key,pt_loc));
+      }
+      else
+        std::cout << "point should be for vehicle: " << closest_vehicle << std::endl;
     }
-    // calculate distance to oneself
-    double dist_to_self = (pt_loc(0)-own_lon)*(pt_loc(0)-own_lon) + (pt_loc(1)-own_lat)*(pt_loc(1)-own_lat);
-    if ( dist_to_self < min_dist )
-    {
-      closest_vehicle = m_veh_name;
-      // only in this case do we add the location to our Voronoi set
-      m_voronoi_region.push_back(pt_loc);
-    }
-    else
-      std::cout << "point should be for vehicle: " << closest_vehicle << std::endl;
   }
   std::cout << "my set has: " << m_voronoi_region.size() << " sample locations out of " << m_sample_points_unvisited.size() << std::endl;
 }
