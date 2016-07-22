@@ -112,6 +112,9 @@ GP::GP() :
   //        stdev 0.15, ln() = -1.8971
   params << -12.4292, 0.4055, -1.8971;
   m_gp.covf().set_loghyper(params);
+
+  // seed the random number generator
+  srand((int)time(0));
 }
 
 GP::~GP()
@@ -1058,8 +1061,7 @@ bool GP::need_to_update_maps(size_t grid_index)
 //
 int GP::get_index_for_map(double veh_lon, double veh_lat)
 {
-  if ( veh_lon >= (m_min_lon-m_buffer_lon) && veh_lat >= (m_min_lat-m_buffer_lat) &&
-       veh_lon <= (m_max_lon+m_buffer_lon) && veh_lat <= (m_max_lat+m_buffer_lat) )
+  if ( inSampleRectangle(veh_lon, veh_lat, true) )
   {
     // calculate the id of the location where the vehicle is currently
     // at, and move it to visited
@@ -1812,6 +1814,37 @@ void GP::calcVoronoi()
   // clear out previous set
   m_voronoi_region.clear();
 
+  double own_lon = m_lon;
+  double own_lat = m_lat;
+
+  // if own vehicle is not in sample area, we need to choose a location
+  // for it in the sampling region
+  // this should only happen at the start of the adaptive sampling (right?)
+  if ( !inSampleRectangle(own_lon, own_lat, false) )
+  {
+    // heuristic ..
+    // we should need to deconflict with other vehicle positions,
+    // and if we need to generate locations for them, we also need to
+    // deconflict with that
+    // 1. take random location in survey area
+
+    // generate random number between 0 and 100:
+    double rand_lon, rand_lat;
+    bool first = true;
+    // 2. redo if conflicting
+    while ( first || inConflict(rand_lon, rand_lat) )
+    {
+      first = false;
+      rand_lon = m_min_lon + rand() * m_lon_spacing;
+      rand_lat = m_min_lat + rand() * m_lat_spacing;
+    }
+    own_lon = rand_lon;
+    own_lat = rand_lat;
+  }
+
+  // TODO TODO this is not gonna work,because other vehicle may take random
+  // position, and then we calculate differently. Need more static strategy
+
   // for all points in the unvisited set
   for ( auto pt : m_sample_points_unvisited )
   {
@@ -1835,7 +1868,7 @@ void GP::calcVoronoi()
       }
     }
     // calculate distance to oneself
-    double dist_to_self = (pt_loc(0)-m_lon)*(pt_loc(0)-m_lon) + (pt_loc(1)-m_lat)*(pt_loc(1)-m_lat);
+    double dist_to_self = (pt_loc(0)-own_lon)*(pt_loc(0)-own_lon) + (pt_loc(1)-own_lat)*(pt_loc(1)-own_lat);
     if ( dist_to_self < min_dist )
     {
       closest_vehicle = m_veh_name;
@@ -1846,4 +1879,30 @@ void GP::calcVoronoi()
       std::cout << "point should be for vehicle: " << closest_vehicle << std::endl;
   }
   std::cout << "my set has: " << m_voronoi_region.size() << " sample locations out of " << m_sample_points_unvisited.size() << std::endl;
+}
+
+bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const
+{
+  if ( use_buffer )
+    return ( veh_lon >= (m_min_lon-m_buffer_lon) && veh_lat >= (m_min_lat-m_buffer_lat) &&
+             veh_lon <= (m_max_lon+m_buffer_lon) && veh_lat <= (m_max_lat+m_buffer_lat) );
+  else
+    return ( veh_lon >= m_min_lon && veh_lat >= m_min_lat &&
+             veh_lon <= m_max_lon && veh_lat <= m_max_lat );
+}
+
+bool GP::inConflict(double lon, double lat)
+{
+  for ( auto veh : m_other_vehicles )
+  {
+    double veh_lon = (veh.second).first;
+    double veh_lat = (veh.second).second;
+    double dist_to_veh = sqrt( (lon-veh_lon)*(lon-veh_lon) + (lat-veh_lat)*(lat-veh_lat) );
+    if ( dist_to_veh < m_lon_spacing )
+      return true;
+  }
+  double dist_to_self = sqrt( (lon-m_lon)*(lon-m_lon) + (lat-m_lat)*(lat-m_lat) );
+  if ( dist_to_self < m_lon_spacing)
+    return true;
+  return false;
 }

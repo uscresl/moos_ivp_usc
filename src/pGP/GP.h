@@ -97,6 +97,8 @@ class GP : public CMOOSApp
    void calcLonLatSpacingAndBuffers();
    bool lonLatToUTM (double lon, double lat, double & lx, double & ly );
    bool utmToLonLat (double lx, double ly, double & lon, double & lat );
+   bool inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const;
+   bool inConflict (double lon, double lat);
 
    size_t processReceivedData();
 
