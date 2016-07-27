@@ -34,4 +34,7 @@ ProcessConfig = pGP
 
   // data sharing through acomms
   acomms_sharing = true
+
+  // use voronoi partitioning?
+  use_voronoi = false
 }
