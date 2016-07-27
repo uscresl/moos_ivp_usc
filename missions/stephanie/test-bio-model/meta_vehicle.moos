@@ -55,7 +55,8 @@ ProcessConfig = ANTLER
   //true,XConfig=uSBSConfig
 
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+  Run = pGP @ NewConsole = false
+  //true,XConfig=pGPConfig
 
   pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -149,6 +150,12 @@ ProcessConfig = pGP
   acomms_sharing = true
 #else
   acomms_sharing = false
+#endif
+
+#ifdef USE_VORONOI yes
+  use_voronoi = true
+#else
+  use_voronoi = false
 #endif
 }
 

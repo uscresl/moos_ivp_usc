@@ -9,11 +9,17 @@ TDS="no"
 ACOMMS="no"
 NUM_VEHICLES=1
 RUN_SIMULATION="yes"
+VORONOI_PARTITIONING="no"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
         printf "%s [SWITCHES] [time_warp]   \n" $0
         printf "  --just_make, -j    \n" 
+        printf "  --adaptive, -a     \n"
+        printf "  --tds, -t          \n"
+        printf "  --acomms, -c       \n"
+        printf "  --voronoi, -v      \n"
+        printf "  --2auvs            \n"
         printf "  --help, -h         \n" 
         exit 0;
     elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
@@ -26,6 +32,8 @@ for ARGI; do
         TDS="yes"
     elif [ "${ARGI}" = "--acomms" -o "${ARGI}" = "-c" ] ; then
         ACOMMS="yes"
+    elif [ "${ARGI}" = "--voronoi" -o "${ARGI}" = "-v" ]; then
+        VORONOI_PARTITIONING="yes"
     elif [ "${ARGI}" = "--2auvs" ] ; then
         NUM_VEHICLES=2
     else 
@@ -148,7 +156,8 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
-   ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS
+   ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
+   USE_VORONOI=$VORONOI_PARTITIONING
 if [ $NUM_VEHICLES -ge 2 ] ; then
 PILOT_LAWNMOWER_C_NS=$PILOT_LM_1_NS
 PILOT_LAWNMOWER_C_EW=$PILOT_LM_1_EW
@@ -173,7 +182,8 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX2 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
-   ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS
+   ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
+   USE_VORONOI=$VORONOI_PARTITIONING
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2                    \
