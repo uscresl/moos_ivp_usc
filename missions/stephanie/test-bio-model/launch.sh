@@ -105,7 +105,7 @@ else
 fi
 
 # percentage of messages to drop in uFldNodeComms
-DROP_PCT=50
+DROP_PCT=0
 
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
