@@ -87,7 +87,8 @@ GP::GP() :
   m_output_var_handshake_data_sharing(""),
   m_last_ready_sent(0),
   m_acomms_sharing(false),
-  m_last_acomms_string("")
+  m_last_acomms_string(""),
+  m_use_voronoi(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -566,6 +567,10 @@ bool GP::OnStartUp()
     else if ( param == "acomms_sharing" )
     {
       m_acomms_sharing = (value == "true" ? true : false);
+    }
+    else if ( param == "use_voronoi")
+    {
+      m_use_voronoi = (value == "true" ? true : false);
     }
     else
       handled = false;
@@ -1106,6 +1111,13 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 
     // and remove it from the unvisited set
     m_sample_points_unvisited.erase(curr_loc_itr);
+    // if using voronoi region, remove from that set, if it is in there
+    if ( m_use_voronoi )
+    {
+      auto v_itr = m_voronoi_region.find(index);
+      if ( v_itr != m_voronoi_region.end() )
+        m_voronoi_region.erase(v_itr);
+    }
 
     // report
     std::cout << "\nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
@@ -1151,7 +1163,7 @@ void GP::findNextSampleLocation()
   {
     // for each y (from unvisited set only, as in greedy algorithm Krause'08)
     // calculate the mutual information term
-    if ( m_sample_points_visited.size() > 0 )
+    if ( m_sample_points_unvisited.size() > 0 )
     {
       m_finding_nxt = true;
       // use threading because this is a costly operation that would otherwise
@@ -1223,7 +1235,10 @@ Eigen::Vector2d GP::calcMECriterion()
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
   std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
-  unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
+  if ( m_use_voronoi && m_voronoi_region.size() > 0 )
+    unvisited_map_copy.insert(m_voronoi_region.begin(), m_voronoi_region.end());
+  else
+    unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
   std::cout << "calc max entropy" << std::endl;
@@ -1310,9 +1325,22 @@ Eigen::Vector2d GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
   std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
   size_t best_cnt = 1;
 
-  std::cout << "calc for all y (" << m_sample_points_unvisited.size() << ")" << std::endl;
+  std::cout << "try for lock map" << std::endl;
+  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+  while ( !map_lock.try_lock() ){}
+  // make copy of map to use instead of map,
+  // such that we do not have to lock it for long
+  std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
+  if ( m_use_voronoi && m_voronoi_region.size() > 0 )
+    unvisited_map_copy.insert(m_voronoi_region.begin(), m_voronoi_region.end());
+  else
+    unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
+  map_lock.unlock();
+
+  std::cout << "calc for all y (" << unvisited_map_copy.size() << ")" << std::endl;
+
   std::clock_t begin = std::clock();
-  for ( y_itr = m_sample_points_unvisited.begin(); y_itr != m_sample_points_unvisited.end(); y_itr++ )
+  for ( y_itr = unvisited_map_copy.begin(); y_itr != unvisited_map_copy.end(); y_itr++ )
   {
     Eigen::Vector2d y = y_itr->second;
 
@@ -1333,6 +1361,7 @@ Eigen::Vector2d GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
     double pred_mean_yA = m_gp.f(y_loc);
     double pred_cov_yA = m_gp.var(y_loc);
 
+    // TODO if want to work with voronoi, then change these functions internally
     // calculate covariance with unvisited set
     Eigen::VectorXd k_yav(size_unvisited);
     createCovarVector(cov_f, y, "unvisited", k_yav);
