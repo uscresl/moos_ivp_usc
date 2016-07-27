@@ -946,10 +946,15 @@ void GP::handleMailNodeReports(const std::string &input_string)
       veh_lat = atof(val.c_str());
   }
 
+  std::cout << "veh nm, lon, lat: " << veh_nm << ", " << veh_lon << ", " << veh_lat << std::endl;
+
   if ( veh_nm != "" )
   {
     // store the vehicle info
-    m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
+    if ( m_other_vehicles.find(veh_nm) == m_other_vehicles.end() )
+      m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
+    else
+      m_other_vehicles[veh_nm] = std::pair<double,double>(veh_lon,veh_lat);
     std::cout << GetAppName() << " :: stored the following location for " << veh_nm << ":\n";
     std::pair<double,double> fnd_itm = m_other_vehicles.find(veh_nm)->second;
     std::cout << fnd_itm.first << "," << fnd_itm.second << std::endl;
@@ -1840,7 +1845,8 @@ void GP::calcVoronoi()
         {
           double veh_lon = (veh.second).first;
           double veh_lat = (veh.second).second;
-          double dist_pt_to_veh = (pt_loc(0)-veh_lon)*(pt_loc(0)-veh_lon) + (pt_loc(1)-veh_lat)*(pt_loc(1)-veh_lat);
+          std::cout << "other vehicle: " << veh.first << " at: " << veh_lon << "," << veh_lat << std::endl;
+          double dist_pt_to_veh = pow(pt_loc(0)-veh_lon,2) + pow(pt_loc(1)-veh_lat,2);
           if ( dist_pt_to_veh < min_dist )
           {
             min_dist = dist_pt_to_veh;
@@ -1849,7 +1855,9 @@ void GP::calcVoronoi()
         }
       }
       // calculate distance to oneself
-      double dist_to_self = (pt_loc(0)-own_lon)*(pt_loc(0)-own_lon) + (pt_loc(1)-own_lat)*(pt_loc(1)-own_lat);
+      std::cout << "own vehicle at: " << own_lon << "," << own_lat << std::endl;
+      double dist_to_self = pow(pt_loc(0)-own_lon, 2) + pow(pt_loc(1)-own_lat,2);
+      std::cout << "distance to self vs others: " << dist_to_self*100000 << " -- " << min_dist*100000 << std::endl;
       if ( dist_to_self < min_dist )
       {
         closest_vehicle = m_veh_name;
