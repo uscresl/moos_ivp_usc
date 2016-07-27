@@ -1821,6 +1821,7 @@ void GP::calcVoronoi()
 
   double own_lon = m_lon;
   double own_lat = m_lat;
+  std::cout << "\nown vehicle at: " << own_lon << "," << own_lat << '\n';
 
   // if own vehicle is not in sample area,
   // we set Voronoi region to be whole area
@@ -1845,7 +1846,9 @@ void GP::calcVoronoi()
         {
           double veh_lon = (veh.second).first;
           double veh_lat = (veh.second).second;
-          std::cout << "other vehicle: " << veh.first << " at: " << veh_lon << "," << veh_lat << std::endl;
+          if ( pt_key == m_sample_points_unvisited.begin()->first )
+              std::cout << "other vehicle: " << veh.first << " at: " << veh_lon << "," << veh_lat << '\n';
+
           double dist_pt_to_veh = pow(pt_loc(0)-veh_lon,2) + pow(pt_loc(1)-veh_lat,2);
           if ( dist_pt_to_veh < min_dist )
           {
@@ -1855,17 +1858,15 @@ void GP::calcVoronoi()
         }
       }
       // calculate distance to oneself
-      std::cout << "own vehicle at: " << own_lon << "," << own_lat << std::endl;
       double dist_to_self = pow(pt_loc(0)-own_lon, 2) + pow(pt_loc(1)-own_lat,2);
-      std::cout << "distance to self vs others: " << dist_to_self*100000 << " -- " << min_dist*100000 << std::endl;
       if ( dist_to_self < min_dist )
       {
         closest_vehicle = m_veh_name;
         // only in this case do we add the location to our Voronoi set
         m_voronoi_region.insert(std::pair<size_t, Eigen::Vector2d>(pt_key,pt_loc));
       }
-      else
-        std::cout << "point should be for vehicle: " << closest_vehicle << std::endl;
+//      else
+//        std::cout << "point should be for vehicle: " << closest_vehicle << std::endl;
     }
   }
   std::cout << "my set has: " << m_voronoi_region.size() << " sample locations out of " << m_sample_points_unvisited.size() << std::endl;
