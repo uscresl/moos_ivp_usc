@@ -29,6 +29,9 @@
 // write to file
 #include <fstream>
 
+// test boost_foreach
+//#include <boost/foreach.hpp>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -277,6 +280,13 @@ bool GP::Iterate()
     return true;
   else
   {
+    // temporary test Voronoi region
+    if ( m_voronoi_region.size() > 0 )
+    {
+      std::cout << "current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
+      std::cout << "distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
+    }
+
     // when pilot is done,
     // we want to optimize the hyperparams of the GP
     if ( m_hp_optim_mode_cnt == 1 && !m_hp_optim_done && !m_finished )
@@ -1902,6 +1912,9 @@ void GP::calcVoronoi()
 
   // calculate the convex hull
   voronoiConvexHull();
+
+  // print convex hull
+  printVoronoi();
 }
 
 //---------------------------------------------------------
@@ -1939,6 +1952,37 @@ void GP::voronoiConvexHull()
 
   // next, get the convex hull for these points
   boost::geometry::convex_hull(m_voronoi_pts, m_voronoi_conv_hull);
-  std::cout << "convex hull: " << (size_t)boost::geometry::num_points(conv_hull) << std::endl;
+  std::cout << "convex hull pts: " << (size_t)boost::geometry::num_points(m_voronoi_conv_hull) << std::endl;
 }
 
+//---------------------------------------------------------
+// Procedure: inVoronoi(double lon, double lat) const
+//            check if given location is inside convex hull of Voronoi region
+//
+bool GP::inVoronoi(double lon, double lat) const
+{
+  boost_pt pt_to_check(lon, lat);
+  return boost::geometry::intersects(pt_to_check, m_voronoi_conv_hull);
+}
+
+//---------------------------------------------------------
+// Procedure: distToVoronoi(double lon, double lat) const
+//
+double GP::distToVoronoi(double lon, double lat) const
+{
+  boost_pt pt_to_check(lon, lat);
+  return boost::geometry::distance(pt_to_check, m_voronoi_conv_hull);
+}
+
+void GP::printVoronoi()
+//boost::geometry::model::polygon<boost_pt> poly_pt)
+//boost_pt const& pt)
+{
+  auto bst_ext_ring = boost::geometry::exterior_ring(m_voronoi_conv_hull);
+
+  for ( auto itr = boost::begin(bst_ext_ring); itr != boost::end(bst_ext_ring); ++itr )
+  {
+    boost_pt bpt = *itr;
+    std::cout << bpt.get<0>() << ", " << bpt.get<1>() << "; " << std::endl;
+  }
+}
