@@ -27,6 +27,12 @@
 // geodesy for conversion x/y to lon/lat
 #include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
 
+// boost geometry libraries for multipoint and convex hull
+// requires boost 1.56 for multi_point
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+#include <boost/geometry/geometries/multi_point.hpp>
+
 class GP : public CMOOSApp
 {
  public:
@@ -44,7 +50,7 @@ class GP : public CMOOSApp
    void registerVariables();
    bool handleMailGPVarIn(std::string);
 
- private: 
+ private:
    // Own functions
    void initGeodesy();
 
@@ -88,6 +94,7 @@ class GP : public CMOOSApp
 
    // calculate Voronoi regions
    void calcVoronoi();
+   void voronoiConvexHull();
 
    // helper/test functions
    bool need_to_update_maps(size_t grid_index);
@@ -98,7 +105,6 @@ class GP : public CMOOSApp
    bool lonLatToUTM (double lon, double lat, double & lx, double & ly );
    bool utmToLonLat (double lx, double ly, double & lon, double & lat );
    bool inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const;
-   bool inConflict (double lon, double lat);
 
    size_t processReceivedData();
 
@@ -216,7 +222,11 @@ class GP : public CMOOSApp
    // voronoi partitioning
    std::unordered_map<size_t, Eigen::Vector2d> m_voronoi_region;
    bool m_use_voronoi;
+   typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> boost_pt;
+   typedef boost::geometry::model::multi_point< boost_pt > boost_multi_pt;
+   boost_multi_pt m_voronoi_pts;
+   boost::geometry::model::polygon<boost_pt> m_voronoi_conv_hull;
 
 };
 
-#endif 
+#endif

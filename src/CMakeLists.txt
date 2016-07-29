@@ -48,8 +48,8 @@ ADD_SUBDIRECTORY(pFormationWptUpdater)
 ADD_SUBDIRECTORY(pNumVehicles)
 
 # find boost for multiple processes
-SET(BOOST_MIN_VERSION "1.56.0")
 find_package(Boost)
+SET(BOOST_MIN_VERSION "1.56.0")
 
 # get boost 1.55
 #SET(BOOST_ROOT /usr/local/include/boost)
@@ -87,16 +87,6 @@ add_subdirectory(pRePublishDataPtWithNav)
 
 # Jan'16/Jun'16: add process for GP generation, Jun; now also dependent on geodesy
 FIND_PACKAGE(LibGP)
-if ( Boost_VERSION GREATER 105400 )
-  message("   BOOST VERSION: " ${Boost_VERSION})
-  set(BUILD_VORONOI)
-  message("   Build VORONOI? YES")
-else()
-  message("   Build VORONOI? NO")
-endif()
-
-
-
 if ( LIBGP_FOUND AND MOOSGeodesy_FOUND AND Boost_FOUND )
 #  if (Boost_VERSION 1.56)
 #  message("     found LibGP")

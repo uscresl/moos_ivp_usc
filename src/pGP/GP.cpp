@@ -133,7 +133,7 @@ GP::~GP()
 //---------------------------------------------------------
 // Procedure: OnNewMail
 //
-// when variables are updated in the MOOSDB, 
+// when variables are updated in the MOOSDB,
 // there is 'new mail', check to see if
 // there is anything for this process.
 //
@@ -471,7 +471,7 @@ bool GP::Iterate()
 bool GP::OnStartUp()
 {
   CMOOSApp::OnStartUp();
-  
+
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
   if (!m_MissionReader.GetConfiguration(GetAppName(), sParams))
@@ -1521,11 +1521,11 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // handshake
-    
+
     // if received ready, let it be known we are ready as well
     if ( m_received_ready )
       sendReady();
-    
+
     // if not received ready, let it be known we are ready, until other also is
     size_t prev_sent = 0;
     while ( !m_received_ready )
@@ -1577,7 +1577,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   std::clock_t begin = std::clock();
 
   // optimization
-  // there are 2 methods in gplib, conjugate gradient and RProp, the latter 
+  // there are 2 methods in gplib, conjugate gradient and RProp, the latter
   // should be more efficient
   libgp::RProp rprop;
   rprop.init();
@@ -1899,8 +1899,16 @@ void GP::calcVoronoi()
     }
   }
   std::cout << "my set has: " << m_voronoi_region.size() << " sample locations out of " << m_sample_points_unvisited.size() << std::endl;
+
+  // calculate the convex hull
+  voronoiConvexHull();
 }
 
+//---------------------------------------------------------
+// Procedure: inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const
+//            see if the current vehicle position is inside the
+//            prespecified sampling area (rectangle)
+//
 bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const
 {
   if ( use_buffer )
@@ -1911,18 +1919,26 @@ bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) cons
              veh_lon <= m_max_lon && veh_lat <= m_max_lat );
 }
 
-bool GP::inConflict(double lon, double lat)
+//---------------------------------------------------------
+// Procedure: voronoiConvexHull()
+//            get the convex hull of the Voronoi region
+//
+void GP::voronoiConvexHull()
 {
-  for ( auto veh : m_other_vehicles )
+  // collect points inside voronoi region in boost geometry multi_point
+  boost::geometry::clear(m_voronoi_pts);
+  for ( auto vor_pt : m_voronoi_region )
   {
-    double veh_lon = (veh.second).first;
-    double veh_lat = (veh.second).second;
-    double dist_to_veh = sqrt( (lon-veh_lon)*(lon-veh_lon) + (lat-veh_lat)*(lat-veh_lat) );
-    if ( dist_to_veh < m_lon_spacing )
-      return true;
+    auto vor_loc = vor_pt.second;
+    double pt_lon = vor_loc(0);
+    double pt_lat = vor_loc(1);
+    boost::geometry::append(m_voronoi_pts, boost_pt(pt_lon, pt_lat));
   }
-  double dist_to_self = sqrt( (lon-m_lon)*(lon-m_lon) + (lat-m_lat)*(lat-m_lat) );
-  if ( dist_to_self < m_lon_spacing)
-    return true;
-  return false;
+  std::cout << "nr points in voronoi region: " << m_voronoi_region.size() << std::endl;
+  std::cout << "nr points in multipoint: " << (size_t)boost::geometry::num_points(m_voronoi_pts) << std::endl;
+
+  // next, get the convex hull for these points
+  boost::geometry::convex_hull(m_voronoi_pts, m_voronoi_conv_hull);
+  std::cout << "convex hull: " << (size_t)boost::geometry::num_points(conv_hull) << std::endl;
 }
+
