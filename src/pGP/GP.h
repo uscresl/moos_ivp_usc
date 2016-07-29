@@ -227,6 +227,11 @@ class GP : public CMOOSApp
    boost_multi_pt m_voronoi_pts;
    boost::geometry::model::polygon<boost_pt> m_voronoi_conv_hull;
 
+   bool inVoronoi ( double lon, double lat ) const;
+   double distToVoronoi(double lon, double lat) const;
+   void printVoronoi();
+   //boost_pt const& pt);
+
 };
 
 #endif
