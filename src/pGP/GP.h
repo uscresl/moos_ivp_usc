@@ -230,7 +230,6 @@ class GP : public CMOOSApp
    bool inVoronoi ( double lon, double lat ) const;
    double distToVoronoi(double lon, double lat) const;
    void printVoronoi();
-   //boost_pt const& pt);
 
 };
 
