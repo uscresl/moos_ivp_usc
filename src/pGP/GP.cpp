@@ -280,11 +280,15 @@ bool GP::Iterate()
     return true;
   else
   {
-    // temporary test Voronoi region
-    if ( m_voronoi_region.size() > 0 )
+    // check if we need to recalculate Voronoi region
+    double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
+    if ( m_voronoi_region.size() > 0 && distToVoronoi(m_lon, m_lat) < voronoi_threshold )
     {
-      std::cout << "current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
       std::cout << "distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
+      std::cout << "current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
+      calcVoronoi();
+      std::cout << "nw distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
+      std::cout << "nw current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
     }
 
     // when pilot is done,
@@ -1951,6 +1955,7 @@ void GP::voronoiConvexHull()
   std::cout << "nr points in multipoint: " << (size_t)boost::geometry::num_points(m_voronoi_pts) << std::endl;
 
   // next, get the convex hull for these points
+  m_voronoi_conv_hull.clear();
   boost::geometry::convex_hull(m_voronoi_pts, m_voronoi_conv_hull);
   std::cout << "convex hull pts: " << (size_t)boost::geometry::num_points(m_voronoi_conv_hull) << std::endl;
 }
