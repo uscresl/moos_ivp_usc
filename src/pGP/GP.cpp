@@ -29,9 +29,6 @@
 // write to file
 #include <fstream>
 
-// test boost_foreach
-//#include <boost/foreach.hpp>
-
 //---------------------------------------------------------
 // Constructor
 //
@@ -1979,9 +1976,10 @@ double GP::distToVoronoi(double lon, double lat) const
   return boost::geometry::distance(pt_to_check, m_voronoi_conv_hull);
 }
 
+//---------------------------------------------------------
+// Procedure: printVoronoiConvexHull()
+//
 void GP::printVoronoi()
-//boost::geometry::model::polygon<boost_pt> poly_pt)
-//boost_pt const& pt)
 {
   auto bst_ext_ring = boost::geometry::exterior_ring(m_voronoi_conv_hull);
 
