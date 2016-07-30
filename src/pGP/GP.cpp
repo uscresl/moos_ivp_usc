@@ -318,16 +318,19 @@ bool GP::Iterate()
       // TODO: for TDS, need to request DS and then share after handshake and
       //                having shared data, calculate voronoi region
       // check if we need to recalculate Voronoi region
-      double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
-      double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
-      m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
-      if ( m_voronoi_region.size() > 0 && dist_to_voronoi < voronoi_threshold )
+      if ( m_voronoi_region.size() > 0 )
       {
-        std::cout << "distance to Voronoi boundary: " << dist_to_voronoi << std::endl;
-        std::cout << "current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
-        calcVoronoi();
-        std::cout << "nw distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
-        std::cout << "nw current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
+        double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
+        double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
+        m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
+        if ( dist_to_voronoi < voronoi_threshold )
+        {
+          std::cout << "distance to Voronoi boundary: " << dist_to_voronoi << std::endl;
+          std::cout << "current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
+          calcVoronoi();
+          std::cout << "nw distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
+          std::cout << "nw current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
+        }
       }
       else if ( m_voronoi_region.size() == 0 )
       {
@@ -2001,7 +2004,7 @@ void GP::printVoronoi()
   {
     boost_pt bpt = *itr;
     std::cout << bpt.get<0>() << ", " << bpt.get<1>() << "; " << std::endl;
-    voronoi_str << bpt.get<0>() << "," << bpt.get<1>() << ";" << std::endl;
+    voronoi_str << bpt.get<0>() << "," << bpt.get<1>() << ";";
   }
 
   m_Comms.Notify("VORONOI_REGION",voronoi_str.str());
