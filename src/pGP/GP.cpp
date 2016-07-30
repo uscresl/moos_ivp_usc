@@ -277,17 +277,7 @@ bool GP::Iterate()
     return true;
   else
   {
-    // check if we need to recalculate Voronoi region
-    double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
-    if ( m_voronoi_region.size() > 0 && distToVoronoi(m_lon, m_lat) < voronoi_threshold )
-    {
-      std::cout << "distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
-      std::cout << "current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
-      calcVoronoi();
-      std::cout << "nw distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
-      std::cout << "nw current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
-    }
-
+    //// PILOT HP OPTIM ////////////////////////////////////////////////////////
     // when pilot is done,
     // we want to optimize the hyperparams of the GP
     if ( m_hp_optim_mode_cnt == 1 && !m_hp_optim_done && !m_finished )
@@ -319,10 +309,32 @@ bool GP::Iterate()
       }
     }
 
+    //// ADAPTIVE //////////////////////////////////////////////////////////////
     // when hyperparameter optimization is done,
     // we want to run adaptive; find next sample locations
     if ( m_hp_optim_done && m_hp_optim_mode_cnt < 2 && !m_finished )
     {
+
+      // TODO: for TDS, need to request DS and then share after handshake and
+      //                having shared data, calculate voronoi region
+      // check if we need to recalculate Voronoi region
+      double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
+      double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
+      m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
+      if ( m_voronoi_region.size() > 0 && dist_to_voronoi < voronoi_threshold )
+      {
+        std::cout << "distance to Voronoi boundary: " << dist_to_voronoi << std::endl;
+        std::cout << "current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
+        calcVoronoi();
+        std::cout << "nw distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
+        std::cout << "nw current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
+      }
+      else if ( m_voronoi_region.size() == 0 )
+      {
+        // we need to initialize the voronoi region
+        calcVoronoi();
+      }
+
       // predict target value and variance for sample locations
       //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
       if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1.0) && !m_data_sharing_activated  )
@@ -438,6 +450,7 @@ bool GP::Iterate()
       }
     } // if, after hyperparam optim done
 
+    //// FINAL HP OPTIM ////////////////////////////////////////////////////////
     // when returning, do a final HP optimization
     if ( m_hp_optim_mode_cnt == 2 && !m_finished )
     {
@@ -1982,10 +1995,14 @@ double GP::distToVoronoi(double lon, double lat) const
 void GP::printVoronoi()
 {
   auto bst_ext_ring = boost::geometry::exterior_ring(m_voronoi_conv_hull);
+  std::ostringstream voronoi_str;
 
   for ( auto itr = boost::begin(bst_ext_ring); itr != boost::end(bst_ext_ring); ++itr )
   {
     boost_pt bpt = *itr;
     std::cout << bpt.get<0>() << ", " << bpt.get<1>() << "; " << std::endl;
+    voronoi_str << bpt.get<0>() << "," << bpt.get<1>() << ";" << std::endl;
   }
+
+  m_Comms.Notify("VORONOI_REGION",voronoi_str.str());
 }
