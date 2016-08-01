@@ -318,21 +318,15 @@ bool GP::Iterate()
       // TODO: for TDS, need to request DS and then share after handshake and
       //                having shared data, calculate voronoi region
       // check if we need to recalculate Voronoi region
-      if ( m_voronoi_region.size() > 0 )
+      if ( m_use_voronoi && m_acomms_sharing && m_voronoi_region.size() > 0 )
       {
         double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
         double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
         m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
         if ( dist_to_voronoi < voronoi_threshold )
-        {
-          std::cout << "distance to Voronoi boundary: " << dist_to_voronoi << std::endl;
-          std::cout << "current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
           calcVoronoi();
-          std::cout << "nw distance to Voronoi boundary: " << distToVoronoi(m_lon, m_lat) << std::endl;
-          std::cout << "nw current vehicle position inside voronoi convex hull? " << inVoronoi(m_lon, m_lat) << std::endl;
-        }
       }
-      else if ( m_voronoi_region.size() == 0 )
+      else if ( m_use_voronoi && m_acomms_sharing && m_voronoi_region.size() == 0 )
       {
         // we need to initialize the voronoi region
         calcVoronoi();
@@ -342,23 +336,7 @@ bool GP::Iterate()
       //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
       if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1.0) && !m_data_sharing_activated  )
       {
-        if ( !m_finding_nxt )
-        {
-          std::cout << "calling to find next sample location" << std::endl;
-          findNextSampleLocation();
-        }
-        else
-        {
-          m_pause_data_adding = true;
-          // see if we can get result from future
-          if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-          {
-            m_finding_nxt = false;
-            // publish greedy best
-            publishNextBestPosition(); //m_future_next_pt.get());
-            m_pause_data_adding = false;
-          }
-        }
+        findAndPublishNextWpt();
       }
 
       // if we are doing timed data sharing,
@@ -378,66 +356,12 @@ bool GP::Iterate()
         }
         // when at the surface, send data
         if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1)
-        {
-          size_t moos_t = (size_t)std::floor(MOOSTime());
-          // send data
-          if ( m_received_ready && m_dep < 0.1 )
-          {
-            // other vehicle already ready to exchange data
-            // send that we are ready, when we are at the surface
-            sendReady();
-            m_last_ready_sent = moos_t;
-            m_sending_data = true;
-            sendData();
-            // reset for next time
-            m_received_ready = false;
-          }
-          else
-          {
-            if ( m_dep < 0.1 ) // send only when at surface
-            {
-              // this vehicle ready to exchange data, other vehicle not yet,
-              // keep sending that we are ready:
-              // every 10 seconds, notify that we are ready for data exchange
-              if ( moos_t % 30 == 0 &&
-                   moos_t - m_last_ready_sent > 1 )
-              {
-                sendReady();
-                m_last_ready_sent = moos_t;
-              }
-            }
-          }
-        }
+          tdsHandshake();
+
         // next: check if received data added,
         // if so, then switch mode back to survey
         if ( m_data_sharing_activated && m_sending_data && m_received_shared_data )
-        {
-          if ( !m_waiting )
-          {
-            // data received, need to add
-            // TODO make sure we only kick this off once
-            m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
-            m_waiting = true;
-          }
-          else
-          {
-            if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-            {
-              size_t pts_added = m_future_received_data_processed.get();
-              std::cout << " added: " << pts_added << " data points" << std::endl;
-              Notify("STAGE","survey");
-
-              // resets for next time
-              m_data_sharing_activated = false;
-              m_received_shared_data = false;
-              m_sending_data = false;
-              m_waiting = false;
-              m_need_nxt_wpt = true;
-              m_received_ready = false;
-            }
-            // else, continue waiting
-          }
-        }
+          tdsReceiveData();
       }
 
       // TODO; change how this is done, given how data sharing is done?
@@ -775,8 +699,8 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     m_gp.add_pattern(loc, save_val);
 
     // update visited set if needed
-    int index = get_index_for_map(veh_lon, veh_lat);
-    if ( index >= 0 && need_to_update_maps((size_t)index) )
+    int index = getIndexForMap(veh_lon, veh_lat);
+    if ( index >= 0 && needToUpdateMaps((size_t)index) )
       updateVisitedSet(veh_lon, veh_lat, (size_t)index);
 
     // run via data adding thread? no, we want to make sure they've been added,
@@ -925,7 +849,7 @@ void GP::handleMailDataAcomms(std::string css)
 
       // convert x,y to lon,lat
       double lon, lat;
-      bool converted = utmToLonLat(x_i, y_i, lon, lat);
+      bool converted = convUTMToLonLat(x_i, y_i, lon, lat);
       // add to data adding queue
       if ( converted )
       {
@@ -1018,8 +942,8 @@ void GP::dataAddingThread()
       addPatternToGP(veh_lon, veh_lat, data_pt[2]);
 
       // update visited set if needed
-      int index = get_index_for_map(veh_lon, veh_lat);
-      if ( index >= 0 && need_to_update_maps((size_t)index) )
+      int index = getIndexForMap(veh_lon, veh_lat);
+      if ( index >= 0 && needToUpdateMaps((size_t)index) )
         updateVisitedSet(veh_lon, veh_lat, (size_t)index);
     }
   }
@@ -1078,10 +1002,10 @@ void GP::storeDataForSending(double vlon, double vlat, double data)
 
 
 //---------------------------------------------------------
-// Procedure: need_to_update_maps
+// Procedure: needToUpdateMaps
 //            check if location's grid index is in unvisited map
 //
-bool GP::need_to_update_maps(size_t grid_index)
+bool GP::needToUpdateMaps(size_t grid_index)
 {
     // add mutex for changing of global maps
     std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
@@ -1093,10 +1017,10 @@ bool GP::need_to_update_maps(size_t grid_index)
 }
 
 //---------------------------------------------------------
-// Procedure: get_index_for_map
+// Procedure: getIndexForMap
 //            calculate the grid index for the vehicle location
 //
-int GP::get_index_for_map(double veh_lon, double veh_lat)
+int GP::getIndexForMap(double veh_lon, double veh_lat)
 {
   if ( inSampleRectangle(veh_lon, veh_lat, true) )
   {
@@ -1518,8 +1442,9 @@ void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const &
 }
 
 //---------------------------------------------------------
-// Procedure: runHPOptimization()
-//            run in thread, call GP's hyperparam optimization
+// Procedure: processReceivedData()
+//            pass on received data points to be added to GP
+//            via handleMailReceivedDataPts
 //
 size_t GP::processReceivedData()
 {
@@ -1533,6 +1458,11 @@ size_t GP::processReceivedData()
   return pts_added;
 }
 
+
+//---------------------------------------------------------
+// Procedure: runHPOptimization()
+//            run in thread, call GP's hyperparam optimization
+//
 bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
 {
   bool data_processed = false;
@@ -1834,13 +1764,11 @@ void GP::calcLonLatSpacingAndBuffers()
   m_buffer_lat = 2.0/m_lat_deg_to_m;
 }
 
-
-
 //---------------------------------------------------------
-// Procedure: lonLatToUTM
+// Procedure: convLonLatToUTM
 //            use MOOS Geodesy to convert lon/lat to x/y
 //
-bool GP::lonLatToUTM (double lon, double lat, double & lx, double & ly )
+bool GP::convLonLatToUTM (double lon, double lat, double & lx, double & ly )
 {
   bool successful = m_geodesy.LatLong2LocalUTM(lat, lon, ly, lx);
 
@@ -1851,10 +1779,10 @@ bool GP::lonLatToUTM (double lon, double lat, double & lx, double & ly )
 }
 
 //---------------------------------------------------------
-// Procedure: utmToLonLat
+// Procedure: convUTMToLonLat
 //            use MOOS Geodesy to convert x/y to lon/lat
 //
-bool GP::utmToLonLat (double lx, double ly, double & lon, double & lat )
+bool GP::convUTMToLonLat (double lx, double ly, double & lon, double & lat )
 {
   bool successful = m_geodesy.UTM2LatLong(lx, ly, lat, lon);
 
@@ -1985,6 +1913,7 @@ bool GP::inVoronoi(double lon, double lat) const
 
 //---------------------------------------------------------
 // Procedure: distToVoronoi(double lon, double lat) const
+//            calculate distance vehicle location to boundaries voronoi convex hull
 //
 double GP::distToVoronoi(double lon, double lat) const
 {
@@ -2020,6 +1949,7 @@ double GP::distToVoronoi(double lon, double lat) const
 
 //---------------------------------------------------------
 // Procedure: printVoronoiConvexHull()
+//            print voronoi convex hull vertices to cout and MOOS
 //
 void GP::printVoronoi()
 {
@@ -2035,4 +1965,113 @@ void GP::printVoronoi()
   }
 
   m_Comms.Notify("VORONOI_REGION",voronoi_str.str());
+}
+
+//---------------------------------------------------------
+// Procedure: tdsResetStateVars
+//            reset state vars for TDS control
+//
+void GP::tdsResetStateVars()
+{
+  // resets for next time
+  m_data_sharing_activated = false;
+  m_received_shared_data = false;
+  m_sending_data = false;
+  m_waiting = false;
+  m_need_nxt_wpt = true;
+  m_received_ready = false;
+}
+
+//---------------------------------------------------------
+// Procedure: tdsHandshake
+//            broadcast that vehicle is ready when on surface
+//            and share data when received 'ready' from other vehicle
+//            assumes only 2 vehicles
+//
+void GP::tdsHandshake()
+{
+  size_t moos_t = (size_t)std::floor(MOOSTime());
+  // send data
+  if ( m_received_ready && m_dep < 0.1 )
+  {
+    // other vehicle already ready to exchange data
+    // send that we are ready, when we are at the surface
+    sendReady();
+    m_last_ready_sent = moos_t;
+    m_sending_data = true;
+    sendData();
+    // reset for next time
+    m_received_ready = false;
+  }
+  else
+  {
+    if ( m_dep < 0.1 ) // send only when at surface
+    {
+      // this vehicle ready to exchange data, other vehicle not yet,
+      // keep sending that we are ready:
+      // every 10 seconds, notify that we are ready for data exchange
+      if ( moos_t % 30 == 0 &&
+           moos_t - m_last_ready_sent > 1 )
+      {
+        sendReady();
+        m_last_ready_sent = moos_t;
+      }
+    }
+  }
+}
+
+//---------------------------------------------------------
+// Procedure: tdsReceiveData
+//            start processing received data, and when all
+//            are process, then switch state to continue with
+//            the survey mission
+//
+void GP::tdsReceiveData()
+{
+  if ( !m_waiting )
+  {
+    // data received, need to add
+    // TODO make sure we only kick this off once
+    m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
+    m_waiting = true;
+  }
+  else
+  {
+    if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+    {
+      size_t pts_added = m_future_received_data_processed.get();
+      std::cout << " added: " << pts_added << " data points" << std::endl;
+      Notify("STAGE","survey");
+
+      tdsResetStateVars();
+    }
+    // else, continue waiting
+  }
+}
+
+//---------------------------------------------------------
+// Procedure: findAndPublishNextWpt
+//            called upon m_need_nxt_wpt in Iterate
+//            calculate the next sample location,
+//            and publish to MOOSDB when found
+//
+void GP::findAndPublishNextWpt()
+{
+  if ( !m_finding_nxt )
+  {
+    std::cout << "calling to find next sample location" << std::endl;
+    findNextSampleLocation();
+  }
+  else
+  {
+    m_pause_data_adding = true;
+    // see if we can get result from future
+    if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+    {
+      m_finding_nxt = false;
+      // publish greedy best
+      publishNextBestPosition();
+      m_pause_data_adding = false;
+    }
+  }
 }

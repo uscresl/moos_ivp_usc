@@ -66,6 +66,7 @@ class GP : public CMOOSApp
 
    bool runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations);
 
+   void findAndPublishNextWpt();
    void findNextSampleLocation();
 
    // mutual information
@@ -97,14 +98,18 @@ class GP : public CMOOSApp
    void voronoiConvexHull();
 
    // helper/test functions
-   bool need_to_update_maps(size_t grid_index);
-   int get_index_for_map(double veh_lon, double veh_lat);
+   bool needToUpdateMaps(size_t grid_index);
+   int getIndexForMap(double veh_lon, double veh_lat);
    void checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt);
    bool checkGPHasData();
    void calcLonLatSpacingAndBuffers();
-   bool lonLatToUTM (double lon, double lat, double & lx, double & ly );
-   bool utmToLonLat (double lx, double ly, double & lon, double & lat );
+   bool convLonLatToUTM (double lon, double lat, double & lx, double & ly );
+   bool convUTMToLonLat (double lx, double ly, double & lon, double & lat );
    bool inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const;
+
+   void tdsResetStateVars();
+   void tdsHandshake();
+   void tdsReceiveData();
 
    size_t processReceivedData();
 
