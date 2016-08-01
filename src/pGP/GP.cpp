@@ -1989,7 +1989,34 @@ bool GP::inVoronoi(double lon, double lat) const
 double GP::distToVoronoi(double lon, double lat) const
 {
   boost_pt pt_to_check(lon, lat);
-  return boost::geometry::distance(pt_to_check, m_voronoi_conv_hull);
+
+  // iterate over vertices in convex hull to create lines to calc distance to
+  double min_dist = std::numeric_limits<double>::max();
+  auto bst_ext_ring = boost::geometry::exterior_ring(m_voronoi_conv_hull);
+  for ( auto itr = boost::begin(bst_ext_ring); itr != boost::end(bst_ext_ring); ++itr )
+  {
+    // line between current and next point
+    boost::geometry::model::linestring<boost_pt> line;
+    if ( itr+1 != boost::end(bst_ext_ring) )
+    {
+      boost_pt bpt = *itr;
+      boost_pt nxt = *(itr+1);
+      boost::geometry::append(line, bpt);
+      boost::geometry::append(line, nxt);
+    }
+    // calculate distance to line
+    if ( boost::geometry::num_points(line) > 0 )
+    {
+      double curr_dist = boost::geometry::distance(pt_to_check, line);
+
+      // store if less than current min
+      if ( curr_dist < min_dist )
+        min_dist = curr_dist;
+    }
+  }
+
+  //return boost::geometry::distance(pt_to_check, m_voronoi_conv_hull);
+  return min_dist;
 }
 
 //---------------------------------------------------------
@@ -2000,10 +2027,12 @@ void GP::printVoronoi()
   auto bst_ext_ring = boost::geometry::exterior_ring(m_voronoi_conv_hull);
   std::ostringstream voronoi_str;
 
+  std::cout << "voronoi convex hull: " << boost::geometry::dsv(bst_ext_ring);
+
   for ( auto itr = boost::begin(bst_ext_ring); itr != boost::end(bst_ext_ring); ++itr )
   {
     boost_pt bpt = *itr;
-    std::cout << bpt.get<0>() << ", " << bpt.get<1>() << "; " << std::endl;
+    //std::cout << bpt.get<0>() << ", " << bpt.get<1>() << "; " << std::endl;
     voronoi_str << bpt.get<0>() << "," << bpt.get<1>() << ";";
   }
 
