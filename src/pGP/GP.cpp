@@ -2015,7 +2015,6 @@ double GP::distToVoronoi(double lon, double lat) const
     }
   }
 
-  //return boost::geometry::distance(pt_to_check, m_voronoi_conv_hull);
   return min_dist;
 }
 
@@ -2032,7 +2031,6 @@ void GP::printVoronoi()
   for ( auto itr = boost::begin(bst_ext_ring); itr != boost::end(bst_ext_ring); ++itr )
   {
     boost_pt bpt = *itr;
-    //std::cout << bpt.get<0>() << ", " << bpt.get<1>() << "; " << std::endl;
     voronoi_str << bpt.get<0>() << "," << bpt.get<1>() << ";";
   }
 
