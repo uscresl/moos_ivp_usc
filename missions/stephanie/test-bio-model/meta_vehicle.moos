@@ -43,7 +43,7 @@ ProcessConfig = ANTLER
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
   Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig
-  
+
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
@@ -55,15 +55,14 @@ ProcessConfig = ANTLER
   //true,XConfig=uSBSConfig
 
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP @ NewConsole = false
-  //true,XConfig=pGPConfig
+  Run = pGP @ NewConsole = true,XConfig=pGPConfig
 
   pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
   //true,XConfig=pSPConfig
 
   Run = pLonLatToWptUpdate @ NewConsole = false
-  
+
   #ifdef ADAPTIVE_WPTS yes
   Run = uTimerScript @ NewConsole = false
   //true
@@ -97,7 +96,11 @@ ProcessConfig = ANTLER
 #ifdef USE_ACOMMS yes
 #include plugs/plug_pAcommsHandler.moos
 #else
-#include $(PLUG_DIR)/plug_pAcommsHandler.moos
+  #ifdef USE_VORONOI yes
+    #include plugs/plug_pAcommsHandler_tds_voronoi.moos
+  #else
+    #include $(PLUG_DIR)/plug_pAcommsHandler.moos
+  #endif
 #endif
 #include $(PLUG_DIR)/plug_pHostInfo.moos
 #include $(PLUG_DIR)/plug_uFldNodeBroker.moos
