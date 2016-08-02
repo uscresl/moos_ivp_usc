@@ -88,7 +88,8 @@ GP::GP() :
   m_last_ready_sent(0),
   m_acomms_sharing(false),
   m_last_acomms_string(""),
-  m_use_voronoi(false)
+  m_use_voronoi(false),
+  m_data_sharing_requested(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -309,36 +310,36 @@ bool GP::Iterate()
       }
     }
 
+
     //// ADAPTIVE //////////////////////////////////////////////////////////////
     // when hyperparameter optimization is done,
     // we want to run adaptive; find next sample locations
     if ( m_hp_optim_done && m_hp_optim_mode_cnt < 2 && !m_finished )
     {
+      // **** NXT WAYPOINT (GREEDY) ******************************************//
+      // predict target value and variance for sample locations
+      //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
+      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1.0) && !m_data_sharing_activated  )
+        findAndPublishNextWpt();
 
+
+      // **** ACOMMS VORONOI PARTITIONING ************************************//
       // TODO: for TDS, need to request DS and then share after handshake and
       //                having shared data, calculate voronoi region
       // check if we need to recalculate Voronoi region
       if ( m_use_voronoi && m_acomms_sharing && m_voronoi_region.size() > 0 )
       {
-        double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
-        double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
-        m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
-        if ( dist_to_voronoi < voronoi_threshold )
-          calcVoronoi();
+          if ( needToRecalculateVoronoi() )
+            calcVoronoi();
       }
-      else if ( m_use_voronoi && m_acomms_sharing && m_voronoi_region.size() == 0 )
+      else if ( m_use_voronoi && m_voronoi_region.size() == 0 )
       {
         // we need to initialize the voronoi region
         calcVoronoi();
       }
 
-      // predict target value and variance for sample locations
-      //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
-      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1.0) && !m_data_sharing_activated  )
-      {
-        findAndPublishNextWpt();
-      }
 
+      // **** TDS ************************************************************//
       // if we are doing timed data sharing,
       if ( m_timed_data_sharing )
       {
@@ -346,7 +347,8 @@ bool GP::Iterate()
         // so let's time this based on MOOSTime(), and assume that clocks are
         // synchronised (to be verified)
         // note; may need to add buffer to block out x seconds after hpoptim_done
-        if ( m_num_vehicles > 1 &&
+        if ( !m_use_voronoi &&
+              m_num_vehicles > 1 &&
              ( (size_t)std::floor(MOOSTime()) % 600 ) == 0 &&
              !m_data_sharing_activated )
         {
@@ -354,8 +356,25 @@ bool GP::Iterate()
           Notify("STAGE","data_sharing");
           m_data_sharing_activated = true;
         }
+
+        // tds with voronoi, trigger for when to request data sharing
+        if ( m_use_voronoi && m_voronoi_region.size() > 0 && needToRecalculateVoronoi() )
+        {
+          // request surfacing through acomms
+          m_Comms.Notify("REQ_SURFACING","true");
+        }
+        //
+        // if ack received, trigger requested (in handleMail)
+        //
+        // if received data sharing request, or if ack received, start ds
+        if ( m_use_voronoi && m_data_sharing_requested )
+        {
+          Notify("STAGE","data_sharing");
+          m_data_sharing_activated = true;
+        }
+
         // when at the surface, send data
-        if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1)
+        if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1 )
           tdsHandshake();
 
         // next: check if received data added,
@@ -364,6 +383,8 @@ bool GP::Iterate()
           tdsReceiveData();
       }
 
+
+      // **** SAVING GP TO FILE **********************************************//
       // TODO; change how this is done, given how data sharing is done?
       // periodically (every 600s = 10min), store all GP predictions
       // only after pilot done, first one 600 seconds after HP optimiz done
@@ -376,6 +397,7 @@ bool GP::Iterate()
         m_last_pred_save = MOOSTime();
       }
     } // if, after hyperparam optim done
+
 
     //// FINAL HP OPTIM ////////////////////////////////////////////////////////
     // when returning, do a final HP optimization
@@ -1967,20 +1989,6 @@ void GP::printVoronoi()
   m_Comms.Notify("VORONOI_REGION",voronoi_str.str());
 }
 
-//---------------------------------------------------------
-// Procedure: tdsResetStateVars
-//            reset state vars for TDS control
-//
-void GP::tdsResetStateVars()
-{
-  // resets for next time
-  m_data_sharing_activated = false;
-  m_received_shared_data = false;
-  m_sending_data = false;
-  m_waiting = false;
-  m_need_nxt_wpt = true;
-  m_received_ready = false;
-}
 
 //---------------------------------------------------------
 // Procedure: tdsHandshake
@@ -2041,12 +2049,32 @@ void GP::tdsReceiveData()
     {
       size_t pts_added = m_future_received_data_processed.get();
       std::cout << " added: " << pts_added << " data points" << std::endl;
+
+      if ( m_use_voronoi )
+        calcVoronoi();
+
       Notify("STAGE","survey");
 
       tdsResetStateVars();
     }
     // else, continue waiting
   }
+}
+
+
+//---------------------------------------------------------
+// Procedure: tdsResetStateVars
+//            reset state vars for TDS control
+//
+void GP::tdsResetStateVars()
+{
+  // resets for next time
+  m_data_sharing_activated = false;
+  m_received_shared_data = false;
+  m_sending_data = false;
+  m_waiting = false;
+  m_need_nxt_wpt = true;
+  m_received_ready = false;
 }
 
 //---------------------------------------------------------
@@ -2074,4 +2102,20 @@ void GP::findAndPublishNextWpt()
       m_pause_data_adding = false;
     }
   }
+}
+
+//---------------------------------------------------------
+// Procedure: needToRecalculateVoronoi
+//            see if we need to recalculate the voronoi region
+//            for now, when we are close to voronoi border
+//
+bool GP::needToRecalculateVoronoi()
+{
+  // TODO change threshold?
+  double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
+  double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
+  m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
+  if ( dist_to_voronoi < voronoi_threshold )
+    return true;
+  return false;
 }

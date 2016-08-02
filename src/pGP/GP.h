@@ -96,6 +96,7 @@ class GP : public CMOOSApp
    // calculate Voronoi regions
    void calcVoronoi();
    void voronoiConvexHull();
+   bool needToRecalculateVoronoi();
 
    // helper/test functions
    bool needToUpdateMaps(size_t grid_index);
@@ -236,6 +237,8 @@ class GP : public CMOOSApp
    double distToVoronoi(double lon, double lat) const;
    void printVoronoi();
 
+   // voronoi data sharing
+   bool m_data_sharing_requested;
 };
 
 #endif
