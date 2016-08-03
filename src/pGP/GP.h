@@ -114,6 +114,8 @@ class GP : public CMOOSApp
 
    size_t processReceivedData();
 
+   bool ownMessage(std::string input);
+
    // Configuration variables
    CMOOSGeodesy m_geodesy;
 

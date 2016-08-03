@@ -250,6 +250,21 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == "TEST_VORONOI" )
       calcVoronoi();
+    else if ( key == "REQ_SURFACING_REC")
+    { // receive surfacing request from other vehicle
+      // need to send ack, also start surfacing
+      if ( !ownMessage(sval) )
+      {
+        m_Comms.Notify("REQ_SURFACING_ACK","true");
+        m_data_sharing_requested = true;
+      }
+    }
+    else if ( key == "REQ_SURFACING_ACK_REC")
+    { // receive surfacing req ack from other vehicle)
+      // ack received, start surfacing
+      if ( !ownMessage(sval) )
+        m_data_sharing_requested = true;
+    }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
 
@@ -358,8 +373,11 @@ bool GP::Iterate()
         }
 
         // tds with voronoi, trigger for when to request data sharing
-        if ( m_use_voronoi && m_voronoi_region.size() > 0 && needToRecalculateVoronoi() )
+        if ( m_use_voronoi && m_voronoi_region.size() > 0 && needToRecalculateVoronoi()
+             && !m_data_sharing_requested && !m_data_sharing_activated
+             && ((MOOSTime()-m_hp_optim_done_time) > 300) )
         {
+          std::cout << " MOOSTime: " << MOOSTime() << " and optim time: " << m_hp_optim_done_time << std::endl;
           // request surfacing through acomms
           m_Comms.Notify("REQ_SURFACING","true");
         }
@@ -367,8 +385,8 @@ bool GP::Iterate()
         // if ack received, trigger requested (in handleMail)
         //
         // if received data sharing request, or if ack received, start ds
-        if ( m_use_voronoi && m_data_sharing_requested )
-        {
+        if ( m_use_voronoi && m_data_sharing_requested && !m_data_sharing_activated )
+        { // TODO added time check to avoid calc on first entry- TODO replace?
           Notify("STAGE","data_sharing");
           m_data_sharing_activated = true;
         }
@@ -655,6 +673,10 @@ void GP::registerVariables()
   // tmp test voronoi partitioning
   m_Comms.Register("TEST_VORONOI",0);
 
+  // surfacing requests
+  m_Comms.Register("REQ_SURFACING_REC",0); // receive surfacing request from other vehicle
+  m_Comms.Register("REQ_SURFACING_ACK_REC",0); // receive surfacing req ack from other vehicle
+
   std::cout << GetAppName() << " :: Done registering, registered for: " << std::endl;
   std::set<std::string> get_registered = m_Comms.GetRegistered();
   for ( auto registered : get_registered )
@@ -924,8 +946,6 @@ void GP::handleMailNodeReports(const std::string &input_string)
       veh_lat = atof(val.c_str());
   }
 
-  std::cout << "veh nm, lon, lat: " << veh_nm << ", " << veh_lon << ", " << veh_lat << std::endl;
-
   if ( veh_nm != "" )
   {
     // store the vehicle info
@@ -933,9 +953,6 @@ void GP::handleMailNodeReports(const std::string &input_string)
       m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
     else
       m_other_vehicles[veh_nm] = std::pair<double,double>(veh_lon,veh_lat);
-    std::cout << GetAppName() << " :: stored the following location for " << veh_nm << ":\n";
-    std::pair<double,double> fnd_itm = m_other_vehicles.find(veh_nm)->second;
-    std::cout << fnd_itm.first << "," << fnd_itm.second << std::endl;
   }
 }
 
@@ -2053,9 +2070,9 @@ void GP::tdsReceiveData()
       if ( m_use_voronoi )
         calcVoronoi();
 
-      Notify("STAGE","survey");
-
       tdsResetStateVars();
+
+      Notify("STAGE","survey");
     }
     // else, continue waiting
   }
@@ -2075,6 +2092,7 @@ void GP::tdsResetStateVars()
   m_waiting = false;
   m_need_nxt_wpt = true;
   m_received_ready = false;
+  m_data_sharing_requested = false;
 }
 
 //---------------------------------------------------------
@@ -2112,10 +2130,16 @@ void GP::findAndPublishNextWpt()
 bool GP::needToRecalculateVoronoi()
 {
   // TODO change threshold?
-  double voronoi_threshold = (m_lon_spacing/2.0 + m_lat_spacing/2.0)/2.0;
+  double voronoi_threshold = ((m_lon_spacing + m_lat_spacing)/2.0) / 4.0;
   double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
   m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
   if ( dist_to_voronoi < voronoi_threshold )
     return true;
   return false;
+}
+
+bool GP::ownMessage(std::string input)
+{
+  size_t index = input.find(m_veh_name);
+  return ( index != std::string::npos );
 }
