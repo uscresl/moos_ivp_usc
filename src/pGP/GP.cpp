@@ -60,8 +60,6 @@ GP::GP() :
   m_pts_grid_spacing(0.0),
   m_lon_spacing(0.0),
   m_lat_spacing(0.0),
-  m_buffer_lon(0.0),
-  m_buffer_lat(0.0),
   m_y_resolution(0.0),
   m_lon_deg_to_m(0.0),
   m_lat_deg_to_m(0.0),
@@ -846,7 +844,7 @@ void GP::handleMailSamplePointsSpecs(std::string input_string)
     else if ( param == "lane_width")
     {
       m_pts_grid_spacing = value;
-      calcLonLatSpacingAndBuffers();
+      calcLonLatSpacing();
     }
     else
       std::cout << GetAppName() << " :: error, unhandled part of sample points specs: " << param << std::endl;
@@ -1796,11 +1794,11 @@ void GP::makeAndStorePredictions()
 }
 
 //---------------------------------------------------------
-// Procedure: calcLonLatSpacingAndBuffers
+// Procedure: calcLonLatSpacing
 //            separate out these calculations
 //            such that we only do them once
 //
-void GP::calcLonLatSpacingAndBuffers()
+void GP::calcLonLatSpacing()
 {
   // convert lane widths in meters to lon/lat
   m_lon_spacing = m_pts_grid_spacing/m_lon_deg_to_m;
@@ -1810,12 +1808,6 @@ void GP::calcLonLatSpacingAndBuffers()
   m_y_resolution = (size_t) round(m_pts_grid_height/m_pts_grid_spacing);
   // add one because of zero indexing
   m_y_resolution++;
-
-  // if just outside data grid, but close enough,
-  // should be able to map to border points
-  // buffer of 2 meters (TODO make parameter?)
-  m_buffer_lon = 2.0/m_lon_deg_to_m;
-  m_buffer_lat = 2.0/m_lat_deg_to_m;
 }
 
 //---------------------------------------------------------
@@ -1923,9 +1915,15 @@ void GP::calcVoronoi()
 //
 bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const
 {
+  // if just outside data grid, but close enough,
+  // should be able to map to border points
+  // buffer of 5 meters (TODO make parameter?)
+  double buffer_lon = 5.0/m_lon_deg_to_m;
+  double buffer_lat = 5.0/m_lat_deg_to_m;
+
   if ( use_buffer )
-    return ( veh_lon >= (m_min_lon-m_buffer_lon) && veh_lat >= (m_min_lat-m_buffer_lat) &&
-             veh_lon <= (m_max_lon+m_buffer_lon) && veh_lat <= (m_max_lat+m_buffer_lat) );
+    return ( veh_lon >= (m_min_lon-buffer_lon) && veh_lat >= (m_min_lat-buffer_lat) &&
+             veh_lon <= (m_max_lon+buffer_lon) && veh_lat <= (m_max_lat+buffer_lat) );
   else
     return ( veh_lon >= m_min_lon && veh_lat >= m_min_lat &&
              veh_lon <= m_max_lon && veh_lat <= m_max_lat );
