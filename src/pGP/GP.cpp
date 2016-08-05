@@ -87,7 +87,9 @@ GP::GP() :
   m_acomms_sharing(false),
   m_last_acomms_string(""),
   m_use_voronoi(false),
-  m_data_sharing_requested(false)
+  m_data_sharing_requested(false),
+  m_send_surf_req(false),
+  m_send_ack(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -248,26 +250,33 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == "TEST_VORONOI" )
       calcVoronoi();
-    else if ( key == "REQ_SURFACING_REC")
+    else if ( key == "REQ_SURFACING_REC" )
     { // receive surfacing request from other vehicle
       // need to send ack, also start surfacing
       bool own_msg = ownMessage(sval);
       std::cout << "REQ_SURFACING_REC own msg? " << own_msg << std::endl;
       std::cout << "m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
-      if ( !own_msg && !m_data_sharing_requested )
+      if ( !own_msg && !m_data_sharing_requested && !m_send_ack )
       {
-        m_Comms.Notify("REQ_SURFACING_ACK","true");
+        // prep for surfacing
         m_data_sharing_requested = true;
+        // send ack, do actual sending in Iterate so we send until surface handshake
+        m_send_ack = true;
       }
     }
-    else if ( key == "REQ_SURFACING_ACK_REC")
+    else if ( key == "REQ_SURFACING_ACK_REC" )
     { // receive surfacing req ack from other vehicle)
       // ack received, start surfacing
       bool own_msg = ownMessage(sval);
       std::cout << "REQ_SURFACING_ACK_REC own msg? " << own_msg << std::endl;
       std::cout << "m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
-      if ( !own_msg && !m_data_sharing_requested )
+      if ( !own_msg && !m_data_sharing_requested && m_send_surf_req )
+      {
+        // prep for surfacing
         m_data_sharing_requested = true;
+        // received ack, stop sending surfacing request
+        m_send_surf_req = false;
+      }
     }
     else
       std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
@@ -384,8 +393,14 @@ bool GP::Iterate()
              && ((MOOSTime()-m_last_voronoi_calc_time) > 300) )
         {
           // request surfacing through acomms
-          m_Comms.Notify("REQ_SURFACING","true");
+          m_send_surf_req = true;
         }
+        // do actual sending of surface request and ack based on global vars
+        // such that we do this until no longer desired
+        if ( m_send_surf_req )
+          m_Comms.Notify("REQ_SURFACING","true");
+        if ( m_send_ack )
+          m_Comms.Notify("REQ_SURFACING_ACK","true");
         //
         // if ack received, trigger requested (in handleMail)
         //
@@ -2032,6 +2047,7 @@ void GP::tdsHandshake()
   // send data
   if ( m_received_ready && m_dep < 0.1 )
   {
+    m_send_ack = false;
     // other vehicle already ready to exchange data
     // send that we are ready, when we are at the surface
     sendReady();
