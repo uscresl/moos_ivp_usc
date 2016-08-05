@@ -103,7 +103,7 @@ class GP : public CMOOSApp
    int getIndexForMap(double veh_lon, double veh_lat);
    void checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt);
    bool checkGPHasData();
-   void calcLonLatSpacingAndBuffers();
+   void calcLonLatSpacing();
    bool convLonLatToUTM (double lon, double lat, double & lx, double & ly );
    bool convUTMToLonLat (double lx, double ly, double & lon, double & lat );
    bool inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const;
@@ -152,8 +152,6 @@ class GP : public CMOOSApp
    double m_pts_grid_spacing;
    double m_lon_spacing;
    double m_lat_spacing;
-   double m_buffer_lon;
-   double m_buffer_lat;
    double m_y_resolution;
    double m_lon_deg_to_m;
    double m_lat_deg_to_m;
