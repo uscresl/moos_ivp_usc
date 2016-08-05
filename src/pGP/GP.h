@@ -240,6 +240,8 @@ class GP : public CMOOSApp
    // voronoi data sharing
    bool m_data_sharing_requested;
    double m_last_voronoi_calc_time;
+   bool m_send_surf_req;
+   bool m_send_ack;
 };
 
 #endif
