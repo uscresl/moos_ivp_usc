@@ -253,7 +253,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "REQ_SURFACING_REC")
     { // receive surfacing request from other vehicle
       // need to send ack, also start surfacing
-      if ( !ownMessage(sval) )
+      bool own_msg = ownMessage(sval);
+      std::cout << "REQ_SURFACING_REC own msg? " << own_msg << std::endl;
+      std::cout << "m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
+      if ( !own_msg && !m_data_sharing_requested )
       {
         m_Comms.Notify("REQ_SURFACING_ACK","true");
         m_data_sharing_requested = true;
@@ -262,7 +265,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "REQ_SURFACING_ACK_REC")
     { // receive surfacing req ack from other vehicle)
       // ack received, start surfacing
-      if ( !ownMessage(sval) )
+      bool own_msg = ownMessage(sval);
+      std::cout << "REQ_SURFACING_ACK_REC own msg? " << own_msg << std::endl;
+      std::cout << "m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
+      if ( !own_msg && !m_data_sharing_requested )
         m_data_sharing_requested = true;
     }
     else
@@ -372,12 +378,13 @@ bool GP::Iterate()
           m_data_sharing_activated = true;
         }
 
+        //std::cout << " needToRecalculateVoronoi(): " << needToRecalculateVoronoi() << std::endl;
+        //std::cout << " MOOSTime - last calc time: " << (MOOSTime()-m_last_voronoi_calc_time) << std::endl;
         // tds with voronoi, trigger for when to request data sharing
         if ( m_use_voronoi && m_voronoi_region.size() > 0 && needToRecalculateVoronoi()
              && !m_data_sharing_requested && !m_data_sharing_activated
-             && ((MOOSTime()-m_hp_optim_done_time) > 300) )
+             && ((MOOSTime()-m_last_voronoi_calc_time) > 300) )
         {
-          std::cout << " MOOSTime: " << MOOSTime() << " and optim time: " << m_hp_optim_done_time << std::endl;
           // request surfacing through acomms
           m_Comms.Notify("REQ_SURFACING","true");
         }
@@ -592,6 +599,8 @@ bool GP::OnStartUp()
 
   std::thread data_thread(&GP::dataAddingThread, this);
   data_thread.detach();
+
+  m_last_voronoi_calc_time = MOOSTime();
 
   return(true);
 }
@@ -1626,6 +1635,12 @@ void GP::sendData()
   size_t msg_cnt = 0;
   size_t nr_points = 1500;
   std::cout << "**sending " << m_data_pt_counter << " points!" << std::endl;
+  if ( m_data_pt_counter == 0 )
+  {
+    // no data points to send, send empty msg
+    std::string empty_msg = m_veh_name + ':';
+    m_Comms.Notify(m_output_var_share_data,empty_msg);
+  }
   while ( m_data_pt_counter != 0 )
   {
     if ( m_data_pt_counter < 1500 )
@@ -1640,7 +1655,7 @@ void GP::sendData()
     std::copy(m_data_to_send.begin()+(msg_cnt*1500), m_data_to_send.begin()+(msg_cnt*1500+nr_points), std::ostream_iterator<std::string>(data_string_stream,";"));
 
     // send msg
-    Notify(m_output_var_share_data,data_string_stream.str());
+    m_Comms.Notify(m_output_var_share_data,data_string_stream.str());
 
     msg_cnt++;
     m_data_pt_counter -= nr_points;
@@ -1995,7 +2010,7 @@ void GP::printVoronoi()
   auto bst_ext_ring = boost::geometry::exterior_ring(m_voronoi_conv_hull);
   std::ostringstream voronoi_str;
 
-  std::cout << "voronoi convex hull: " << boost::geometry::dsv(bst_ext_ring);
+  std::cout << "voronoi convex hull: " << boost::geometry::dsv(bst_ext_ring) << std::endl;
 
   for ( auto itr = boost::begin(bst_ext_ring); itr != boost::end(bst_ext_ring); ++itr )
   {
@@ -2068,7 +2083,10 @@ void GP::tdsReceiveData()
       std::cout << " added: " << pts_added << " data points" << std::endl;
 
       if ( m_use_voronoi )
+      {
         calcVoronoi();
+        m_last_voronoi_calc_time = MOOSTime();
+      }
 
       tdsResetStateVars();
 
@@ -2085,6 +2103,7 @@ void GP::tdsReceiveData()
 //
 void GP::tdsResetStateVars()
 {
+  std::cout << "reset state vars" << std::endl;
   // resets for next time
   m_data_sharing_activated = false;
   m_received_shared_data = false;
@@ -2130,7 +2149,8 @@ void GP::findAndPublishNextWpt()
 bool GP::needToRecalculateVoronoi()
 {
   // TODO change threshold?
-  double voronoi_threshold = ((m_lon_spacing + m_lat_spacing)/2.0) / 4.0;
+  double voronoi_threshold = ((m_lon_spacing + m_lat_spacing)/2.0) / 2.0;
+  //std::cout << "Voronoi threshold: " << voronoi_threshold << std::endl;
   double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
   m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
   if ( dist_to_voronoi < voronoi_threshold )

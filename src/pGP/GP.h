@@ -241,6 +241,7 @@ class GP : public CMOOSApp
 
    // voronoi data sharing
    bool m_data_sharing_requested;
+   double m_last_voronoi_calc_time;
 };
 
 #endif
