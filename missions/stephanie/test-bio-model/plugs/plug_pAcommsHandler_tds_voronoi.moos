@@ -262,7 +262,7 @@ ProcessConfig = pAcommsHandler
   }
 
   queue_cfg {
-    message_entry { protobuf_name: "ACOUSTIC_MOOS_POKE"  ack: true  ttl: 1800  value_base: 10  newest_first: false
+    message_entry { protobuf_name: "ACOUSTIC_MOOS_POKE"  ack: true  ttl: 600  value_base: 2  newest_first: false
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "destination" }
       role { type: TIMESTAMP  field: "_time" }
@@ -274,12 +274,12 @@ ProcessConfig = pAcommsHandler
       role { type: TIMESTAMP field: "Timestamp" }
       manipulator: ON_DEMAND	manipulator: LOOPBACK
     }
-    message_entry { protobuf_name: "SurfacingRequest"  ack: true  ttl: 1800  value_base: 10  newest_first: false
+    message_entry { protobuf_name: "SurfacingRequest"  ack: true  max_queue: 2  ttl: 300  value_base: 2  newest_first: false
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "_dest_id" }
       role { type: TIMESTAMP  field: "_time" }
     }
-    message_entry { protobuf_name: "SurfacingRequestAck"  ack: true  ttl: 1800  value_base: 10  newest_first: false
+    message_entry { protobuf_name: "SurfacingRequestAck"  ack: true  max_queue: 2  ttl: 300  value_base: 2  newest_first: false
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "_dest_id" }
       role { type: TIMESTAMP  field: "_time" }
