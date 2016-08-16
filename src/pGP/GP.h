@@ -70,7 +70,7 @@ class GP : public CMOOSApp
    void findNextSampleLocation();
 
    // mutual information
-   Eigen::Vector2d calcMICriterion(libgp::CovarianceFunction& cov_f);
+   size_t calcMICriterion(libgp::CovarianceFunction& cov_f);
    void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
    void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
    void getTgtValUnvisited(Eigen::VectorXd & t_av);
@@ -78,7 +78,7 @@ class GP : public CMOOSApp
    void logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
 
    // maximum entropy
-   Eigen::Vector2d calcMECriterion();
+   size_t calcMECriterion();
 
    void publishNextBestPosition(); //Eigen::Vector2d best_so_far_y);
 
@@ -94,9 +94,11 @@ class GP : public CMOOSApp
    void handleMailDataAcomms(std::string css);
 
    // calculate Voronoi regions
-   void calcVoronoi();
+   void calcVoronoi( double own_lon, double own_lat, std::map< std::string, std::pair<double,double> > other_centers );
    void voronoiConvexHull();
    bool needToRecalculateVoronoi();
+   void calcVoronoiCentroids();
+   void calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat );
 
    // helper/test functions
    bool needToUpdateMaps(size_t grid_index);
@@ -165,6 +167,7 @@ class GP : public CMOOSApp
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_visited;
    std::vector< std::pair<double, double> > m_sample_locations;
+   std::unordered_map<size_t, double> m_unvisited_pred_metric;
 
    // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess m_gp;
@@ -181,7 +184,7 @@ class GP : public CMOOSApp
    bool m_hp_optim_done;
 
    // future for result MI criterion calculations
-   std::future<Eigen::Vector2d> m_future_next_pt;
+   std::future<size_t> m_future_next_pt;
 
    // to add only every other data point
    size_t m_data_mail_counter;
@@ -226,7 +229,10 @@ class GP : public CMOOSApp
    std::map< std::string, std::pair<double,double> > m_other_vehicles;
 
    // voronoi partitioning
-   std::unordered_map<size_t, Eigen::Vector2d> m_voronoi_region;
+//   std::unordered_map<size_t, Eigen::Vector2d> m_voronoi_region;
+   std::vector<size_t> m_voronoi_subset;
+   std::map<std::string,std::vector<size_t>> m_voronoi_subset_other_vehicles;
+
    bool m_use_voronoi;
    typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> boost_pt;
    typedef boost::geometry::model::multi_point< boost_pt > boost_multi_pt;
