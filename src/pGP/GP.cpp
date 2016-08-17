@@ -364,6 +364,7 @@ bool GP::Iterate()
       {
         // we need to initialize the voronoi region
         calcVoronoi(m_lon, m_lat, m_other_vehicles);
+        printVoronoiPartitions();
       }
 
 
@@ -1123,7 +1124,10 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     m_sample_points_unvisited.erase(curr_loc_itr);
     // if using voronoi region, remove from that set, if it is in there
     if ( m_use_voronoi )
-        m_voronoi_subset.erase(std::remove(m_voronoi_subset.begin(), m_voronoi_subset.end(), index));
+    {
+      if ( m_voronoi_subset.size() > 0 )
+        m_voronoi_subset.erase( std::remove(m_voronoi_subset.begin(), m_voronoi_subset.end(), index), m_voronoi_subset.end() );
+    }
 
     // report
     std::cout << "\nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
@@ -1204,20 +1208,28 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
       best_so_far_idx = loc.first;
     }
   }
+  std::cout << " best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
 
-  Eigen::Vector2d best_so_far_y = m_sample_points_unvisited.find(best_so_far_idx)->second;
+  auto best_itr = m_sample_points_unvisited.find(best_so_far_idx);
 
-  // app feedback
-  std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
-  std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
+  if ( best_itr == m_sample_points_unvisited.end() )
+    std::cout << "best is not in unsampled locations" << std::endl;
+  else
+  {
+    Eigen::Vector2d best_so_far_y = best_itr->second;
 
-  std::ostringstream output_stream;
-  output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
-  m_Comms.Notify(m_output_var_pred, output_stream.str());
+    // app feedback
+    std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
+    std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
 
-  // update state vars
-  m_last_published = MOOSTime();
-  m_need_nxt_wpt = false;
+    std::ostringstream output_stream;
+    output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
+    m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+    // update state vars
+    m_last_published = MOOSTime();
+    m_need_nxt_wpt = false;
+  }
 }
 
 //---------------------------------------------------------
@@ -1918,7 +1930,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
       // and determine which is closest
       double min_dist = std::numeric_limits<double>::max();
       std::string closest_vehicle;
-      if ( m_other_vehicles.size() > 0 )
+      if ( other_centers.size() > 0 )
       {
         for ( auto veh : other_centers )
         {
@@ -2150,7 +2162,13 @@ void GP::tdsReceiveData()
         // got initial voronoi partitioning
         // now let's use density function to get new voronoi initiators
         //
-        calcVoronoiCentroids();
+        double own_centroid_lon(0.0), own_centroid_lat(0.0);
+        std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
+        calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
+
+        // now, recalculate the voronoi partitioning, given the new centroids
+        if ( own_centroid_lon > 0 && own_centroid_lat > 0 )
+          calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
 
         m_last_voronoi_calc_time = MOOSTime();
       }
@@ -2240,7 +2258,7 @@ bool GP::ownMessage(std::string input)
 //            calculate the centroids of each voronoi
 //            partition, given the density function
 //
-void GP::calcVoronoiCentroids()
+void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_lat, std::map< std::string, std::pair<double,double> > & other_vehicle_centroids )
 {
   // voronoi partitions are in: m_voronoi_subset (vector) and
   //    m_voronoi_subset_other_vehicles (map)
@@ -2248,21 +2266,27 @@ void GP::calcVoronoiCentroids()
   //    locations are stored in m_unvisited_pred_metric
 
   // own
-  double own_centroid_lon;
-  double own_centroid_lat;
-  calcVoronoiPartitionCentroid(m_voronoi_subset, own_centroid_lon, own_centroid_lat);
+  own_centroid_lon = 0.0;
+  own_centroid_lat = 0.0;
+  if ( m_voronoi_subset.size() > 0 )
+    calcVoronoiPartitionCentroid(m_voronoi_subset, own_centroid_lon, own_centroid_lat);
 
   // others
+  if ( m_voronoi_subset_other_vehicles.size() == 0 )
+    return;
+
   for ( auto veh : m_voronoi_subset_other_vehicles )
   {
-    double centr_lon, centr_lat;
+    double centr_lon(0.0), centr_lat(0.0);
     calcVoronoiPartitionCentroid(veh.second, centr_lon, centr_lat);
+    other_vehicle_centroids.insert(std::pair<std::string, std::pair<double, double> >(veh.first, std::pair<double, double>(centr_lon, centr_lat)));
   }
-
-  // TODO: store/pass on the centroids, so we can redo the voronoi calculation
-
 }
 
+//---------------------------------------------------------
+// Procedure: calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat )
+//            calculate weighted centroid of voronoi partition
+//
 void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat )
 {
   // grab the metric values for each point
@@ -2271,15 +2295,40 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
   double sum_val_lat = 0.0;
   for ( auto idx : voronoi_partition )
   {
-    auto pred_itr = m_unvisited_pred_metric.find(idx);
-    double wt = pred_itr->second;
-    Eigen::Vector2d loc = m_sample_points_unvisited.find(idx)->second;
+    // get density func / metric value for current location (pt in voronoi region)
+    std::unordered_map<size_t, double>::iterator pred_itr = m_unvisited_pred_metric.find(idx);
+    double wt;
+    if ( pred_itr == m_unvisited_pred_metric.end() )
+    {
+      std::cout << "prediction not found" << std::endl;
+      wt = 0.0;
+    }
+    else
+      wt = pred_itr->second;
 
-    sum_wt += wt;
-    sum_val_lon += wt*loc(1);
-    sum_val_lat += wt*loc(2);
+    // get current location (pt in voronoi region)
+    // and store weighted location
+    std::unordered_map<size_t, Eigen::Vector2d>::iterator pt_itr = m_sample_points_unvisited.find(idx);
+    if ( pt_itr == m_sample_points_unvisited.end() )
+      std::cout << "voronoi pt not in unvisited set?" << std::endl;
+    else
+    {
+      Eigen::Vector2d loc = pt_itr->second;
+      sum_wt += wt;
+      sum_val_lon += wt*loc(0);
+      sum_val_lat += wt*loc(1);
+    }
   }
   // then calculate the centroid, given density
-  centroid_lon = sum_val_lon / sum_wt;
-  centroid_lat = sum_val_lat / sum_wt;
+  centroid_lon = (sum_wt > 0 ? (sum_val_lon / sum_wt) : 0);
+  centroid_lat = (sum_wt > 0 ? (sum_val_lat / sum_wt) : 0);
+}
+
+void GP::printVoronoiPartitions()
+{
+  std::cout << "own partition has: " << m_voronoi_subset.size() << " points\n";
+  for ( auto veh : m_voronoi_subset_other_vehicles )
+    std::cout << "partition for " << veh.first << " has " << (veh.second).size() << " points\n";
+
+  std::cout << std::endl;
 }

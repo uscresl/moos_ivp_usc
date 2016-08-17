@@ -97,7 +97,7 @@ class GP : public CMOOSApp
    void calcVoronoi( double own_lon, double own_lat, std::map< std::string, std::pair<double,double> > other_centers );
    void voronoiConvexHull();
    bool needToRecalculateVoronoi();
-   void calcVoronoiCentroids();
+   void calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_lat, std::map< std::string, std::pair<double,double> > & other_vehicle_centroids );
    void calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat );
 
    // helper/test functions
@@ -242,6 +242,7 @@ class GP : public CMOOSApp
    bool inVoronoi ( double lon, double lat ) const;
    double distToVoronoi(double lon, double lat) const;
    void printVoronoi();
+   void printVoronoiPartitions();
 
    // voronoi data sharing
    bool m_data_sharing_requested;
