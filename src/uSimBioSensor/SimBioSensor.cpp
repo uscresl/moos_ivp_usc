@@ -47,7 +47,8 @@ SimBioSensor::SimBioSensor() :
   m_nav_data_received(false),
   m_lon_step(0.0),
   m_lat_step(0.0),
-  m_depth_step(0.0)
+  m_depth_step(0.0),
+  m_verbose(false)
 {
   // class variable instantiations can go here
 }
@@ -160,7 +161,8 @@ bool SimBioSensor::Iterate()
       // invert negative values
       dat = (dat < 0 ? -1*dat : dat);
       // publish to MOOSDB
-      std::cout << GetAppName() << " :: publishing data: " << dat << std::endl;
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: publishing data: " << dat << std::endl;
       m_Comms.Notify(m_output_var, dat);
     }
     m_nav_data_received = false;
@@ -203,6 +205,10 @@ bool SimBioSensor::OnStartUp()
       m_output_var = toupper(value);
       std::cout << GetAppName() << " :: Parameter output_var: " << m_output_var << std::endl;
       handled = true;
+    }
+    else if ( param == "verbose" )
+    {
+      m_verbose = (value == "true") ? true : false;
     }
 
     if ( !handled )
@@ -372,21 +378,24 @@ double SimBioSensor::getDataPoint()
   {
     size_t nav_lon_idx, nav_lat_idx, nav_dep_idx;
 
-    std::cout << '\n' << GetAppName() << " :: vehicle lon/lat/dep: " << m_veh_lon
-              << "," << m_veh_lat << "," << m_veh_depth << std::endl;
+    if ( m_verbose )
+      std::cout << '\n' << GetAppName() << " :: vehicle lon/lat/dep: " << m_veh_lon
+                << "," << m_veh_lat << "," << m_veh_depth << std::endl;
 
     nav_lon_idx = round( (m_veh_lon - lon_min) / m_lon_step );
     nav_lat_idx = round( (m_veh_lat - lat_min) / m_lat_step );
     nav_dep_idx = round( (m_veh_depth - dep_min) / m_depth_step );
 
-    std::cout << GetAppName() << " :: calculated index: " << nav_lon_idx
-              << "," << nav_lat_idx << "," << nav_dep_idx << std::endl;
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: calculated index: " << nav_lon_idx
+                << "," << nav_lat_idx << "," << nav_dep_idx << std::endl;
 
     return d_location_values[nav_lon_idx][nav_lat_idx][nav_dep_idx];
   }
   else
   {
-    std::cout << GetAppName() << " :: outside of data zone" << std::endl;
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: outside of data zone" << std::endl;
     return -1;
   }
 }
@@ -401,6 +410,6 @@ double SimBioSensor::addSensorNoise(double value)
   std::normal_distribution<double> distribution(0.0, 1.5);
   // grab a random number from the distribution
   double noise = distribution(generator);
-  std::cout << GetAppName() << " :: Adding noise: " << noise << std::endl;
+
   return (value + noise);
 }
