@@ -217,7 +217,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( incoming_data_string.substr(0, index_colon) != m_veh_name )
       {
         m_received_shared_data = true;
-        std::cout << "received data from other vehicle" << std::endl;
+        std::cout << GetAppName() << " :: received data from other vehicle" << std::endl;
 
         // extract actual data
         std::string incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
@@ -225,7 +225,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         m_incoming_data_to_be_added.push_back(incoming_data);
       }
       else
-        std::cout << "skipping my own data" << std::endl;
+        std::cout << GetAppName() << " :: skipping my own data" << std::endl;
     }
     else if ( key == "LOITER_DIST_TO_POLY" )
       m_loiter_dist_to_poly = dval;
@@ -235,7 +235,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         if ( m_dep < 0.1 ) // simulate that we only received on surface
         {
-          std::cout << "received READY from: " << sval << std::endl;
+          std::cout << GetAppName() << " :: received READY from: " << sval << std::endl;
           m_received_ready = true;
         }
       }
@@ -254,8 +254,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     { // receive surfacing request from other vehicle
       // need to send ack, also start surfacing
       bool own_msg = ownMessage(sval);
-      std::cout << "REQ_SURFACING_REC own msg? " << own_msg << std::endl;
-      std::cout << "m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
+      std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << std::endl;
+      std::cout << GetAppName() << " :: m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
       if ( !own_msg && !m_data_sharing_requested && !m_send_ack )
       {
         // prep for surfacing
@@ -268,8 +268,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     { // receive surfacing req ack from other vehicle)
       // ack received, start surfacing
       bool own_msg = ownMessage(sval);
-      std::cout << "REQ_SURFACING_ACK_REC own msg? " << own_msg << std::endl;
-      std::cout << "m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
+      std::cout << GetAppName() << " :: REQ_SURFACING_ACK_REC own msg? " << own_msg << std::endl;
+      std::cout << GetAppName() << " :: m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
       if ( !own_msg && !m_data_sharing_requested && m_send_surf_req )
       {
         // prep for surfacing
@@ -279,7 +279,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       }
     }
     else
-      std::cout << "pGP :: Unhandled Mail: " << key << std::endl;
+      std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
 
   }
 
@@ -318,7 +318,7 @@ bool GP::Iterate()
 
         // start thread for hyperparameter optimization,
         // because this will take a while..
-        std::cout << "Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
+        std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
         m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 20);
       }
       else
@@ -329,10 +329,10 @@ bool GP::Iterate()
         {
           m_hp_optim_done = m_future_hp_optim.get(); // should be true
           if ( !m_hp_optim_done )
-            std::cout << "ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+            std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
           m_hp_optim_running = false;
           m_hp_optim_done_time = MOOSTime();
-          std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
+          std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
           m_Comms.Notify("STAGE","survey");
         }
       }
@@ -453,7 +453,7 @@ bool GP::Iterate()
 
         // start thread for hyperparameter optimization,
         // because this will take a while..
-        std::cout << "Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
+        std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
         m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 10);
       }
       else
@@ -464,9 +464,9 @@ bool GP::Iterate()
         {
           m_hp_optim_done = m_future_hp_optim.get(); // should be true
           if ( !m_hp_optim_done )
-            std::cout << "ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+            std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
           m_hp_optim_running = false;
-          std::cout << "Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
+          std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
           m_Comms.Notify("STAGE","return");
 
           // store predictions one last time
@@ -704,10 +704,11 @@ void GP::registerVariables()
   m_Comms.Register("REQ_SURFACING_REC",0); // receive surfacing request from other vehicle
   m_Comms.Register("REQ_SURFACING_ACK_REC",0); // receive surfacing req ack from other vehicle
 
-  std::cout << GetAppName() << " :: Done registering, registered for: " << std::endl;
+  std::cout << GetAppName() << " :: Done registering, registered for: ";
   std::set<std::string> get_registered = m_Comms.GetRegistered();
   for ( auto registered : get_registered )
-    std::cout << registered << std::endl;
+    std::cout << registered << ", ";
+  std::cout << std::endl;
 }
 
 //---------------------------------------------------------
@@ -896,7 +897,7 @@ void GP::handleMailDataAcomms(std::string css)
   }
   m_last_acomms_string = css;
 
-  std::cout << "Received data from: " << name << std::endl;
+  std::cout << GetAppName() << " :: Received data from: " << name << std::endl;
 
   // for all data points in this string,
   // add to data adding queue
@@ -924,7 +925,7 @@ void GP::handleMailDataAcomms(std::string css)
       // add to data adding queue
       if ( converted )
       {
-        std::cout << "adding: " << lon << "," << lat << "," << d_i << std::endl;
+        std::cout << GetAppName() << " :: adding: " << lon << "," << lat << "," << d_i << std::endl;
         std::vector<double> nw_data_pt{lon, lat, d_i};
         m_queue_data_points_for_gp.push(nw_data_pt);
       }
@@ -956,7 +957,7 @@ void GP::handleMailNodeReports(const std::string &input_string)
     size_t equal_index = varval.find('=');
     if ( equal_index == std::string::npos )
     {
-      std::cout << "ERROR: cannot find '=' in string NODE_REPORT" << std::endl;
+      std::cout << GetAppName() << " :: ERROR: cannot find '=' in string NODE_REPORT" << std::endl;
       return;
     }
     std::string var = varval.substr(0,equal_index);
@@ -1143,10 +1144,10 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     }
 
     // report
-    std::cout << "\nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
-    std::cout << " from unvisited to visited.\n";
-    std::cout << "Unvisited size: " << m_sample_points_unvisited.size() << '\n';
-    std::cout << "Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
+    std::cout << GetAppName() << " :: \nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
+    std::cout << GetAppName() << " ::  from unvisited to visited.\n";
+    std::cout << GetAppName() << " :: Unvisited size: " << m_sample_points_unvisited.size() << '\n';
+    std::cout << GetAppName() << " :: Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
   }
 
   map_lock.unlock();
@@ -1180,7 +1181,7 @@ void GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vect
 //
 void GP::findNextSampleLocation()
 {
-  std::cout << "find nxt sample loc" << std::endl;
+  std::cout << GetAppName() << " :: find nxt sample loc" << std::endl;
 
   if ( checkGPHasData() )
   {
@@ -1217,7 +1218,7 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
   {
     std::unordered_map<size_t,double>::iterator  pt_pred_itr = m_unvisited_pred_metric.find(loc);
     if ( pt_pred_itr == m_unvisited_pred_metric.end() )
-      std::cout << "Error: could not find pt in prediction table" << std::endl;
+      std::cout << GetAppName() << " :: Error: could not find pt in prediction table" << std::endl;
     else
     {
       if ( pt_pred_itr->second > best_so_far)
@@ -1227,12 +1228,12 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
       }
     }
   }
-  std::cout << " best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
+  std::cout << GetAppName() << " ::  best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
 
   auto best_itr = m_sample_points_unvisited.find(best_so_far_idx);
 
   if ( best_itr == m_sample_points_unvisited.end() )
-    std::cout << "best is not in unsampled locations" << std::endl;
+    std::cout << GetAppName() << " :: best is not in unsampled locations" << std::endl;
   else
   {
     Eigen::Vector2d best_so_far_y = best_itr->second;
@@ -1259,7 +1260,7 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
 //
 size_t GP::calcMECriterion()
 {
-  std::cout << "max entropy start" << std::endl;
+  std::cout << GetAppName() << " :: max entropy start" << std::endl;
   m_unvisited_pred_metric.clear();
 
   std::clock_t begin = std::clock();
@@ -1268,18 +1269,18 @@ size_t GP::calcMECriterion()
 //  double best_so_far = -1*std::numeric_limits<double>::max();
 //  std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
 
-  std::cout << "try for lock gp" << std::endl;
+  std::cout << GetAppName() << " :: try for lock gp" << std::endl;
 
   // lock for access to m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
   while ( !gp_lock.try_lock() ) {}
-  std::cout << "make copy GP" << std::endl;
+  std::cout << GetAppName() << " :: make copy GP" << std::endl;
   libgp::GaussianProcess gp_copy(m_gp);
   // release lock
   gp_lock.unlock();
 
-  std::cout << "try for lock map" << std::endl;
+  std::cout << GetAppName() << " :: try for lock map" << std::endl;
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
   while ( !map_lock.try_lock() ){}
   // make copy of map to use instead of map,
@@ -1289,7 +1290,7 @@ size_t GP::calcMECriterion()
   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
-  std::cout << "calc max entropy" << std::endl;
+  std::cout << GetAppName() << " :: calc max entropy" << std::endl;
 
   // for each unvisited location
   for ( auto y_itr : unvisited_map_copy )
@@ -1324,7 +1325,7 @@ size_t GP::calcMECriterion()
 //  }
 
   std::clock_t end = std::clock();
-  std::cout << "Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   // copy of GP and unvisited_map get destroyed when this function exits
   return 0; //best_so_far_y;
@@ -1345,7 +1346,7 @@ size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
   // and divide sigma_y_visited by sigma_y_unvisited
 
   // calculate covariance matrices sets, and their inverses (costly operations)
-  std::cout << "Calculate covariance matrices" << std::endl;
+  std::cout << GetAppName() << " :: Calculate covariance matrices" << std::endl;
 
   m_unvisited_pred_metric.clear();
 
@@ -1368,7 +1369,7 @@ size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
 
   // construct a vector of target values for the unvisited locations
   // using the GP
-  std::cout << "Get target values for unvisited points" << std::endl;
+  std::cout << GetAppName() << " :: Get target values for unvisited points" << std::endl;
   Eigen::VectorXd t_av(size_unvisited);
   getTgtValUnvisited(t_av);
 
@@ -1377,7 +1378,7 @@ size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
   //std::unordered_map<size_t, Eigen::Vector2d>::iterator y_itr;
   //size_t best_cnt = 1;
 
-  std::cout << "try for lock map" << std::endl;
+  std::cout << GetAppName() << " :: try for lock map" << std::endl;
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
   while ( !map_lock.try_lock() ){}
   // make copy of map to use instead of map,
@@ -1386,7 +1387,7 @@ size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
-  std::cout << "calc for all y (" << unvisited_map_copy.size() << ")" << std::endl;
+  std::cout << GetAppName() << " :: calc for all y (" << unvisited_map_copy.size() << ")" << std::endl;
 
   std::clock_t begin = std::clock();
   for ( auto y_itr : unvisited_map_copy )
@@ -1451,7 +1452,7 @@ size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
 //    }
 //  }
   std::clock_t end = std::clock();
-  std::cout << "MI crit calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  std::cout << GetAppName() << " :: MI crit calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   mi_lock.unlock();
 
@@ -1616,7 +1617,7 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
         else
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
-      std::cout << "*added: " << pts_added << " data points." << std::endl;
+      std::cout << GetAppName() << " :: *added: " << pts_added << " data points." << std::endl;
       m_received_shared_data = false;
     }
   }
@@ -1626,8 +1627,8 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   while ( !hp_lock.try_lock() ){}
-  std::cout << "obtained lock, continuing HP optimization" << std::endl;
-  std::cout << "current size GP: " << gp.get_sampleset_size() << std::endl;
+  std::cout << GetAppName() << " :: obtained lock, continuing HP optimization" << std::endl;
+  std::cout << GetAppName() << " :: current size GP: " << gp.get_sampleset_size() << std::endl;
 
   std::clock_t begin = std::clock();
 
@@ -1641,15 +1642,15 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   rprop.maximize(&gp, nr_iterations, 0);
 
   std::clock_t end = std::clock();
-  std::cout << "runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   // write new HP to file
   begin = std::clock();
   std::stringstream filenm;
-  filenm << "hp_optim_" << m_veh_name << "_" << nr_iterations;
+  filenm << GetAppName() << " :: hp_optim_" << m_veh_name << "_" << nr_iterations;
   gp.write(filenm.str().c_str());
   end = std::clock();
-  std::cout << "HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   hp_lock.unlock();
 
@@ -1684,7 +1685,7 @@ void GP::sendData()
   // let's do 1500, should be conservative enough
   size_t msg_cnt = 0;
   size_t nr_points = 1500;
-  std::cout << "**sending " << m_data_pt_counter << " points!" << std::endl;
+  std::cout << GetAppName() << " :: **sending " << m_data_pt_counter << " points!" << std::endl;
   if ( m_data_pt_counter == 0 )
   {
     // no data points to send, send empty msg
@@ -1738,7 +1739,7 @@ void GP::makeAndStorePredictions()
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   while ( !gp_lock.try_lock() ) {}
-  std::cout << "store predictions" << std::endl;
+  std::cout << GetAppName() << " :: store predictions" << std::endl;
   libgp::GaussianProcess gp_copy(m_gp);
   gp_lock.unlock();
 
@@ -1788,7 +1789,7 @@ void GP::makeAndStorePredictions()
     }
   }
   std::clock_t end = std::clock();
-  std::cout << "runtime make predictions: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  std::cout << GetAppName() << " :: runtime make predictions: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   begin = std::clock();
   // grab file writing mutex
@@ -1838,9 +1839,9 @@ void GP::makeAndStorePredictions()
   file_write_lock.unlock();
 
   end = std::clock();
-  std::cout << "runtime save to file: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  std::cout << GetAppName() << " :: runtime save to file: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
-  std::cout << "done saving predictions to file" << std::endl;
+  std::cout << GetAppName() << " :: done saving predictions to file" << std::endl;
 
   // copy of GP gets destroyed when this function exits
 }
@@ -1903,7 +1904,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   m_voronoi_subset.clear();
   m_voronoi_subset_other_vehicles.clear();
 
-  std::cout << "\nown vehicle at: " << own_lon << "," << own_lat << '\n';
+  std::cout << GetAppName() << " :: \nown vehicle at: " << own_lon << "," << own_lat << '\n';
 
 
   // if own vehicle is not in sample area,
@@ -1919,7 +1920,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   {
     // else, split sample area, given other vehicles
     // for all points in the unvisited set
-    std::cout << " dividing: " << m_sample_points_unvisited.size() << std::endl;
+    std::cout << GetAppName() << " ::  dividing: " << m_sample_points_unvisited.size() << std::endl;
     for ( auto pt : m_sample_points_unvisited )
     {
       size_t pt_key = pt.first;
@@ -1935,7 +1936,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
           double veh_lon = (veh.second).first;
           double veh_lat = (veh.second).second;
           if ( pt_key == m_sample_points_unvisited.begin()->first )
-              std::cout << "other vehicle: " << veh.first << " at: " << veh_lon << "," << veh_lat << '\n';
+              std::cout << GetAppName() << " :: other vehicle: " << veh.first << " at: " << veh_lon << "," << veh_lat << '\n';
 
           double dist_pt_to_veh = pow(pt_loc(0)-veh_lon,2) + pow(pt_loc(1)-veh_lat,2);
           if ( dist_pt_to_veh < min_dist )
@@ -1969,8 +1970,8 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
       }
     } // for unvisited sample pts
   }
-  std::cout << "my set has: " << m_voronoi_subset.size() << " sample locations out of " << m_sample_points_unvisited.size() << std::endl;
-  std::cout << "other vehicle set sizes:\n";
+  std::cout << GetAppName() << " :: my set has: " << m_voronoi_subset.size() << " sample locations out of " << m_sample_points_unvisited.size() << std::endl;
+  std::cout << GetAppName() << " :: other vehicle set sizes:\n";
   for ( auto veh : m_voronoi_subset_other_vehicles )
   {
     std::cout << veh.first << ": " << (veh.second).size() << ", ";
@@ -2026,7 +2027,7 @@ void GP::voronoiConvexHull()
   // next, get the convex hull for these points
   m_voronoi_conv_hull.clear();
   boost::geometry::convex_hull(m_voronoi_pts, m_voronoi_conv_hull);
-  std::cout << "convex hull pts: " << (size_t)boost::geometry::num_points(m_voronoi_conv_hull) << std::endl;
+  std::cout << GetAppName() << " :: convex hull pts: " << (size_t)boost::geometry::num_points(m_voronoi_conv_hull) << std::endl;
 }
 
 //---------------------------------------------------------
@@ -2084,7 +2085,7 @@ void GP::printVoronoi()
   auto bst_ext_ring = boost::geometry::exterior_ring(m_voronoi_conv_hull);
   std::ostringstream voronoi_str;
 
-  std::cout << "voronoi convex hull: " << boost::geometry::dsv(bst_ext_ring) << std::endl;
+  std::cout << GetAppName() << " :: voronoi convex hull: " << boost::geometry::dsv(bst_ext_ring) << std::endl;
 
   for ( auto itr = boost::begin(bst_ext_ring); itr != boost::end(bst_ext_ring); ++itr )
   {
@@ -2155,7 +2156,7 @@ void GP::tdsReceiveData()
     if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
       size_t pts_added = m_future_received_data_processed.get();
-      std::cout << " added: " << pts_added << " data points" << std::endl;
+      std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
 
       // after points received, need to run a round of predictions (unvisited set has changed!)
       calcMECriterion();
@@ -2178,7 +2179,7 @@ void GP::tdsReceiveData()
 //
 void GP::tdsResetStateVars()
 {
-  std::cout << "reset state vars" << std::endl;
+  std::cout << GetAppName() << " :: reset state vars" << std::endl;
   // resets for next time
   m_data_sharing_activated = false;
   m_received_shared_data = false;
@@ -2199,7 +2200,7 @@ void GP::findAndPublishNextWpt()
 {
   if ( !m_finding_nxt )
   {
-    std::cout << "calling to find next sample location" << std::endl;
+    std::cout << GetAppName() << " :: calling to find next sample location" << std::endl;
     findNextSampleLocation();
   }
   else
@@ -2262,12 +2263,12 @@ void GP::runVoronoiRoutine()
     std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
     calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
 
-    std::cout << "old centroids: " << m_lon << "," << m_lat << ";";
+    std::cout << GetAppName() << " :: old centroids: " << m_lon << "," << m_lat << ";";
     for ( auto veh : m_other_vehicles )
       std::cout << (veh.second).first << "," << (veh.second).second << ";";
     std::cout << std::endl;
 
-    std::cout << "new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
+    std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
     for ( auto veh : other_vehicle_centroids )
       std::cout << (veh.second).first << "," << (veh.second).second << ";";
     std::cout << std::endl;
@@ -2302,7 +2303,7 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
   // own
   own_centroid_lon = 0.0;
   own_centroid_lat = 0.0;
-  std::cout << "calculate own\n";
+  std::cout << GetAppName() << " :: calculate own\n";
   if ( m_voronoi_subset.size() > 0 )
     calcVoronoiPartitionCentroid(m_voronoi_subset, own_centroid_lon, own_centroid_lat);
 
@@ -2310,7 +2311,7 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
   if ( m_voronoi_subset_other_vehicles.size() == 0 )
     return;
 
-  std::cout << "calculate others" << std::endl;
+  std::cout << GetAppName() << " :: calculate others" << std::endl;
   for ( auto veh : m_voronoi_subset_other_vehicles )
   {
     double centr_lon(0.0), centr_lat(0.0);
@@ -2336,7 +2337,7 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
     double wt;
     if ( pred_itr == m_unvisited_pred_metric.end() )
     {
-      std::cout << "prediction not found" << std::endl;
+      std::cout << GetAppName() << " :: prediction not found" << std::endl;
       wt = 0.0;
     }
     else
@@ -2346,7 +2347,7 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
     // and store weighted location
     std::unordered_map<size_t, Eigen::Vector2d>::iterator pt_itr = m_sample_points_unvisited.find(idx);
     if ( pt_itr == m_sample_points_unvisited.end() )
-      std::cout << "voronoi pt not in unvisited set?" << std::endl;
+      std::cout << GetAppName() << " :: voronoi pt not in unvisited set?" << std::endl;
     else
     {
       Eigen::Vector2d loc = pt_itr->second;
@@ -2362,9 +2363,9 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
 
 void GP::printVoronoiPartitions()
 {
-  std::cout << "own partition has: " << m_voronoi_subset.size() << " points\n";
+  std::cout << GetAppName() << " :: own partition has: " << m_voronoi_subset.size() << " points\n";
   for ( auto veh : m_voronoi_subset_other_vehicles )
-    std::cout << "partition for " << veh.first << " has " << (veh.second).size() << " points\n";
+    std::cout << GetAppName() << " :: partition for " << veh.first << " has " << (veh.second).size() << " points\n";
 
   std::cout << std::endl;
 }

@@ -74,7 +74,7 @@ SimBioSensor::~SimBioSensor()
 //---------------------------------------------------------
 // Procedure: OnNewMail
 //
-// when variables are updated in the MOOSDB, 
+// when variables are updated in the MOOSDB,
 // there is 'new mail', check to see if
 // there is anything for this process.
 //
@@ -85,7 +85,7 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
     CMOOSMsg &msg = *p;
     std::string key   = msg.GetKey();
     std::string sval  = msg.GetString();
-    // separate way for getting the double val (sval was not working for DB_UPTIME) 
+    // separate way for getting the double val (sval was not working for DB_UPTIME)
     double dval  = msg.GetDouble();
 
 #if 0 // Keep these around just for template
@@ -96,7 +96,7 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mdbl  = msg.IsDouble();
     bool   mstr  = msg.IsString();
 #endif
-    
+
     if ( key == "NAV_LONG" )
     {
       m_veh_lon = dval;
@@ -176,7 +176,7 @@ bool SimBioSensor::Iterate()
 bool SimBioSensor::OnStartUp()
 {
   CMOOSApp::OnStartUp();
-  
+
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
   if ( !m_MissionReader.GetConfiguration(GetAppName(), sParams) )
@@ -277,7 +277,7 @@ void SimBioSensor::readBioDataFromFile()
     }
 
     // printout for checking
-    std::cout << "\nboundaries stored: " << std::endl;
+    std::cout << GetAppName() << " :: \nboundaries stored: " << std::endl;
     std::map<std::string, double>::iterator itr;
     for ( itr = d_boundaries_map.begin(); itr != d_boundaries_map.end(); itr++ )
       std::cout << itr->first << ": " << std::setprecision(10) << itr->second << std::endl;
@@ -289,7 +289,7 @@ void SimBioSensor::readBioDataFromFile()
     size_t lon_res = (size_t)d_boundaries_map.at("lon_res");
     size_t lat_res = (size_t)d_boundaries_map.at("lat_res");
     size_t depth_res = (size_t)d_boundaries_map.at("depth_res");
-    std::cout << "resolutions: " << lon_res << "," << lat_res << "," << depth_res << std::endl;
+    std::cout << GetAppName() << " :: resolutions: " << lon_res << "," << lat_res << "," << depth_res << std::endl;
     d_location_values = new double ** [lon_res];
     for ( size_t idlo = 0; idlo < lon_res; idlo++ )
     {
@@ -342,11 +342,11 @@ void SimBioSensor::readBioDataFromFile()
     input_filestream.close();
   }
   else
-    std::cout << "ERROR reading file: " << m_filename << std::endl;
+    std::cout << GetAppName() << " :: ERROR reading file: " << m_filename << std::endl;
 
   if ( cnt > 0 )
   {
-    std::cout << "Done reading files, objects: " << cnt << '\n';
+    std::cout << GetAppName() << " :: Done reading files, objects: " << cnt << '\n';
     m_file_read = true;
   }
 }
@@ -401,6 +401,6 @@ double SimBioSensor::addSensorNoise(double value)
   std::normal_distribution<double> distribution(0.0, 1.5);
   // grab a random number from the distribution
   double noise = distribution(generator);
-  std::cout << "Adding noise: " << noise << std::endl;
+  std::cout << GetAppName() << " :: Adding noise: " << noise << std::endl;
   return (value + noise);
 }
