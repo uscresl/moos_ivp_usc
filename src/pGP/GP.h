@@ -2,8 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP.h                                                 */
-/*    DATE: Mar 29, 2014                                         */
-/*                                                               */
+/*    DATE: 2015 - 2016                                          */
 /*                                                               */
 /*****************************************************************/
 
@@ -99,6 +98,7 @@ class GP : public CMOOSApp
    bool needToRecalculateVoronoi();
    void calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_lat, std::map< std::string, std::pair<double,double> > & other_vehicle_centroids );
    void calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat );
+   void runVoronoiRoutine();
 
    // helper/test functions
    bool needToUpdateMaps(size_t grid_index);
@@ -249,6 +249,9 @@ class GP : public CMOOSApp
    double m_last_voronoi_calc_time;
    bool m_send_surf_req;
    bool m_send_ack;
+
+   std::future<size_t> m_future_calc_prevoronoi;
+   bool m_calc_prevoronoi;
 };
 
 #endif
