@@ -1900,7 +1900,6 @@ bool GP::convUTMToLonLat (double lx, double ly, double & lon, double & lat )
 void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std::pair<double,double> > other_centers )
 {
   // clear out previous sets
-//  m_voronoi_region.clear();
   m_voronoi_subset.clear();
   m_voronoi_subset_other_vehicles.clear();
 
@@ -1914,7 +1913,6 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   {
     for ( auto map_item : m_sample_points_unvisited )
       m_voronoi_subset.push_back(map_item.first);
-//    m_voronoi_region.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   }
   else
   {
@@ -1952,7 +1950,6 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
       {
         closest_vehicle = m_veh_name;
         // only in this case do we add the location to our Voronoi set
-//        m_voronoi_region.insert(std::pair<size_t, Eigen::Vector2d>(pt_key,pt_loc));
         m_voronoi_subset.push_back(pt_key);
       }
       else
@@ -2014,7 +2011,7 @@ void GP::voronoiConvexHull()
 {
   // collect points inside voronoi region in boost geometry multi_point
   boost::geometry::clear(m_voronoi_pts);
-  //for ( auto vor_pt : m_voronoi_region )
+
   for ( size_t vor_pt : m_voronoi_subset )
   {
     //auto vor_loc = vor_pt.second;
@@ -2267,7 +2264,6 @@ void GP::runVoronoiRoutine()
     for ( auto veh : m_other_vehicles )
       std::cout << (veh.second).first << "," << (veh.second).second << ";";
     std::cout << std::endl;
-
     std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
     for ( auto veh : other_vehicle_centroids )
       std::cout << (veh.second).first << "," << (veh.second).second << ";";

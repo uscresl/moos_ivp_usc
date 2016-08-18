@@ -229,7 +229,6 @@ class GP : public CMOOSApp
    std::map< std::string, std::pair<double,double> > m_other_vehicles;
 
    // voronoi partitioning
-//   std::unordered_map<size_t, Eigen::Vector2d> m_voronoi_region;
    std::vector<size_t> m_voronoi_subset;
    std::map<std::string,std::vector<size_t>> m_voronoi_subset_other_vehicles;
 
