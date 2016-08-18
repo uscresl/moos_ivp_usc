@@ -2,8 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP.cpp                                               */
-/*    DATE: Mar 29, 2014                                         */
-/*                                                               */
+/*    DATE: 2015 - 2016                                          */
 /*                                                               */
 /*****************************************************************/
 
@@ -89,7 +88,8 @@ GP::GP() :
   m_use_voronoi(false),
   m_data_sharing_requested(false),
   m_send_surf_req(false),
-  m_send_ack(false)
+  m_send_ack(false),
+  m_calc_prevoronoi(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -416,8 +416,14 @@ bool GP::Iterate()
 
         // next: check if received data added,
         // if so, then switch mode back to survey
-        if ( m_data_sharing_activated && m_sending_data && m_received_shared_data )
+        if ( m_data_sharing_activated && m_sending_data && m_received_shared_data && !m_calc_prevoronoi )
           tdsReceiveData();
+
+        if ( m_calc_prevoronoi )
+        {
+          if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+            runVoronoiRoutine();
+        }
       }
 
 
@@ -1127,6 +1133,13 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     {
       if ( m_voronoi_subset.size() > 0 )
         m_voronoi_subset.erase( std::remove(m_voronoi_subset.begin(), m_voronoi_subset.end(), index), m_voronoi_subset.end() );
+      if ( m_voronoi_subset_other_vehicles.size() > 0 )
+      {
+        for ( auto veh : m_voronoi_subset_other_vehicles )
+        {
+          (veh.second).erase( std::remove((veh.second).begin(), (veh.second).end(), index), (veh.second).end() );
+        }
+      }
     }
 
     // report
@@ -1200,12 +1213,18 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
   // get next position, for now, greedy pick
   double best_so_far = -1*std::numeric_limits<double>::max();
   size_t best_so_far_idx = -1;
-  for ( auto loc : m_unvisited_pred_metric )
+  for ( auto loc : m_voronoi_subset )
   {
-    if ( loc.second > best_so_far)
+    std::unordered_map<size_t,double>::iterator  pt_pred_itr = m_unvisited_pred_metric.find(loc);
+    if ( pt_pred_itr == m_unvisited_pred_metric.end() )
+      std::cout << "Error: could not find pt in prediction table" << std::endl;
+    else
     {
-      best_so_far = loc.second;
-      best_so_far_idx = loc.first;
+      if ( pt_pred_itr->second > best_so_far)
+      {
+        best_so_far = pt_pred_itr->second;
+        best_so_far_idx = loc;
+      }
     }
   }
   std::cout << " best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
@@ -1266,18 +1285,8 @@ size_t GP::calcMECriterion()
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
   std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
-  if ( m_use_voronoi && m_voronoi_subset.size() > 0 )
-  {
-    for ( size_t pt : m_voronoi_subset )
-    {
-      std::unordered_map< size_t, Eigen::Vector2d >::const_iterator itr = m_sample_points_unvisited.find(pt);
-      if ( itr != m_sample_points_unvisited.end() )
-        unvisited_map_copy.insert(std::pair<size_t, Eigen::Vector2d>(itr->first, itr->second));
-    }
-//    unvisited_map_copy.insert(m_voronoi_region.begin(), m_voronoi_region.end());
-  }
-  else
-    unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
+  // calculate for all, because we need it for density voronoi calc for other vehicles
+  unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
   std::cout << "calc max entropy" << std::endl;
@@ -1374,18 +1383,7 @@ size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
   std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
-  if ( m_use_voronoi && m_voronoi_subset.size() > 0 )
-  {
-    for ( size_t pt : m_voronoi_subset )
-    {
-      std::unordered_map< size_t, Eigen::Vector2d >::const_iterator itr = m_sample_points_unvisited.find(pt);
-      if ( itr != m_sample_points_unvisited.end() )
-        unvisited_map_copy.insert(std::pair<size_t, Eigen::Vector2d>(itr->first, itr->second));
-    }
-//    unvisited_map_copy.insert(m_voronoi_region.begin(), m_voronoi_region.end());
-  }
-  else
-    unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
+  unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
   std::cout << "calc for all y (" << unvisited_map_copy.size() << ")" << std::endl;
@@ -1900,14 +1898,13 @@ bool GP::convUTMToLonLat (double lx, double ly, double & lon, double & lat )
 //
 void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std::pair<double,double> > other_centers )
 {
-  // clear out previous set
+  // clear out previous sets
 //  m_voronoi_region.clear();
   m_voronoi_subset.clear();
+  m_voronoi_subset_other_vehicles.clear();
 
-//  double own_lon = m_lon;
-//  double own_lat = m_lat;
-  std::cout << "\
-  nown vehicle at: " << own_lon << "," << own_lat << '\n';
+  std::cout << "\nown vehicle at: " << own_lon << "," << own_lat << '\n';
+
 
   // if own vehicle is not in sample area,
   // we set Voronoi region to be whole area
@@ -1922,11 +1919,12 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   {
     // else, split sample area, given other vehicles
     // for all points in the unvisited set
+    std::cout << " dividing: " << m_sample_points_unvisited.size() << std::endl;
     for ( auto pt : m_sample_points_unvisited )
     {
       size_t pt_key = pt.first;
       Eigen::Vector2d pt_loc = pt.second;
-      // calculate distance to all vehicles, including self,
+      // calculate distance to other vehicles,
       // and determine which is closest
       double min_dist = std::numeric_limits<double>::max();
       std::string closest_vehicle;
@@ -1972,6 +1970,12 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
     } // for unvisited sample pts
   }
   std::cout << "my set has: " << m_voronoi_subset.size() << " sample locations out of " << m_sample_points_unvisited.size() << std::endl;
+  std::cout << "other vehicle set sizes:\n";
+  for ( auto veh : m_voronoi_subset_other_vehicles )
+  {
+    std::cout << veh.first << ": " << (veh.second).size() << ", ";
+  }
+  std::cout << std::endl;
 
   // calculate the convex hull
   voronoiConvexHull();
@@ -2018,8 +2022,6 @@ void GP::voronoiConvexHull()
     double pt_lat = vor_loc(1);
     boost::geometry::append(m_voronoi_pts, boost_pt(pt_lon, pt_lat));
   }
-  std::cout << "nr points in voronoi region: " << m_voronoi_subset.size() << std::endl;
-  std::cout << "nr points in multipoint: " << (size_t)boost::geometry::num_points(m_voronoi_pts) << std::endl;
 
   // next, get the convex hull for these points
   m_voronoi_conv_hull.clear();
@@ -2155,27 +2157,15 @@ void GP::tdsReceiveData()
       size_t pts_added = m_future_received_data_processed.get();
       std::cout << " added: " << pts_added << " data points" << std::endl;
 
+      // after points received, need to run a round of predictions (unvisited set has changed!)
+      calcMECriterion();
+
       if ( m_use_voronoi )
       {
-        calcVoronoi(m_lon, m_lat, m_other_vehicles);
-
-        // got initial voronoi partitioning
-        // now let's use density function to get new voronoi initiators
-        //
-        double own_centroid_lon(0.0), own_centroid_lat(0.0);
-        std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
-        calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
-
-        // now, recalculate the voronoi partitioning, given the new centroids
-        if ( own_centroid_lon > 0 && own_centroid_lat > 0 )
-          calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
-
-        m_last_voronoi_calc_time = MOOSTime();
+        m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+        m_calc_prevoronoi = true;
       }
 
-      tdsResetStateVars();
-
-      Notify("STAGE","survey");
     }
     // else, continue waiting
   }
@@ -2254,6 +2244,50 @@ bool GP::ownMessage(std::string input)
 }
 
 //---------------------------------------------------------
+// Procedure: runVoronoiRoutine()
+//            after calculation predictions, calculate
+//            and recalculate voronoi regions
+//
+void GP::runVoronoiRoutine()
+{
+  // TODO move
+  if ( m_use_voronoi )
+  {
+    calcVoronoi(m_lon, m_lat, m_other_vehicles);
+
+    // got initial voronoi partitioning
+    // now let's use density function to get new voronoi initiators
+    //
+    double own_centroid_lon(0.0), own_centroid_lat(0.0);
+    std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
+    calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
+
+    std::cout << "old centroids: " << m_lon << "," << m_lat << ";";
+    for ( auto veh : m_other_vehicles )
+      std::cout << (veh.second).first << "," << (veh.second).second << ";";
+    std::cout << std::endl;
+
+    std::cout << "new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
+    for ( auto veh : other_vehicle_centroids )
+      std::cout << (veh.second).first << "," << (veh.second).second << ";";
+    std::cout << std::endl;
+
+    // now, recalculate the voronoi partitioning, given the new centroids
+    if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
+      calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
+
+    m_last_voronoi_calc_time = MOOSTime();
+  }
+
+  tdsResetStateVars();
+
+  Notify("STAGE","survey");
+
+  m_calc_prevoronoi = false;
+}
+
+
+//---------------------------------------------------------
 // Procedure: calcVoronoiCentroids()
 //            calculate the centroids of each voronoi
 //            partition, given the density function
@@ -2268,6 +2302,7 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
   // own
   own_centroid_lon = 0.0;
   own_centroid_lat = 0.0;
+  std::cout << "calculate own\n";
   if ( m_voronoi_subset.size() > 0 )
     calcVoronoiPartitionCentroid(m_voronoi_subset, own_centroid_lon, own_centroid_lat);
 
@@ -2275,6 +2310,7 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
   if ( m_voronoi_subset_other_vehicles.size() == 0 )
     return;
 
+  std::cout << "calculate others" << std::endl;
   for ( auto veh : m_voronoi_subset_other_vehicles )
   {
     double centr_lon(0.0), centr_lat(0.0);
