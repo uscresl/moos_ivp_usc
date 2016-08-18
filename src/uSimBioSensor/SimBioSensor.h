@@ -17,7 +17,7 @@ class SimBioSensor : public CMOOSApp
    SimBioSensor();
    ~SimBioSensor();
 
- protected: 
+ protected:
    // Standard MOOSApp functions to overload
    bool OnNewMail(MOOSMSG_LIST &NewMail);
    bool Iterate();
@@ -27,7 +27,7 @@ class SimBioSensor : public CMOOSApp
    // Registration, Configuration, Mail handling utils
    void registerVariables();
 
- private: 
+ private:
    // Own functions
    void readBioDataFromFile();
    double getDataPoint();
@@ -49,6 +49,7 @@ class SimBioSensor : public CMOOSApp
    // State variables
    bool m_file_read;
    bool m_nav_data_received;
+   bool m_verbose;
 
    double m_lon_step;
    double m_lat_step;
@@ -62,4 +63,4 @@ class SimBioSensor : public CMOOSApp
 
 };
 
-#endif 
+#endif
