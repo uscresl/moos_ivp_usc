@@ -55,7 +55,7 @@ ProcessConfig = ANTLER
   //true,XConfig=uSBSConfig
 
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+  Run = pGP @ NewConsole = false
 
   pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -117,6 +117,9 @@ ProcessConfig = pGP
 {
   AppTick   = 2
   CommsTick = 2
+
+  // verbose: true or false
+  verbose = true
 
   // GP or log GP?
   use_log_gp = true
