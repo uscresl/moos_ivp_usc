@@ -5,7 +5,10 @@ ProcessConfig = pGP
 {
   AppTick   = 2
   CommsTick = 2
-  
+
+  // verbose: true or false
+  verbose = true
+
   // GP or log GP?
   use_log_gp = true
 

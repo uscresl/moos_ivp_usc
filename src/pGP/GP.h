@@ -119,6 +119,8 @@ class GP : public CMOOSApp
    bool ownMessage(std::string input);
 
    // Configuration variables
+   bool m_verbose;
+
    CMOOSGeodesy m_geodesy;
 
    std::string m_input_var_data;
@@ -134,17 +136,18 @@ class GP : public CMOOSApp
    bool m_use_MI;
 
    // State variables
+   bool m_debug;
    std::string m_veh_name;
    bool m_use_log_gp;
-      // vehicle location
+   // vehicle location
    double m_lat;
    double m_lon;
    double m_dep;
-      // process state
+   // process state
    bool m_pause_data_adding;
    double m_last_published;
    double m_last_pred_save;
-      // sample points grid specs
+   // sample points grid specs
    double m_min_lon;
    double m_min_lat;
    double m_max_lon;
@@ -251,6 +254,7 @@ class GP : public CMOOSApp
 
    std::future<size_t> m_future_calc_prevoronoi;
    bool m_calc_prevoronoi;
+   bool m_precalc_pred_voronoi_done;
 };
 
 #endif
