@@ -1176,7 +1176,7 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     // report
     if ( m_verbose )
     {
-      std::cout << GetAppName() << " :: \nmoved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
+      std::cout << '\n' << GetAppName() << " :: moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
       std::cout << GetAppName() << " ::  from unvisited to visited.\n";
       std::cout << GetAppName() << " :: Unvisited size: " << m_sample_points_unvisited.size() << '\n';
       std::cout << GetAppName() << " :: Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
