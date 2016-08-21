@@ -431,7 +431,7 @@ bool GP::Iterate()
         if ( m_data_sharing_activated && m_sending_data && m_received_shared_data && !m_calc_prevoronoi )
           tdsReceiveData();
 
-        if ( m_calc_prevoronoi )
+        if ( m_use_voronoi && m_calc_prevoronoi )
         {
           if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
             runVoronoiRoutine();
@@ -2234,7 +2234,8 @@ void GP::tdsResetStateVars()
   m_need_nxt_wpt = true;
   m_received_ready = false;
   m_data_sharing_requested = false;
-  m_precalc_pred_voronoi_done = true;
+  if ( m_use_voronoi )
+    m_precalc_pred_voronoi_done = true;
 }
 
 //---------------------------------------------------------
