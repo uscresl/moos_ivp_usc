@@ -335,6 +335,7 @@ bool GP::Iterate()
       }
       else
       {
+        std::cout << "checking future m_future_hp_optim" << std::endl;
         // running HP optimization
         // check if the thread is done
         if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
@@ -433,6 +434,7 @@ bool GP::Iterate()
 
         if ( m_use_voronoi && m_calc_prevoronoi )
         {
+          std::cout << "checking future m_future_calc_prevoronoi" << std::endl;
           if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
             runVoronoiRoutine();
         }
@@ -467,12 +469,14 @@ bool GP::Iterate()
         // because this will take a while..
         if ( m_verbose )
           std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
+
         m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 10);
       }
       else
       {
         // running HP optimization
         // check if the thread is done
+        std::cout << "checking future m_future_hp_optim" << std::endl;
         if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
         {
           m_hp_optim_done = m_future_hp_optim.get(); // should be true
@@ -1248,20 +1252,39 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
   // get next position, for now, greedy pick
   double best_so_far = -1*std::numeric_limits<double>::max();
   size_t best_so_far_idx = -1;
-  for ( auto loc : m_voronoi_subset )
+
+  // greedy: pick best
+  if ( m_use_voronoi )
   {
-    std::unordered_map<size_t,double>::iterator  pt_pred_itr = m_unvisited_pred_metric.find(loc);
-    if ( pt_pred_itr == m_unvisited_pred_metric.end() )
-      std::cout << GetAppName() << " :: Error: could not find pt in prediction table" << std::endl;
-    else
+    // check only for points in voronoi subset
+    for ( auto loc : m_voronoi_subset )
     {
-      if ( pt_pred_itr->second > best_so_far)
+      std::unordered_map<size_t,double>::iterator  pt_pred_itr = m_unvisited_pred_metric.find(loc);
+      if ( pt_pred_itr == m_unvisited_pred_metric.end() )
+        std::cout << GetAppName() << " :: Error: could not find pt in prediction table" << std::endl;
+      else
       {
-        best_so_far = pt_pred_itr->second;
-        best_so_far_idx = loc;
+        if ( pt_pred_itr->second > best_so_far)
+        {
+          best_so_far = pt_pred_itr->second;
+          best_so_far_idx = loc;
+        }
       }
     }
   }
+  else
+  {
+    // no voronoi regions, check for all unvisited locations
+    for ( auto loc : m_unvisited_pred_metric )
+    {
+      if ( loc.second > best_so_far )
+      {
+        best_so_far = loc.second;
+        best_so_far_idx = loc.first;
+      }
+    }
+  }
+
   if ( m_debug )
     std::cout << GetAppName() << " ::  best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
 
@@ -2196,6 +2219,7 @@ void GP::tdsReceiveData()
   }
   else
   {
+    std::cout << "checking future m_future_received_data_processed" << std::endl;
     if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
       size_t pts_added = m_future_received_data_processed.get();
@@ -2266,6 +2290,7 @@ void GP::findAndPublishNextWpt()
     {
       m_pause_data_adding = true;
       // see if we can get result from future
+      std::cout << "checking future m_future_next_pt" << std::endl;
       if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
       {
         m_finding_nxt = false;
