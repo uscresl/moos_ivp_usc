@@ -2227,13 +2227,18 @@ void GP::tdsReceiveData()
       if ( m_verbose )
         std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
 
-      // after points received, need to run a round of predictions (unvisited set has changed!)
-      calcMECriterion();
+//      // after points received, need to run a round of predictions (unvisited set has changed!)
+//      m_future_calc_predictions = std::async(std::launch::async, &GP::calcMECriterion, this);
 
       if ( m_use_voronoi )
       {
         m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
         m_calc_prevoronoi = true;
+      }
+      else
+      {
+        tdsResetStateVars();
+        Notify("STAGE","survey");
       }
 
     }
