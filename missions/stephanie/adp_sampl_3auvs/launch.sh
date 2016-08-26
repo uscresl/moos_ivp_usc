@@ -36,6 +36,8 @@ for ARGI; do
         VORONOI_PARTITIONING="yes"
     elif [ "${ARGI}" = "--2auvs" ] ; then
         NUM_VEHICLES=2
+    elif [ "${ARGI}" = "--3auvs" ] ; then
+        NUM_VEHICLES=3
     else 
         printf "Bad Argument: %s \n" $ARGI
         exit 0
@@ -57,6 +59,7 @@ PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=700,y=1100,width=4
 PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south"
 PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
 
+# PILOT PARAMS, WHEN SPLITTING PILOT
 if [ $NUM_VEHICLES -ge 2 ] ; then
 #PILOT_LM_1="format=lawnmower,label=pilot-survey,x=550,y=1050,width=100,height=100,lane_width=100,degs=0,startx=0,starty=0"
 PILOT_LM_1="format=lawnmower,label=pilot-survey,x=600,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
@@ -67,6 +70,20 @@ PILOT_LM_2="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=20
 PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
 PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
 fi
+if [ $NUM_VEHICLES -ge 3 ] ; then
+PILOT_LM_1="format=lawnmower,label=pilot-survey,x=600,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
+PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
+
+PILOT_LM_2="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
+PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
+# TODO, FIGURE OUT PILOT FOR 3 VEHICLES ..
+PILOT_LM_3="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_3_NS="$PILOT_LM_2,rows=north-south"
+PILOT_LM_3_EW="$PILOT_LM_2,rows=east-west"
+fi
+
 
 # loiter for during hyperparameter optimization
 HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
@@ -91,28 +108,20 @@ if [ "${ADAPTIVE}" = "no" ] ; then
   LAWNMOWEREW2="$LAWNMOWER2,rows=east-west,label=east-west-survey"
   LAWNMOWERNS2="$LAWNMOWER2,rows=north-south,label=north-south-survey"
   fi
-  # ports
-  SHORE_LISTEN="8300"
-  SHORE_VPORT="8000"
-  ANNA_LISTEN="8301"
-  ANNA_LISTEN_GP="8401"
-  ANNA_VPORT="8001"
-  BERNARD_LISTEN="8302"
-  BERNARD_LISTEN_GP="8402"
-  BERNARD_VPORT="8002"
-else
-  # adaptive
-  
-  # ports
-  SHORE_LISTEN="9300"
-  SHORE_VPORT="9000"
-  ANNA_LISTEN="9301"
-  ANNA_LISTEN_GP="9401"
-  ANNA_VPORT="9001"
-  BERNARD_LISTEN="9302"
-  BERNARD_LISTEN_GP="9402"
-  BERNARD_VPORT="9002"
 fi
+
+# ports
+SHORE_LISTEN="9300"
+SHORE_VPORT="9000"
+ANNA_LISTEN="9301"
+ANNA_LISTEN_GP="9401"
+ANNA_VPORT="9001"
+BERNARD_LISTEN="9302"
+BERNARD_LISTEN_GP="9402"
+BERNARD_VPORT="9002"
+CORNELIS_LISTEN="9302"
+CORNELIS_LISTEN_GP="9402"
+CORNELIS_VPORT="9002"
 
 # percentage of messages to drop in uFldNodeComms
 DROP_PCT=0
@@ -146,12 +155,22 @@ VTYPE2="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX2="${VNAME2}_predictions"
 PSHARE_BERNARD="./plugs/pShare_auv.moos"
 
+# The third vehicle community
+VNAME2="cornelis"
+START_DEPTH2="5"
+START_POS2="410,950"
+WAYPOINTS2="455,980:455,965:430,965:430,980:455,980"
+MODEMID2="3"
+VTYPE2="UUV" # UUV, SHIP
+PREDICTIONS_PREFIX2="${VNAME2}_predictions"
+PSHARE_CORNELIS="./plugs/pShare_auv.moos" #FIX?
+
 if [ $NUM_VEHICLES -ge 2 ] ; then
 PSHARE_ANNA="./plugs/pShare_auv.moos"
 fi
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME1  START_POS=$START_POS1  START_HDG=$START_HEADING \
-   VPORT=$ANNA_VPORT SHARE_LISTEN=$ANNA_LISTEN SHARE_LISTEN_GP=$ANNA_LISTEN_GP \
+   VPORT=$ANNA_VPORT SHARE_LISTEN=$ANNA_LISTEN SHARE_LISTEN_GP=$ANNA_LISTEN_GP \ #FIX
    SHARE_OTHER_GP=$BERNARD_LISTEN_GP  SERVER_LISTEN=$SHORE_LISTEN \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1 \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
@@ -171,14 +190,14 @@ nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     PILOT_LAWNMOWER_EW=$PILOT_LAWNMOWER_C_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
-    OTHER_VEHICLE=$VNAME2
+    OTHER_VEHICLE=$VNAME2 #FIX
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
 
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME2  START_POS=$START_POS2  START_HDG=$START_HEADING \
    VPORT=$BERNARD_VPORT SHARE_LISTEN=$BERNARD_LISTEN SHARE_LISTEN_GP=$BERNARD_LISTEN_GP \
-   SERVER_LISTEN=$SHORE_LISTEN    SHARE_OTHER_GP=$ANNA_LISTEN_GP \
+   SERVER_LISTEN=$SHORE_LISTEN    SHARE_OTHER_GP=$ANNA_LISTEN_GP \ #FIX
    VTYPE=$VTYPE2      MODEMID=$MODEMID2 \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
@@ -193,7 +212,29 @@ nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     PILOT_LAWNMOWER_EW=$PILOT_LM_2_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS2 LAWNMOWER_EW=$LAWNMOWEREW2        \
     HP_LOITER=$HP_LOITER_CONFIG2  ADAPTIVE_WPTS=$ADAPTIVE        \
-    OTHER_VEHICLE=$VNAME1
+    OTHER_VEHICLE=$VNAME1 #FIX
+fi
+
+if [ $NUM_VEHICLES -ge 3]
+nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
+   VNAME=$VNAME3  START_POS=$START_POS3  START_HDG=$START_HEADING \
+   VPORT=$CORNELIS_VPORT SHARE_LISTEN=$CORNELIS_LISTEN SHARE_LISTEN_GP=$CORNELIS_LISTEN_GP \
+   SERVER_LISTEN=$SHORE_LISTEN    SHARE_OTHER_GP=$ANNA_LISTEN_GP \ #FIX
+   VTYPE=$VTYPE3      MODEMID=$MODEMID3 \
+   SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
+   PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
+   LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX3 \
+   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
+   ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
+   USE_VORONOI=$VORONOI_PARTITIONING
+nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
+    START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
+    START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3                    \
+    PILOT_LAWNMOWER_NS=$PILOT_LM_3_NS                   \
+    PILOT_LAWNMOWER_EW=$PILOT_LM_3_EW                   \
+    LAWNMOWER_NS=$LAWNMOWERNS3 LAWNMOWER_EW=$LAWNMOWEREW3        \
+    HP_LOITER=$HP_LOITER_CONFIG3  ADAPTIVE_WPTS=$ADAPTIVE        \
+    OTHER_VEHICLE=$VNAME2 #FIX
 fi
 
 if [ ${JUST_MAKE} = "yes" ] ; then
@@ -211,6 +252,12 @@ pAntler targ_$VNAME1.moos > log_$VNAME1.log &
 sleep .25
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
+printf "Launching $VNAME2 MOOS Community (WARP=%s) \n" $TIME_WARP
+pAntler targ_$VNAME2.moos > log_$VNAME2.log &
+sleep .25
+fi
+
+if [ $NUM_VEHICLES -ge 3 ] ; then
 printf "Launching $VNAME2 MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$VNAME2.moos > log_$VNAME2.log &
 sleep .25
