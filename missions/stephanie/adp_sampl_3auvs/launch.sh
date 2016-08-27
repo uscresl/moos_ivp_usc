@@ -71,17 +71,16 @@ PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
 PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
 fi
 if [ $NUM_VEHICLES -ge 3 ] ; then
-PILOT_LM_1="format=lawnmower,label=pilot-survey,x=600,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_1="format=lawnmower,label=pilot-survey,x=500,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
 PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
 PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
-
-PILOT_LM_2="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_2="format=lawnmower,label=pilot-survey,x=700,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
 PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
 PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
 # TODO, FIGURE OUT PILOT FOR 3 VEHICLES ..
-PILOT_LM_3="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_3_NS="$PILOT_LM_2,rows=north-south"
-PILOT_LM_3_EW="$PILOT_LM_2,rows=east-west"
+PILOT_LM_3="format=lawnmower,label=pilot-survey,x=900,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_3_NS="$PILOT_LM_3,rows=north-south"
+PILOT_LM_3_EW="$PILOT_LM_3,rows=east-west"
 fi
 
 
@@ -90,12 +89,19 @@ HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_opti
 if [ $NUM_VEHICLES -ge 2 ] ; then
 HP_LOITER_CONFIG2="format=radial,x=470,y=990,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
 fi
+if [ $NUM_VEHICLES -ge 3 ] ; then
+HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
+fi
 
 # config for lawnmower for actual GP model building
 LAWNMOWER="format=lawnmower,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
 if [ $NUM_VEHICLES -ge 2 ] ; then
 LAWNMOWER1="format=lawnmower,x=600,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
 LAWNMOWER2="format=lawnmower,x=800,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
+elif [ $NUM_VEHICLES -ge 3 ] ; then
+LAWNMOWER1="format=lawnmower,x=500,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER2="format=lawnmower,x=700,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER3="format=lawnmower,x=900,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
 else
 LAWNMOWER1=$LAWNMOWER
 fi
@@ -108,6 +114,10 @@ if [ "${ADAPTIVE}" = "no" ] ; then
   LAWNMOWEREW2="$LAWNMOWER2,rows=east-west,label=east-west-survey"
   LAWNMOWERNS2="$LAWNMOWER2,rows=north-south,label=north-south-survey"
   fi
+  if [ $NUM_VEHICLES -ge 3 ] ; then
+  LAWNMOWEREW3="$LAWNMOWER3,rows=east-west,label=east-west-survey"
+  LAWNMOWERNS3="$LAWNMOWER3,rows=north-south,label=north-south-survey"
+  fi
 fi
 
 # ports
@@ -119,9 +129,9 @@ ANNA_VPORT="9001"
 BERNARD_LISTEN="9302"
 BERNARD_LISTEN_GP="9402"
 BERNARD_VPORT="9002"
-CORNELIS_LISTEN="9302"
-CORNELIS_LISTEN_GP="9402"
-CORNELIS_VPORT="9002"
+CORNELIS_LISTEN="9303"
+CORNELIS_LISTEN_GP="9403"
+CORNELIS_VPORT="9003"
 
 # percentage of messages to drop in uFldNodeComms
 DROP_PCT=0
@@ -137,7 +147,8 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
 
-VNAME1="anna"        # The first  vehicle community
+# The first vehicle community
+VNAME1="anna"
 START_DEPTH1="5"
 START_POS1="430,950"
 WAYPOINTS1="455,980:455,965:430,965:430,980:455,980"
@@ -156,22 +167,27 @@ PREDICTIONS_PREFIX2="${VNAME2}_predictions"
 PSHARE_BERNARD="./plugs/pShare_auv.moos"
 
 # The third vehicle community
-VNAME2="cornelis"
-START_DEPTH2="5"
-START_POS2="410,950"
-WAYPOINTS2="455,980:455,965:430,965:430,980:455,980"
-MODEMID2="3"
-VTYPE2="UUV" # UUV, SHIP
-PREDICTIONS_PREFIX2="${VNAME2}_predictions"
-PSHARE_CORNELIS="./plugs/pShare_auv.moos" #FIX?
+VNAME3="cornelis"
+START_DEPTH3="5"
+START_POS3="410,950"
+WAYPOINTS3="455,980:455,965:430,965:430,980:455,980"
+MODEMID3="3"
+VTYPE3="UUV" # UUV, SHIP
+PREDICTIONS_PREFIX3="${VNAME3}_predictions"
+PSHARE_CORNELIS="./plugs/pShare_auv.moos"
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
 PSHARE_ANNA="./plugs/pShare_auv.moos"
+SHAREGP2=$BERNARD_LISTEN_GP
 fi
+if [ $NUM_VEHICLES -ge 3 ] ; then
+SHAREGP3=$CORNELIS_LISTEN_GP
+fi
+
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME1  START_POS=$START_POS1  START_HDG=$START_HEADING \
-   VPORT=$ANNA_VPORT SHARE_LISTEN=$ANNA_LISTEN SHARE_LISTEN_GP=$ANNA_LISTEN_GP \ #FIX
-   SHARE_OTHER_GP=$BERNARD_LISTEN_GP  SERVER_LISTEN=$SHORE_LISTEN \
+   VPORT=$ANNA_VPORT SHARE_LISTEN=$ANNA_LISTEN SHARE_LISTEN_GP=$ANNA_LISTEN_GP \
+   SHARE_GP2=$SHAREGP2  SHARE_GP3=$SHAREGP3 SERVER_LISTEN=$SHORE_LISTEN \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1 \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
@@ -190,14 +206,19 @@ nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     PILOT_LAWNMOWER_EW=$PILOT_LAWNMOWER_C_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
-    OTHER_VEHICLE=$VNAME2 #FIX
+    OTHER_VEHICLE=$VNAME2
+# TODO fix OTHER_VEHICLE
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
+SHAREGP2=$ANNA_LISTEN_GP
+if [ $NUM_VEHICLES -ge 3 ] ; then
+SHAREGP3=$CORNELIS_LISTEN_GP
+fi
 
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME2  START_POS=$START_POS2  START_HDG=$START_HEADING \
    VPORT=$BERNARD_VPORT SHARE_LISTEN=$BERNARD_LISTEN SHARE_LISTEN_GP=$BERNARD_LISTEN_GP \
-   SERVER_LISTEN=$SHORE_LISTEN    SHARE_OTHER_GP=$ANNA_LISTEN_GP \ #FIX
+   SERVER_LISTEN=$SHORE_LISTEN    SHARE_GP2=$SHAREGP2   SHARE_GP3=$SHAREGP3 \
    VTYPE=$VTYPE2      MODEMID=$MODEMID2 \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
@@ -212,19 +233,22 @@ nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     PILOT_LAWNMOWER_EW=$PILOT_LM_2_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS2 LAWNMOWER_EW=$LAWNMOWEREW2        \
     HP_LOITER=$HP_LOITER_CONFIG2  ADAPTIVE_WPTS=$ADAPTIVE        \
-    OTHER_VEHICLE=$VNAME1 #FIX
+    OTHER_VEHICLE=$VNAME1
 fi
+# TODO fix OTHER_VEHICLE
 
-if [ $NUM_VEHICLES -ge 3]
+if [ $NUM_VEHICLES -ge 3 ] ; then
+SHAREGP2=$ANNA_LISTEN_GP
+SHAREGP3=$BERNARD_LISTEN_GP
 nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME3  START_POS=$START_POS3  START_HDG=$START_HEADING \
    VPORT=$CORNELIS_VPORT SHARE_LISTEN=$CORNELIS_LISTEN SHARE_LISTEN_GP=$CORNELIS_LISTEN_GP \
-   SERVER_LISTEN=$SHORE_LISTEN    SHARE_OTHER_GP=$ANNA_LISTEN_GP \ #FIX
+   SERVER_LISTEN=$SHORE_LISTEN    SHARE_GP2=$SHAREGP2   SHARE_GP3=$SHAREGP3  \
    VTYPE=$VTYPE3      MODEMID=$MODEMID3 \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX3 \
-   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
+   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_CORNELIS  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
@@ -234,8 +258,9 @@ nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     PILOT_LAWNMOWER_EW=$PILOT_LM_3_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS3 LAWNMOWER_EW=$LAWNMOWEREW3        \
     HP_LOITER=$HP_LOITER_CONFIG3  ADAPTIVE_WPTS=$ADAPTIVE        \
-    OTHER_VEHICLE=$VNAME2 #FIX
+    OTHER_VEHICLE=$VNAME2
 fi
+# TODO fix OTHER_VEHICLE
 
 if [ ${JUST_MAKE} = "yes" ] ; then
     exit 0
@@ -258,8 +283,8 @@ sleep .25
 fi
 
 if [ $NUM_VEHICLES -ge 3 ] ; then
-printf "Launching $VNAME2 MOOS Community (WARP=%s) \n" $TIME_WARP
-pAntler targ_$VNAME2.moos > log_$VNAME2.log &
+printf "Launching $VNAME3 MOOS Community (WARP=%s) \n" $TIME_WARP
+pAntler targ_$VNAME3.moos > log_$VNAME3.log &
 sleep .25
 fi
 
