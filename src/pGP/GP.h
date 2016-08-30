@@ -254,6 +254,7 @@ class GP : public CMOOSApp
    double m_last_voronoi_calc_time;
    bool m_send_surf_req;
    bool m_send_ack;
+   std::unordered_set<std::string> m_rec_ack_veh;
 
    std::future<size_t> m_future_calc_prevoronoi;
    bool m_calc_prevoronoi;
