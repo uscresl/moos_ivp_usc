@@ -15,6 +15,8 @@
 #include "gp.h"
 // use unordered map rather than map, improve efficiency
 #include <unordered_map>
+// use unordered set for fast retrieval of keys in list
+#include <unordered_set>
 
 // multi-threading
 #include <thread>
@@ -213,7 +215,7 @@ class GP : public CMOOSApp
    std::vector<std::string> m_incoming_data_to_be_added;
    double m_loiter_dist_to_poly;
 
-   // times data sharing
+   // timed data sharing
    bool m_timed_data_sharing;
    bool m_data_sharing_activated;
    bool m_sending_data;
@@ -223,6 +225,7 @@ class GP : public CMOOSApp
    std::string m_input_var_handshake_data_sharing;
    std::string m_output_var_handshake_data_sharing;
    size_t m_last_ready_sent;
+   std::unordered_set<std::string> m_rec_ready_veh;
 
    // acomms data sharing
    bool m_acomms_sharing;

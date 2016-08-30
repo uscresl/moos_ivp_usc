@@ -241,7 +241,16 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         {
           if ( m_verbose )
             std::cout << GetAppName() << " :: received READY from: " << sval << std::endl;
-          m_received_ready = true;
+
+          // check if vehicle not in list yet, if so, add
+          if ( m_rec_ready_veh.find(sval) != m_rec_ready_veh.end() )
+            m_rec_ready_veh.insert(sval);
+
+          // if we have received 'ready' from as many vehicles as exist, then flip bool
+          std::cout << GetAppName() << " :: m_rec_ready_veh.size(), m_other_vehicles.size(): "
+                    << m_rec_ready_veh.size() << ", " << m_other_vehicles.size() << std::endl;
+          if ( m_rec_ready_veh.size() == m_other_vehicles.size() )
+            m_received_ready = true;
         }
       }
     }
@@ -2179,9 +2188,12 @@ void GP::tdsHandshake()
     // other vehicle already ready to exchange data
     // send that we are ready, when we are at the surface
     sendReady();
+
+    // send the data
     m_last_ready_sent = moos_t;
     m_sending_data = true;
     sendData();
+
     // reset for next time
     m_received_ready = false;
   }
@@ -2227,11 +2239,9 @@ void GP::tdsReceiveData()
       if ( m_verbose )
         std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
 
-//      // after points received, need to run a round of predictions (unvisited set has changed!)
-//      m_future_calc_predictions = std::async(std::launch::async, &GP::calcMECriterion, this);
-
       if ( m_use_voronoi )
       {
+        // after points received, need to run a round of predictions (unvisited set has changed!)
         m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
         m_calc_prevoronoi = true;
       }
@@ -2265,6 +2275,7 @@ void GP::tdsResetStateVars()
   m_data_sharing_requested = false;
   if ( m_use_voronoi )
     m_precalc_pred_voronoi_done = true;
+  m_rec_ready_veh.clear();
 }
 
 //---------------------------------------------------------
