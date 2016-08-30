@@ -71,14 +71,14 @@ PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
 PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
 fi
 if [ $NUM_VEHICLES -ge 3 ] ; then
-PILOT_LM_1="format=lawnmower,label=pilot-survey,x=500,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_1="format=lawnmower,label=pilot-survey,x=567,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
 PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
 PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
-PILOT_LM_2="format=lawnmower,label=pilot-survey,x=700,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_2="format=lawnmower,label=pilot-survey,x=700,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
 PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
 PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
 # TODO, FIGURE OUT PILOT FOR 3 VEHICLES ..
-PILOT_LM_3="format=lawnmower,label=pilot-survey,x=900,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LM_3="format=lawnmower,label=pilot-survey,x=833,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
 PILOT_LM_3_NS="$PILOT_LM_3,rows=north-south"
 PILOT_LM_3_EW="$PILOT_LM_3,rows=east-west"
 fi
@@ -99,9 +99,9 @@ if [ $NUM_VEHICLES -ge 2 ] ; then
 LAWNMOWER1="format=lawnmower,x=600,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
 LAWNMOWER2="format=lawnmower,x=800,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
 elif [ $NUM_VEHICLES -ge 3 ] ; then
-LAWNMOWER1="format=lawnmower,x=500,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=700,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER3="format=lawnmower,x=900,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER1="format=lawnmower,x=567,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER2="format=lawnmower,x=700,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER3="format=lawnmower,x=833,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
 else
 LAWNMOWER1=$LAWNMOWER
 fi
