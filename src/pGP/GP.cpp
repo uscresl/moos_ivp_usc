@@ -243,7 +243,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             std::cout << GetAppName() << " :: received READY from: " << sval << std::endl;
 
           // check if vehicle not in list yet, if so, add
-          if ( m_rec_ready_veh.find(sval) != m_rec_ready_veh.end() )
+          if ( m_rec_ready_veh.find(sval) == m_rec_ready_veh.end() )
             m_rec_ready_veh.insert(sval);
 
           // if we have received 'ready' from as many vehicles as exist, then flip bool
