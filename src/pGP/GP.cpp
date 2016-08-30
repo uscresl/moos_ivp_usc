@@ -217,11 +217,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // handle
       std::string incoming_data_string = sval;
       size_t index_colon = incoming_data_string.find_first_of(':');
-      if ( incoming_data_string.substr(0, index_colon) != m_veh_name )
+      std::string veh_nm = incoming_data_string.substr(0, index_colon);
+      if ( veh_nm != m_veh_name )
       {
         m_received_shared_data = true;
-        if ( m_debug )
-          std::cout << GetAppName() << " :: received data from other vehicle" << std::endl;
+        if ( m_verbose )
+          std::cout << GetAppName() << " :: received data from " << veh_nm << std::endl;
 
         // extract actual data
         std::string incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
@@ -282,19 +283,29 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       }
     }
     else if ( key == "REQ_SURFACING_ACK_REC" )
-    { // receive surfacing req ack from other vehicle)
-      // ack received, start surfacing
+    { // receive surfacing req ack from other vehicle
       bool own_msg = ownMessage(sval);
       if ( m_debug )
       {
         std::cout << GetAppName() << " :: REQ_SURFACING_ACK_REC own msg? " << own_msg << std::endl;
         std::cout << GetAppName() << " :: m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
       }
-      if ( !own_msg && !m_data_sharing_requested && m_send_surf_req )
+      std::string vname;
+      bool getval = MOOSValFromString(vname, sval, "veh", true);
+      if ( getval )
       {
+        // count the nr of acks received; need from all vehicles
+        if ( m_rec_ack_veh.find(vname) == m_rec_ack_veh.end() )
+          m_rec_ack_veh.insert(vname);
+      }
+
+      if ( !own_msg && !m_data_sharing_requested && m_send_surf_req &&
+           m_rec_ack_veh.size() == m_other_vehicles.size() )
+      {
+        // ack received, start surfacing
         // prep for surfacing
         m_data_sharing_requested = true;
-        // received ack, stop sending surfacing request
+        // received all acks, stop sending surfacing request
         m_send_surf_req = false;
       }
     }
@@ -2276,6 +2287,7 @@ void GP::tdsResetStateVars()
   if ( m_use_voronoi )
     m_precalc_pred_voronoi_done = true;
   m_rec_ready_veh.clear();
+  m_rec_ack_veh.clear();
 }
 
 //---------------------------------------------------------
