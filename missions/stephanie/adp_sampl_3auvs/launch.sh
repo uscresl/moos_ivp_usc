@@ -95,7 +95,7 @@ fi
 
 # config for lawnmower for actual GP model building
 LAWNMOWER="format=lawnmower,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
-if [ $NUM_VEHICLES -ge 2 ] ; then
+if [ $NUM_VEHICLES -eq 2 ] ; then
 LAWNMOWER1="format=lawnmower,x=600,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
 LAWNMOWER2="format=lawnmower,x=800,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
 elif [ $NUM_VEHICLES -ge 3 ] ; then
@@ -176,12 +176,13 @@ VTYPE3="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX3="${VNAME3}_predictions"
 PSHARE_CORNELIS="./plugs/pShare_auv.moos"
 
+if [ $NUM_VEHICLES -ge 3 ] ; then
+SHAREGP3=$CORNELIS_LISTEN_GP
+fi
+
 if [ $NUM_VEHICLES -ge 2 ] ; then
 PSHARE_ANNA="./plugs/pShare_auv.moos"
 SHAREGP2=$BERNARD_LISTEN_GP
-fi
-if [ $NUM_VEHICLES -ge 3 ] ; then
-SHAREGP3=$CORNELIS_LISTEN_GP
 fi
 
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
@@ -211,9 +212,6 @@ nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
 SHAREGP2=$ANNA_LISTEN_GP
-if [ $NUM_VEHICLES -ge 3 ] ; then
-SHAREGP3=$CORNELIS_LISTEN_GP
-fi
 
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME2  START_POS=$START_POS2  START_HDG=$START_HEADING \
@@ -251,6 +249,7 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_CORNELIS  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING
+
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3                    \
