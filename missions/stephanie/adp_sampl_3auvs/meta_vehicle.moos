@@ -206,7 +206,7 @@ ProcessConfig = uTimerScript
 {
   AppTick = 4
   CommsTick = 4
-
+G
   verbose = true
 
   // lawnmower duration ca 6362-6375
@@ -217,6 +217,10 @@ ProcessConfig = uTimerScript
 #endif
 #ifdef NR_VEHICLES 2
   event = var=STAGE,val="hpoptim",time=4934:5167
+#endif
+// TODO: change duration 3 vehicles
+#ifdef NR_VEHICLES 3
+  event = var=STAGE,val="hpoptim",time=4840:5050
 #endif
 
   reset_max = 0
