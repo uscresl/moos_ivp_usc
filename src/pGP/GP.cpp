@@ -241,7 +241,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( m_dep < 0.1 ) // simulate that we only received on surface
         {
           if ( m_verbose )
-            std::cout << GetAppName() << " :: received READY from: " << sval << std::endl;
+            std::cout << GetAppName() << " :: received READY at: " << MOOSTime() << " from: " << sval << std::endl;
 
           // check if vehicle not in list yet, if so, add
           if ( m_rec_ready_veh.find(sval) == m_rec_ready_veh.end() )
@@ -251,7 +251,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           std::cout << GetAppName() << " :: m_rec_ready_veh.size(), m_other_vehicles.size(): "
                     << m_rec_ready_veh.size() << ", " << m_other_vehicles.size() << std::endl;
           if ( m_rec_ready_veh.size() == m_other_vehicles.size() )
+          {
+            for ( auto veh : m_rec_ready_veh )
+            std::cout << "received ready from: " << veh << std::endl;
             m_received_ready = true;
+          }
         }
       }
     }
@@ -1688,6 +1692,8 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
       if ( m_verbose )
         std::cout << GetAppName() << " :: *added: " << pts_added << " data points." << std::endl;
       m_received_shared_data = false;
+      m_rec_ready_veh.clear();
+      m_rec_ack_veh.clear();
     }
   }
 
