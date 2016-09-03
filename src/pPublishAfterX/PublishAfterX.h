@@ -34,7 +34,11 @@ class PublishAfterX : public CMOOSApp
     // Configuration variables
     std::string m_var;
     std::string m_val;
-    size_t m_secs_after;
+
+    int m_secs_after;
+    int m_min_secs;
+    int m_max_secs;
+
     std::string m_pub_var;
     std::string m_pub_val;
 
