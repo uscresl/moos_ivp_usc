@@ -48,8 +48,8 @@ ADD_SUBDIRECTORY(pFormationWptUpdater)
 ADD_SUBDIRECTORY(pNumVehicles)
 
 # find boost for multiple processes
-find_package(Boost)
 SET(BOOST_MIN_VERSION "1.56.0")
+find_package(Boost)
 
 # get boost 1.55
 #SET(BOOST_ROOT /usr/local/include/boost)
@@ -100,6 +100,10 @@ if ( LIBGP_FOUND AND MOOSGeodesy_FOUND AND Boost_FOUND )
 else()
   message("LibGP not found. Did you set the GPLIB_LOCATION environment variable?")
 endif()
+
+# Sept'16: add process that can publish a certain var/val set,
+#          X seconds after it received the publishment of another var/val set
+add_subdirectory(pPublishAfterX)
 
 
 ##############################################################################
