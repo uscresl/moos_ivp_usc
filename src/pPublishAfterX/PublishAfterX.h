@@ -44,6 +44,7 @@ class PublishAfterX : public CMOOSApp
 
     // State variables
     double m_start_time;
+    bool m_first;
 };
 
 #endif
