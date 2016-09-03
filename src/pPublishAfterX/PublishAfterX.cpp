@@ -21,11 +21,16 @@ PublishAfterX::PublishAfterX() :
   m_var(""),
   m_val(""),
   m_secs_after(-1),
+  m_min_secs(-1),
+  m_max_secs(-1),
   m_pub_var(""),
   m_pub_val(""),
   m_start_time(-1.0)
 {
-  // class variable instantiations can go here
+  // class variable instantiations can go up here
+
+  // seed the random number generator
+  srand((int)time(0));
 }
 
 //---------------------------------------------------------
@@ -126,6 +131,24 @@ bool PublishAfterX::OnStartUp()
     {
       m_secs_after = atoi(value.c_str());
       handled = true;
+    }
+    else if ( (param == "publish_after_secs") && !isNumber(value) )
+    {
+      // range
+      size_t divider = value.find(':');
+      if ( divider != std::string::npos )
+      {
+        m_min_secs = atoi( (value.substr(0, divider)).c_str() );
+        m_max_secs = atoi( (value.substr(divider+1, value.length())).c_str() );
+
+        // generate m_secs_after
+        int add_random = (int)(rand() % (m_max_secs - m_min_secs));
+        m_secs_after = m_min_secs + add_random;
+
+        std::cout << GetAppName() << " :: publish m_secs_after: " << m_secs_after << std::endl;
+
+        handled = true;
+      }
     }
     else if ( param == "publish_after_var" )
     {

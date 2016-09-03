@@ -11,10 +11,10 @@ ProcessConfig = pPublishAfterX
   publish_after_val = test
 
   // how many seconds after above var/val should we publish?
-  publish_after_secs = 120
+  // you can give either a number, or a range (eg. 10:20)
+  publish_after_secs = 10
 
   // the var/val set to publish
   publish_var = PUBLISH_EXAMPLE
   publish_val = test_output
-
 }
