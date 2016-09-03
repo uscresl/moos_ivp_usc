@@ -25,7 +25,8 @@ PublishAfterX::PublishAfterX() :
   m_max_secs(-1),
   m_pub_var(""),
   m_pub_val(""),
-  m_start_time(-1.0)
+  m_start_time(-1.0),
+  m_first(true)
 {
   // class variable instantiations can go up here
 
@@ -61,12 +62,15 @@ bool PublishAfterX::OnNewMail(MOOSMSG_LIST &NewMail)
 
     if ( key == m_var && m_var != "" )
     {
-      if ( (sval == m_val) && (m_secs_after > 0) && m_start_time < 0 )
+      if ( (sval == m_val) && (m_secs_after > 0) && (m_start_time < 0) && !m_first )
       {
         m_start_time = MOOSTime();
         std::cout << GetAppName() << " :: setting timer, publishing " << m_secs_after
                   << " seconds from now (" << std::setprecision(15) << m_start_time << ")" << std::endl;
       }
+      if ( m_first )
+        m_first = false;
+      // we skip the first one, because that is coming from pHelmIvP:HELM_VAR_INIT
     }
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
