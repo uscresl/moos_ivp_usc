@@ -5,11 +5,12 @@ ProcessConfig = uSimBioSensor
 {
   AppTick   = 2
   CommsTick = 2
-  
+
   // verbosity: true or false
   verbose = false
-  
+
   // process parameters
-  filename = test.csv
+  input_filename = test.csv
+  variance = 1.5
   output_var = SIM_DATA
 }
