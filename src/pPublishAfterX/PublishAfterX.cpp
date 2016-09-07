@@ -175,6 +175,10 @@ bool PublishAfterX::OnStartUp()
       m_pub_val = value;
       handled = true;
     }
+    else if ( param == "skip_first" )
+    {
+      m_first = ( value == "true" ? true : false );
+    }
 
     if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;

@@ -17,4 +17,7 @@ ProcessConfig = pPublishAfterX
   // the var/val set to publish
   publish_var = PUBLISH_EXAMPLE
   publish_val = test_output
+
+  // skip the first message?
+  skip_first = true
 }
