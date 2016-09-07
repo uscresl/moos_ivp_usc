@@ -28,6 +28,9 @@
 // write to file
 #include <fstream>
 
+// init srand
+#include <chrono>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -124,12 +127,13 @@ GP::GP() :
   params << -8.927865292, 0.02335186099, -0.9098776951;
   m_gp.covf().set_loghyper(params);
 
-  // seed the random number generator with a unique number
-  unsigned int veh_id;
-  m_MissionReader.GetValue("modem_id", veh_id);
-  if ( m_verbose )
-    std::cout << GetAppName() << " :: vehicle id: " << veh_id << std::endl;
-  srand((int)time(0)+veh_id);
+  //srand((int)time(0));
+  struct timeval time;
+  gettimeofday(&time,NULL);
+  int rand_seed = (time.tv_sec * 1000) + (time.tv_usec / 1000);
+  std::cout << "rand_seed: " << rand_seed << std::endl;
+  srand(rand_seed);
+
 }
 
 GP::~GP()
