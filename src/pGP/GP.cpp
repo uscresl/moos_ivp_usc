@@ -64,8 +64,9 @@ GP::GP() :
   m_y_resolution(0.0),
   m_lon_deg_to_m(0.0),
   m_lat_deg_to_m(0.0),
-  m_pilot_done_time(0.0),
-  m_hp_optim_done_time(0.0),
+  m_start_time(0.0),
+//  m_pilot_done_time(0.0),
+//  m_hp_optim_done_time(0.0),
   m_need_nxt_wpt(false),
   m_finding_nxt(false),
   m_gp(2, "CovSum(CovSEiso, CovNoise)"),
@@ -79,6 +80,7 @@ GP::GP() :
   m_data_send_reserve(0),
   m_received_shared_data(false),
   m_timed_data_sharing(false),
+  m_data_sharing_interval(600),
   m_data_sharing_activated(false),
   m_sending_data(false),
   m_waiting(false),
@@ -92,7 +94,9 @@ GP::GP() :
   m_send_surf_req(false),
   m_send_ack(false),
   m_calc_prevoronoi(false),
-  m_precalc_pred_voronoi_done(false)
+  m_precalc_pred_voronoi_done(false),
+  m_vor_timeout(300),
+  m_downsample_factor(4)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -111,11 +115,12 @@ GP::GP() :
   // note, these will be optimized using cg or rprop
   // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
   //               0.002^2=0.000004, ln() = -12.4292
-  // signal: from 0 to ca 30, log scale <0 to 1.5
-  //         stdev 1.5, ln() = 0.4055
+  // signal: from 0 to ca 30/40, log scale <0 to 1.5/1.6
+  //         stdev 1.5, ln() = 0.4055, ln() = -0.9
   // noise: let's set 10x smaller than signal
-  //        stdev 0.15, ln() = -1.8971
-  params << -12.4292, 0.4055, -1.8971;
+  //        stdev 0.15, ln() = -1.8971, ln() = 0.64+3.141592654i
+//  params << -12.4292, 0.4055, -1.8971;
+  params << -12.4292, -0.9, 0.64;
   m_gp.covf().set_loghyper(params);
 
   // seed the random number generator
@@ -124,14 +129,14 @@ GP::GP() :
 
 GP::~GP()
 {
-  if ( m_ofstream_pm.is_open() )
-    m_ofstream_pm.close();
-  if ( m_ofstream_pv.is_open() )
-    m_ofstream_pv.close();
-  if ( m_ofstream_pmu.is_open() )
-    m_ofstream_pmu.close();
-  if ( m_ofstream_psigma2.is_open() )
-    m_ofstream_psigma2.close();
+  if ( m_ofstream_pm_lGP.is_open() )
+    m_ofstream_pm_lGP.close();
+  if ( m_ofstream_pv_lGP.is_open() )
+    m_ofstream_pv_lGP.close();
+  if ( m_ofstream_pmu_GP.is_open() )
+    m_ofstream_pmu_GP.close();
+  if ( m_ofstream_psigma2_GP.is_open() )
+    m_ofstream_psigma2_GP.close();
 }
 
 //---------------------------------------------------------
@@ -208,8 +213,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( sval.find("HP_OPTIM") != std::string::npos )
       {
         m_hp_optim_mode_cnt++;
-        if ( m_hp_optim_mode_cnt == 1 )
-          m_pilot_done_time = MOOSTime();
+//        if ( m_hp_optim_mode_cnt == 1 )
+//          m_pilot_done_time = MOOSTime();
       }
     }
     else if ( key == m_input_var_share_data )
@@ -344,43 +349,45 @@ bool GP::Iterate()
     //// PILOT HP OPTIM ////////////////////////////////////////////////////////
     // when pilot is done,
     // we want to optimize the hyperparams of the GP
-    if ( m_hp_optim_mode_cnt == 1 && !m_hp_optim_done && !m_finished )
-    {
-      if ( !m_hp_optim_running )
-      {
-        // start hyperparameter optimization
-        m_hp_optim_running = true;
 
-        // start thread for hyperparameter optimization,
-        // because this will take a while..
-        if ( m_verbose )
-          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
-        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 20);
-      }
-      else
-      {
-        std::cout << "checking future m_future_hp_optim" << std::endl;
-        // running HP optimization
-        // check if the thread is done
-        if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-        {
-          m_hp_optim_done = m_future_hp_optim.get(); // should be true
-          if ( !m_hp_optim_done )
-            std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
-          m_hp_optim_running = false;
-          m_hp_optim_done_time = MOOSTime();
-          if ( m_verbose )
-            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
-          m_Comms.Notify("STAGE","survey");
-        }
-      }
-    }
-
+//    if ( m_hp_optim_mode_cnt == 1 && !m_hp_optim_done && !m_finished )
+//    {
+//      if ( !m_hp_optim_running )
+//      {
+//        // start hyperparameter optimization
+//        m_hp_optim_running = true;
+//
+//        // start thread for hyperparameter optimization,
+//        // because this will take a while..
+//        if ( m_verbose )
+//          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
+//        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 20);
+//      }
+//      else
+//      {
+//        std::cout << "checking future m_future_hp_optim" << std::endl;
+//        // running HP optimization
+//        // check if the thread is done
+//        if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+//        {
+//          m_hp_optim_done = m_future_hp_optim.get(); // should be true
+//          if ( !m_hp_optim_done )
+//            std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+//          m_hp_optim_running = false;
+//          m_hp_optim_done_time = MOOSTime();
+//          if ( m_verbose )
+//            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
+//          m_Comms.Notify("STAGE","survey");
+//        }
+//      }
+//    }
+    if ( m_start_time < 1.0 )
+      m_start_time = MOOSTime(); // first time, set the start time of process
 
     //// ADAPTIVE //////////////////////////////////////////////////////////////
     // when hyperparameter optimization is done,
     // we want to run adaptive; find next sample locations
-    if ( m_hp_optim_done && m_hp_optim_mode_cnt < 2 && !m_finished )
+    if ( m_hp_optim_mode_cnt < 1 && !m_finished ) //m_hp_optim_done &&
     {
       // **** NXT WAYPOINT (GREEDY) ******************************************//
       // predict target value and variance for sample locations
@@ -415,7 +422,7 @@ bool GP::Iterate()
         // note; may need to add buffer to block out x seconds after hpoptim_done
         if ( !m_use_voronoi &&
               m_num_vehicles > 1 &&
-             ( (size_t)std::floor(MOOSTime()) % 600 ) == 0 &&
+             ( (size_t)std::floor(MOOSTime()) % m_data_sharing_interval ) == 0 &&
              !m_data_sharing_activated )
         {
           // switch to data sharing mode, to switch bhv to surface
@@ -426,7 +433,7 @@ bool GP::Iterate()
         // tds with voronoi, trigger for when to request data sharing
         if ( m_use_voronoi && m_voronoi_subset.size() > 0 && needToRecalculateVoronoi()
              && !m_data_sharing_requested && !m_data_sharing_activated
-             && ((MOOSTime()-m_last_voronoi_calc_time) > 300) )
+             && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
         {
           // request surfacing through acomms
           m_send_surf_req = true;
@@ -471,8 +478,9 @@ bool GP::Iterate()
       // only after pilot done, first one 600 seconds after HP optimiz done
       // (storing of GP right after HP optimization is started in runHPOptimization)
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_hp_optim_done_time) % 600 == 0) )
+           ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 0) ) // -m_hp_optim_done_time
       {
+        std::cout << GetAppName() << " :: saving state at mission time: " << std::floor(MOOSTime()-m_start_time) << std::endl;
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
         m_last_pred_save = MOOSTime();
@@ -482,7 +490,7 @@ bool GP::Iterate()
 
     //// FINAL HP OPTIM ////////////////////////////////////////////////////////
     // when returning, do a final HP optimization
-    if ( m_hp_optim_mode_cnt == 2 && !m_finished )
+    if ( m_hp_optim_mode_cnt == 1 && !m_finished )
     {
       if ( !m_hp_optim_running )
       {
@@ -494,7 +502,7 @@ bool GP::Iterate()
         if ( m_verbose )
           std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
 
-        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 10);
+        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 10); // std::ref(m_gp),  //TODO 10 or 20 or?
       }
       else
       {
@@ -547,29 +555,17 @@ bool GP::OnStartUp()
 
     bool handled = true;
     if ( param == "verbose" )
-    {
       m_verbose = (value == "true") ? true : false;
-    }
     else if ( param == "input_var_data" )
-    {
       m_input_var_data = toupper(value);
-    }
     else if ( param == "input_var_sample_points" )
-    {
       m_input_var_sample_points = toupper(value);
-    }
     else if ( param == "input_var_sample_points_specs")
-    {
       m_input_var_sample_points_specs = toupper(value);
-    }
     else if ( param == "input_var_adaptive_trigger" )
-    {
       m_input_var_adaptive_trigger = toupper(value);
-    }
     else if ( param == "output_var_predictions" )
-    {
       m_output_var_pred = toupper(value);
-    }
     else if ( param == "prediction_interval" )
     {
       m_prediction_interval = (size_t)atoi(value.c_str());
@@ -586,14 +582,14 @@ bool GP::OnStartUp()
       // prepare file actions
       std::string file_pm = (m_output_filename_prefix + "_pred_mean.csv");
       std::string file_pv = (m_output_filename_prefix + "_pred_var.csv");
-      m_ofstream_pm.open(file_pm, std::ios::app);
-      m_ofstream_pv.open(file_pv, std::ios::app);
+      m_ofstream_pm_lGP.open(file_pm, std::ios::app);
+      m_ofstream_pv_lGP.open(file_pv, std::ios::app);
       if ( m_use_log_gp )
       {
         std::string file_pmu = (m_output_filename_prefix + "_post_mu.csv");
         std::string file_psigma = (m_output_filename_prefix + "_post_sigma2.csv");
-        m_ofstream_pmu.open(file_pmu, std::ios::app);
-        m_ofstream_psigma2.open(file_psigma, std::ios::app);
+        m_ofstream_pmu_GP.open(file_pmu, std::ios::app);
+        m_ofstream_psigma2_GP.open(file_psigma, std::ios::app);
       }
     }
     else if ( param == "use_log_gp" )
@@ -609,33 +605,25 @@ bool GP::OnStartUp()
         std::cout << GetAppName() << " :: nr_vehicles: " << m_num_vehicles << std::endl;
     }
     else if ( param == "output_var_share_data" )
-    {
       m_output_var_share_data = toupper(value);
-    }
     else if ( param == "input_var_share_data" )
-    {
       m_input_var_share_data = toupper(value);
-    }
     else if ( param == "timed_data_sharing" )
-    {
       m_timed_data_sharing = (value == "true" ? true : false);
-    }
+    else if ( param == "data_sharing_interval" )
+      m_data_sharing_interval = (size_t)atoi(value.c_str());
     else if ( param == "output_var_handshake_data_sharing" )
-    {
       m_output_var_handshake_data_sharing = toupper(value);
-    }
     else if ( param == "input_var_handshake_data_sharing" )
-    {
       m_input_var_handshake_data_sharing = toupper(value);
-    }
     else if ( param == "acomms_sharing" )
-    {
       m_acomms_sharing = (value == "true" ? true : false);
-    }
-    else if ( param == "use_voronoi")
-    {
+    else if ( param == "use_voronoi" )
       m_use_voronoi = (value == "true" ? true : false);
-    }
+    else if ( param == "voronoi_timeout" )
+      m_vor_timeout = (size_t)atoi(value.c_str());
+    else if ( param == "downsample_factor" )
+      m_downsample_factor = (size_t)atoi(value.c_str());
     else
       handled = false;
 
@@ -1063,6 +1051,10 @@ void GP::dataAddingThread()
       double veh_lon = data_pt[0];
       double veh_lat = data_pt[1];
 
+      // downsampled data for hyperparam optimization
+      if ( m_gp.get_sampleset_size() % m_downsample_factor == 0 )
+        m_data_for_hp_optim.push(data_pt);
+
       // add data pt
       addPatternToGP(veh_lon, veh_lat, data_pt[2]);
 
@@ -1205,7 +1197,7 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     if ( m_verbose )
     {
       std::cout << '\n' << GetAppName() << " :: moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
-      std::cout << GetAppName() << " ::  from unvisited to visited.\n";
+      std::cout << " from unvisited to visited.\n";
       std::cout << GetAppName() << " :: Unvisited size: " << m_sample_points_unvisited.size() << '\n';
       std::cout << GetAppName() << " :: Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
     }
@@ -1264,7 +1256,34 @@ void GP::findNextSampleLocation()
       else
         m_future_next_pt = std::async(std::launch::async, &GP::calcMECriterion, this);
     }
+    else
+      std::cout << GetAppName() << " :: m_sample_points_unvisited is empty, unable to find next location" << std::endl;
   }
+  else
+  {
+    std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
+    getRandomStartLocation();
+  }
+}
+
+//---------------------------------------------------------
+// Procedure: getRandomStartLocation
+//            before there is data in the GP,
+//            grab a random location to start from
+//
+void GP::getRandomStartLocation()
+{
+  int random_idx = (int)(rand() % (m_sample_locations.size()));
+  std::pair<double, double> rand_loc = m_sample_locations.at(random_idx);
+
+  std::ostringstream output_stream;
+  output_stream << std::setprecision(15) << rand_loc.first << "," << rand_loc.second;
+  m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+  // update state vars
+  m_last_published = MOOSTime();
+  m_need_nxt_wpt = false;
+  m_pause_data_adding = false;
 }
 
 //---------------------------------------------------------
@@ -1506,9 +1525,9 @@ size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
     {
       // convert to log GP
       double mean_yA_lGP, var_yA_lGP; // visited set
-      logGPfromGP(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
+      getLogGPPredMeanVarFromGPMeanVar(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
       double mean_yAv_lGP, var_yAv_lGP; // unvisited set
-      logGPfromGP(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
+      getLogGPPredMeanVarFromGPMeanVar(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
 
       // TODO change for log GP, incorp mean, current incorrect (is for GP)
       div = 0.5 * log( var_yA_lGP / var_yAv_lGP );
@@ -1631,10 +1650,10 @@ size_t GP::processReceivedData()
 
 
 //---------------------------------------------------------
-// Procedure: runHPOptimization()
+// Procedure: runHPOptimization(nr_iterations)
 //            run in thread, call GP's hyperparam optimization
 //
-bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
+bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
 {
   bool data_processed = false;
   size_t pts_added = 0;
@@ -1700,26 +1719,48 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   // 3. run hyperparameter optimization
 
   // protect GP access with mutex
-  std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
-  while ( !hp_lock.try_lock() ){}
   if ( m_verbose)
   {
-    std::cout << GetAppName() << " :: obtained lock, continuing HP optimization" << std::endl;
-    std::cout << GetAppName() << " :: current size GP: " << gp.get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: continuing HP optimization" << std::endl; //obtained lock,
+    std::cout << GetAppName() << " :: current size GP: " << m_gp.get_sampleset_size() << std::endl;
   }
 
-  std::clock_t begin = std::clock();
-
   // optimization
-  // there are 2 methods in gplib, conjugate gradient and RProp, the latter
-  // should be more efficient
+  // there are 2 methods in gplib, conjugate gradient and RProp,
+  // the latter should be more efficient
   libgp::RProp rprop;
   rprop.init();
 
-  // RProp arguments: GP, 'n' (nr iterations), verbose
-  rprop.maximize(&gp, nr_iterations, 0);
+  std::clock_t begin = std::clock();
+
+  // make GP from downsampled data
+  libgp::GaussianProcess downsampled_gp(2, "CovSum(CovSEiso, CovNoise)");
+  // params, copied from beginning
+  Eigen::VectorXd params(m_gp.covf().get_param_dim());
+  params << -12.4292, -0.9, 0.64;
+  // set loghyperparams
+  downsampled_gp.covf().set_loghyper(params);
+
+  while ( !m_data_for_hp_optim.empty() )
+  {
+    std::vector<double> pt = m_data_for_hp_optim.front();
+    m_data_for_hp_optim.pop();
+
+    double loc[2] = {pt[0], pt[1]};
+    double dval = m_use_log_gp ? log(pt[2]) : pt[2];
+    downsampled_gp.add_pattern(loc, dval);
+  }
 
   std::clock_t end = std::clock();
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: runtime putting data into downsampled_gp: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+
+  begin = std::clock();
+
+  // RProp arguments: GP, 'n' (nr iterations), verbose
+  rprop.maximize(&downsampled_gp, nr_iterations, 0);
+
+  end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
@@ -1727,12 +1768,22 @@ bool GP::runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations)
   begin = std::clock();
   std::stringstream filenm;
   filenm << "hp_optim_" << m_veh_name << "_" << nr_iterations;
-  gp.write(filenm.str().c_str());
+  downsampled_gp.write(filenm.str().c_str());
   end = std::clock();
 
   if ( m_debug )
     std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
+  // pass on params to GP
+  Eigen::VectorXd hparams = downsampled_gp.covf().get_loghyper();
+
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: new hyperparameters: " << hparams << std::endl;
+
+  std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
+  while ( !hp_lock.try_lock() ){}
+  m_gp.covf().set_loghyper(hparams);
+  // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
 
   // first save of predictions
@@ -1802,10 +1853,10 @@ void GP::sendData()
 
 
 //---------------------------------------------------------
-// Procedure: logGPfromGP
+// Procedure: getLogGPPredMeanVarFromGPMeanVar
 //            convert pred mean/var from GP to pred mean/var for log GP
 //
-void GP::logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov )
+void GP::getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov )
 {
   // convert GP mean to log GP mean (lognormal mean)
   lgp_mean = exp(gp_mean + gp_cov/2.0);
@@ -1830,24 +1881,24 @@ void GP::makeAndStorePredictions()
 
   std::vector< std::pair<double, double> >::iterator loc_itr;
   // get the predictive mean and var values for all sample locations
-  std::vector<double> all_pred_means;
-  std::vector<double> all_pred_vars;
-  std::vector<double> all_pred_mu;
-  std::vector<double> all_pred_sigma2;
+  std::vector<double> all_pred_means_lGP;
+  std::vector<double> all_pred_vars_lGP;
+  std::vector<double> all_pred_mu_GP;
+  std::vector<double> all_pred_sigma2_GP;
   // pre-alloc vectors
   size_t nr_sample_locations = m_sample_locations.size();
-  all_pred_means.reserve(nr_sample_locations);
-  all_pred_vars.reserve(nr_sample_locations);
-  all_pred_mu.reserve(nr_sample_locations);
-  all_pred_sigma2.reserve(nr_sample_locations);
+  all_pred_means_lGP.reserve(nr_sample_locations);
+  all_pred_vars_lGP.reserve(nr_sample_locations);
+  all_pred_mu_GP.reserve(nr_sample_locations);
+  all_pred_sigma2_GP.reserve(nr_sample_locations);
 
   // make predictions for all sample locations
   for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
   {
     double loc[2] {loc_itr->first, loc_itr->second};
-    double pred_mean;
-    double pred_var;
-    gp_copy.f_and_var(loc, pred_mean, pred_var);
+    double pred_mean_GP;
+    double pred_var_GP;
+    gp_copy.f_and_var(loc, pred_mean_GP, pred_var_GP);
 
     double pred_mean_lGP, pred_var_lGP;
     if ( m_use_log_gp )
@@ -1855,20 +1906,20 @@ void GP::makeAndStorePredictions()
       // params lognormal distr
       // convert to lGP mean and variance
       // to get back in the 'correct' scale for comparison to generated data
-      logGPfromGP(pred_mean, pred_var, pred_mean_lGP, pred_var_lGP);
+      getLogGPPredMeanVarFromGPMeanVar(pred_mean_GP, pred_var_GP, pred_mean_lGP, pred_var_lGP);
     }
 
     if ( m_use_log_gp )
     {
-      all_pred_means.push_back(pred_mean_lGP);
-      all_pred_vars.push_back(pred_var_lGP);
-      all_pred_mu.push_back(pred_mean);
-      all_pred_sigma2.push_back(pred_var);
+      all_pred_means_lGP.push_back(pred_mean_lGP);
+      all_pred_vars_lGP.push_back(pred_var_lGP);
+      all_pred_mu_GP.push_back(pred_mean_GP);
+      all_pred_sigma2_GP.push_back(pred_var_GP);
     }
     else
     {
-      all_pred_means.push_back(pred_mean);
-      all_pred_vars.push_back(pred_var);
+      all_pred_means_lGP.push_back(pred_mean_GP);
+      all_pred_vars_lGP.push_back(pred_var_GP);
     }
   }
   std::clock_t end = std::clock();
@@ -1885,38 +1936,38 @@ void GP::makeAndStorePredictions()
     // save to file, storing predictions
     if ( vector_idx > 0 )
     {
-      m_ofstream_pm << ", ";
-      m_ofstream_pv << ", ";
+      m_ofstream_pm_lGP << ", ";
+      m_ofstream_pv_lGP << ", ";
       if ( m_use_log_gp )
       {
-        m_ofstream_pmu << ", ";
-        m_ofstream_psigma2 << ", ";
+        m_ofstream_pmu_GP << ", ";
+        m_ofstream_psigma2_GP << ", ";
       }
     }
-    m_ofstream_pm << all_pred_means[vector_idx];
-    m_ofstream_pv << all_pred_vars[vector_idx];
+    m_ofstream_pm_lGP << all_pred_means_lGP[vector_idx];
+    m_ofstream_pv_lGP << all_pred_vars_lGP[vector_idx];
     if ( m_use_log_gp )
     {
-      m_ofstream_pmu << all_pred_mu[vector_idx];
-      m_ofstream_psigma2 << all_pred_sigma2[vector_idx];
+      m_ofstream_pmu_GP << all_pred_mu_GP[vector_idx];
+      m_ofstream_psigma2_GP << all_pred_sigma2_GP[vector_idx];
     }
   }
-  m_ofstream_pm << '\n';
-  m_ofstream_pv << '\n';
+  m_ofstream_pm_lGP << '\n';
+  m_ofstream_pv_lGP << '\n';
   if ( m_use_log_gp )
   {
-    m_ofstream_pmu << '\n';
-    m_ofstream_psigma2 << '\n';
+    m_ofstream_pmu_GP << '\n';
+    m_ofstream_psigma2_GP << '\n';
   }
 
   if ( m_finished )
   {
-    m_ofstream_pm.close();
-    m_ofstream_pv.close();
+    m_ofstream_pm_lGP.close();
+    m_ofstream_pv_lGP.close();
     if ( m_use_log_gp )
     {
-      m_ofstream_pmu.close();
-      m_ofstream_psigma2.close();
+      m_ofstream_pmu_GP.close();
+      m_ofstream_psigma2_GP.close();
     }
   }
 
