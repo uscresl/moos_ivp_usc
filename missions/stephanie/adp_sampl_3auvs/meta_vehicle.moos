@@ -262,7 +262,7 @@ ProcessConfig = pPublishAfterX
   publish_after_secs = 3359:3531
 #endif
 #ifdef NR_VEHICLES 3
-  publish_after_secs = 2552:2756
+  publish_after_secs = 2641:2818 //2552:2756
 #endif
 
   // the var/val set to publish
