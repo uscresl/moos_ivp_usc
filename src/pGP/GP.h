@@ -65,10 +65,11 @@ class GP : public CMOOSApp
    void addPatternToGP(double veh_lon, double veh_lat, double value);
    void dataAddingThread();
 
-   bool runHPOptimization(libgp::GaussianProcess & gp, size_t nr_iterations);
+   bool runHPOptimization(size_t nr_iterations); //libgp::GaussianProcess & gp,
 
    void findAndPublishNextWpt();
    void findNextSampleLocation();
+   void getRandomStartLocation();
 
    // mutual information
    size_t calcMICriterion(libgp::CovarianceFunction& cov_f);
@@ -76,7 +77,7 @@ class GP : public CMOOSApp
    void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
    void getTgtValUnvisited(Eigen::VectorXd & t_av);
    //, size_t size_unvisited, Eigen::Vector2d & best_so_far_y, double & best_so_far);
-   void logGPfromGP(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
+   void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
 
    // maximum entropy
    size_t calcMECriterion();
@@ -163,8 +164,9 @@ class GP : public CMOOSApp
    double m_lon_deg_to_m;
    double m_lat_deg_to_m;
    // mission status
-   double m_pilot_done_time;
-   double m_hp_optim_done_time;
+   double m_start_time;
+//   double m_pilot_done_time;
+//   double m_hp_optim_done_time;
    bool m_need_nxt_wpt;
    bool m_finding_nxt;
 
@@ -182,6 +184,7 @@ class GP : public CMOOSApp
 
    // create queue for adding of points to GP
    std::queue< std::vector<double> > m_queue_data_points_for_gp;
+   std::queue< std::vector<double> > m_data_for_hp_optim;
 
    // hyperparam optimization in multi-threading
    std::future<bool> m_future_hp_optim;
@@ -200,8 +203,8 @@ class GP : public CMOOSApp
    size_t m_hp_optim_mode_cnt;
 
    // file writing
-   std::ofstream m_ofstream_pm, m_ofstream_pv;
-   std::ofstream m_ofstream_pmu, m_ofstream_psigma2;
+   std::ofstream m_ofstream_pm_lGP, m_ofstream_pv_lGP;
+   std::ofstream m_ofstream_pmu_GP, m_ofstream_psigma2_GP;
 
    // nr of vehicles (for determining data exchange)
    size_t m_num_vehicles;
@@ -217,6 +220,7 @@ class GP : public CMOOSApp
 
    // timed data sharing
    bool m_timed_data_sharing;
+   size_t m_data_sharing_interval;
    bool m_data_sharing_activated;
    bool m_sending_data;
    std::future<size_t> m_future_received_data_processed;
@@ -259,6 +263,10 @@ class GP : public CMOOSApp
    std::future<size_t> m_future_calc_prevoronoi;
    bool m_calc_prevoronoi;
    bool m_precalc_pred_voronoi_done;
+   size_t m_vor_timeout;
+
+   // downsampling data for HP optimization
+   size_t m_downsample_factor;
 };
 
 #endif
