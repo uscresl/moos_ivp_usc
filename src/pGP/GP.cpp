@@ -120,11 +120,16 @@ GP::GP() :
   // noise: let's set 10x smaller than signal
   //        stdev 0.15, ln() = -1.8971, ln() = 0.64+3.141592654i
 //  params << -12.4292, 0.4055, -1.8971;
-  params << -12.4292, -0.9, 0.64;
+  //params << -12.4292, -0.9, 0.64;
+  params << -8.927865292, 0.02335186099, -0.9098776951;
   m_gp.covf().set_loghyper(params);
 
-  // seed the random number generator
-  srand((int)time(0));
+  // seed the random number generator with a unique number
+  unsigned int veh_id;
+  m_MissionReader.GetValue("modem_id", veh_id);
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: vehicle id: " << veh_id << std::endl;
+  srand((int)time(0)+veh_id);
 }
 
 GP::~GP()
@@ -422,7 +427,7 @@ bool GP::Iterate()
         // note; may need to add buffer to block out x seconds after hpoptim_done
         if ( !m_use_voronoi &&
               m_num_vehicles > 1 &&
-             ( (size_t)std::floor(MOOSTime()) % m_data_sharing_interval ) == 0 &&
+             ( (size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval ) == 0 &&
              !m_data_sharing_activated )
         {
           // switch to data sharing mode, to switch bhv to surface
@@ -807,6 +812,12 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     double data = atof(data_pt_components[2].c_str());
     double save_val = m_use_log_gp ? log(data) : data;
 
+    if ( m_gp.get_sampleset_size() % m_downsample_factor == 0 )
+    {
+      std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
+      m_data_for_hp_optim.push(nw_data_pt);
+    }
+
     m_gp.add_pattern(loc, save_val);
 
     // update visited set if needed
@@ -1051,10 +1062,6 @@ void GP::dataAddingThread()
       double veh_lon = data_pt[0];
       double veh_lat = data_pt[1];
 
-      // downsampled data for hyperparam optimization
-      if ( m_gp.get_sampleset_size() % m_downsample_factor == 0 )
-        m_data_for_hp_optim.push(data_pt);
-
       // add data pt
       addPatternToGP(veh_lon, veh_lat, data_pt[2]);
 
@@ -1081,11 +1088,17 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   // log GP: take log (ln) of measurement
   double save_val = m_use_log_gp ? log(value) : value;
 
-  // Input vectors x must be provided as double[] and targets y as double.
+  // downsampled data for hyperparam optimization
+  if ( m_gp.get_sampleset_size() % m_downsample_factor == 0 )
+  {
+    std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
+    m_data_for_hp_optim.push(nw_data_pt);
+  }
 
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
   // obtain lock
   while ( !ap_lock.try_lock() ) {}
+  // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
   m_gp.add_pattern(location, save_val);
   // release mutex
@@ -1737,9 +1750,13 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
   libgp::GaussianProcess downsampled_gp(2, "CovSum(CovSEiso, CovNoise)");
   // params, copied from beginning
   Eigen::VectorXd params(m_gp.covf().get_param_dim());
-  params << -12.4292, -0.9, 0.64;
+  params << -8.927865292, 0.02335186099, -0.9098776951;
+  //params << -12.4292, -0.9, 0.64;
   // set loghyperparams
   downsampled_gp.covf().set_loghyper(params);
+
+  if ( m_verbose )
+    std::cout << "size m_data_for_hp_optim: " << m_data_for_hp_optim.size() << std::endl;
 
   while ( !m_data_for_hp_optim.empty() )
   {
@@ -1748,6 +1765,7 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
 
     double loc[2] = {pt[0], pt[1]};
     double dval = m_use_log_gp ? log(pt[2]) : pt[2];
+    std::cout << "data point: " << loc[0] << "," << loc[1] << "," << dval << std::endl;
     downsampled_gp.add_pattern(loc, dval);
   }
 
