@@ -51,15 +51,13 @@ ProcessConfig = ANTLER
 
   // add other processes here
   uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
-  Run = uSimBioSensor @ NewConsole = false
-  //true,XConfig=uSBSConfig
+  Run = uSimBioSensor @ NewConsole = true,XConfig=uSBSConfig
 
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP @ NewConsole = false
+  Run = pGP @ NewConsole = true,XConfig=pGPConfig
 
   pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
-  Run = pSamplePoints @ NewConsole = false
-  //true,XConfig=pSPConfig
+  Run = pSamplePoints @ NewConsole = true,XConfig=pSPConfig
 
   Run = pLonLatToWptUpdate @ NewConsole = false
 
@@ -145,9 +143,12 @@ ProcessConfig = pGP
   // elementary coordination (implicit): share data at set intervals
 #ifdef USE_TDS yes
   timed_data_sharing = true
+  // interval between data sharing events (seconds)
+  data_sharing_interval = 600
 #else
   timed_data_sharing = false
 #endif
+  // vars for data sharing
   output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
   input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
 
@@ -160,9 +161,14 @@ ProcessConfig = pGP
 
 #ifdef USE_VORONOI yes
   use_voronoi = true
+  // minimum timeout between voronoi calculations (sec)
+  voronoi_timeout = 300
 #else
   use_voronoi = false
 #endif
+
+  // take one in X data points for HP optimization
+  downsample_factor = 4
 }
 
 //--------------------------------------------------
@@ -243,8 +249,8 @@ ProcessConfig = pPublishAfterX
   CommsTick = 2
 
   // which var/val to monitor
-  publish_after_var = STAGE
-  publish_after_val = survey
+  publish_after_var = DEPLOY
+  publish_after_val = true
 
   // how many seconds after above var/val should we publish?
   // you can give either a number, or a range (eg. 10:20)
@@ -262,6 +268,9 @@ ProcessConfig = pPublishAfterX
   // the var/val set to publish
   publish_var = STAGE
   publish_val = hpoptim
+  
+  // skip first message?
+  skip_first = false
 }
 #endif
 
