@@ -66,6 +66,7 @@ class GP : public CMOOSApp
    void dataAddingThread();
 
    bool runHPOptimization(size_t nr_iterations); //libgp::GaussianProcess & gp,
+   void runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations);
 
    void findAndPublishNextWpt();
    void findNextSampleLocation();

@@ -122,12 +122,13 @@ GP::GP() :
   //         stdev 1.5, ln() = 0.4055, ln() = -0.9
   // noise: let's set 10x smaller than signal
   //        stdev 0.15, ln() = -1.8971, ln() = 0.64+3.141592654i
-//  params << -12.4292, 0.4055, -1.8971;
+  params << -12.4292, 0.4055, -1.8971;
   //params << -12.4292, -0.9, 0.64;
-  params << -8.927865292, 0.02335186099, -0.9098776951;
+  //params << -8.927865292, 0.02335186099, -0.9098776951;
   m_gp.covf().set_loghyper(params);
 
-  //srand((int)time(0));
+  // use a unique seed to initialize srand,
+  // using milliseconds because vehicles can start within same second
   struct timeval time;
   gettimeofday(&time,NULL);
   int rand_seed = (time.tv_sec * 1000) + (time.tv_usec / 1000);
@@ -511,7 +512,7 @@ bool GP::Iterate()
         if ( m_verbose )
           std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
 
-        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 10); // std::ref(m_gp),  //TODO 10 or 20 or?
+        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 20); // std::ref(m_gp),  //TODO 10 or 20 or?
       }
       else
       {
@@ -1742,7 +1743,36 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
     std::cout << GetAppName() << " :: current size GP: " << m_gp.get_sampleset_size() << std::endl;
   }
 
+  Eigen::VectorXd lh_gp(m_gp.covf().get_loghyper()); // via param function
+  runHPoptimizationOnDownsampledGP(lh_gp, nr_iterations);
+
+  // pass on params to GP
+  Eigen::VectorXd hparams(lh_gp); //downsampled_gp.covf().get_loghyper());
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: new hyperparameters: " << hparams << std::endl;
+
+  std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
+  while ( !hp_lock.try_lock() ){}
+  m_gp.covf().set_loghyper(hparams);
+  // just update hyperparams. Call for f and var should init re-compute.
+  hp_lock.unlock();
+
+  // delete the created downsampled GP to clear memory
+
+  std::cout << " new m_GP hyper params: " << m_gp.covf().get_loghyper() << std::endl;
+
+  // first save of predictions
+  std::thread pred_store(&GP::makeAndStorePredictions, this);
+  pred_store.detach();
+  m_last_pred_save = MOOSTime();
+
+  return true;
+}
+
+void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations)
+{
   // optimization
+
   // there are 2 methods in gplib, conjugate gradient and RProp,
   // the latter should be more efficient
   libgp::RProp rprop;
@@ -1753,38 +1783,54 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
   // make GP from downsampled data
   libgp::GaussianProcess downsampled_gp(2, "CovSum(CovSEiso, CovNoise)");
   // params, copied from beginning
-  Eigen::VectorXd params(m_gp.covf().get_param_dim());
-  params << -8.927865292, 0.02335186099, -0.9098776951;
+  //Eigen::VectorXd lh_gp(m_gp.covf().get_loghyper()); // via param function
+  //Eigen::VectorXd params(downsampled_gp.covf().get_param_dim());
+  //params << -8.927865292, 0.02335186099, -0.9098776951;
+  //params << -12.4292, 0.4055, -1.8971;
   //params << -12.4292, -0.9, 0.64;
   // set loghyperparams
-  downsampled_gp.covf().set_loghyper(params);
+  downsampled_gp.covf().set_loghyper(loghp);
+  std::cout << GetAppName() << " :: loghyperparams before optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
+  // fill new GP with downsampled data
   if ( m_verbose )
     std::cout << "size m_data_for_hp_optim: " << m_data_for_hp_optim.size() << std::endl;
-
+  double loc[2];
   while ( !m_data_for_hp_optim.empty() )
   {
     std::vector<double> pt = m_data_for_hp_optim.front();
     m_data_for_hp_optim.pop();
 
-    double loc[2] = {pt[0], pt[1]};
-    double dval = m_use_log_gp ? log(pt[2]) : pt[2];
+    loc[0] = pt[0];
+    loc[1] = pt[1];
+    double dval = pt[2];
     std::cout << "data point: " << loc[0] << "," << loc[1] << "," << dval << std::endl;
     downsampled_gp.add_pattern(loc, dval);
   }
-
   std::clock_t end = std::clock();
   if ( m_verbose )
+  {
     std::cout << GetAppName() << " :: runtime putting data into downsampled_gp: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+    std::cout << GetAppName() << " :: size downsampled GP: " << downsampled_gp.get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: size orig GP: " << m_gp.get_sampleset_size() << std::endl;
+  }
 
+//  // test
+//  double ff, var;
+//  downsampled_gp.f_and_var(loc, ff, var);
+
+  // HP optimization
   begin = std::clock();
-
   // RProp arguments: GP, 'n' (nr iterations), verbose
-  rprop.maximize(&downsampled_gp, nr_iterations, 0);
-
+  rprop.maximize(&downsampled_gp, nr_iterations, 1);
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+
+//  // test
+//  downsampled_gp.f_and_var(loc, ff, var);
+
+  std::cout << GetAppName() << " :: loghyperparams after optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
   // write new HP to file
   begin = std::clock();
@@ -1792,29 +1838,14 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
   filenm << "hp_optim_" << m_veh_name << "_" << nr_iterations;
   downsampled_gp.write(filenm.str().c_str());
   end = std::clock();
-
   if ( m_debug )
     std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
-  // pass on params to GP
-  Eigen::VectorXd hparams = downsampled_gp.covf().get_loghyper();
-
-  if ( m_verbose )
-    std::cout << GetAppName() << " :: new hyperparameters: " << hparams << std::endl;
-
-  std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
-  while ( !hp_lock.try_lock() ){}
-  m_gp.covf().set_loghyper(hparams);
-  // just update hyperparams. Call for f and var should init re-compute.
-  hp_lock.unlock();
-
-  // first save of predictions
-  std::thread pred_store(&GP::makeAndStorePredictions, this);
-  pred_store.detach();
-  m_last_pred_save = MOOSTime();
-
-  return true;
+  // downsampled gp should be destroyed
+  loghp = downsampled_gp.covf().get_loghyper();
 }
+
+
 
 //---------------------------------------------------------
 // Procedure: sendReady()
