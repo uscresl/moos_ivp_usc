@@ -50,14 +50,17 @@ ProcessConfig = ANTLER
   Run = pShare @ NewConsole = false
 
   // add other processes here
-  uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
-  Run = uSimBioSensor @ NewConsole = true,XConfig=uSBSConfig
+  //uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
+  Run = uSimBioSensor @ NewConsole = false
+  //,XConfig=uSBSConfig
 
-  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+  //pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+  Run = pGP @ NewConsole = false
+  //,XConfig=pGPConfig
 
-  pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
-  Run = pSamplePoints @ NewConsole = true,XConfig=pSPConfig
+  //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
+  Run = pSamplePoints @ NewConsole = false
+  //,XConfig=pSPConfig
 
   Run = pLonLatToWptUpdate @ NewConsole = false
 
