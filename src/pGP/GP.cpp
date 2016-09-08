@@ -512,7 +512,7 @@ bool GP::Iterate()
         if ( m_verbose )
           std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
 
-        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 20); // std::ref(m_gp),  //TODO 10 or 20 or?
+        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 50); // std::ref(m_gp),  //TODO 10 or 20 or?
       }
       else
       {
