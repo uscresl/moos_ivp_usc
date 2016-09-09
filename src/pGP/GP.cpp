@@ -99,7 +99,9 @@ GP::GP() :
   m_calc_prevoronoi(false),
   m_precalc_pred_voronoi_done(false),
   m_vor_timeout(300),
-  m_downsample_factor(4)
+  m_downsample_factor(4),
+  m_first_surface(true),
+  m_first_hp_optim(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -433,7 +435,8 @@ bool GP::Iterate()
         if ( !m_use_voronoi &&
               m_num_vehicles > 1 &&
              ( (size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval ) == 0 &&
-             !m_data_sharing_activated )
+             !m_data_sharing_activated &&
+             (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
         {
           // switch to data sharing mode, to switch bhv to surface
           Notify("STAGE","data_sharing");
@@ -470,14 +473,37 @@ bool GP::Iterate()
 
         // next: check if received data added,
         // if so, then switch mode back to survey
-        if ( m_data_sharing_activated && m_sending_data && m_received_shared_data && !m_calc_prevoronoi )
+        if ( m_data_sharing_activated && m_sending_data && m_received_shared_data && !m_calc_prevoronoi && !m_first_hp_optim )
           tdsReceiveData();
+
+        if ( m_first_surface && m_first_hp_optim )
+        {
+          if ( m_future_first_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+          {
+            if ( m_use_voronoi )
+            {
+              // after points received, need to run a round of predictions (unvisited set has changed!)
+              m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+              m_calc_prevoronoi = true;
+            }
+            else
+            {
+              tdsResetStateVars();
+              Notify("STAGE","survey");
+            }
+            m_first_hp_optim = false;
+            m_first_surface = false;
+          }
+          else
+            std::cout << GetAppName() << " :: waiting for first hp optim" << std::endl;
+        }
 
         if ( m_use_voronoi && m_calc_prevoronoi )
         {
-          std::cout << "checking future m_future_calc_prevoronoi" << std::endl;
           if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
             runVoronoiRoutine();
+          else
+            std::cout << GetAppName() << " :: checking future m_future_calc_prevoronoi" << std::endl;
         }
       }
 
@@ -512,7 +538,7 @@ bool GP::Iterate()
         if ( m_verbose )
           std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
 
-        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 50); // std::ref(m_gp),  //TODO 10 or 20 or?
+        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100); // std::ref(m_gp),  //TODO 10 or 20 or?
       }
       else
       {
@@ -1796,6 +1822,10 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   if ( m_verbose )
     std::cout << "size m_data_for_hp_optim: " << m_data_for_hp_optim.size() << std::endl;
   double loc[2];
+
+  // keep the data in queue, in case of first_surface
+  std::queue< std::vector<double> > temp_queue(m_data_for_hp_optim);
+
   while ( !m_data_for_hp_optim.empty() )
   {
     std::vector<double> pt = m_data_for_hp_optim.front();
@@ -1807,6 +1837,18 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     std::cout << "data point: " << loc[0] << "," << loc[1] << "," << dval << std::endl;
     downsampled_gp.add_pattern(loc, dval);
   }
+  if ( m_first_surface )
+  {
+    std::cout << GetAppName() << " :: copying over " << temp_queue.size() << "items" << std::endl;
+    while ( !temp_queue.empty() )
+    {
+      std::vector<double> data_pt = temp_queue.front();
+      temp_queue.pop();
+      m_data_for_hp_optim.push(data_pt);
+    }
+  }
+
+
   std::clock_t end = std::clock();
   if ( m_verbose )
   {
@@ -1814,6 +1856,7 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     std::cout << GetAppName() << " :: size downsampled GP: " << downsampled_gp.get_sampleset_size() << std::endl;
     std::cout << GetAppName() << " :: size orig GP: " << m_gp.get_sampleset_size() << std::endl;
   }
+
 
 //  // test
 //  double ff, var;
@@ -2360,18 +2403,26 @@ void GP::tdsReceiveData()
       if ( m_verbose )
         std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
 
-      if ( m_use_voronoi )
+      // add in a HP optimization, if this is the first time.
+      if ( m_first_surface )
       {
-        // after points received, need to run a round of predictions (unvisited set has changed!)
-        m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
-        m_calc_prevoronoi = true;
+        m_future_first_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 50);
+        m_first_hp_optim = true;
       }
       else
       {
-        tdsResetStateVars();
-        Notify("STAGE","survey");
+        if ( m_use_voronoi )
+        {
+          // after points received, need to run a round of predictions (unvisited set has changed!)
+          m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+          m_calc_prevoronoi = true;
+        }
+        else
+        {
+          tdsResetStateVars();
+          Notify("STAGE","survey");
+        }
       }
-
     }
     // else, continue waiting
   }
