@@ -268,6 +268,11 @@ class GP : public CMOOSApp
 
    // downsampling data for HP optimization
    size_t m_downsample_factor;
+
+   // do HP optim on first surface for adaptive
+   bool m_first_surface;
+   std::future<bool> m_future_first_hp_optim;
+   bool m_first_hp_optim;
 };
 
 #endif
