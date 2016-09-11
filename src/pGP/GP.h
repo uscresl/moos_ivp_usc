@@ -273,6 +273,10 @@ class GP : public CMOOSApp
    bool m_first_surface;
    std::future<bool> m_future_first_hp_optim;
    bool m_first_hp_optim;
+
+   // to publish only once a second
+   double m_last_published_req_surf;
+   double m_last_published_req_surf_ack;
 };
 
 #endif
