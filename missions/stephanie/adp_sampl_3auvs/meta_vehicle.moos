@@ -54,9 +54,9 @@ ProcessConfig = ANTLER
   Run = uSimBioSensor @ NewConsole = false
   //,XConfig=uSBSConfig
 
-  //pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
   Run = pGP @ NewConsole = false
-  //,XConfig=pGPConfig
+  //true,XConfig=pGPConfig
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -166,6 +166,9 @@ ProcessConfig = pGP
   use_voronoi = true
   // minimum timeout between voronoi calculations (sec)
   voronoi_timeout = 300
+  // buffer region outside sample area for which
+  // vehicle is still counted as inside, for voronoi partitioning
+  area_buffer = 10.0
 #else
   use_voronoi = false
 #endif

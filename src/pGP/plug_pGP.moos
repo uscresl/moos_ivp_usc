@@ -48,4 +48,8 @@ ProcessConfig = pGP
 
   // take one in X data points for HP optimization
   downsample_factor = 4
+
+  // buffer region outside sample area for which
+  // vehicle is still counted as inside, for voronoi partitioning
+  area_buffer = 10.0
 }

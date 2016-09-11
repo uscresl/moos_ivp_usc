@@ -101,11 +101,14 @@ GP::GP() :
   m_vor_timeout(300),
   m_downsample_factor(4),
   m_first_surface(true),
-  m_first_hp_optim(false)
+  m_first_hp_optim(false),
+  m_area_buffer(5.0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
 
+  // usage: {lat,lon}_deg_to_m * degrees = m
+  //        degrees = meters / {lat,long}_deg_to_m
   // TODO move this to library?
   m_lat_deg_to_m = 110923.99118801417;
   m_lon_deg_to_m = 92287.20804979937;
@@ -515,12 +518,11 @@ bool GP::Iterate()
 
 
       // **** SAVING GP TO FILE **********************************************//
-      // TODO; change how this is done, given how data sharing is done?
       // periodically (every 600s = 10min), store all GP predictions
-      // only after pilot done, first one 600 seconds after HP optimiz done
-      // (storing of GP right after HP optimization is started in runHPOptimization)
+      // do not store after final hp optimization started
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 10) ) // -m_hp_optim_done_time
+           ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 10) &&
+            m_hp_optim_mode_cnt < 1 ) // -m_hp_optim_done_time
       {
         std::cout << GetAppName() << " :: saving state at mission time: " << std::floor(MOOSTime()-m_start_time) << std::endl;
         std::thread pred_store(&GP::makeAndStorePredictions, this);
@@ -548,6 +550,15 @@ bool GP::Iterate()
       }
       else
       {
+        // if last store was more than 5 min ago, store now
+        // note, could this cause diff nr of saves?
+        if ( MOOSTime() - m_last_pred_save > 300 )
+        {
+          // store predictions before last HP optim
+          std::thread pred_store(&GP::makeAndStorePredictions, this);
+          pred_store.detach();
+        }
+
         // running HP optimization
         // check if the thread is done
         std::cout << "checking future m_future_hp_optim" << std::endl;
@@ -666,6 +677,8 @@ bool GP::OnStartUp()
       m_vor_timeout = (size_t)atoi(value.c_str());
     else if ( param == "downsample_factor" )
       m_downsample_factor = (size_t)atoi(value.c_str());
+    else if ( param == "area_buffer" )
+      m_area_buffer = (double)atof(value.c_str());
     else
       handled = false;
 
@@ -2145,7 +2158,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   m_voronoi_subset.clear();
   m_voronoi_subset_other_vehicles.clear();
 
-  if ( m_debug )
+  if ( m_verbose )
     std::cout << GetAppName() << " :: \nown vehicle at: " << own_lon << "," << own_lat << '\n';
 
   // if own vehicle is not in sample area,
@@ -2153,6 +2166,9 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   // this should only happen at the start of the adaptive sampling
   if ( !inSampleRectangle(own_lon, own_lat, true) )
   {
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: not inside sample region" << std::endl;
+    // copy over all unvisited locations
     for ( auto map_item : m_sample_points_unvisited )
       m_voronoi_subset.push_back(map_item.first);
   }
@@ -2160,8 +2176,6 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   {
     // else, split sample area, given other vehicles
     // for all points in the unvisited set
-    if ( m_debug )
-      std::cout << GetAppName() << " ::  dividing: " << m_sample_points_unvisited.size() << std::endl;
     for ( auto pt : m_sample_points_unvisited )
     {
       size_t pt_key = pt.first;
@@ -2179,6 +2193,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
 
           if ( m_verbose )
           {
+            // at first location, print out which vehicle we are checking for now
             if ( pt_key == m_sample_points_unvisited.begin()->first )
               std::cout << GetAppName() << " :: other vehicle: " << veh.first << " at: " << veh_lon << "," << veh_lat << '\n';
           }
@@ -2203,10 +2218,13 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
       {
         auto other_veh = m_voronoi_subset_other_vehicles.find(closest_vehicle);
         if ( other_veh != m_voronoi_subset_other_vehicles.end() )
+        {
+          // vehicle already in subset map, add the point to its vector
           (other_veh->second).push_back(pt_key);
+        }
         else
         {
-          // store other voronoi subsets
+          // vehicle not yet in subset map, insert here
           std::vector<size_t> nw;
           nw.push_back(pt_key);
           m_voronoi_subset_other_vehicles.insert(std::pair<std::string, std::vector<size_t>>(closest_vehicle, nw));
@@ -2239,9 +2257,8 @@ bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) cons
 {
   // if just outside data grid, but close enough,
   // should be able to map to border points
-  // buffer of 5 meters (TODO make parameter?)
-  double buffer_lon = 5.0/m_lon_deg_to_m;
-  double buffer_lat = 5.0/m_lat_deg_to_m;
+  double buffer_lon = m_area_buffer/m_lon_deg_to_m;
+  double buffer_lat = m_area_buffer/m_lat_deg_to_m;
 
   if ( use_buffer )
     return ( veh_lon >= (m_min_lon-buffer_lon) && veh_lat >= (m_min_lat-buffer_lat) &&
@@ -2641,11 +2658,15 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
     else
     {
       Eigen::Vector2d loc = pt_itr->second;
+      //if ( m_debug )
+      std::cout << GetAppName() << " :: wt: " << wt << std::endl;
       sum_wt += wt;
       sum_val_lon += wt*loc(0);
       sum_val_lat += wt*loc(1);
     }
   }
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: sum_wt: " << sum_wt << std::endl;
   // then calculate the centroid, given density
   centroid_lon = (sum_wt > 0 ? (sum_val_lon / sum_wt) : 0);
   centroid_lat = (sum_wt > 0 ? (sum_val_lat / sum_wt) : 0);
