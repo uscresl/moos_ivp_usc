@@ -255,7 +255,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       if ( sval != m_veh_name )
       {
-        if ( m_dep < 0.1 ) // simulate that we only received on surface
+        if ( std::abs(m_dep) < 0.2 ) // simulate that we only received on surface
         {
           if ( m_verbose )
             std::cout << GetAppName() << " :: received READY at: " << MOOSTime() << " from: " << sval << std::endl;
@@ -295,7 +295,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << std::endl;
         std::cout << GetAppName() << " :: m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
       }
-      if ( !own_msg && !m_data_sharing_requested && !m_send_ack )
+      if ( !own_msg && !m_data_sharing_requested && !m_send_ack && (MOOSTime() - m_last_voronoi_calc_time) > m_vor_timeout )
       {
         // prep for surfacing
         m_data_sharing_requested = true;
@@ -453,10 +453,16 @@ bool GP::Iterate()
         }
         // do actual sending of surface request and ack based on global vars
         // such that we do this until no longer desired
-        if ( m_send_surf_req )
+        if ( m_send_surf_req && (MOOSTime() - m_last_published_req_surf) > 1.0 )
+        {
           m_Comms.Notify("REQ_SURFACING","true");
-        if ( m_send_ack )
+          m_last_published_req_surf = MOOSTime();
+        }
+        if ( m_send_ack && (MOOSTime() - m_last_published_req_surf_ack) > 1.0 )
+        {
           m_Comms.Notify("REQ_SURFACING_ACK","true");
+          m_last_published_req_surf_ack = MOOSTime();
+        }
         //
         // if ack received, trigger requested (in handleMail)
         //
@@ -468,7 +474,7 @@ bool GP::Iterate()
         }
 
         // when at the surface, send data
-        if ( m_data_sharing_activated && !m_sending_data && m_dep < 0.1 )
+        if ( m_data_sharing_activated && !m_sending_data && std::abs(m_dep) < 0.2 )
           tdsHandshake();
 
         // next: check if received data added,
@@ -691,6 +697,9 @@ bool GP::OnStartUp()
   data_thread.detach();
 
   m_last_voronoi_calc_time = MOOSTime();
+  m_last_published_req_surf = MOOSTime();
+  m_last_published_req_surf_ack = MOOSTime();
+  m_last_published = MOOSTime();
 
   return(true);
 }
@@ -1708,7 +1717,7 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
   if ( m_num_vehicles > 1 )
   {
     // 1. wait until the vehicle is at the surface and at the HP loiter
-    while ( !(m_dep < 0.1 && m_loiter_dist_to_poly < 20) )
+    while ( !( std::abs(m_dep) < 0.2 && m_loiter_dist_to_poly < 20) )
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // handshake
@@ -2346,7 +2355,7 @@ void GP::tdsHandshake()
 {
   size_t moos_t = (size_t)std::floor(MOOSTime());
   // send data
-  if ( m_received_ready && m_dep < 0.1 )
+  if ( m_received_ready && std::abs(m_dep) < 0.2 )
   {
     m_send_ack = false;
     // other vehicle already ready to exchange data
@@ -2363,12 +2372,12 @@ void GP::tdsHandshake()
   }
   else
   {
-    if ( m_dep < 0.1 ) // send only when at surface
+    if ( std::abs(m_dep) < 0.2 ) // send only when at surface
     {
-      // this vehicle ready to exchange data, other vehicle not yet,
+      // this vehicle is ready to exchange data, other vehicle not yet,
       // keep sending that we are ready:
-      // every 10 seconds, notify that we are ready for data exchange
-      if ( moos_t % 30 == 0 &&
+      // every 2 seconds, notify that we are ready for data exchange
+      if ( moos_t % 2 == 0 &&
            moos_t - m_last_ready_sent > 1 )
       {
         sendReady();
@@ -2446,7 +2455,11 @@ void GP::tdsResetStateVars()
   m_received_ready = false;
   m_data_sharing_requested = false;
   if ( m_use_voronoi )
+  {
     m_precalc_pred_voronoi_done = true;
+    m_send_surf_req = false;
+    m_send_ack = false;
+  }
   m_rec_ready_veh.clear();
   m_rec_ack_veh.clear();
 }
