@@ -66,7 +66,7 @@ ProcessConfig = ANTLER
 
   #ifdef ADAPTIVE_WPTS yes
 //  Run = uTimerScript @ NewConsole = false
-  Run = pPublishAfterX @ NewConsole = true
+  Run = pPublishAfterX @ NewConsole = false
   #endif
 
   #ifdef USE_ACOMMS yes
