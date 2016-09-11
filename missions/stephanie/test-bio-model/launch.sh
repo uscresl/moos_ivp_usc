@@ -58,9 +58,11 @@ PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south"
 PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
+#PILOT_LM_1="format=lawnmower,label=pilot-survey,x=550,y=1050,width=100,height=100,lane_width=100,degs=0,startx=0,starty=0"
 PILOT_LM_1="format=lawnmower,label=pilot-survey,x=600,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
 PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
 PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
+#PILOT_LM_2="format=lawnmower,label=pilot-survey,x=650,y=1050,width=100,height=100,lane_width=100,degs=0,startx=0,starty=0"
 PILOT_LM_2="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
 PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
 PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
