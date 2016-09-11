@@ -274,12 +274,12 @@ ProcessConfig = pAcommsHandler
       role { type: TIMESTAMP field: "Timestamp" }
       manipulator: ON_DEMAND	manipulator: LOOPBACK
     }
-    message_entry { protobuf_name: "SurfacingRequest"  ack: true  max_queue: 2  ttl: 300  value_base: 2  newest_first: false
+    message_entry { protobuf_name: "SurfacingRequest"  ack: true  max_queue: 1  ttl: 100  value_base: 2  newest_first: true
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "_dest_id" }
       role { type: TIMESTAMP  field: "_time" }
     }
-    message_entry { protobuf_name: "SurfacingRequestAck"  ack: true  max_queue: 2  ttl: 300  value_base: 2  newest_first: false
+    message_entry { protobuf_name: "SurfacingRequestAck"  ack: true  max_queue: 1  ttl: 100  value_base: 2  newest_first: false
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "_dest_id" }
       role { type: TIMESTAMP  field: "_time" }
