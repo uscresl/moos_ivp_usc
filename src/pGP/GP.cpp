@@ -520,7 +520,7 @@ bool GP::Iterate()
       // only after pilot done, first one 600 seconds after HP optimiz done
       // (storing of GP right after HP optimization is started in runHPOptimization)
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 0) ) // -m_hp_optim_done_time
+           ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 10) ) // -m_hp_optim_done_time
       {
         std::cout << GetAppName() << " :: saving state at mission time: " << std::floor(MOOSTime()-m_start_time) << std::endl;
         std::thread pred_store(&GP::makeAndStorePredictions, this);
@@ -1796,10 +1796,10 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
 
   std::cout << " new m_GP hyper params: " << m_gp.covf().get_loghyper() << std::endl;
 
-  // first save of predictions
-  std::thread pred_store(&GP::makeAndStorePredictions, this);
-  pred_store.detach();
-  m_last_pred_save = MOOSTime();
+//  // first save of predictions
+//  std::thread pred_store(&GP::makeAndStorePredictions, this);
+//  pred_store.detach();
+//  m_last_pred_save = MOOSTime();
 
   return true;
 }
