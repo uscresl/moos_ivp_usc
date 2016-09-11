@@ -277,6 +277,9 @@ class GP : public CMOOSApp
    // to publish only once a second
    double m_last_published_req_surf;
    double m_last_published_req_surf_ack;
+
+   // buffer around area for which vehicle is counted to be inside the area
+   double m_area_buffer;
 };
 
 #endif

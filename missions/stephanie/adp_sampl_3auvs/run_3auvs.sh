@@ -90,7 +90,7 @@ for idx in `seq 1 5`; do
 	sleep 30 && uPokeDB targ_shoreside.moos "DEPLOY_ALL=true"
 
 	# wait for sim to run, then end it
-	sleep 3500 && ./kill.sh
+	sleep 3600 && ./kill.sh
 
 	# move log files to dir
 	sleep 5 && ./mv_logs_to_dir.sh od_tds_2auvs_l$idx
@@ -106,7 +106,7 @@ for idx in `seq 1 5`; do
 	sleep 30 && uPokeDB targ_shoreside.moos "DEPLOY_ALL=true"
 
 	# wait for sim to run, then end it
-	sleep 3500 && ./kill.sh
+	sleep 3600 && ./kill.sh
 
 	# move log files to dir
 	sleep 5 && ./mv_logs_to_dir.sh od_vor_2auvs_l$idx
