@@ -1365,20 +1365,29 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
   // greedy: pick best
   if ( m_use_voronoi )
   {
-    // check only for points in voronoi subset
-    for ( auto loc : m_voronoi_subset )
+    if ( m_voronoi_subset.size() > 0 )
     {
-      std::unordered_map<size_t,double>::iterator  pt_pred_itr = m_unvisited_pred_metric.find(loc);
-      if ( pt_pred_itr == m_unvisited_pred_metric.end() )
-        std::cout << GetAppName() << " :: Error: could not find pt in prediction table" << std::endl;
-      else
+      // check only for points in voronoi subset
+      for ( auto loc : m_voronoi_subset )
       {
-        if ( pt_pred_itr->second > best_so_far)
+        std::unordered_map<size_t,double>::iterator  pt_pred_itr = m_unvisited_pred_metric.find(loc);
+        if ( pt_pred_itr == m_unvisited_pred_metric.end() )
+          std::cout << GetAppName() << " :: Error: could not find pt in prediction table" << std::endl;
+        else
         {
-          best_so_far = pt_pred_itr->second;
-          best_so_far_idx = loc;
+          if ( pt_pred_itr->second > best_so_far)
+          {
+            best_so_far = pt_pred_itr->second;
+            best_so_far_idx = loc;
+          }
         }
       }
+    }
+    else
+    {
+      best_so_far_idx = -1;
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: Error: no points in voronoi subset" << std::endl;
     }
   }
   else
@@ -1397,28 +1406,31 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
   if ( m_verbose )
     std::cout << GetAppName() << " ::  best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
 
-  auto best_itr = m_sample_points_unvisited.find(best_so_far_idx);
-
-  if ( best_itr == m_sample_points_unvisited.end() )
-    std::cout << GetAppName() << " :: Error: best is not in unsampled locations" << std::endl;
-  else
+  if ( best_so_far_idx > 0 )
   {
-    Eigen::Vector2d best_so_far_y = best_itr->second;
+    auto best_itr = m_sample_points_unvisited.find(best_so_far_idx);
 
-    // app feedback
-    if ( m_verbose )
+    if ( best_itr == m_sample_points_unvisited.end() )
+      std::cout << GetAppName() << " :: Error: best is not in unsampled locations" << std::endl;
+    else
     {
-      std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
-      std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
+      Eigen::Vector2d best_so_far_y = best_itr->second;
+
+      // app feedback
+      if ( m_verbose )
+      {
+        std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
+        std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
+      }
+
+      std::ostringstream output_stream;
+      output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
+      m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+      // update state vars
+      m_last_published = MOOSTime();
+      m_need_nxt_wpt = false;
     }
-
-    std::ostringstream output_stream;
-    output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
-    m_Comms.Notify(m_output_var_pred, output_stream.str());
-
-    // update state vars
-    m_last_published = MOOSTime();
-    m_need_nxt_wpt = false;
   }
 }
 
@@ -2463,20 +2475,24 @@ void GP::tdsResetStateVars()
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: reset state vars" << std::endl;
-  // resets for next time
+  // move to next step; need wpt
+  m_need_nxt_wpt = true;
+  // reset surfacing/handshake vars
   m_data_sharing_activated = false;
   m_received_shared_data = false;
   m_sending_data = false;
   m_waiting = false;
-  m_need_nxt_wpt = true;
   m_received_ready = false;
   m_data_sharing_requested = false;
   if ( m_use_voronoi )
   {
+    // move to next step: voronoi calc & predictions done
     m_precalc_pred_voronoi_done = true;
+    // reset surfacing / handshake vars
     m_send_surf_req = false;
     m_send_ack = false;
   }
+  // reset surfacing/handshake other vehicles sets
   m_rec_ready_veh.clear();
   m_rec_ack_veh.clear();
 }
