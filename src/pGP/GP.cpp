@@ -1394,7 +1394,7 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
     }
   }
 
-  if ( m_debug )
+  if ( m_verbose )
     std::cout << GetAppName() << " ::  best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
 
   auto best_itr = m_sample_points_unvisited.find(best_so_far_idx);
