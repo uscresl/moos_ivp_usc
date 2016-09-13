@@ -36,6 +36,7 @@
 //
 GP::GP() :
   m_verbose(false),
+  m_debug(true),
   m_input_var_data(""),
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
@@ -46,7 +47,6 @@ GP::GP() :
   m_output_var_share_data(""),
   m_prediction_interval(-1),
   m_use_MI(false),
-  m_debug(false),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
@@ -288,7 +288,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       handleMailNodeReports(sval);
     }
     else if ( key == "TEST_VORONOI" )
+    {
+      if ( m_debug )
+        std::cout << GetAppName() << " :: calcVoronoi requested by TEST_VORONOI." << std::endl;
       calcVoronoi(m_lon, m_lat, m_other_vehicles);
+    }
     else if ( key == "REQ_SURFACING_REC" )
     { // receive surfacing request from other vehicle
       // need to send ack, also start surfacing
@@ -416,15 +420,21 @@ bool GP::Iterate()
       if ( m_use_voronoi && m_acomms_sharing && m_voronoi_subset.size() > 0 )
       {
           if ( needToRecalculateVoronoi() )
+          {
+            if ( m_debug )
+              std::cout << GetAppName() << " :: calcVoronoi requested by acomms recalc required." << std::endl;
             calcVoronoi(m_lon, m_lat, m_other_vehicles);
+          }
       }
-      else if ( m_use_voronoi && m_voronoi_subset.size() == 0 )
-      {
-        // we need to initialize the voronoi region
-        calcVoronoi(m_lon, m_lat, m_other_vehicles);
-        if ( m_verbose )
-          printVoronoiPartitions();
-      }
+//      else if ( m_use_voronoi && m_voronoi_subset.size() == 0 )
+//      {
+//        // we need to initialize the voronoi region
+//        if ( m_debug )
+//          std::cout << GetAppName() << " :: calcVoronoi requested because m_voronoi_subset.size() == 0" << std::endl;
+//        calcVoronoi(m_lon, m_lat, m_other_vehicles);
+//        if ( m_verbose )
+//          printVoronoiPartitions();
+//      }
 
 
       // **** TDS ************************************************************//
@@ -541,15 +551,6 @@ bool GP::Iterate()
         // start hyperparameter optimization
         m_hp_optim_running = true;
 
-        // start thread for hyperparameter optimization,
-        // because this will take a while..
-        if ( m_verbose )
-          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
-
-        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100); // std::ref(m_gp),  //TODO 10 or 20 or?
-      }
-      else
-      {
         // if last store was more than 5 min ago, store now
         // note, could this cause diff nr of saves?
         if ( MOOSTime() - m_last_pred_save > 300 )
@@ -559,6 +560,15 @@ bool GP::Iterate()
           pred_store.detach();
         }
 
+        // start thread for hyperparameter optimization,
+        // because this will take a while..
+        if ( m_verbose )
+          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
+
+        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100); // std::ref(m_gp),  //TODO 10 or 20 or?
+      }
+      else
+      {
         // running HP optimization
         // check if the thread is done
         std::cout << "checking future m_future_hp_optim" << std::endl;
@@ -709,6 +719,7 @@ bool GP::OnStartUp()
   std::thread data_thread(&GP::dataAddingThread, this);
   data_thread.detach();
 
+  // init last calculations times to start of process
   m_last_voronoi_calc_time = MOOSTime();
   m_last_published_req_surf = MOOSTime();
   m_last_published_req_surf_ack = MOOSTime();
@@ -1329,6 +1340,19 @@ void GP::findNextSampleLocation()
   {
     std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
     getRandomStartLocation();
+
+    // if m_voronoi, init voronoi subset to whole region
+    if ( m_use_voronoi )
+    {
+      std::cout << GetAppName() << " :: Initialize voronoi subset to whole region." << std::endl;
+      // copy over all unvisited locations
+      for ( auto map_item : m_sample_points_unvisited )
+        m_voronoi_subset.push_back(map_item.first);
+      // calculate the convex hull
+      voronoiConvexHull();
+      // print convex hull
+      printVoronoi();
+    }
   }
 }
 
@@ -2171,7 +2195,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   m_voronoi_subset_other_vehicles.clear();
 
   if ( m_verbose )
-    std::cout << GetAppName() << " :: \nown vehicle at: " << own_lon << "," << own_lat << '\n';
+    std::cout << GetAppName() << " :: \nown vehicle at: " << own_lon << "," << own_lat << std::endl;
 
   // if own vehicle is not in sample area,
   // we set Voronoi region to be whole area
@@ -2179,7 +2203,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   if ( !inSampleRectangle(own_lon, own_lat, true) )
   {
     if ( m_verbose )
-      std::cout << GetAppName() << " :: not inside sample region" << std::endl;
+      std::cout << GetAppName() << " :: vehicle not inside sample region, pushing whole region into voronoi subset" << std::endl;
     // copy over all unvisited locations
     for ( auto map_item : m_sample_points_unvisited )
       m_voronoi_subset.push_back(map_item.first);
@@ -2371,6 +2395,9 @@ void GP::printVoronoi()
   }
 
   m_Comms.Notify("VORONOI_REGION",voronoi_str.str());
+
+  if ( m_verbose )
+    printVoronoiPartitions();
 }
 
 
@@ -2505,6 +2532,9 @@ void GP::tdsResetStateVars()
 //
 void GP::findAndPublishNextWpt()
 {
+  // reset var to avoid second call of this function when apptick > 1
+  m_need_nxt_wpt = false;
+
   // only run calculation of predictions if we did not already do
   // this during the voronoi calculation
   if ( m_precalc_pred_voronoi_done )
@@ -2544,7 +2574,8 @@ void GP::findAndPublishNextWpt()
 //
 bool GP::needToRecalculateVoronoi()
 {
-  // TODO change threshold?
+  // recalculate if within ca. half lat/lon spacing removed fromborder
+  // of the voronoi region
   double voronoi_threshold = ((m_lon_spacing + m_lat_spacing)/2.0) / 2.0;
   double dist_to_voronoi = distToVoronoi(m_lon, m_lat);
   m_Comms.Notify("DIST_TO_VORONOI", dist_to_voronoi);
@@ -2573,6 +2604,8 @@ void GP::runVoronoiRoutine()
   // TODO move
   if ( m_use_voronoi )
   {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (1)." << std::endl;
     calcVoronoi(m_lon, m_lat, m_other_vehicles);
 
     // got initial voronoi partitioning
@@ -2596,7 +2629,11 @@ void GP::runVoronoiRoutine()
 
     // now, recalculate the voronoi partitioning, given the new centroids
     if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
+    {
+      if ( m_debug )
+        std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2)." << std::endl;
       calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
+    }
 
     m_last_voronoi_calc_time = MOOSTime();
   }
@@ -2674,14 +2711,12 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
     else
     {
       Eigen::Vector2d loc = pt_itr->second;
-      //if ( m_debug )
-      std::cout << GetAppName() << " :: wt: " << wt << std::endl;
       sum_wt += wt;
       sum_val_lon += wt*loc(0);
       sum_val_lat += wt*loc(1);
     }
   }
-  if ( m_verbose )
+  if ( m_debug )
     std::cout << GetAppName() << " :: sum_wt: " << sum_wt << std::endl;
   // then calculate the centroid, given density
   centroid_lon = (sum_wt > 0 ? (sum_val_lon / sum_wt) : 0);
