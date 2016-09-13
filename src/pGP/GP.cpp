@@ -1249,7 +1249,11 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     Eigen::Vector2d move_pt = curr_loc_itr->second;
 
     // check if the sampled point was nearby, if not, there's something wrong
-    checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
+    bool pt_nearby = checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
+    if ( !pt_nearby && !m_hp_optim_running && !m_data_sharing_activated )
+    {
+      std::cout << GetAppName() << " :: ERROR? distance to sampled point is bigger than the grid spacing\n";
+    }
 
     // add the point to the visited set
     m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
@@ -1288,7 +1292,7 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 //            we check if, after conversion, the distance
 //            of sampled point to vehicle location is reasonable
 //
-void GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt)
+bool GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt)
 {
   double dist_lon = std::abs(move_pt(0) - veh_lon);
   double dist_lat = std::abs(move_pt(1) - veh_lat);
@@ -1297,12 +1301,11 @@ void GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vect
 
   if ( dist_lon_m > m_pts_grid_spacing || dist_lat_m > m_pts_grid_spacing )
   {
-    std::cout << GetAppName() << " :: ERROR: distance to chosen sample point is bigger than the grid spacing\n";
     std::cout << GetAppName() << " :: Distance to chosen point: " << dist_lon_m << " " << dist_lat_m << '\n';
-    std::cout << GetAppName() << " :: Quitting in 2 seconds." << std::endl;
-    sleep(2);
-    RequestQuit();
+    return false;
   }
+
+  return true;
 }
 
 //---------------------------------------------------------
@@ -2195,7 +2198,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
   m_voronoi_subset_other_vehicles.clear();
 
   if ( m_verbose )
-    std::cout << GetAppName() << " :: \nown vehicle at: " << own_lon << "," << own_lat << std::endl;
+    std::cout << GetAppName() << " :: own vehicle at: " << own_lon << "," << own_lat << std::endl;
 
   // if own vehicle is not in sample area,
   // we set Voronoi region to be whole area
@@ -2244,7 +2247,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
       }
       // calculate distance to oneself
       double dist_to_self = pow(pt_loc(0)-own_lon, 2) + pow(pt_loc(1)-own_lat,2);
-      if ( dist_to_self < min_dist )
+      if ( dist_to_self <= min_dist )
       {
         closest_vehicle = m_veh_name;
         // only in this case do we add the location to our Voronoi set
@@ -2267,6 +2270,40 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
         }
       }
     } // for unvisited sample pts
+
+    // tmp fix for empty sets
+    if ( m_voronoi_subset.size() == 0 )
+    {
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: ERROR: own set empty, filling with all unvisited locations" << std::endl;
+      for ( auto pt : m_sample_points_unvisited )
+        m_voronoi_subset.push_back(pt.first);
+    }
+    for ( auto other_subset : m_voronoi_subset_other_vehicles )
+    {
+      if ( (other_subset.second).size() == 0 )
+      {
+        if ( m_verbose )
+          std::cout << GetAppName() << " :: ERROR: empty set for " << other_subset.first << ", filling with all unvisited locations" << std::endl;
+        for ( auto pt : m_sample_points_unvisited )
+            (other_subset.second).push_back(pt.first);
+      }
+    }
+    // todo: need this?
+    for ( auto veh : m_other_vehicles )
+    {
+      if ( m_voronoi_subset_other_vehicles.find(veh.first) == m_voronoi_subset_other_vehicles.end() )
+      {
+        if ( m_verbose )
+          std::cout << GetAppName() << " :: ERROR: did not voronoi subset for " << veh.first << ", creating." << std::endl;
+        // vehicle does not have subset yet, create it
+        std::vector<size_t> vor_subset;
+        for ( auto pt : m_sample_points_unvisited )
+          vor_subset.push_back(pt.first);
+        m_voronoi_subset_other_vehicles.insert(std::pair<std::string, std::vector<size_t> >(veh.first, vor_subset));
+      }
+
+    }
   }
   if ( m_verbose )
   {
@@ -2668,14 +2705,19 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
 
   // others
   if ( m_voronoi_subset_other_vehicles.size() == 0 )
+  {
+    if ( m_debug )
+      std::cout << "m_voronoi_subset_other_vehicles is empty" << std::endl;
     return;
+  }
 
   if ( m_debug )
     std::cout << GetAppName() << " :: calculate others" << std::endl;
   for ( auto veh : m_voronoi_subset_other_vehicles )
   {
     double centr_lon(0.0), centr_lat(0.0);
-    calcVoronoiPartitionCentroid(veh.second, centr_lon, centr_lat);
+    std::vector<size_t> veh_voronoi_subset = veh.second;
+    calcVoronoiPartitionCentroid(veh_voronoi_subset, centr_lon, centr_lat);
     other_vehicle_centroids.insert(std::pair<std::string, std::pair<double, double> >(veh.first, std::pair<double, double>(centr_lon, centr_lat)));
   }
 }
@@ -2718,9 +2760,10 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
   }
   if ( m_debug )
     std::cout << GetAppName() << " :: sum_wt: " << sum_wt << std::endl;
+
   // then calculate the centroid, given density
-  centroid_lon = (sum_wt > 0 ? (sum_val_lon / sum_wt) : 0);
-  centroid_lat = (sum_wt > 0 ? (sum_val_lat / sum_wt) : 0);
+  centroid_lon = (sum_wt > 0 ? (sum_val_lon / sum_wt) : -1.0);
+  centroid_lat = (sum_wt > 0 ? (sum_val_lat / sum_wt) : -1.0);
 }
 
 void GP::printVoronoiPartitions()
