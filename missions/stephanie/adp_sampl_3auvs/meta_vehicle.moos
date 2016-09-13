@@ -168,7 +168,7 @@ ProcessConfig = pGP
   voronoi_timeout = 300
   // buffer region outside sample area for which
   // vehicle is still counted as inside, for voronoi partitioning
-  area_buffer = 10.0
+  area_buffer = 20.0
 #else
   use_voronoi = false
 #endif
