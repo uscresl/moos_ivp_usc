@@ -8,4 +8,4 @@ fi
 folder=$1
 
 mkdir $1
-mv LOG* log* targ* *_predictions*.csv pGP_*.txt hp_optim* output.txt $folder
+mv LOG* log* targ* *_predictions*.csv pGP_*.txt hp_optim* output.txt node_* vor_* gp_* $folder
