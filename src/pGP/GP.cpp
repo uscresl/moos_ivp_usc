@@ -2690,9 +2690,9 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
     if ( itr == other_vehicle_centroids.end() )
     {
       if ( m_verbose )
-        std::cout << GetAppName() << " :: no centroid for " << itr-> first << ", adding vehicle position." << std::endl;
+        std::cout << GetAppName() << " :: no centroid for " << veh.first << ", adding vehicle position." << std::endl;
       // add vehicle position as centroid
-      other_vehicle_centroids.insert(*itr);
+      other_vehicle_centroids.insert(veh);
     }
   }
 }
