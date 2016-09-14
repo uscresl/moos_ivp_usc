@@ -426,16 +426,6 @@ bool GP::Iterate()
             calcVoronoi(m_lon, m_lat, m_other_vehicles);
           }
       }
-//      else if ( m_use_voronoi && m_voronoi_subset.size() == 0 )
-//      {
-//        // we need to initialize the voronoi region
-//        if ( m_debug )
-//          std::cout << GetAppName() << " :: calcVoronoi requested because m_voronoi_subset.size() == 0" << std::endl;
-//        calcVoronoi(m_lon, m_lat, m_other_vehicles);
-//        if ( m_verbose )
-//          printVoronoiPartitions();
-//      }
-
 
       // **** TDS ************************************************************//
       // if we are doing timed data sharing,
@@ -838,8 +828,7 @@ void GP::handleMailData(double received_data)
     double veh_lon = m_lon;
     double veh_lat = m_lat;
 
-    // try with threading, because this becomes more costly as GP grows
-    // TODO pass into queue and run different function as thread to handle queue?
+    // pass into data adding queue
     std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
     m_queue_data_points_for_gp.push(nw_data_pt);
 
@@ -888,12 +877,6 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     int index = getIndexForMap(veh_lon, veh_lat);
     if ( index >= 0 && needToUpdateMaps((size_t)index) )
       updateVisitedSet(veh_lon, veh_lat, (size_t)index);
-
-    // run via data adding thread? no, we want to make sure they've been added,
-    // and not doing anything else anyway
-//    std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
-//    m_queue_data_points_for_gp.push(nw_data_pt);
-
   }
 
   // release lock
@@ -1339,7 +1322,7 @@ void GP::findNextSampleLocation()
     else
       std::cout << GetAppName() << " :: m_sample_points_unvisited is empty, unable to find next location" << std::endl;
   }
-  else
+  else if ( m_voronoi_subset.size() == 0 )
   {
     std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
     getRandomStartLocation();
@@ -2270,40 +2253,6 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
         }
       }
     } // for unvisited sample pts
-
-    // tmp fix for empty sets
-    if ( m_voronoi_subset.size() == 0 )
-    {
-      if ( m_verbose )
-        std::cout << GetAppName() << " :: ERROR: own set empty, filling with all unvisited locations" << std::endl;
-      for ( auto pt : m_sample_points_unvisited )
-        m_voronoi_subset.push_back(pt.first);
-    }
-    for ( auto other_subset : m_voronoi_subset_other_vehicles )
-    {
-      if ( (other_subset.second).size() == 0 )
-      {
-        if ( m_verbose )
-          std::cout << GetAppName() << " :: ERROR: empty set for " << other_subset.first << ", filling with all unvisited locations" << std::endl;
-        for ( auto pt : m_sample_points_unvisited )
-            (other_subset.second).push_back(pt.first);
-      }
-    }
-    // todo: need this?
-    for ( auto veh : m_other_vehicles )
-    {
-      if ( m_voronoi_subset_other_vehicles.find(veh.first) == m_voronoi_subset_other_vehicles.end() )
-      {
-        if ( m_verbose )
-          std::cout << GetAppName() << " :: ERROR: did not voronoi subset for " << veh.first << ", creating." << std::endl;
-        // vehicle does not have subset yet, create it
-        std::vector<size_t> vor_subset;
-        for ( auto pt : m_sample_points_unvisited )
-          vor_subset.push_back(pt.first);
-        m_voronoi_subset_other_vehicles.insert(std::pair<std::string, std::vector<size_t> >(veh.first, vor_subset));
-      }
-
-    }
   }
   if ( m_verbose )
   {
@@ -2314,11 +2263,15 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
     std::cout << std::endl;
   }
 
-  // calculate the convex hull
-  voronoiConvexHull();
 
-  // print convex hull
-  printVoronoi();
+  if ( m_voronoi_subset.size() > 0 )
+  {
+    // calculate the convex hull
+    voronoiConvexHull();
+
+    // print convex hull
+    printVoronoi();
+  }
 }
 
 //---------------------------------------------------------
@@ -2665,6 +2618,7 @@ void GP::runVoronoiRoutine()
     }
 
     // now, recalculate the voronoi partitioning, given the new centroids
+    // if it is not zero
     if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
     {
       if ( m_debug )
@@ -2702,6 +2656,11 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
     std::cout << GetAppName() << " :: calculate own\n";
   if ( m_voronoi_subset.size() > 0 )
     calcVoronoiPartitionCentroid(m_voronoi_subset, own_centroid_lon, own_centroid_lat);
+  else
+  {
+    own_centroid_lon = m_lon;
+    own_centroid_lat = m_lat;
+  }
 
   // others
   if ( m_voronoi_subset_other_vehicles.size() == 0 )
@@ -2717,8 +2676,24 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
   {
     double centr_lon(0.0), centr_lat(0.0);
     std::vector<size_t> veh_voronoi_subset = veh.second;
-    calcVoronoiPartitionCentroid(veh_voronoi_subset, centr_lon, centr_lat);
+    if ( veh_voronoi_subset.size() > 0 )
+      calcVoronoiPartitionCentroid(veh_voronoi_subset, centr_lon, centr_lat);
     other_vehicle_centroids.insert(std::pair<std::string, std::pair<double, double> >(veh.first, std::pair<double, double>(centr_lon, centr_lat)));
+  }
+
+  // check if there are vehicles for whom there is not
+  // yet a voronoi subset,
+  // if so, then set their centroids to vehicle position
+  for ( auto veh : m_other_vehicles )
+  {
+    auto itr = other_vehicle_centroids.find(veh.first);
+    if ( itr == other_vehicle_centroids.end() )
+    {
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: no centroid for " << itr-> first << ", adding vehicle position." << std::endl;
+      // add vehicle position as centroid
+      other_vehicle_centroids.insert(*itr);
+    }
   }
 }
 
@@ -2732,6 +2707,14 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
   double sum_wt = 0.0;
   double sum_val_lon = 0.0;
   double sum_val_lat = 0.0;
+
+  double min_wt = std::numeric_limits<double>::max();
+  for ( auto prediction : m_unvisited_pred_metric )
+  {
+    if ( prediction.second < min_wt )
+      min_wt = prediction.second;
+  }
+
   for ( auto idx : voronoi_partition )
   {
     // get density func / metric value for current location (pt in voronoi region)
@@ -2743,7 +2726,15 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
       wt = 0.0;
     }
     else
-      wt = pred_itr->second;
+    {
+      // shift weights to be > 0, if necessary
+      wt = (min_wt < 0) ? std::abs(min_wt) + pred_itr->second : pred_itr->second;
+    }
+    if ( m_debug )
+    {
+      if ( wt < 0 )
+        std::cout << GetAppName() << " :: weight smaller than zero: " << wt << std::endl;
+    }
 
     // get current location (pt in voronoi region)
     // and store weighted location
