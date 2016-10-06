@@ -55,8 +55,7 @@ ProcessConfig = ANTLER
   //,XConfig=uSBSConfig
 
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP @ NewConsole = false
-  //true,XConfig=pGPConfig
+  Run = pGP @ NewConsole = true,XConfig=pGPConfig
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false

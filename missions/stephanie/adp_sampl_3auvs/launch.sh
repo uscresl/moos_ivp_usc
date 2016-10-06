@@ -52,6 +52,7 @@ EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
 PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="${MOOSIVP_USC_HOME}/proto"
 
+# paint survey area on pMarineViewer
 # bigger 1
 PAINTSEGLIST="pts={600,900:600,1300:1200,1300:1200,900:600,900},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
 # bigger 2
@@ -70,18 +71,22 @@ fi
 # bigger1
 LX=900
 LY=1100
+LW=600
+LH=400
 ## bigger2
 #LX=950
 #LY=1000
+#LW=500
+#LH=600
 
-LAWNMOWER="format=lawnmower,x=${LX},y=${LY},width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER="format=lawnmower,x=${LX},y=${LY},width=${LW},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
 if [ $NUM_VEHICLES -eq 2 ] ; then
-LAWNMOWER1="format=lawnmower,x=600,y=${LY},width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=800,y=${LY},width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER1="format=lawnmower,x=600,y=${LY},width=200,height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER2="format=lawnmower,x=800,y=${LY},width=200,height=${LH},lane_width=20,degs=0,startx=0,starty=0"
 elif [ $NUM_VEHICLES -ge 3 ] ; then
-LAWNMOWER1="format=lawnmower,x=567,y=${LY},width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=700,y=${LY},width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER3="format=lawnmower,x=833,y=${LY},width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER1="format=lawnmower,x=567,y=${LY},width=133,height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER2="format=lawnmower,x=700,y=${LY},width=133,height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER3="format=lawnmower,x=833,y=${LY},width=133,height=${LH},lane_width=20,degs=0,startx=0,starty=0"
 else
 LAWNMOWER1=$LAWNMOWER
 fi
