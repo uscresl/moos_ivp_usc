@@ -52,37 +52,10 @@ EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
 PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="${MOOSIVP_USC_HOME}/proto"
 
-PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
-
-# config for lawnmower used to get pilot data for autotuning hyperparams GP
-PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=700,y=1100,width=400,height=200,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south"
-PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
-
-# PILOT PARAMS, WHEN SPLITTING PILOT
-if [ $NUM_VEHICLES -ge 2 ] ; then
-#PILOT_LM_1="format=lawnmower,label=pilot-survey,x=550,y=1050,width=100,height=100,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_1="format=lawnmower,label=pilot-survey,x=600,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
-PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
-#PILOT_LM_2="format=lawnmower,label=pilot-survey,x=650,y=1050,width=100,height=100,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_2="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
-PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
-fi
-if [ $NUM_VEHICLES -ge 3 ] ; then
-PILOT_LM_1="format=lawnmower,label=pilot-survey,x=567,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
-PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
-PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
-PILOT_LM_2="format=lawnmower,label=pilot-survey,x=700,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
-PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
-PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
-# TODO, FIGURE OUT PILOT FOR 3 VEHICLES ..
-PILOT_LM_3="format=lawnmower,label=pilot-survey,x=833,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
-PILOT_LM_3_NS="$PILOT_LM_3,rows=north-south"
-PILOT_LM_3_EW="$PILOT_LM_3,rows=east-west"
-fi
-
+# bigger 1
+PAINTSEGLIST="pts={600,900:600,1300:1200,1300:1200,900:600,900},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
+# bigger 2
+#PAINTSEGLIST="pts={700,700:700,1300:1200,1300:1200,700:700,700},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
 
 # loiter for during hyperparameter optimization
 HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
@@ -94,14 +67,21 @@ HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_opt
 fi
 
 # config for lawnmower for actual GP model building
-LAWNMOWER="format=lawnmower,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+# bigger1
+LX=900
+LY=1100
+## bigger2
+#LX=950
+#LY=1000
+
+LAWNMOWER="format=lawnmower,x=${LX},y=${LY},width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
 if [ $NUM_VEHICLES -eq 2 ] ; then
-LAWNMOWER1="format=lawnmower,x=600,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=800,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER1="format=lawnmower,x=600,y=${LY},width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER2="format=lawnmower,x=800,y=${LY},width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
 elif [ $NUM_VEHICLES -ge 3 ] ; then
-LAWNMOWER1="format=lawnmower,x=567,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=700,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER3="format=lawnmower,x=833,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER1="format=lawnmower,x=567,y=${LY},width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER2="format=lawnmower,x=700,y=${LY},width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER3="format=lawnmower,x=833,y=${LY},width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
 else
 LAWNMOWER1=$LAWNMOWER
 fi
@@ -196,15 +176,9 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING
-if [ $NUM_VEHICLES -ge 2 ] ; then
-PILOT_LAWNMOWER_C_NS=$PILOT_LM_1_NS
-PILOT_LAWNMOWER_C_EW=$PILOT_LM_1_EW
-fi
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
-    PILOT_LAWNMOWER_NS=$PILOT_LAWNMOWER_C_NS                   \
-    PILOT_LAWNMOWER_EW=$PILOT_LAWNMOWER_C_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
     OTHER_VEHICLE=$VNAME2
@@ -227,8 +201,6 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2                    \
-    PILOT_LAWNMOWER_NS=$PILOT_LM_2_NS                   \
-    PILOT_LAWNMOWER_EW=$PILOT_LM_2_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS2 LAWNMOWER_EW=$LAWNMOWEREW2        \
     HP_LOITER=$HP_LOITER_CONFIG2  ADAPTIVE_WPTS=$ADAPTIVE        \
     OTHER_VEHICLE=$VNAME1
@@ -253,8 +225,6 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3                    \
-    PILOT_LAWNMOWER_NS=$PILOT_LM_3_NS                   \
-    PILOT_LAWNMOWER_EW=$PILOT_LM_3_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS3 LAWNMOWER_EW=$LAWNMOWEREW3        \
     HP_LOITER=$HP_LOITER_CONFIG3  ADAPTIVE_WPTS=$ADAPTIVE        \
     OTHER_VEHICLE=$VNAME2
