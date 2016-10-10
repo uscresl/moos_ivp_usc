@@ -14,12 +14,14 @@ VORONOI_PARTITIONING="no"
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
         printf "%s [SWITCHES] [time_warp]   \n" $0
+        printf "  Switches:          \n"
         printf "  --just_make, -j    \n" 
         printf "  --adaptive, -a     \n"
         printf "  --tds, -t          \n"
         printf "  --acomms, -c       \n"
         printf "  --voronoi, -v      \n"
         printf "  --2auvs            \n"
+        printf "  --3auvs            \n"
         printf "  --help, -h         \n" 
         exit 0;
     elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
