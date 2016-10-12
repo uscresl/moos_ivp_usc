@@ -36,7 +36,6 @@
 //
 GP::GP() :
   m_verbose(false),
-  m_debug(true),
   m_input_var_data(""),
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
@@ -46,7 +45,7 @@ GP::GP() :
   m_output_filename_prefix(""),
   m_output_var_share_data(""),
   m_prediction_interval(-1),
-  m_use_MI(false),
+  m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
@@ -68,8 +67,6 @@ GP::GP() :
   m_lon_deg_to_m(0.0),
   m_lat_deg_to_m(0.0),
   m_start_time(0.0),
-//  m_pilot_done_time(0.0),
-//  m_hp_optim_done_time(0.0),
   m_need_nxt_wpt(false),
   m_finding_nxt(false),
   m_gp(2, "CovSum(CovSEiso, CovNoise)"),
@@ -228,8 +225,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( sval.find("HP_OPTIM") != std::string::npos )
       {
         m_hp_optim_mode_cnt++;
-//        if ( m_hp_optim_mode_cnt == 1 )
-//          m_pilot_done_time = MOOSTime();
       }
     }
     else if ( key == m_input_var_share_data )
@@ -365,41 +360,6 @@ bool GP::Iterate()
     return true;
   else
   {
-    //// PILOT HP OPTIM ////////////////////////////////////////////////////////
-    // when pilot is done,
-    // we want to optimize the hyperparams of the GP
-
-//    if ( m_hp_optim_mode_cnt == 1 && !m_hp_optim_done && !m_finished )
-//    {
-//      if ( !m_hp_optim_running )
-//      {
-//        // start hyperparameter optimization
-//        m_hp_optim_running = true;
-//
-//        // start thread for hyperparameter optimization,
-//        // because this will take a while..
-//        if ( m_verbose )
-//          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
-//        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 20);
-//      }
-//      else
-//      {
-//        std::cout << "checking future m_future_hp_optim" << std::endl;
-//        // running HP optimization
-//        // check if the thread is done
-//        if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-//        {
-//          m_hp_optim_done = m_future_hp_optim.get(); // should be true
-//          if ( !m_hp_optim_done )
-//            std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
-//          m_hp_optim_running = false;
-//          m_hp_optim_done_time = MOOSTime();
-//          if ( m_verbose )
-//            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
-//          m_Comms.Notify("STAGE","survey");
-//        }
-//      }
-//    }
     if ( m_start_time < 1.0 )
       m_start_time = MOOSTime(); // first time, set the start time of process
 
@@ -1309,15 +1269,7 @@ void GP::findNextSampleLocation()
       m_finding_nxt = true;
       // use threading because this is a costly operation that would otherwise
       // interfere with the MOOS app rate
-      if ( m_use_MI )
-      {
-        // get covariance function from GP
-        // such that we can use the get() function from the CovarianceFunction
-        libgp::CovarianceFunction & cov_f = m_gp.covf();
-        m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
-      }
-      else
-        m_future_next_pt = std::async(std::launch::async, &GP::calcMECriterion, this);
+      m_future_next_pt = std::async(std::launch::async, &GP::calcMECriterion, this);
     }
     else
       std::cout << GetAppName() << " :: m_sample_points_unvisited is empty, unable to find next location" << std::endl;
@@ -1517,144 +1469,6 @@ size_t GP::calcMECriterion()
   return 0;
 }
 
-//---------------------------------------------------------
-// Procedure: calcMICriterion
-//            do the MI criterion calculation and find best y
-//
-size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
-{
-  // for mutual information, we use visited and unvisited sets
-  // we want to calculate, for each possible location y,
-  // the values of k(y,y), k(y,a), k(a,a), k(y,a*), k(a*,a*)
-  // i.e. we calculate the covariance with all the points in the visite
-  // and unvisited sets
-  // then we calculate sigma^2 (kyy - kya kaa kay) for each set
-  // and divide sigma_y_visited by sigma_y_unvisited
-
-  // calculate covariance matrices sets, and their inverses (costly operations)
-  if ( m_debug )
-    std::cout << GetAppName() << " :: Calculate covariance matrices" << std::endl;
-
-  m_unvisited_pred_metric.clear();
-
-  std::unique_lock<std::mutex> mi_lock(m_gp_mutex, std::defer_lock);
-  // use unique_lock here, such that we can release mutex after m_gp operation
-  while ( !mi_lock.try_lock() ) {}
-
-  size_t size_unvisited = m_sample_points_unvisited.size();
-
-  // note; replaced with using predictions from GP
-//    Eigen::MatrixXd K_aa(size_visited, size_visited);
-//    createCovarMatrix(cov_f, "visited", K_aa);
-//    Eigen::MatrixXd K_aa_inv = K_aa.inverse();
-
-  Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
-  createCovarMatrix(cov_f, "unvisited", K_avav);
-  Eigen::MatrixXd K_avav_inv = K_avav.inverse();
-
-  // TODO replace inverses using Cholesky decomposition
-
-  // construct a vector of target values for the unvisited locations
-  // using the GP
-  if ( m_debug )
-    std::cout << GetAppName() << " :: Get target values for unvisited points" << std::endl;
-  Eigen::VectorXd t_av(size_unvisited);
-  getTgtValUnvisited(t_av);
-
-  if ( m_debug )
-    std::cout << GetAppName() << " :: try for lock map" << std::endl;
-  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-  while ( !map_lock.try_lock() ){}
-  // make copy of map to use instead of map,
-  // such that we do not have to lock it for long
-  std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
-  unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
-  map_lock.unlock();
-
-  if ( m_debug )
-    std::cout << GetAppName() << " :: calc for all y (" << unvisited_map_copy.size() << ")" << std::endl;
-
-  std::clock_t begin = std::clock();
-  for ( auto y_itr : unvisited_map_copy )
-  {
-    Eigen::Vector2d y = y_itr.second;
-
-    // calculate k(y,y)
-    double k_yy = cov_f.get(y,y);
-
-    // calculate covariance with visited set
-//      Eigen::VectorXd k_ya(size_visited);
-//      createCovarVector(cov_f, y, "visited", k_ya);
-//      // TODO: add noise term?
-//      double mat_ops_result = k_ya.transpose() * K_aa_inv * k_ya;
-//      double sigma_y_A = k_yy - mat_ops_result;
-
-    // covariance with visited set should be the predictive covariance
-    // from the GP (note, GP actually contains more data pts .. but at least
-    //              the visited locations)
-    double y_loc[2] = {y(0), y(1)};
-    double pred_mean_yA = m_gp.f(y_loc);
-    double pred_cov_yA = m_gp.var(y_loc);
-
-    // TODO if want to work with voronoi, then change these functions internally
-    // calculate covariance with unvisited set
-    Eigen::VectorXd k_yav(size_unvisited);
-    createCovarVector(cov_f, y, "unvisited", k_yav);
-    // TODO add noise term in both equations! TODO TODO
-    double mat_ops_result = k_yav.transpose() * K_avav_inv * k_yav;
-    double sigma_y_Av = k_yy - mat_ops_result;
-
-    // predictive mean of unvisited set -- TODO check?
-    double pred_mean_yAv = k_yav.transpose() * K_avav_inv * t_av;
-
-    // calculate mutual information term
-    double div;
-    if ( m_use_log_gp )
-    {
-      // convert to log GP
-      double mean_yA_lGP, var_yA_lGP; // visited set
-      getLogGPPredMeanVarFromGPMeanVar(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
-      double mean_yAv_lGP, var_yAv_lGP; // unvisited set
-      getLogGPPredMeanVarFromGPMeanVar(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
-
-      // TODO change for log GP, incorp mean, current incorrect (is for GP)
-      div = 0.5 * log( var_yA_lGP / var_yAv_lGP );
-    }
-    else
-    {
-      // double div = 0.5 * log(sigma_y_A / sigma_y_Av);
-      div = 0.5 * log ( pred_cov_yA / sigma_y_Av );
-    }
-
-    m_unvisited_pred_metric.insert(std::pair<size_t, double>( y_itr.first, div));
-  }
-
-  std::clock_t end = std::clock();
-  if ( m_verbose )
-    std::cout << GetAppName() << " :: MI crit calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-
-  mi_lock.unlock();
-
-  // TODO: store all values, return sorted list?
-  return 0;
-}
-
-//---------------------------------------------------------
-// Procedure: getTgtValUnvisited
-//            construct vector with target values for
-//            unvisited points, as extracted from GP
-//
-void GP::getTgtValUnvisited(Eigen::VectorXd & t_av)
-{
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator av_itr;
-  size_t t_cnt = 0;
-
-  for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, t_cnt++ )
-  {
-    double av_loc[2] = {av_itr->second(0), av_itr->second(1)};
-    t_av(t_cnt) = m_gp.f(av_loc);
-  }
-}
 
 //---------------------------------------------------------
 // Procedure: checkGPHasData
@@ -1665,59 +1479,6 @@ bool GP::checkGPHasData()
   return ( m_gp.get_sampleset_size() > 0 );
 }
 
-//---------------------------------------------------------
-// Procedure: createCovarVector
-//            helper method for mutual information calculation
-//            calculates K_ya
-//
-void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya)
-{
-  // choose which map to use
-  std::unordered_map<size_t, Eigen::Vector2d> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
-
-  // calculate the covariances
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator a_itr;
-  size_t a_cnt = 0;
-  for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
-  {
-    // calc k_ya
-    Eigen::Vector2d a = a_itr->second;
-
-    k_ya(a_cnt) = cov_f.get(y,a);
-  }
-}
-
-//---------------------------------------------------------
-// Procedure: createCovarMatrix
-//            helper method for mutual information calculation
-//            calculates K_AA
-//
-void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
-{
-  // choose which map to use
-  std::unordered_map<size_t, Eigen::Vector2d> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
-
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator a_itr;
-  size_t a_cnt = 0;
-  for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
-  {
-    Eigen::Vector2d a = a_itr->second;
-
-    // calc K_aa
-    std::unordered_map<size_t, Eigen::Vector2d>::iterator b_itr;
-    size_t b_cnt = a_cnt;
-    // iterate only over triangle of matrix to reduce computation
-    for ( b_itr = a_itr; b_itr != map_ref.end(); b_itr++, b_cnt++ )
-    {
-      Eigen::Vector2d b = b_itr->second;
-
-      double current_cov_val = cov_f.get(a, b);
-      K_aa(a_cnt, b_cnt) = current_cov_val;
-      if (a_cnt != b_cnt)
-        K_aa(b_cnt, a_cnt) = current_cov_val;
-    }
-  }
-}
 
 //---------------------------------------------------------
 // Procedure: processReceivedData()
@@ -1741,7 +1502,7 @@ size_t GP::processReceivedData()
 // Procedure: runHPOptimization(nr_iterations)
 //            run in thread, call GP's hyperparam optimization
 //
-bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
+bool GP::runHPOptimization(size_t nr_iterations)
 {
   bool data_processed = false;
   size_t pts_added = 0;
@@ -1817,7 +1578,7 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
   runHPoptimizationOnDownsampledGP(lh_gp, nr_iterations);
 
   // pass on params to GP
-  Eigen::VectorXd hparams(lh_gp); //downsampled_gp.covf().get_loghyper());
+  Eigen::VectorXd hparams(lh_gp);
   if ( m_verbose )
     std::cout << GetAppName() << " :: new hyperparameters: " << hparams << std::endl;
 
@@ -1827,14 +1588,7 @@ bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
 
-  // delete the created downsampled GP to clear memory
-
   std::cout << " new m_GP hyper params: " << m_gp.covf().get_loghyper() << std::endl;
-
-//  // first save of predictions
-//  std::thread pred_store(&GP::makeAndStorePredictions, this);
-//  pred_store.detach();
-//  m_last_pred_save = MOOSTime();
 
   return true;
 }
@@ -1853,11 +1607,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   // make GP from downsampled data
   libgp::GaussianProcess downsampled_gp(2, "CovSum(CovSEiso, CovNoise)");
   // params, copied from beginning
-  //Eigen::VectorXd lh_gp(m_gp.covf().get_loghyper()); // via param function
-  //Eigen::VectorXd params(downsampled_gp.covf().get_param_dim());
-  //params << -8.927865292, 0.02335186099, -0.9098776951;
-  //params << -12.4292, 0.4055, -1.8971;
-  //params << -12.4292, -0.9, 0.64;
   // set loghyperparams
   downsampled_gp.covf().set_loghyper(loghp);
   std::cout << GetAppName() << " :: loghyperparams before optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
@@ -1892,7 +1641,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     }
   }
 
-
   std::clock_t end = std::clock();
   if ( m_verbose )
   {
@@ -1901,11 +1649,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     std::cout << GetAppName() << " :: size orig GP: " << m_gp.get_sampleset_size() << std::endl;
   }
 
-
-//  // test
-//  double ff, var;
-//  downsampled_gp.f_and_var(loc, ff, var);
-
   // HP optimization
   begin = std::clock();
   // RProp arguments: GP, 'n' (nr iterations), verbose
@@ -1913,9 +1656,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-
-//  // test
-//  downsampled_gp.f_and_var(loc, ff, var);
 
   std::cout << GetAppName() << " :: loghyperparams after optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
@@ -1931,8 +1671,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   // downsampled gp should be destroyed
   loghp = downsampled_gp.covf().get_loghyper();
 }
-
-
 
 //---------------------------------------------------------
 // Procedure: sendReady()

@@ -65,25 +65,18 @@ class GP : public CMOOSApp
    void addPatternToGP(double veh_lon, double veh_lat, double value);
    void dataAddingThread();
 
-   bool runHPOptimization(size_t nr_iterations); //libgp::GaussianProcess & gp,
+   bool runHPOptimization(size_t nr_iterations);
    void runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations);
 
    void findAndPublishNextWpt();
    void findNextSampleLocation();
    void getRandomStartLocation();
 
-   // mutual information
-   size_t calcMICriterion(libgp::CovarianceFunction& cov_f);
-   void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
-   void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
-   void getTgtValUnvisited(Eigen::VectorXd & t_av);
-   //, size_t size_unvisited, Eigen::Vector2d & best_so_far_y, double & best_so_far);
-   void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
-
    // maximum entropy
    size_t calcMECriterion();
+   void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
 
-   void publishNextBestPosition(); //Eigen::Vector2d best_so_far_y);
+   void publishNextBestPosition();
 
    void makeAndStorePredictions();
 
@@ -137,7 +130,6 @@ class GP : public CMOOSApp
    std::string m_output_var_share_data;
 
    size_t m_prediction_interval;
-   bool m_use_MI;
 
    // State variables
    bool m_debug;
@@ -166,12 +158,9 @@ class GP : public CMOOSApp
    double m_lat_deg_to_m;
    // mission status
    double m_start_time;
-//   double m_pilot_done_time;
-//   double m_hp_optim_done_time;
    bool m_need_nxt_wpt;
    bool m_finding_nxt;
 
-   //std::vector< std::pair<double, double> > m_sample_points;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_visited;
    std::vector< std::pair<double, double> > m_sample_locations;
