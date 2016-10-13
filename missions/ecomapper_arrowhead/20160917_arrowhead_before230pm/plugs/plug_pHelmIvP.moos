@@ -1,0 +1,15 @@
+// pHelmIvP (ivp): behavior-based autonomy 'helm'. Behaviors spec in .bhv file.
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+ProcessConfig = pHelmIvP
+{
+  AppTick    = 4
+  CommsTick  = 4
+  
+  Behaviors    = ecomapper.bhv
+  Verbose      = false
+
+  //             domain:min:max:steps
+  Domain       = course:0:359:360
+  Domain       = speed:0:5:26
+  Domain       = depth:0:100:100
+}

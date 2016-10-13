@@ -1,0 +1,11 @@
+//----------------------------------------------------------------------------
+// pNodeReporter (ivp): generates 'node-report' (proxy for AIS) for pMarineViewer
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-tools.pdf
+ProcessConfig = pNodeReporter
+{
+  AppTick     = 10
+  CommsTick   = 10
+  
+  PLATFORM_TYPE = auv // (uuv, auv, ship, kayak)
+  PLATFORM_LENGTH = 3 // (meters)
+}
