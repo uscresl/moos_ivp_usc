@@ -7,13 +7,18 @@ ProcessConfig = uProcessWatch
   CommsTick = 2
   
   NOWATCH = uXMS*
+  NOWATCH = uMS*
 
   WATCH_ALL = true
 
+#ifdef SIMULATION no
+  WATCH  = iOceanServerComms
+#else
   WATCH  = uSimMarine
+  WATCH  = pMarinePID
+#endif
   WATCH  = pShare*
   WATCH  = pLogger
   WATCH  = pNodeReporter
-  WATCH  = pMarinePID
   WATCH  = pHelmIvP
 }

@@ -14,13 +14,14 @@ ProcessConfig = pLogger
 
   // For variables that are published in a bundle on their first post,
   // explicitly declare their logging request
-  Log = IVPHELM_LIFE_EVENT @ 0 nosync
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
 //  Log = APPCASE @ 0 NOSYNC
 
   BridgeFrequency = 0
 
   // Log everything, but process status
-  WildCardLogging = true 
-  WildCardOmitPattern = *_STATUS,DB_VARSUMMARY,DB_RWSUMMARY,DB_QOS,APPCAST
+  WildCardLogging = true
+  //*_STATUS 
+  WildCardOmitPattern = DB_VARSUMMARY,DB_RWSUMMARY,DB_QOS,APPCAST
   LogAuxSrc = true
 }

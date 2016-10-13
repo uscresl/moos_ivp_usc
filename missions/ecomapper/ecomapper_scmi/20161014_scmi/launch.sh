@@ -56,7 +56,7 @@ fi
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
 # simulation set-up
-LAKE="arrowhead"
+LAKE="scmi"
 PLUGDIR="../../../plugs" # no leading slash
 
 if [ "${SIMULATION_MODE}" = "yes" ] ; then
