@@ -57,7 +57,7 @@ fi
 #-------------------------------------------------------
 # simulation set-up
 LAKE="scmi"
-PLUGDIR="../../../plugs" # no leading slash
+PLUGDIR="../../../../plugs" # no leading slash
 
 if [ "${SIMULATION_MODE}" = "yes" ] ; then
   SERVERHOST_EM="localhost"
@@ -71,47 +71,49 @@ fi
 if [ "${TOPSIDE}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   # create shoreside.moos
   nsplug shoreside.meta shoreside.moos -f WARP=$TIME_WARP \
-     VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
+     VNAME="shoreside"        \
      SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST_SS       \
      SERVER_HOST_EM=$SERVERHOST_EM  PLUG_DIR=$PLUGDIR  LOCATION=$LAKE  \
-     USC_DATA_DIR="../../../data"
+     USC_DATA_DIR="../../../../data"
 fi
 
 if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   # create ecomapper.moos
   VNAME1="zoomer"        # The first  vehicle community
   START_DEPTH1="0"
-  START_POS1="2270,1035"
+  START_POS1="845,1060"
   START_HEADING1="0"
+  START_SPEED1="1"
 
-LAWNMOWER="format=lawnmower,x=1760,y=1040,width=360,height=240,lane_width=60,degs=0,startx=0,starty=0"
-LAWNMOWEREW="$LAWNMOWER,rows=east-west,label=east-west-survey"
-LAWNMOWERNS="$LAWNMOWER,rows=north-south,label=north-south-survey"
+  RETURN_WPT_DEPTH="880,1080"
+  RETURN_WPT_SURFACE=${START_POS1}
 
-PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=1760,y=1040,width=360,height=240,lane_width=60,degs=0,startx=0,starty=0"
-PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south,order=reverse"
-PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
-
-# constant/yoyo
-SURVEY_DEPTH_BHV="yoyo"
-SURVEY_DEPTH="10"
-
-  WAYPOINTS1="2260,1035:2255,1035"
+  WAYPOINTS1="855,1075:900,1100"
   MODEMID1="1"
   VTYPE1="UUV" # UUV, SHIP
 
-  nsplug ecomapper.meta targ_${VNAME1}.moos -f WARP=$TIME_WARP  \
+  # lawnmower
+  PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=1000,y=1100,width=150,height=150,lane_width=30,degs=0,startx=0,starty=0"
+  PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south,order=reverse"
+  PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
+
+  # depth bhv: constant or yoyo
+  SURVEY_DEPTH_BHV="constant"
+  SURVEY_DEPTH="3"
+
+  nsplug ecomapper.meta targ_${VNAME1}.moos -f WARP=$TIME_WARP   \
      VNAME=$VNAME1  START_POS=$START_POS1  START_HDG=$START_HEADING1 \
      VPORT="9001"       SHARE_LISTEN="9301"   VNAME=$VNAME1      \
      VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
      SERVER_HOST=$SERVERHOST_EM SERVER_HOST_SS=$SERVERHOST_SS    \
      SIMULATION=$SIMULATION_MODE  PLUG_DIR=$PLUGDIR  LOCATION=$LAKE \
      LAWNMOWER_NS=$PILOT_LAWNMOWER_C_NS
-  nsplug ecomapper_bhv.meta ecomapper.bhv -f VNAME=$VNAME1       \
-      START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
-      START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
+  nsplug ecomapper_bhv.meta targ_${VNAME1}.bhv -f VNAME=$VNAME1       \
+      START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                     \
+      START_DEPTH=$START_DEPTH1   START_SPEED=$START_SPEED1  VTYPE=$VTYPE1   \
       LAWNMOWER_NS=$PILOT_LAWNMOWER_C_NS LAWNMOWER_EW=$PILOT_LAWNMOWER_C_EW  \
-      SURV_DEPTH_BHV=$SURVEY_DEPTH_BHV SURV_DEPTH=$SURVEY_DEPTH
+      SURV_DEPTH_BHV=$SURVEY_DEPTH_BHV  SURV_DEPTH=$SURVEY_DEPTH       \
+      RETURN_WPT_SURF=${RETURN_WPT_SURFACE}  RETURN_WPT_DEP=${RETURN_WPT_DEPTH}
 fi
 
 if [ ${JUST_MAKE} = "yes" ] ; then
@@ -126,13 +128,9 @@ if [ "${TOPSIDE}" = "yes" ] ; then
   pAntler shoreside.moos > log_shoreside.log &
 fi
 
-#if [ "${TOPSIDE}" = "yes" ]; then
-#  uMAC shoreside.moos
-#fi
-
 if [ "${ECOMAPPER}" = "yes" ] ; then 
   printf "Launching EcoMapper MOOS Community (WARP=%s) \n" $TIME_WARP
-  pAntler ecomapper.moos > log_ecomapper.log
+  pAntler targ_${VNAME1}.moos > log_${VNAME1}.log
 fi
 
 sleep .25

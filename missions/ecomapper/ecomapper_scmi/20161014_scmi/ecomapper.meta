@@ -59,7 +59,7 @@ ProcessConfig = ANTLER
 
 #include $(PLUG_DIR)/plug_pNodeReporter.moos
 
-#include ../plugs/plug_pShare.moos
+#include ../../plugs/plug_pShare.moos
 
 #include $(PLUG_DIR)/plug_uProcessWatch.moos
 

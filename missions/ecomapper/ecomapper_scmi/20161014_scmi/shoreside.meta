@@ -23,7 +23,7 @@ ProcessConfig = ANTLER
   // behaviors
   Run = pMarineViewer @ NewConsole = true
   
-  Run = pShare        @ NewConsole = true
+  Run = pShare        @ NewConsole = false
 }
 
 #include $(PLUG_DIR)/plug_pLogger.moos
