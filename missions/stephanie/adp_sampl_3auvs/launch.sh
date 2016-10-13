@@ -11,7 +11,7 @@ NUM_VEHICLES=1
 RUN_SIMULATION="yes"
 VORONOI_PARTITIONING="no"
 AREA="old"
-GUI="yes"
+GUI="true"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
