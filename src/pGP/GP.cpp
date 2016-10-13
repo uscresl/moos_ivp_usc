@@ -69,7 +69,7 @@ GP::GP() :
   m_start_time(0.0),
   m_need_nxt_wpt(false),
   m_finding_nxt(false),
-  m_gp(2, "CovSum(CovSEiso, CovNoise)"),
+  m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
   m_hp_optim_running(false),
   m_hp_optim_done(false),
   m_data_mail_counter(1),
@@ -115,7 +115,7 @@ GP::GP() :
   // with additive white noise
 
   // Set (log of) hyperparameters of the covariance function
-  Eigen::VectorXd params(m_gp.covf().get_param_dim());
+  Eigen::VectorXd params(m_gp->covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these will be optimized using cg or rprop
   // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
@@ -127,7 +127,7 @@ GP::GP() :
   params << -12.4292, 0.4055, -1.8971;
   //params << -12.4292, -0.9, 0.64;
   //params << -8.927865292, 0.02335186099, -0.9098776951;
-  m_gp.covf().set_loghyper(params);
+  m_gp->covf().set_loghyper(params);
 
   // use a unique seed to initialize srand,
   // using milliseconds because vehicles can start within same second
@@ -149,6 +149,8 @@ GP::~GP()
     m_ofstream_pmu_GP.close();
   if ( m_ofstream_psigma2_GP.is_open() )
     m_ofstream_psigma2_GP.close();
+
+  delete m_gp;
 }
 
 //---------------------------------------------------------
@@ -513,7 +515,7 @@ bool GP::Iterate()
         // start thread for hyperparameter optimization,
         // because this will take a while..
         if ( m_verbose )
-          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
+          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp->get_sampleset_size() << std::endl;
 
         m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100); // std::ref(m_gp),  //TODO 10 or 20 or?
       }
@@ -529,7 +531,7 @@ bool GP::Iterate()
             std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
           m_hp_optim_running = false;
           if ( m_verbose )
-            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
+            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
           m_Comms.Notify("STAGE","return");
 
           // store predictions one last time
@@ -825,13 +827,13 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     double data = atof(data_pt_components[2].c_str());
     double save_val = m_use_log_gp ? log(data) : data;
 
-    if ( m_gp.get_sampleset_size() % m_downsample_factor == 0 )
+    if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
     {
       std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
       m_data_for_hp_optim.push(nw_data_pt);
     }
 
-    m_gp.add_pattern(loc, save_val);
+    m_gp->add_pattern(loc, save_val);
 
     // update visited set if needed
     int index = getIndexForMap(veh_lon, veh_lat);
@@ -1096,7 +1098,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   double save_val = m_use_log_gp ? log(value) : value;
 
   // downsampled data for hyperparam optimization
-  if ( m_gp.get_sampleset_size() % m_downsample_factor == 0 )
+  if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
   {
     std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
     m_data_for_hp_optim.push(nw_data_pt);
@@ -1107,7 +1109,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   while ( !ap_lock.try_lock() ) {}
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
-  m_gp.add_pattern(location, save_val);
+  m_gp->add_pattern(location, save_val);
   // release mutex
   ap_lock.unlock();
 }
@@ -1417,7 +1419,7 @@ size_t GP::calcMECriterion()
   while ( !gp_lock.try_lock() ) {}
   if ( m_debug )
     std::cout << GetAppName() << " :: make copy GP" << std::endl;
-  libgp::GaussianProcess gp_copy(m_gp);
+  libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   // release lock
   gp_lock.unlock();
 
@@ -1443,8 +1445,9 @@ size_t GP::calcMECriterion()
     double y_loc[2] = {y(0), y(1)};
 
     // calculate its posterior entropy
-    double pred_mean = gp_copy.f(y_loc);
-    double pred_cov = gp_copy.var(y_loc);
+    double pred_mean;
+    double pred_cov;
+    gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
 
     // normal distribution
     //  1/2 ln ( 2*pi*e*sigma^2 )
@@ -1466,6 +1469,7 @@ size_t GP::calcMECriterion()
     std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   // copy of GP and unvisited_map get destroyed when this function exits
+  delete gp_copy;
   return 0;
 }
 
@@ -1476,7 +1480,7 @@ size_t GP::calcMECriterion()
 //
 bool GP::checkGPHasData()
 {
-  return ( m_gp.get_sampleset_size() > 0 );
+  return ( m_gp->get_sampleset_size() > 0 );
 }
 
 
@@ -1571,10 +1575,10 @@ bool GP::runHPOptimization(size_t nr_iterations)
   if ( m_verbose)
   {
     std::cout << GetAppName() << " :: continuing HP optimization" << std::endl; //obtained lock,
-    std::cout << GetAppName() << " :: current size GP: " << m_gp.get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: current size GP: " << m_gp->get_sampleset_size() << std::endl;
   }
 
-  Eigen::VectorXd lh_gp(m_gp.covf().get_loghyper()); // via param function
+  Eigen::VectorXd lh_gp(m_gp->covf().get_loghyper()); // via param function
   runHPoptimizationOnDownsampledGP(lh_gp, nr_iterations);
 
   // pass on params to GP
@@ -1584,11 +1588,11 @@ bool GP::runHPOptimization(size_t nr_iterations)
 
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   while ( !hp_lock.try_lock() ){}
-  m_gp.covf().set_loghyper(hparams);
+  m_gp->covf().set_loghyper(hparams);
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
 
-  std::cout << " new m_GP hyper params: " << m_gp.covf().get_loghyper() << std::endl;
+  std::cout << " new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
 
   return true;
 }
@@ -1646,7 +1650,7 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   {
     std::cout << GetAppName() << " :: runtime putting data into downsampled_gp: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
     std::cout << GetAppName() << " :: size downsampled GP: " << downsampled_gp.get_sampleset_size() << std::endl;
-    std::cout << GetAppName() << " :: size orig GP: " << m_gp.get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: size orig GP: " << m_gp->get_sampleset_size() << std::endl;
   }
 
   // HP optimization
@@ -1752,7 +1756,7 @@ void GP::makeAndStorePredictions()
   while ( !gp_lock.try_lock() ) {}
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
-  libgp::GaussianProcess gp_copy(m_gp);
+  libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   gp_lock.unlock();
 
   std::clock_t begin = std::clock();
@@ -1776,7 +1780,7 @@ void GP::makeAndStorePredictions()
     double loc[2] {loc_itr->first, loc_itr->second};
     double pred_mean_GP;
     double pred_var_GP;
-    gp_copy.f_and_var(loc, pred_mean_GP, pred_var_GP);
+    gp_copy->f_and_var(loc, pred_mean_GP, pred_var_GP);
 
     double pred_mean_lGP, pred_var_lGP;
     if ( m_use_log_gp )
@@ -1859,6 +1863,7 @@ void GP::makeAndStorePredictions()
   }
 
   // copy of GP gets destroyed when this function exits
+  delete gp_copy;
 }
 
 //---------------------------------------------------------

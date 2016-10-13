@@ -167,7 +167,7 @@ class GP : public CMOOSApp
    std::unordered_map<size_t, double> m_unvisited_pred_metric;
 
    // GP, and create mutex for protection of parts of code accessing m_gp
-   libgp::GaussianProcess m_gp;
+   libgp::GaussianProcess * m_gp;
    std::mutex m_gp_mutex;
    std::mutex m_sample_maps_mutex;
    std::mutex m_file_writing_mutex;
