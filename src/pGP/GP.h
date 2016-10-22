@@ -65,6 +65,7 @@ class GP : public CMOOSApp
    void addPatternToGP(double veh_lon, double veh_lat, double value);
    void dataAddingThread();
 
+   void startAndCheckHPOptim();
    bool runHPOptimization(size_t nr_iterations);
    void runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations);
 
@@ -158,8 +159,15 @@ class GP : public CMOOSApp
    double m_lat_deg_to_m;
    // mission status
    double m_start_time;
-   bool m_need_nxt_wpt;
    bool m_finding_nxt;
+
+   // states through enums
+   enum MissionState{STATE_IDLE, STATE_SAMPLE, STATE_CALCWPT, STATE_SURFACE, STATE_HPOPTIM, STATE_CALCVOR, STATE_DONE};
+   MissionState m_mission_state;
+   enum SurfaceState{SURF_IDLE, SURF_REQ, SURF_ACK, SURF_SURFACE};
+   SurfaceState m_surface_state;
+   enum DataSharingState{DATA_IDLE, DATA_HANDSHAKE, DATA_SEND, DATA_PROCESSRECEIVED};
+   DataSharingState m_data_sharing_state;
 
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_visited;
@@ -211,8 +219,6 @@ class GP : public CMOOSApp
    // timed data sharing
    bool m_timed_data_sharing;
    size_t m_data_sharing_interval;
-   bool m_data_sharing_activated;
-   bool m_sending_data;
    std::future<size_t> m_future_received_data_processed;
    bool m_waiting;
    bool m_received_ready;
@@ -244,10 +250,7 @@ class GP : public CMOOSApp
    void printVoronoiPartitions();
 
    // voronoi data sharing
-   bool m_data_sharing_requested;
    double m_last_voronoi_calc_time;
-   bool m_send_surf_req;
-   bool m_send_ack;
    std::unordered_set<std::string> m_rec_ack_veh;
 
    std::future<size_t> m_future_calc_prevoronoi;
@@ -260,8 +263,8 @@ class GP : public CMOOSApp
 
    // do HP optim on first surface for adaptive
    bool m_first_surface;
-   std::future<bool> m_future_first_hp_optim;
-   bool m_first_hp_optim;
+   //std::future<bool> m_future_first_hp_optim;
+//   bool m_first_hp_optim;
 
    // to publish only once a second
    double m_last_published_req_surf;
