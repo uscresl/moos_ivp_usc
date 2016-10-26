@@ -294,6 +294,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         // prep for surfacing
         // send ack, do actual sending in Iterate so we send until surface handshake
+        m_mission_state = STATE_SURFACE;
         m_surface_state = SURF_ACK;
         // start to surface (bhv)
         Notify("STAGE","data_sharing");
@@ -320,6 +321,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         // prep for surfacing
         // ack received, start surfacing
+        m_mission_state = STATE_SURFACE;
         m_surface_state = SURF_SURFACE;
         Notify("STAGE","data_sharing");
       }
@@ -406,6 +408,7 @@ bool GP::Iterate()
           {
             // switch to data sharing mode, to switch bhv to surface
             Notify("STAGE","data_sharing");
+            m_mission_state = STATE_SURFACE;
             m_data_sharing_state = DATA_HANDSHAKE;
           }
         }
@@ -418,7 +421,18 @@ bool GP::Iterate()
         //m_surface_state = SURF_REQ; //correct?
         break;
       case STATE_HPOPTIM :
-        startAndCheckHPOptim();
+        if ( !m_calc_prevoronoi )
+          startAndCheckHPOptim();
+        else
+        {
+          // check if future then, if so, then redirect to sample
+          if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+          {
+            m_mission_state = STATE_CALCWPT;
+            m_surface_state = SURF_IDLE;
+            m_data_sharing_state = DATA_IDLE;
+          }
+        }
         break;
       case STATE_CALCVOR :
         runVoronoiRoutine();
@@ -436,7 +450,8 @@ bool GP::Iterate()
         // tds with voronoi, trigger for when to request data sharing
         if ( m_use_voronoi && m_voronoi_subset.size() > 0 &&
              needToRecalculateVoronoi() &&
-             ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
+             ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) &&
+             m_mission_state == STATE_SAMPLE )
         {
           // request surfacing through acomms
           m_surface_state = SURF_REQ;
@@ -461,7 +476,7 @@ bool GP::Iterate()
       case SURF_SURFACE:
         if ( std::abs(m_dep) < 0.2 )
         {
-          if ( m_data_sharing_state == DATA_IDLE )
+          if ( m_mission_state == STATE_SURFACE && m_data_sharing_state == DATA_IDLE )
             m_data_sharing_state = DATA_HANDSHAKE;
         }
         break;
@@ -1508,8 +1523,11 @@ void GP::startAndCheckHPOptim()
           m_start_time = MOOSTime(); // TODO change to store save time, and not mess us TDS timing?
 
           // after final HP optim -- how to know when final?
-          m_mission_state = STATE_DONE;
-          m_Comms.Notify("STAGE","return");
+          if ( false ) // TODO
+          {
+            m_mission_state = STATE_DONE;
+            m_Comms.Notify("STAGE","return");
+          }
         }
       }
       else
@@ -2214,7 +2232,7 @@ void GP::tdsReceiveData()
     m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
     m_waiting = true;
   }
-  else
+  else if ( m_mission_state == STATE_SURFACE && !m_calc_prevoronoi )
   {
     std::cout << "checking future m_future_received_data_processed" << std::endl;
     if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
@@ -2230,6 +2248,7 @@ void GP::tdsReceiveData()
         m_mission_state = STATE_HPOPTIM;
 //        m_first_hp_optim = true;
         m_first_surface = false;
+        m_surface_state = SURF_IDLE;
         m_data_sharing_state = DATA_IDLE;
       }
       else
@@ -2313,8 +2332,12 @@ void GP::findAndPublishNextWpt()
       if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
       {
         m_finding_nxt = false;
+
         // publish greedy best
         publishNextBestPosition();
+
+        // continue survey
+        m_Comms.Notify("STAGE","survey");
         m_pause_data_adding = false;
       }
     }
