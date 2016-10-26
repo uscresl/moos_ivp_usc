@@ -298,6 +298,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         // send ack, do actual sending in Iterate so we send until surface handshake
         m_mission_state = STATE_SURFACE;
         m_surface_state = SURF_ACK;
+
         // start to surface (bhv)
         Notify("STAGE","data_sharing");
       }
@@ -370,9 +371,7 @@ bool GP::Iterate()
     // **** DEBUG **********************************************************//
     if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
     {
-      m_Comms.Notify("STATE_MISSION", currentMissionStateString());
-      m_Comms.Notify("STATE_SURFACE", currentSurfaceStateString());
-      m_Comms.Notify("STATE_DATA_SHARING", currentDataSharingStateString());
+
     }
 
     // **** SAVING GP TO FILE **********************************************//
@@ -484,15 +483,18 @@ bool GP::Iterate()
         }
         // when on surface, switch state to start handshake
         if ( std::abs(m_dep) < 0.2 )
+        {
           m_surface_state = SURF_SURFACE;
+          m_data_sharing_state = DATA_HANDSHAKE;
+        }
         break;
       case SURF_SURFACE:
-        // when on surface, start handshake
-        if ( std::abs(m_dep) < 0.2 )
-        {
-          if ( m_mission_state == STATE_SURFACE && m_data_sharing_state == DATA_IDLE )
-            m_data_sharing_state = DATA_HANDSHAKE;
-        }
+//        // when on surface, start handshake
+//        if ( std::abs(m_dep) < 0.2 )
+//        {
+//          if ( m_mission_state == STATE_SURFACE && m_data_sharing_state == DATA_IDLE )
+//            m_data_sharing_state = DATA_HANDSHAKE;
+//        }
         break;
       default:
         break;
@@ -1413,7 +1415,7 @@ size_t GP::calcMECriterion()
   map_lock.unlock();
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: calc max entropy" << std::endl;
+    std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
 
   // for each unvisited location
   for ( auto y_itr : unvisited_map_copy )
@@ -1540,6 +1542,8 @@ void GP::startAndCheckHPOptim()
             m_mission_state = STATE_DONE;
             m_Comms.Notify("STAGE","return");
           }
+
+          m_hp_optim_running = false;
         }
       }
       else
@@ -2327,7 +2331,10 @@ void GP::findAndPublishNextWpt()
   // this during the voronoi calculation
   if ( m_precalc_pred_voronoi_done )
   {
+    // publish best location
     publishNextBestPosition();
+
+    // reset vars
     m_precalc_pred_voronoi_done = false;
     m_finding_nxt = false;
   }
@@ -2566,4 +2573,11 @@ void GP::printVoronoiPartitions()
     std::cout << GetAppName() << " :: partition for " << veh.first << " has " << (veh.second).size() << " points\n";
 
   std::cout << std::endl;
+}
+
+void GP::publishStates()
+{
+  m_Comms.Notify("STATE_MISSION", currentMissionStateString());
+  m_Comms.Notify("STATE_SURFACE", currentSurfaceStateString());
+  m_Comms.Notify("STATE_DATA_SHARING", currentDataSharingStateString());
 }

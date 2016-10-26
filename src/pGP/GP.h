@@ -116,6 +116,8 @@ class GP : public CMOOSApp
 
    bool ownMessage(std::string input);
 
+   void publishStates();
+
    // Configuration variables
    bool m_verbose;
 
