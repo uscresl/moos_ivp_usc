@@ -141,7 +141,6 @@ class GP : public CMOOSApp
    double m_lon;
    double m_dep;
    // process state
-   bool m_pause_data_adding;
    double m_last_published;
    double m_last_pred_save;
    // sample points grid specs
@@ -270,8 +269,6 @@ class GP : public CMOOSApp
 
    // do HP optim on first surface for adaptive
    bool m_first_surface;
-   //std::future<bool> m_future_first_hp_optim;
-//   bool m_first_hp_optim;
 
    // to publish only once a second
    double m_last_published_req_surf;
