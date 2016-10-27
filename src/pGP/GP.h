@@ -196,6 +196,7 @@ class GP : public CMOOSApp
    std::future<bool> m_future_hp_optim;
    bool m_hp_optim_running;
    bool m_hp_optim_done;
+   bool m_final_hp_optim;
 
    // future for result MI criterion calculations
    std::future<size_t> m_future_next_pt;
@@ -206,7 +207,6 @@ class GP : public CMOOSApp
    // mission states,
    // check when returning to base
    bool m_finished;
-   size_t m_hp_optim_mode_cnt;
 
    // file writing
    std::ofstream m_ofstream_pm_lGP, m_ofstream_pv_lGP;
