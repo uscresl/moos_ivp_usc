@@ -73,9 +73,9 @@ GP::GP() :
   m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
   m_hp_optim_running(false),
   m_hp_optim_done(false),
+  m_final_hp_optim(false),
   m_data_mail_counter(1),
   m_finished(false),
-  m_hp_optim_mode_cnt(0),
   m_num_vehicles(1),
   m_data_pt_counter(0),
   m_data_send_reserve(0),
@@ -213,14 +213,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       if (std::abs(m_last_published - MOOSTime()) > 1.0)
         m_mission_state = STATE_CALCWPT;
     }
-    else if ( key == "MODE" )
-    {
-      // check the mission state for whether we need to do HP optimization
-      if ( sval.find("HP_OPTIM") != std::string::npos )
-      {
-        m_hp_optim_mode_cnt++;
-      }
-    }
     else if ( key == m_input_var_share_data )
     {
       // handle
@@ -337,6 +329,19 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         std::cout << "m_rec_ack_veh.size() vs m_other_vehicles.size(): " << m_rec_ack_veh.size() << " vs " << m_other_vehicles.size() << std::endl;
       }
     }
+    else if ( key == "MISSION_TIME" )
+    {
+      std::cout << "MISSION_TIME: " << sval << std::endl;
+      if ( sval == "end" )
+      {
+        // end of adaptive mission, switch to final hp optimization
+        m_final_hp_optim = true;
+        m_Comms.Notify("STAGE","hpoptim");
+        m_mission_state = STATE_SURFACE;
+        m_surface_state = SURF_REQ;
+        m_data_sharing_state = DATA_IDLE;
+      }
+    }
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
 
@@ -371,7 +376,7 @@ bool GP::Iterate()
     // **** DEBUG **********************************************************//
     if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
     {
-
+      publishStates();
     }
 
     // **** SAVING GP TO FILE **********************************************//
@@ -714,8 +719,8 @@ void GP::registerVariables()
   m_Comms.Register(m_input_var_sample_points, 0);
   m_Comms.Register(m_input_var_sample_points_specs, 0);
 
-  // get status mission
-  m_Comms.Register("MODE", 0);
+  // get trigger end mission
+  m_Comms.Register("MISSION_TIME", 0);
 
   // get when wpt cycle finished
   // (when to run adaptive predictions in adaptive state)
@@ -723,21 +728,21 @@ void GP::registerVariables()
 
   // data sharing
   m_Comms.Register(m_input_var_share_data, 0);
-  m_Comms.Register("LOITER_DIST_TO_POLY",0);
-  m_Comms.Register(m_input_var_handshake_data_sharing,0);
+  m_Comms.Register("LOITER_DIST_TO_POLY", 0);
+  m_Comms.Register(m_input_var_handshake_data_sharing, 0);
 
   // get data from other vehicles
-  m_Comms.Register("INCOMING_DATA_ACOMMS",0);
+  m_Comms.Register("INCOMING_DATA_ACOMMS", 0);
 
   // get other vehicles' locations
-  m_Comms.Register("NODE_REPORT",0);
+  m_Comms.Register("NODE_REPORT", 0);
 
   // tmp test voronoi partitioning
-  m_Comms.Register("TEST_VORONOI",0);
+  m_Comms.Register("TEST_VORONOI", 0);
 
   // surfacing requests
-  m_Comms.Register("REQ_SURFACING_REC",0); // receive surfacing request from other vehicle
-  m_Comms.Register("REQ_SURFACING_ACK_REC",0); // receive surfacing req ack from other vehicle
+  m_Comms.Register("REQ_SURFACING_REC", 0); // receive surfacing request from other vehicle
+  m_Comms.Register("REQ_SURFACING_ACK_REC", 0); // receive surfacing req ack from other vehicle
 
   if ( m_verbose )
   {
@@ -1537,7 +1542,7 @@ void GP::startAndCheckHPOptim()
           m_start_time = MOOSTime(); // TODO change to store save time, and not mess us TDS timing?
 
           // after final HP optim -- how to know when final?
-          if ( false ) // TODO
+          if ( m_final_hp_optim ) // TODO
           {
             m_mission_state = STATE_DONE;
             m_Comms.Notify("STAGE","return");
@@ -2259,7 +2264,7 @@ void GP::tdsReceiveData()
         std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
 
       // add in a HP optimization, if this is the first time.
-      if ( m_first_surface )
+      if ( m_first_surface || m_final_hp_optim )
       {
         m_first_surface = false;
 
