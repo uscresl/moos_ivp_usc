@@ -251,7 +251,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           // if we have received 'ready' from as many vehicles as exist, then flip bool
           std::cout << GetAppName() << " :: m_rec_ready_veh.size(), m_other_vehicles.size(): "
                     << m_rec_ready_veh.size() << ", " << m_other_vehicles.size() << std::endl;
-          if ( m_rec_ready_veh.size() == m_other_vehicles.size() )
+          if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
+               (m_data_sharing_state == DATA_HANDSHAKE || m_mission_state == STATE_HPOPTIM) )
           {
             for ( auto veh : m_rec_ready_veh )
               std::cout << "received ready from: " << veh << std::endl;
@@ -457,6 +458,12 @@ bool GP::Iterate()
         break;
     }
 
+    // **** DEBUG **********************************************************//
+    if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
+    {
+      publishStates();
+    }
+
     // **** STEPS TO GET VEHICLES TO SURFACE ************************************//
     switch ( m_surface_state )
     {
@@ -503,6 +510,12 @@ bool GP::Iterate()
         break;
       default:
         break;
+    }
+
+    // **** DEBUG **********************************************************//
+    if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
+    {
+      publishStates();
     }
 
     // **** DATA SHARING WHEN ON SURFACE ************************************//
@@ -1510,7 +1523,6 @@ void GP::startAndCheckHPOptim()
   else
   {
     // if running, check if done
-    std::cout << "checking future m_future_hp_optim" << std::endl;
     if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
         bool hp_optim_done = m_future_hp_optim.get(); // should be true
@@ -1578,6 +1590,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // handshake
+    std::cout << GetAppName() << " :: runHPOptimization, handshake for data sharing" << std::endl;
 
     // if received ready, let it be known we are ready as well
     if ( m_received_ready )
@@ -1600,6 +1613,8 @@ bool GP::runHPOptimization(size_t nr_iterations)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
+
+    std::cout << GetAppName() << " :: runHPOptimization, data sharing" << std::endl;
 
     // share data, if not already shared through acomms
     if ( !m_acomms_sharing )
