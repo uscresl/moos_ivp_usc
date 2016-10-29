@@ -163,19 +163,16 @@ class GP : public CMOOSApp
    bool m_finding_nxt;
 
    // states through enums
-   enum MissionState{STATE_IDLE, STATE_SAMPLE, STATE_CALCWPT, STATE_SURFACE, STATE_HPOPTIM, STATE_CALCVOR, STATE_DONE};
+   enum MissionState{ STATE_IDLE, STATE_CALCWPT, STATE_SAMPLE,
+                      STATE_HPOPTIM, STATE_DONE,
+                      STATE_SURFACING, STATE_HANDSHAKE,
+                      STATE_TX_DATA, STATE_RX_DATA,
+                      STATE_CALCVOR, STATE_REQ_SURF, STATE_ACK_SURF };
    MissionState m_mission_state;
    char const * currentMissionStateString() { return (char const *[]) {
-   "STATE_IDLE", "STATE_SAMPLE", "STATE_CALCWPT", "STATE_SURFACE",
-   "STATE_HPOPTIM", "STATE_CALCVOR", "STATE_DONE" }[m_mission_state]; };
-
-   enum SurfaceState{SURF_IDLE, SURF_REQ, SURF_ACK, SURF_SURFACE};
-   SurfaceState m_surface_state;
-   char const * currentSurfaceStateString() { return (char const *[]) {"SURF_IDLE", "SURF_REQ", "SURF_ACK", "SURF_SURFACE"}[m_surface_state]; };
-
-   enum DataSharingState{DATA_IDLE, DATA_HANDSHAKE, DATA_SEND, DATA_PROCESSRECEIVED};
-   DataSharingState m_data_sharing_state;
-   char const * currentDataSharingStateString() { return (char const *[]) {"DATA_IDLE", "DATA_HANDSHAKE", "DATA_SEND", "DATA_PROCESSRECEIVED"}[m_data_sharing_state]; };
+   "STATE_IDLE", "STATE_CALCWPT", "STATE_SAMPLE", "STATE_HPOPTIM", "STATE_DONE",
+   "STATE_SURFACING", "STATE_HANDSHAKE", "STATE_TX_DATA", "STATE_RX_DATA",
+   "STATE_CALCVOR", "STATE_REQ_SURF", "STATE_ACK_SURF" }[m_mission_state]; };
 
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_visited;
