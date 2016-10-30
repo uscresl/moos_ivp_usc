@@ -1,0 +1,5 @@
+libeigen3-dev
+# boost, at least 1.58
+libboost1.58-dev
+# libGP git@github.com:StephanieKemna/libgp.git
+# MOOSGeodesy
