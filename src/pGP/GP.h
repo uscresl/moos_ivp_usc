@@ -142,6 +142,9 @@ class GP : public CMOOSApp
    double m_lat;
    double m_lon;
    double m_dep;
+   size_t m_surf_cnt;
+   bool m_on_surface;
+
    // process state
    double m_last_published;
    double m_last_pred_save;
@@ -275,6 +278,9 @@ class GP : public CMOOSApp
 
    // buffer around area for which vehicle is counted to be inside the area
    double m_area_buffer;
+
+   // keep track of bhv state
+   std::string m_bhv_state;
 };
 
 #endif

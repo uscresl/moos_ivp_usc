@@ -296,8 +296,8 @@ ProcessConfig = pPublishAfterX
 
 
   // the var/val set to publish
-  publish_var = STAGE
-  publish_val = hpoptim
+  publish_var = MISSION_TIME
+  publish_val = end
   
   // skip first message?
   skip_first = false
