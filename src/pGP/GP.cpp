@@ -219,7 +219,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // check when adaptive waypoint reached
       // these are flags set by the adaptive wpt behavior
       // if we get it, it must mean a wpt/cycle was done
-      if (std::abs(m_last_published - MOOSTime()) > 1.0)
+      if ( std::abs(m_last_published - MOOSTime()) > 1.0 &&
+           (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_IDLE ) )
       {
         std::cout << GetAppName() << " :: STATE_CALCWPT via m_input_var_adaptive_trigger" << std::endl;
         m_mission_state = STATE_CALCWPT;
@@ -316,6 +317,15 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( m_bhv_state != "data_sharing" )
           Notify("STAGE","data_sharing");
       }
+      if ( !own_msg && m_mission_state == STATE_REQ_SURF )
+      {
+        m_mission_state = STATE_ACK_SURF;
+        publishStates();
+
+        // start to surface (bhv)
+        if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
+          Notify("STAGE","data_sharing");
+      }
     }
     else if ( key == "REQ_SURFACING_ACK_REC" )
     { // receive surfacing req ack from other vehicle
@@ -361,6 +371,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           publishStates();
         }
       }
+    }
+    else if ( key == "DB_UPTIME" )
+    {
+      m_db_uptime = dval;
     }
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
@@ -422,7 +436,7 @@ bool GP::Iterate()
 
     // **** DEBUG **********************************************************//
     //if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
-    std::cout << GetAppName() << " :: ### Iterate before switch: ### ";
+    std::cout << GetAppName() << " :: ### Iterate before switch: ### " << std::endl;
     publishStates();
 
     // **** MAIN STATE MACHINE *********************************************//
@@ -461,7 +475,7 @@ bool GP::Iterate()
         findAndPublishNextWpt();
         break;
       case STATE_SURFACING :
-        if ( m_bhv_state != "data_sharing" )
+        if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
           Notify("STAGE","data_sharing");
 
         if ( m_timed_data_sharing && m_on_surface )
@@ -751,6 +765,9 @@ void GP::registerVariables()
   // surfacing requests
   m_Comms.Register("REQ_SURFACING_REC", 0); // receive surfacing request from other vehicle
   m_Comms.Register("REQ_SURFACING_ACK_REC", 0); // receive surfacing req ack from other vehicle
+
+  // db uptime for debugging
+  m_Comms.Register("DB_UPTIME", 0);
 
   if ( m_verbose )
   {
@@ -1364,7 +1381,7 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
   if ( m_verbose )
     std::cout << GetAppName() << " ::  best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
 
-  if ( best_so_far_idx > 0 )
+  if ( best_so_far_idx >= 0 )
   {
     auto best_itr = m_sample_points_unvisited.find(best_so_far_idx);
 
@@ -1390,6 +1407,11 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
       m_mission_state = STATE_SAMPLE;
       publishStates();
     }
+  }
+  else
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: invalid index: " << best_so_far_idx << ", not publishing." << std::endl;
   }
 }
 
@@ -1546,17 +1568,16 @@ void GP::startAndCheckHPOptim()
             tdsResetStateVars();
           }
 
-          // store predictions after HP optim
-          std::thread pred_store(&GP::makeAndStorePredictions, this);
-          pred_store.detach();
-          m_start_time = MOOSTime(); // TODO change to store save time, and not mess us TDS timing?
-
           // after final HP optim -- how to know when final?
           if ( m_final_hp_optim ) // TODO
           {
             m_mission_state = STATE_DONE;
             m_Comms.Notify("STAGE","return");
             publishStates();
+
+            // store predictions after HP optim
+            std::thread pred_store(&GP::makeAndStorePredictions, this);
+            pred_store.detach();
           }
 
           m_hp_optim_running = false;
@@ -1579,68 +1600,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
   bool data_processed = false;
   size_t pts_added = 0;
 
-  // first share and wait for data,
-  // in case there are multiple vehicles
-  // and data has not yet been shared through acomms
-  if ( m_num_vehicles > 1 )
-  {
-    // 1. wait until the vehicle is at the surface and at the HP loiter
-    while ( !( m_on_surface && m_loiter_dist_to_poly < 20) )
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-    // handshake
-    std::cout << GetAppName() << " :: runHPOptimization, handshake for data sharing" << std::endl;
-
-    // if received ready, let it be known we are ready as well
-    if ( m_received_ready )
-      sendReady();
-
-    // if not received ready, let it be known we are ready, until other also is
-    size_t prev_sent = 0;
-    while ( !m_received_ready )
-    {
-      // this vehicle ready to exchange data, other vehicle not yet,
-      // keep sending that we are ready:
-      // every 30 seconds, notify that we are ready for data exchange
-      // note; we are not in a mail cycle here, so make sure we do only once
-      //       per time slot
-      size_t time_moos = (size_t)std::floor(MOOSTime());
-      if ( time_moos % 30 == 0 && time_moos-prev_sent > 1 )
-      {
-        sendReady();
-        prev_sent = time_moos;
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
-    }
-
-    std::cout << GetAppName() << " :: runHPOptimization, data sharing" << std::endl;
-
-    // share data, if not already shared through acomms
-    if ( !m_acomms_sharing )
-    {
-      sendData();
-      m_received_ready = false;
-
-      // 2. wait for received data to be processed
-      while ( !data_processed )
-      {
-        if ( m_received_shared_data )
-        {
-          pts_added += processReceivedData();
-          data_processed = true;
-        }
-        else
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
-      if ( m_verbose )
-        std::cout << GetAppName() << " :: *added: " << pts_added << " data points." << std::endl;
-      m_received_shared_data = false;
-      m_rec_ready_veh.clear();
-      m_rec_ack_veh.clear();
-    }
-  }
-
-  // 3. run hyperparameter optimization
+  // run hyperparameter optimization
 
   // protect GP access with mutex
   if ( m_verbose)
@@ -2607,7 +2567,7 @@ void GP::printVoronoiPartitions()
 void GP::publishStates()
 {
   if ( m_debug )
-    std::cout << GetAppName() << " :: ** current state: " << currentMissionStateString() << " **" << std::endl;
+    std::cout << GetAppName() << " :: ** db_uptime: " << m_db_uptime << " current state: " << currentMissionStateString() << " **" << std::endl;
 
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
 }

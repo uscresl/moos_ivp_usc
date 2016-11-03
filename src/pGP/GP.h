@@ -281,6 +281,9 @@ class GP : public CMOOSApp
 
    // keep track of bhv state
    std::string m_bhv_state;
+
+   // debugging
+   double m_db_uptime;
 };
 
 #endif
