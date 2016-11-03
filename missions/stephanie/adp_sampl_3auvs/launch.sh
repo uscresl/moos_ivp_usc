@@ -54,6 +54,11 @@ for ARGI; do
     fi
 done
 
+# check if sim data file present
+if [ ! -f 'test.csv' ]; then 
+echo 'ERROR: No simulated data file presented. Please put a test.csv file in this folder'; exit 0;
+fi
+
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
 #-------------------------------------------------------
