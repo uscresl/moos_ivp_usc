@@ -256,7 +256,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( m_on_surface ) // simulate that we only received on surface
         {
           if ( m_verbose )
-            std::cout << GetAppName() << " :: received READY at: " << MOOSTime() << " from: " << sval << std::endl;
+            std::cout << GetAppName() << " :: received READY at: " << m_db_uptime << " from: " << sval << std::endl;
 
           // check if vehicle not in list yet, if so, add
           if ( m_rec_ready_veh.find(sval) == m_rec_ready_veh.end() )
@@ -270,7 +270,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           {
             for ( auto veh : m_rec_ready_veh )
               std::cout << GetAppName() << " :: received ready from: " << veh << std::endl;
-            m_received_ready = true;
+            if ( !m_received_ready )
+              m_received_ready = true;
           }
         }
         else
@@ -306,25 +307,35 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         std::cout << GetAppName() << " :: processing msg? " << (m_mission_state == STATE_SAMPLE ) << std::endl;
       }
 
-      if ( !own_msg && m_mission_state == STATE_SAMPLE )
+      if ( ! own_msg )
       {
-        // prep for surfacing
-        // send ack, do actual sending in Iterate so we send until surface handshake
-        m_mission_state = STATE_ACK_SURF;
-        publishStates();
+        bool final_surface = finalSurface(sval);
+        if ( m_mission_state == STATE_SAMPLE )
+        {
+          // start to surface (bhv)
+          if ( m_bhv_state != "data_sharing" )
+            Notify("STAGE","data_sharing");
+        }
+        if ( m_mission_state == STATE_REQ_SURF )
+        {
+          // start to surface (bhv)
+          if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
+            Notify("STAGE","data_sharing");
+        }
+        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_REQ_SURF )
+        {
+          // prep for surfacing
+          // send ack, do actual sending in Iterate so we send until surface handshake
+          m_mission_state = STATE_ACK_SURF;
+          publishStates();
 
-        // start to surface (bhv)
-        if ( m_bhv_state != "data_sharing" )
-          Notify("STAGE","data_sharing");
-      }
-      if ( !own_msg && m_mission_state == STATE_REQ_SURF )
-      {
-        m_mission_state = STATE_ACK_SURF;
-        publishStates();
-
-        // start to surface (bhv)
-        if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
-          Notify("STAGE","data_sharing");
+          if ( final_surface )
+          {
+            m_final_hp_optim = true;
+            if ( m_bhv_state != "hpoptim" )
+              m_Comms.Notify("STAGE","hpoptim");
+          }
+        }
       }
     }
     else if ( key == "REQ_SURFACING_ACK_REC" )
@@ -359,15 +370,17 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "MISSION_TIME" )
     {
       std::cout << GetAppName() << " :: MISSION_TIME: " << sval << std::endl;
-      if ( sval == "end" )
+      if ( sval == "end" && !m_final_hp_optim )
       {
         // end of adaptive mission, switch to final hp optimization
+        // (if not in it already)
         m_final_hp_optim = true;
         if ( m_bhv_state != "hpoptim" )
           m_Comms.Notify("STAGE","hpoptim");
         if ( m_mission_state != STATE_ACK_SURF && m_mission_state != STATE_REQ_SURF )
         {
-          m_mission_state = STATE_REQ_SURF; //STATE_HPOPTIM;
+          m_mission_state = STATE_REQ_SURF;
+          clearHandshakeVars();
           publishStates();
         }
       }
@@ -465,6 +478,7 @@ bool GP::Iterate()
         {
           // request surfacing through acomms
           m_mission_state = STATE_REQ_SURF;
+          clearHandshakeVars();
           publishStates();
         }
         // else just sampling, don't do anything else
@@ -508,7 +522,10 @@ bool GP::Iterate()
         // every second, generate var/val for acomms for surfacing
         if ( (MOOSTime() - m_last_published_req_surf) > 1.0 )
         {
-          m_Comms.Notify("REQ_SURFACING","true");
+          if ( !m_final_hp_optim )
+            m_Comms.Notify("REQ_SURFACING","true");
+          else
+            m_Comms.Notify("REQ_SURFACING","final");
           m_last_published_req_surf = MOOSTime();
         }
         break;
@@ -1662,7 +1679,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     loc[0] = pt[0];
     loc[1] = pt[1];
     double dval = pt[2];
-    std::cout << GetAppName() << " :: data point: " << loc[0] << "," << loc[1] << "," << dval << std::endl;
     downsampled_gp.add_pattern(loc, dval);
   }
   if ( m_first_surface )
@@ -2299,18 +2315,28 @@ void GP::tdsResetStateVars()
     Notify("STAGE","survey");
 
   // reset surfacing/handshake vars
-  m_received_shared_data = false;
   m_waiting = false;
-  m_received_ready = false;
-  if ( m_use_voronoi )
+    if ( m_use_voronoi )
   {
     // move to next step: voronoi calc & predictions done
     m_precalc_pred_voronoi_done = true;
   }
 
+  clearHandshakeVars();
+}
+
+//---------------------------------------------------------
+// Procedure: clearHandshakeVars
+//            clear handshake counters
+//
+void GP::clearHandshakeVars()
+{
   // reset surfacing/handshake other vehicles sets
   m_rec_ready_veh.clear();
   m_rec_ack_veh.clear();
+
+  m_received_shared_data = false;
+  m_received_ready = false;
 }
 
 //---------------------------------------------------------
@@ -2386,6 +2412,17 @@ bool GP::ownMessage(std::string input)
   size_t index = input.find(m_veh_name);
   return ( index != std::string::npos );
 }
+
+//---------------------------------------------------------
+// Procedure: finalSurface(std::string input)
+//            check if message contains word 'final'
+//
+bool GP::finalSurface(std::string input)
+{
+  size_t index = input.find("final");
+  return ( index != std::string::npos );
+}
+
 
 //---------------------------------------------------------
 // Procedure: runVoronoiRoutine()
