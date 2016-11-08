@@ -14,3 +14,4 @@ grep_all ()
 
 grep_all LOG_A a
 grep_all LOG_B b
+grep_all LOG_C c
