@@ -109,12 +109,14 @@ class GP : public CMOOSApp
    bool inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const;
 
    void tdsResetStateVars();
+   void clearHandshakeVars();
    void tdsHandshake();
    void tdsReceiveData();
 
    size_t processReceivedData();
 
    bool ownMessage(std::string input);
+   bool finalSurface(std::string input);
 
    void publishStates();
 
