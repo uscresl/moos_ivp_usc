@@ -310,6 +310,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( ! own_msg )
       {
         bool final_surface = finalSurface(sval);
+        std::cout << GetAppName() << "Received surface request for final surface? " << final_surface << std::endl;
+
         if ( m_mission_state == STATE_SAMPLE )
         {
           // start to surface (bhv)
@@ -2419,7 +2421,9 @@ bool GP::ownMessage(std::string input)
 //
 bool GP::finalSurface(std::string input)
 {
-  size_t index = input.find("final");
+  // note; we give value 'final', but surface request is a bool
+  // given message size, so it would be converted to 'false'
+  size_t index = input.find("false");
   return ( index != std::string::npos );
 }
 
