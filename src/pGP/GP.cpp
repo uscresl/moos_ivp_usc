@@ -304,7 +304,9 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( m_debug )
       {
         std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << '\n';
-        std::cout << GetAppName() << " :: processing msg? " << (m_mission_state == STATE_SAMPLE ) << std::endl;
+        std::cout << GetAppName() << " :: processing msg? "
+                  << (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT )
+                  << std::endl;
       }
 
       if ( ! own_msg )
@@ -312,7 +314,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         bool final_surface = finalSurface(sval);
         std::cout << GetAppName() << "Received surface request for final surface? " << final_surface << std::endl;
 
-        if ( m_mission_state == STATE_SAMPLE )
+        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT )
         {
           // start to surface (bhv)
           if ( m_bhv_state != "data_sharing" )
@@ -324,7 +326,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
             Notify("STAGE","data_sharing");
         }
-        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_REQ_SURF )
+        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
         {
           // prep for surfacing
           // send ack, do actual sending in Iterate so we send until surface handshake
