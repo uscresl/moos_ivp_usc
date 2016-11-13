@@ -305,7 +305,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << '\n';
         std::cout << GetAppName() << " :: processing msg? "
-                  << (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT )
+                  << (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
                   << std::endl;
       }
 
@@ -339,6 +339,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             if ( m_bhv_state != "hpoptim" )
               m_Comms.Notify("STAGE","hpoptim");
           }
+        }
+        else if ( m_mission_state == STATE_HPOPTIM && final_surface )
+        {
+          m_final_hp_optim = true;
         }
       }
     }
@@ -379,13 +383,21 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         // end of adaptive mission, switch to final hp optimization
         // (if not in it already)
         m_final_hp_optim = true;
+
         if ( m_bhv_state != "hpoptim" )
           m_Comms.Notify("STAGE","hpoptim");
-        if ( m_mission_state != STATE_ACK_SURF && m_mission_state != STATE_REQ_SURF )
+
+        if ( m_mission_state != STATE_ACK_SURF && m_mission_state != STATE_REQ_SURF &&
+             m_mission_state != STATE_HPOPTIM )
         {
           m_mission_state = STATE_REQ_SURF;
+          // reset other vars to make sure we can go over procedure again
           clearHandshakeVars();
           publishStates();
+        }
+        if ( m_mission_state == STATE_HPOPTIM )
+        {
+          m_Comms.Notify("REQ_SURFACING","final");
         }
       }
     }
