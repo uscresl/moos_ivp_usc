@@ -72,6 +72,7 @@ GP::GP() :
   m_hp_optim_running(false),
   m_hp_optim_done(false),
   m_final_hp_optim(false),
+  m_hp_optim_iterations(50),
   m_data_mail_counter(1),
   m_finished(false),
   m_num_vehicles(1),
@@ -335,12 +336,13 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
           if ( final_surface )
           {
-            m_final_hp_optim = true;
+            //m_final_hp_optim = true;
             if ( m_bhv_state != "hpoptim" )
               m_Comms.Notify("STAGE","hpoptim");
           }
         }
-        else if ( m_mission_state == STATE_HPOPTIM && final_surface )
+
+        if ( final_surface ) //m_mission_state == STATE_HPOPTIM &&
         {
           m_final_hp_optim = true;
         }
@@ -387,18 +389,25 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( m_bhv_state != "hpoptim" )
           m_Comms.Notify("STAGE","hpoptim");
 
-        if ( m_mission_state != STATE_ACK_SURF && m_mission_state != STATE_REQ_SURF &&
-             m_mission_state != STATE_HPOPTIM )
+        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT ||
+             m_mission_state == STATE_CALCVOR )
         {
-          m_mission_state = STATE_REQ_SURF;
+          if ( m_use_voronoi )
+            m_mission_state = STATE_REQ_SURF;
+          else
+            m_mission_state = STATE_SURFACING;
+
           // reset other vars to make sure we can go over procedure again
           clearHandshakeVars();
           publishStates();
         }
-        if ( m_mission_state == STATE_HPOPTIM )
+        else if ( m_mission_state != STATE_IDLE || m_mission_state != STATE_DONE )
         {
-          m_Comms.Notify("REQ_SURFACING","final");
+          // in all other cases
+          if ( m_use_voronoi )
+            m_Comms.Notify("REQ_SURFACING","final");
         }
+
       }
     }
     else if ( key == "DB_UPTIME" )
@@ -676,6 +685,8 @@ bool GP::OnStartUp()
       m_downsample_factor = (size_t)atoi(value.c_str());
     else if ( param == "area_buffer" )
       m_area_buffer = (double)atof(value.c_str());
+    else if ( param == "hp_optim_iterations" )
+      m_hp_optim_iterations = (size_t)atoi(value.c_str());
     else
       handled = false;
 
@@ -1732,7 +1743,7 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   // write new HP to file
   begin = std::clock();
   std::stringstream filenm;
-  filenm << "hp_optim_" << m_veh_name << "_" << nr_iterations;
+  filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
   downsampled_gp.write(filenm.str().c_str());
   end = std::clock();
   if ( m_debug )

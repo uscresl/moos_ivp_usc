@@ -199,6 +199,7 @@ class GP : public CMOOSApp
    bool m_hp_optim_running;
    bool m_hp_optim_done;
    bool m_final_hp_optim;
+   size_t m_hp_optim_iterations;
 
    // future for result MI criterion calculations
    std::future<size_t> m_future_next_pt;
