@@ -186,6 +186,9 @@ ProcessConfig = pGP
 
   // take one in X data points for HP optimization
   downsample_factor = 4
+
+  // number of iterations for RProp
+  hp_optim_iterations = 50
 }
 
 //--------------------------------------------------
@@ -271,7 +274,7 @@ ProcessConfig = pPublishAfterX
 
   // how many seconds after above var/val should we publish?
   // you can give either a number, or a range (eg. 10:20)
-  publish_after_secs = 
+//  publish_after_secs = 
 // old area
 //#ifdef NR_VEHICLES 1
 //  publish_after_secs = 8571:8660 //TODO update
