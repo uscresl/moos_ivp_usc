@@ -1613,13 +1613,14 @@ void GP::startAndCheckHPOptim()
           }
 
           // after final HP optim -- how to know when final?
-          if ( m_final_hp_optim ) // TODO
+          if ( m_final_hp_optim )
           {
             m_mission_state = STATE_DONE;
             m_Comms.Notify("STAGE","return");
             publishStates();
 
             // store predictions after HP optim
+            m_finished = true;
             std::thread pred_store(&GP::makeAndStorePredictions, this);
             pred_store.detach();
           }
@@ -1836,6 +1837,7 @@ void GP::makeAndStorePredictions()
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
+  std::cout << GetAppName() << " :: copy vs orig gp address: " << &gp_copy << " -- " << &m_gp << std::endl;
   gp_lock.unlock();
 
   std::clock_t begin = std::clock();
@@ -1923,6 +1925,7 @@ void GP::makeAndStorePredictions()
 
   if ( m_finished )
   {
+    std::cout << GetAppName() << " :: " << m_db_uptime << " :: closing files." << std::endl;
     m_ofstream_pm_lGP.close();
     m_ofstream_pv_lGP.close();
     if ( m_use_log_gp )
