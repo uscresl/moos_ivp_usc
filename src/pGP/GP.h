@@ -97,6 +97,8 @@ class GP : public CMOOSApp
    void calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_lat, std::map< std::string, std::pair<double,double> > & other_vehicle_centroids );
    void calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat );
    void runVoronoiRoutine();
+   bool centroidConvergence( double old_lon, double old_lat, std::map<std::string, std::pair<double, double> > old_centr,
+                             double new_lon, double new_lat, std::map<std::string, std::pair<double, double> > new_centr );
 
    // helper/test functions
    bool needToUpdateMaps(size_t grid_index);
