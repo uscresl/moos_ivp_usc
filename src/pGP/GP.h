@@ -120,6 +120,8 @@ class GP : public CMOOSApp
 
    void publishStates();
 
+   void endMission();
+
    // Configuration variables
    bool m_verbose;
 

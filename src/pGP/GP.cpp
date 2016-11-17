@@ -310,10 +310,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                   << std::endl;
       }
 
-      if ( ! own_msg )
+      if ( !own_msg )
       {
         bool final_surface = finalSurface(sval);
-        std::cout << GetAppName() << "Received surface request for final surface? " << final_surface << std::endl;
+        std::cout << GetAppName() << " :: Received surface request for final surface? " << final_surface << std::endl;
 
         if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT )
         {
@@ -333,18 +333,18 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           // send ack, do actual sending in Iterate so we send until surface handshake
           m_mission_state = STATE_ACK_SURF;
           publishStates();
-
-          if ( final_surface )
-          {
-            //m_final_hp_optim = true;
-            if ( m_bhv_state != "hpoptim" )
-              m_Comms.Notify("STAGE","hpoptim");
-          }
         }
 
         if ( final_surface ) //m_mission_state == STATE_HPOPTIM &&
         {
           m_final_hp_optim = true;
+
+          if ( m_mission_state == STATE_HPOPTIM ||  m_mission_state == STATE_SAMPLE ||
+               m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+          {
+            if ( m_bhv_state != "hpoptim" )
+              m_Comms.Notify("STAGE","hpoptim");
+          }
         }
       }
     }
@@ -532,8 +532,16 @@ bool GP::Iterate()
           // check if future ready. If so, then redirect to sample
           if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
           {
-            m_mission_state = STATE_CALCVOR;
-            publishStates();
+            // check if this was supposed to be final hpoptim (received var/msg during calculations)
+            // if so, then end now
+            // if not, then continue
+            if ( m_final_hp_optim )
+              endMission();
+            else
+            {
+              m_mission_state = STATE_CALCVOR;
+              publishStates();
+            }
           }
         }
         break;
@@ -1614,16 +1622,7 @@ void GP::startAndCheckHPOptim()
 
           // after final HP optim -- how to know when final?
           if ( m_final_hp_optim )
-          {
-            m_mission_state = STATE_DONE;
-            m_Comms.Notify("STAGE","return");
-            publishStates();
-
-            // store predictions after HP optim
-            m_finished = true;
-            std::thread pred_store(&GP::makeAndStorePredictions, this);
-            pred_store.detach();
-          }
+            endMission();
 
           m_hp_optim_running = false;
         }
@@ -1634,6 +1633,21 @@ void GP::startAndCheckHPOptim()
 
 }
 
+//---------------------------------------------------------
+// Procedure: endMission()
+//            set variables to end mission, initiate last save
+//
+void GP::endMission()
+{
+  m_mission_state = STATE_DONE;
+  m_Comms.Notify("STAGE","return");
+  publishStates();
+
+  // store predictions after HP optim
+  m_finished = true;
+  std::thread pred_store(&GP::makeAndStorePredictions, this);
+  pred_store.detach();
+}
 
 
 //---------------------------------------------------------
@@ -2472,6 +2486,7 @@ void GP::runVoronoiRoutine()
   //
   double own_centroid_lon(0.0), own_centroid_lat(0.0);
   std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
+
   calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
 
   if ( m_verbose )
@@ -2502,6 +2517,7 @@ void GP::runVoronoiRoutine()
 
   m_calc_prevoronoi = false;
 }
+
 
 
 //---------------------------------------------------------
