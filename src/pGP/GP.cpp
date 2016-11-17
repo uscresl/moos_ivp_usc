@@ -2483,31 +2483,40 @@ void GP::runVoronoiRoutine()
 
   // got initial voronoi partitioning
   // now let's use density function to get new voronoi initiators
+  // k-means like, we do this until some convergence
   //
   double own_centroid_lon(0.0), own_centroid_lat(0.0);
   std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
 
-  calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
+  double prev_own_centroid_lon(0.0), prev_own_centroid_lat(0.0);
+  std::map<std::string, std::pair<double, double> > prev_other_vehicle_centroids;
 
-  if ( m_verbose )
+  std::cout << GetAppName() << " :: run calcVoronoiCentroids till convergence! " << std::endl;
+  while ( ! centroidConvergence(prev_own_centroid_lon, prev_own_centroid_lat, prev_other_vehicle_centroids,
+                                 own_centroid_lon, own_centroid_lat, other_vehicle_centroids) )
   {
-    std::cout << GetAppName() << " :: old centroids: " << m_lon << "," << m_lat << ";";
-    for ( auto veh : m_other_vehicles )
-      std::cout << (veh.second).first << "," << (veh.second).second << ";";
-    std::cout << std::endl;
-    std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
-    for ( auto veh : other_vehicle_centroids )
-      std::cout << (veh.second).first << "," << (veh.second).second << ";";
-    std::cout << std::endl;
-  }
+    calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
 
-  // now, recalculate the voronoi partitioning, given the new centroids
-  // if it is not zero
-  if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
-  {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2)." << std::endl;
-    calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
+    if ( m_verbose )
+    {
+      std::cout << GetAppName() << " :: old centroids: " << m_lon << "," << m_lat << ";";
+      for ( auto veh : m_other_vehicles )
+        std::cout << (veh.second).first << "," << (veh.second).second << ";";
+      std::cout << std::endl;
+      std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
+      for ( auto veh : other_vehicle_centroids )
+        std::cout << (veh.second).first << "," << (veh.second).second << ";";
+      std::cout << std::endl;
+    }
+
+    // now, recalculate the voronoi partitioning, given the new centroids
+    // if it is not zero
+    if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
+    {
+      if ( m_debug )
+        std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2)." << std::endl;
+      calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
+    }
   }
 
   m_last_voronoi_calc_time = MOOSTime();
@@ -2518,6 +2527,32 @@ void GP::runVoronoiRoutine()
   m_calc_prevoronoi = false;
 }
 
+
+bool GP::centroidConvergence ( double old_lon, double old_lat, std::map<std::string, std::pair<double, double> > old_centr,
+                               double new_lon, double new_lat, std::map<std::string, std::pair<double, double> > new_centr )
+{
+  // degrees = meters / {lat,long}_deg_to_m
+  double threshold = 1.0 / (m_lon_deg_to_m + m_lat_deg_to_m / 2.0) ;
+
+  if ( old_centr.size() != new_centr.size() )
+    std::cout << GetAppName() << " :: ERROR, incorrect map sizes." << std::endl;
+  else
+  {
+    bool significant_diff = false;
+    for ( std::map<std::string, std::pair<double, double> >::iterator itr = old_centr.begin(); itr != old_centr.end(); ++itr )
+    {
+      std::pair<double, double> old_loc = itr->second;
+      std::map<std::string, std::pair<double, double> >::iterator nw_itr = new_centr.find(itr->first);
+      std::pair<double, double> new_loc = nw_itr->second;
+      double diff = sqrt( pow(old_loc.first - new_loc.first,2) + pow(old_loc.second - new_loc.second,2) );
+      std::cout << GetAppName() << " :: test convergence, threshold: " << threshold << " vs. diff: " << diff << std::endl;
+      significant_diff = (diff > threshold) ? true : false;
+    }
+    // if no significant difference for any centroid, then there is convergence
+    return !significant_diff;
+  }
+  return false;
+}
 
 
 //---------------------------------------------------------
