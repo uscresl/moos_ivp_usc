@@ -2491,22 +2491,45 @@ void GP::runVoronoiRoutine()
   double prev_own_centroid_lon(0.0), prev_own_centroid_lat(0.0);
   std::map<std::string, std::pair<double, double> > prev_other_vehicle_centroids;
 
-  std::cout << GetAppName() << " :: run calcVoronoiCentroids till convergence! " << std::endl;
-  while ( ! centroidConvergence(prev_own_centroid_lon, prev_own_centroid_lat, prev_other_vehicle_centroids,
+  std::cout << GetAppName() << " :: run calcVoronoiCentroids till convergence! \n";
+  size_t conv_ctr = 0;
+  while ( !centroidConvergence(prev_own_centroid_lon, prev_own_centroid_lat, prev_other_vehicle_centroids,
                                  own_centroid_lon, own_centroid_lat, other_vehicle_centroids) )
   {
+    std::cout << GetAppName() << " :: previously (lon, lat, other): " << own_centroid_lon << ", "
+              << own_centroid_lat << ", ";
+    for ( auto other_veh : other_vehicle_centroids )
+      std::cout << (other_veh.second).first << ", " << (other_veh.second).second << "; ";
+    std::cout << '\n';
+
+    // save previous locations
+    if ( own_centroid_lon == 0.0 )
+      prev_own_centroid_lon = m_lon;
+    else
+      prev_own_centroid_lon = own_centroid_lon;
+    if ( own_centroid_lat == 0.0 )
+      prev_own_centroid_lat = m_lat;
+    else
+      prev_own_centroid_lat = own_centroid_lat;
+    prev_other_vehicle_centroids.clear();
+    if ( other_vehicle_centroids.size() == 0 )
+      prev_other_vehicle_centroids.insert(m_other_vehicles.begin(), m_other_vehicles.end());
+    else
+      prev_other_vehicle_centroids.insert(other_vehicle_centroids.begin(), other_vehicle_centroids.end());
+
+    // calculate new locations
     calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
 
     if ( m_verbose )
     {
-      std::cout << GetAppName() << " :: old centroids: " << m_lon << "," << m_lat << ";";
-      for ( auto veh : m_other_vehicles )
+      std::cout << GetAppName() << " :: old centroids: " << prev_own_centroid_lon << "," << prev_own_centroid_lat << ";";
+      for ( auto veh : prev_other_vehicle_centroids )
         std::cout << (veh.second).first << "," << (veh.second).second << ";";
-      std::cout << std::endl;
+      std::cout << '\n';
       std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
       for ( auto veh : other_vehicle_centroids )
         std::cout << (veh.second).first << "," << (veh.second).second << ";";
-      std::cout << std::endl;
+      std::cout << '\n';
     }
 
     // now, recalculate the voronoi partitioning, given the new centroids
@@ -2514,10 +2537,14 @@ void GP::runVoronoiRoutine()
     if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
     {
       if ( m_debug )
-        std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2)." << std::endl;
+        std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2).\n";
       calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
     }
+
+    conv_ctr++;
   }
+
+  std::cout << GetAppName() << " :: nr convergence iterations: " << conv_ctr << '\n';
 
   m_last_voronoi_calc_time = MOOSTime();
 
@@ -2534,11 +2561,17 @@ bool GP::centroidConvergence ( double old_lon, double old_lat, std::map<std::str
   // degrees = meters / {lat,long}_deg_to_m
   double threshold = 1.0 / (m_lon_deg_to_m + m_lat_deg_to_m / 2.0) ;
 
-  if ( old_centr.size() != new_centr.size() )
+  if ( old_centr.size() != new_centr.size() || old_centr.empty() )
+  {
     std::cout << GetAppName() << " :: ERROR, incorrect map sizes." << std::endl;
+    std::cout << GetAppName() << " :: old_centr_size, new_centr_size: " << old_centr.size() << ", " << new_centr.size() << std::endl;
+    return false;
+  }
   else
   {
     bool significant_diff = false;
+    if ( sqrt( pow(old_lon-new_lon, 2) + pow(old_lat - new_lat, 2) ) > threshold )
+      significant_diff = true;
     for ( std::map<std::string, std::pair<double, double> >::iterator itr = old_centr.begin(); itr != old_centr.end(); ++itr )
     {
       std::pair<double, double> old_loc = itr->second;
@@ -2546,9 +2579,11 @@ bool GP::centroidConvergence ( double old_lon, double old_lat, std::map<std::str
       std::pair<double, double> new_loc = nw_itr->second;
       double diff = sqrt( pow(old_loc.first - new_loc.first,2) + pow(old_loc.second - new_loc.second,2) );
       std::cout << GetAppName() << " :: test convergence, threshold: " << threshold << " vs. diff: " << diff << std::endl;
-      significant_diff = (diff > threshold) ? true : false;
+      if ( diff > threshold )
+        significant_diff = true;
     }
     // if no significant difference for any centroid, then there is convergence
+    std::cout << GetAppName() << " :: sign diff? " << significant_diff << std::endl;
     return !significant_diff;
   }
   return false;
@@ -2587,16 +2622,20 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
       std::cout << GetAppName() << " :: m_voronoi_subset_other_vehicles is empty" << std::endl;
     return;
   }
-
-  if ( m_debug )
     std::cout << GetAppName() << " :: calculate others" << std::endl;
+  if ( m_debug )
   for ( auto veh : m_voronoi_subset_other_vehicles )
   {
     double centr_lon(0.0), centr_lat(0.0);
     std::vector<size_t> veh_voronoi_subset = veh.second;
     if ( veh_voronoi_subset.size() > 0 )
       calcVoronoiPartitionCentroid(veh_voronoi_subset, centr_lon, centr_lat);
-    other_vehicle_centroids.insert(std::pair<std::string, std::pair<double, double> >(veh.first, std::pair<double, double>(centr_lon, centr_lat)));
+
+    auto veh_map_itr = other_vehicle_centroids.find(veh.first);
+    if ( veh_map_itr == other_vehicle_centroids.end() )
+      other_vehicle_centroids.insert(std::pair<std::string, std::pair<double, double> >(veh.first, std::pair<double, double>(centr_lon, centr_lat)));
+    else
+      veh_map_itr->second = std::pair<double, double>(centr_lon, centr_lat);
   }
 
   // check if there are vehicles for whom there is not
