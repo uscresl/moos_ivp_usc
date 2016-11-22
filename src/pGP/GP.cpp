@@ -70,9 +70,10 @@ GP::GP() :
   m_mission_state(STATE_IDLE),
   m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
   m_hp_optim_running(false),
-  m_hp_optim_done(false),
+  //m_hp_optim_done(false),
   m_final_hp_optim(false),
   m_hp_optim_iterations(50),
+  m_last_hp_optim_done(0),
   m_data_mail_counter(1),
   m_finished(false),
   m_num_vehicles(1),
@@ -471,6 +472,22 @@ bool GP::Iterate()
         publishStates();
       }
     }
+
+    // **** HPOPTIM FOR 1 AUV **********************************************//
+    if ( m_num_vehicles == 1 )
+    {
+      // run hpoptim every .. 500 seconds ..
+      if ( (std::abs(m_last_hp_optim_done - MOOSTime()) > 1.0 ) &&
+           ((size_t)std::floor(MOOSTime()-m_start_time) % 500 == 10) )
+      {
+        if ( m_mission_state != STATE_DONE )
+        {
+          m_mission_state = STATE_HPOPTIM;
+          publishStates();
+        }
+      }
+    }
+
 
     // **** DEBUG **********************************************************//
     //if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
@@ -1604,6 +1621,7 @@ void GP::startAndCheckHPOptim()
         }
         else
         {
+          m_last_hp_optim_done = (size_t)std::floor(MOOSTime());
           if ( m_verbose )
             std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
 
