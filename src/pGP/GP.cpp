@@ -2360,7 +2360,7 @@ void GP::tdsResetStateVars()
     std::cout << GetAppName() << " :: reset state vars" << std::endl;
 
   // move to next step; need wpt
-  if ( m_adaptive )
+  if ( m_adaptive && m_num_vehicles > 1 )
   {
     std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
     m_mission_state = STATE_CALCWPT;
