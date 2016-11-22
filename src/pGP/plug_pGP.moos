@@ -30,6 +30,9 @@ ProcessConfig = pGP
   // number of vehicles (data exchange?)
   nr_vehicles = $(NUM_VEHICLES)
 
+  // run in adaptive mode?
+  adaptive = $(ADAPTIVE_WPTS)
+
   // elementary coordination (implicit): share data at set intervals
   timed_data_sharing = false
   // interval between data sharing events (seconds)
@@ -39,7 +42,7 @@ ProcessConfig = pGP
   input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
 
   // data sharing through acomms
-  acomms_sharing = true
+  acomms_sharing = false
 
   // use voronoi partitioning?
   use_voronoi = false
