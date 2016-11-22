@@ -35,7 +35,7 @@
 // Constructor
 //
 GP::GP() :
-  m_verbose(false),
+  m_verbose(true),
   m_input_var_data(""),
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
@@ -45,12 +45,15 @@ GP::GP() :
   m_output_filename_prefix(""),
   m_output_var_share_data(""),
   m_prediction_interval(-1),
-  m_debug(true),
+  m_debug(false),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
   m_lon(0),
   m_dep(0),
+  m_surf_cnt(0),
+  m_on_surface(false),
+  m_adaptive(false),
   m_last_published(std::numeric_limits<double>::max()),
   m_last_pred_save(std::numeric_limits<double>::max()),
   m_min_lon(0.0),
@@ -70,7 +73,6 @@ GP::GP() :
   m_mission_state(STATE_IDLE),
   m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
   m_hp_optim_running(false),
-  //m_hp_optim_done(false),
   m_final_hp_optim(false),
   m_hp_optim_iterations(50),
   m_last_hp_optim_done(0),
@@ -490,9 +492,12 @@ bool GP::Iterate()
 
 
     // **** DEBUG **********************************************************//
-    //if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
-    std::cout << GetAppName() << " :: ### Iterate before switch: ### " << std::endl;
-    publishStates();
+    if ( m_debug )
+    {
+      std::cout << GetAppName() << " :: ### Iterate before switch: ### " << std::endl;
+      publishStates();
+    }
+
 
     // **** MAIN STATE MACHINE *********************************************//
     switch ( m_mission_state )
@@ -712,6 +717,8 @@ bool GP::OnStartUp()
       m_area_buffer = (double)atof(value.c_str());
     else if ( param == "hp_optim_iterations" )
       m_hp_optim_iterations = (size_t)atoi(value.c_str());
+    else if ( param == "adaptive" )
+      m_adaptive = (value == "true" ? true : false);
     else
       handled = false;
 
@@ -1638,7 +1645,7 @@ void GP::startAndCheckHPOptim()
             tdsResetStateVars();
           }
 
-          // after final HP optim -- how to know when final?
+          // after final HP optim
           if ( m_final_hp_optim )
             endMission();
 
@@ -1691,8 +1698,6 @@ bool GP::runHPOptimization(size_t nr_iterations)
 
   // pass on params to GP
   Eigen::VectorXd hparams(lh_gp);
-  if ( m_verbose )
-    std::cout << GetAppName() << " :: new hyperparameters: " << hparams << std::endl;
 
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   while ( !hp_lock.try_lock() ){}
@@ -1700,7 +1705,8 @@ bool GP::runHPOptimization(size_t nr_iterations)
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
 
-  std::cout << GetAppName() << " :: new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
 
   return true;
 }
@@ -1721,7 +1727,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   // params, copied from beginning
   // set loghyperparams
   downsampled_gp.covf().set_loghyper(loghp);
-  std::cout << GetAppName() << " :: loghyperparams before optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
   // fill new GP with downsampled data
   if ( m_verbose )
@@ -1731,26 +1736,15 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   // keep the data in queue, in case of first_surface
   std::queue< std::vector<double> > temp_queue(m_data_for_hp_optim);
 
-  while ( !m_data_for_hp_optim.empty() )
+  while ( !temp_queue.empty() )
   {
-    std::vector<double> pt = m_data_for_hp_optim.front();
-    m_data_for_hp_optim.pop();
+    std::vector<double> pt = temp_queue.front();
+    temp_queue.pop();
 
     loc[0] = pt[0];
     loc[1] = pt[1];
     double dval = pt[2];
     downsampled_gp.add_pattern(loc, dval);
-  }
-  if ( m_first_surface )
-  {
-    std::cout << GetAppName() << " :: copying over " << temp_queue.size() << "items" << std::endl;
-    while ( !temp_queue.empty() )
-    {
-      std::vector<double> data_pt = temp_queue.front();
-      temp_queue.pop();
-      m_data_for_hp_optim.push(data_pt);
-    }
-    m_first_surface = false;
   }
 
   std::clock_t end = std::clock();
@@ -1770,8 +1764,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-
-  std::cout << GetAppName() << " :: loghyperparams after optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
   // write new HP to file
   begin = std::clock();
@@ -1869,7 +1861,6 @@ void GP::makeAndStorePredictions()
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
-  std::cout << GetAppName() << " :: copy vs orig gp address: " << &gp_copy << " -- " << &m_gp << std::endl;
   gp_lock.unlock();
 
   std::clock_t begin = std::clock();
@@ -2369,22 +2360,31 @@ void GP::tdsResetStateVars()
     std::cout << GetAppName() << " :: reset state vars" << std::endl;
 
   // move to next step; need wpt
-  std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
-  m_mission_state = STATE_CALCWPT;
-  publishStates();
+  if ( m_adaptive )
+  {
+    std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
+    m_mission_state = STATE_CALCWPT;
+    publishStates();
+  }
+  else
+  {
+    m_mission_state = STATE_SAMPLE;
+    publishStates();
+  }
 
   if ( m_bhv_state != "survey" )
     Notify("STAGE","survey");
 
   // reset surfacing/handshake vars
   m_waiting = false;
-    if ( m_use_voronoi )
+  if ( m_use_voronoi )
   {
     // move to next step: voronoi calc & predictions done
     m_precalc_pred_voronoi_done = true;
   }
 
-  clearHandshakeVars();
+  if ( m_timed_data_sharing || m_use_voronoi )
+    clearHandshakeVars();
 }
 
 //---------------------------------------------------------
