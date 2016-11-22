@@ -201,9 +201,10 @@ class GP : public CMOOSApp
    // hyperparam optimization in multi-threading
    std::future<bool> m_future_hp_optim;
    bool m_hp_optim_running;
-   bool m_hp_optim_done;
+   //bool m_hp_optim_done;
    bool m_final_hp_optim;
    size_t m_hp_optim_iterations;
+   size_t m_last_hp_optim_done;
 
    // future for result MI criterion calculations
    std::future<size_t> m_future_next_pt;
