@@ -1403,13 +1403,14 @@ void GP::getRandomStartLocation()
   publishStates();
 }
 
+
 //---------------------------------------------------------
-// Procedure: publishNextBestPosition
-//            call Notify & publish location
+// Procedure: greedyWptSelection()
+//            check over all predictions to find best (greedy)
 //
-void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
+void GP::greedyWptSelection(Eigen::Vector2d & best_location)
 {
-  // get next position, for now, greedy pick
+// get next position, for now, greedy pick
   double best_so_far = -1*std::numeric_limits<double>::max();
   size_t best_so_far_idx = -1;
 
@@ -1465,29 +1466,49 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
       std::cout << GetAppName() << " :: Error: best is not in unsampled locations" << std::endl;
     else
     {
-      Eigen::Vector2d best_so_far_y = best_itr->second;
+      best_location = best_itr->second;
 
       // app feedback
       if ( m_verbose )
       {
         std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
-        std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_so_far_y(0) << ", " << best_so_far_y(1) << '\n';
+        std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_location(0) << ", " << best_location(1) << '\n';
       }
-
-      std::ostringstream output_stream;
-      output_stream << std::setprecision(15) << best_so_far_y(0) << "," << best_so_far_y(1);
-      m_Comms.Notify(m_output_var_pred, output_stream.str());
-
-      // update state vars
-      m_last_published = MOOSTime();
-      m_mission_state = STATE_SAMPLE;
-      publishStates();
     }
   }
   else
   {
     if ( m_debug )
       std::cout << GetAppName() << " :: invalid index: " << best_so_far_idx << ", not publishing." << std::endl;
+    best_location(0) = 0;
+    best_location(1) = 0;
+  }
+}
+
+
+//---------------------------------------------------------
+// Procedure: publishNextBestPosition
+//            call Notify & publish location
+//
+void GP::publishNextBestPosition()
+{
+  // procedures for finding the next waypoint(s)
+  Eigen::Vector2d next_wpt;
+  greedyWptSelection(next_wpt);
+
+  if ( next_wpt(0) == 0 && next_wpt(1) == 0 )
+    std::cout << GetAppName() << " :: Error: no waypoint found yet." << std::endl;
+  else
+  {
+    // publishing for behavior (pLonLatToWptUpdate)
+    std::ostringstream output_stream;
+    output_stream << std::setprecision(15) << next_wpt(0) << "," << next_wpt(1);
+    m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+    // update state vars
+    m_last_published = MOOSTime();
+    m_mission_state = STATE_SAMPLE;
+    publishStates();
   }
 }
 
