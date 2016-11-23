@@ -1,0 +1,73 @@
+//*******************************************************
+// ShoreSide Configuration File
+// basically a community for visualization of the simulation
+// and simulating water medium
+//
+
+NoNetwork = true
+ServerHost = $(SERVER_HOST)
+ServerPort = $(VPORT)
+Community  = $(VNAME)
+
+log_path = ../logs/simulation
+log = true
+
+#include $(PLUG_DIR)/plug_origin_warp.moos
+  
+//--------------------------------------------------------
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 100
+
+  // moosdb, moos util apps
+  Run = MOOSDB           @ NewConsole = false
+  Run = pLogger          @ NewConsole = false
+  // check own IP and publish to MOOSDB
+  Run = pHostInfo @ NewConsole = false ~ pHostInfo
+  Run = uFldShoreBroker @ NewConsole = false ~ uFldShoreBroker
+  Run = uFldNodeComms @ NewConsole = false ~ uFldNodeComms
+  Run = pShare @ NewConsole = false ~ pShare
+
+  // shoreside visualization
+//  Run = pMarineViewer    @ NewConsole = true ~ pMarineViewer_shorebroker
+
+  // paint extra polygons etc
+  Run = uTimerScript     @ NewConsole = false
+
+  // debugging
+//  Run = uMS @ NewConsole = false
+}
+
+// utils
+#include $(PLUG_DIR)/plug_pLogger.moos
+
+// processes for simulation acoustic communications, incl. range limits
+#include $(PLUG_DIR)/plug_pHostInfo.moos
+
+//#include $(PLUG_DIR)/plug_uFldShoreBroker.moos
+//#include $(PLUG_DIR)/plug_uFldNodeComms.moos
+#include $(PLUG_DIR)/plug_uFld_shoreside.moos
+
+#include $(PLUG_DIR)/plug_pShare.moos
+//_shoreside.moos
+
+// visualization
+#include $(PLUG_DIR)/plug_pMarineViewer.moos
+
+ProcessConfig = uTimerScript
+{
+  AppTick = 4
+  CommsTick = 4
+
+  verbose = true
+
+  event = var=VIEW_SEGLIST,val="$(PAINT_SEGLIST)",time=10
+
+  reset_max = nolimit
+//  reset_time = all-posted
+  reset_var = UTS_RESET
+
+  status_var = UTS_STATUS
+
+  time_warp=$(WARP)
+}

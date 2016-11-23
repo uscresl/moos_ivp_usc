@@ -42,12 +42,14 @@ SimBioSensor::SimBioSensor() :
   m_new_lat(false),
   m_new_dep(false),
   m_filename(""),
+  m_variance(1.0),
   m_output_var(""),
   m_file_read(false),
   m_nav_data_received(false),
   m_lon_step(0.0),
   m_lat_step(0.0),
-  m_depth_step(0.0)
+  m_depth_step(0.0),
+  m_verbose(false)
 {
   // class variable instantiations can go here
 }
@@ -74,7 +76,7 @@ SimBioSensor::~SimBioSensor()
 //---------------------------------------------------------
 // Procedure: OnNewMail
 //
-// when variables are updated in the MOOSDB, 
+// when variables are updated in the MOOSDB,
 // there is 'new mail', check to see if
 // there is anything for this process.
 //
@@ -85,7 +87,7 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
     CMOOSMsg &msg = *p;
     std::string key   = msg.GetKey();
     std::string sval  = msg.GetString();
-    // separate way for getting the double val (sval was not working for DB_UPTIME) 
+    // separate way for getting the double val (sval was not working for DB_UPTIME)
     double dval  = msg.GetDouble();
 
 #if 0 // Keep these around just for template
@@ -96,7 +98,7 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mdbl  = msg.IsDouble();
     bool   mstr  = msg.IsString();
 #endif
-    
+
     if ( key == "NAV_LONG" )
     {
       m_veh_lon = dval;
@@ -160,7 +162,8 @@ bool SimBioSensor::Iterate()
       // invert negative values
       dat = (dat < 0 ? -1*dat : dat);
       // publish to MOOSDB
-      std::cout << GetAppName() << " :: publishing data: " << dat << std::endl;
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: publishing data: " << dat << std::endl;
       m_Comms.Notify(m_output_var, dat);
     }
     m_nav_data_received = false;
@@ -176,7 +179,7 @@ bool SimBioSensor::Iterate()
 bool SimBioSensor::OnStartUp()
 {
   CMOOSApp::OnStartUp();
-  
+
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
   if ( !m_MissionReader.GetConfiguration(GetAppName(), sParams) )
@@ -192,17 +195,25 @@ bool SimBioSensor::OnStartUp()
 
     bool handled = false;
 
-    if ( param == "filename" )
+    if ( param == "input_filename" )
     {
       m_filename = tolower(value);
       std::cout << GetAppName() << " :: Parameter filename: " << m_filename << std::endl;
       handled = true;
+    }
+    else if ( param == "sensor_variance" )
+    {
+      m_variance = atof(value.c_str());
     }
     else if ( param == "output_var" )
     {
       m_output_var = toupper(value);
       std::cout << GetAppName() << " :: Parameter output_var: " << m_output_var << std::endl;
       handled = true;
+    }
+    else if ( param == "verbose" )
+    {
+      m_verbose = (value == "true") ? true : false;
     }
 
     if ( !handled )
@@ -277,7 +288,7 @@ void SimBioSensor::readBioDataFromFile()
     }
 
     // printout for checking
-    std::cout << "\nboundaries stored: " << std::endl;
+    std::cout << GetAppName() << " :: \nboundaries stored: " << std::endl;
     std::map<std::string, double>::iterator itr;
     for ( itr = d_boundaries_map.begin(); itr != d_boundaries_map.end(); itr++ )
       std::cout << itr->first << ": " << std::setprecision(10) << itr->second << std::endl;
@@ -289,7 +300,7 @@ void SimBioSensor::readBioDataFromFile()
     size_t lon_res = (size_t)d_boundaries_map.at("lon_res");
     size_t lat_res = (size_t)d_boundaries_map.at("lat_res");
     size_t depth_res = (size_t)d_boundaries_map.at("depth_res");
-    std::cout << "resolutions: " << lon_res << "," << lat_res << "," << depth_res << std::endl;
+    std::cout << GetAppName() << " :: resolutions: " << lon_res << "," << lat_res << "," << depth_res << std::endl;
     d_location_values = new double ** [lon_res];
     for ( size_t idlo = 0; idlo < lon_res; idlo++ )
     {
@@ -342,11 +353,11 @@ void SimBioSensor::readBioDataFromFile()
     input_filestream.close();
   }
   else
-    std::cout << "ERROR reading file: " << m_filename << std::endl;
+    std::cout << GetAppName() << " :: ERROR reading file: " << m_filename << std::endl;
 
   if ( cnt > 0 )
   {
-    std::cout << "Done reading files, objects: " << cnt << '\n';
+    std::cout << GetAppName() << " :: Done reading files, objects: " << cnt << '\n';
     m_file_read = true;
   }
 }
@@ -372,21 +383,24 @@ double SimBioSensor::getDataPoint()
   {
     size_t nav_lon_idx, nav_lat_idx, nav_dep_idx;
 
-    std::cout << '\n' << GetAppName() << " :: vehicle lon/lat/dep: " << m_veh_lon
-              << "," << m_veh_lat << "," << m_veh_depth << std::endl;
+    if ( m_verbose )
+      std::cout << '\n' << GetAppName() << " :: vehicle lon/lat/dep: " << m_veh_lon
+                << "," << m_veh_lat << "," << m_veh_depth << std::endl;
 
     nav_lon_idx = round( (m_veh_lon - lon_min) / m_lon_step );
     nav_lat_idx = round( (m_veh_lat - lat_min) / m_lat_step );
     nav_dep_idx = round( (m_veh_depth - dep_min) / m_depth_step );
 
-    std::cout << GetAppName() << " :: calculated index: " << nav_lon_idx
-              << "," << nav_lat_idx << "," << nav_dep_idx << std::endl;
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: calculated index: " << nav_lon_idx
+                << "," << nav_lat_idx << "," << nav_dep_idx << std::endl;
 
     return d_location_values[nav_lon_idx][nav_lat_idx][nav_dep_idx];
   }
   else
   {
-    std::cout << GetAppName() << " :: outside of data zone" << std::endl;
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: outside of data zone" << std::endl;
     return -1;
   }
 }
@@ -398,9 +412,9 @@ double SimBioSensor::addSensorNoise(double value)
   // start a seeded random number generator
   std::default_random_engine generator(seed);
   // create normal distribution with mean 0.0 and std_dev 1.0
-  std::normal_distribution<double> distribution(0.0, 1.5);
+  std::normal_distribution<double> distribution(0.0, m_variance);
   // grab a random number from the distribution
   double noise = distribution(generator);
-  std::cout << "Adding noise: " << noise << std::endl;
+
   return (value + noise);
 }

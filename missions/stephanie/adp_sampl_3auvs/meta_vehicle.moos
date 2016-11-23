@@ -50,22 +50,23 @@ ProcessConfig = ANTLER
   Run = pShare @ NewConsole = false
 
   // add other processes here
-  uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
+  //uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
   Run = uSimBioSensor @ NewConsole = false
-  //true,XConfig=uSBSConfig
+  //,XConfig=uSBSConfig
 
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
   Run = pGP @ NewConsole = false
+  //true,XConfig=pGPConfig
 
-  pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
+  //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
-  //true,XConfig=pSPConfig
+  //,XConfig=pSPConfig
 
   Run = pLonLatToWptUpdate @ NewConsole = false
 
   #ifdef ADAPTIVE_WPTS yes
-  //Run = uTimerScript @ NewConsole = false
-  Run = pPublishAfterX @ NewConsole = true
+//  Run = uTimerScript @ NewConsole = false
+  Run = pPublishAfterX @ NewConsole = false
   #endif
 
   #ifdef USE_ACOMMS yes
@@ -145,9 +146,12 @@ ProcessConfig = pGP
   // elementary coordination (implicit): share data at set intervals
 #ifdef USE_TDS yes
   timed_data_sharing = true
+  // interval between data sharing events (seconds)
+  data_sharing_interval = 600
 #else
   timed_data_sharing = false
 #endif
+  // vars for data sharing
   output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
   input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
 
@@ -160,9 +164,17 @@ ProcessConfig = pGP
 
 #ifdef USE_VORONOI yes
   use_voronoi = true
+  // minimum timeout between voronoi calculations (sec)
+  voronoi_timeout = 300
+  // buffer region outside sample area for which
+  // vehicle is still counted as inside, for voronoi partitioning
+  area_buffer = 20.0
 #else
   use_voronoi = false
 #endif
+
+  // take one in X data points for HP optimization
+  downsample_factor = 4
 }
 
 //--------------------------------------------------
@@ -218,6 +230,10 @@ ProcessConfig = pLonLatToWptUpdate
 //#ifdef NR_VEHICLES 2
 //  event = var=STAGE,val="hpoptim",time=4934:5167
 //#endif
+//// TODO: change duration 3 vehicles
+//#ifdef NR_VEHICLES 3
+//  event = var=STAGE,val="hpoptim",time=4840:5050
+//#endif
 
 //  reset_max = 0
 ////  reset_time = all-posted
@@ -239,8 +255,8 @@ ProcessConfig = pPublishAfterX
   CommsTick = 2
 
   // which var/val to monitor
-  publish_after_var = STAGE
-  publish_after_val = survey
+  publish_after_var = DEPLOY
+  publish_after_val = true
 
   // how many seconds after above var/val should we publish?
   // you can give either a number, or a range (eg. 10:20)
@@ -252,12 +268,15 @@ ProcessConfig = pPublishAfterX
   publish_after_secs = 3359:3531
 #endif
 #ifdef NR_VEHICLES 3
-  publish_after_secs = 2552:2756
+  publish_after_secs = 2641:2818 //2552:2756
 #endif
 
   // the var/val set to publish
   publish_var = STAGE
   publish_val = hpoptim
+  
+  // skip first message?
+  skip_first = false
 }
 #endif
 

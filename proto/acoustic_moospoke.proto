@@ -1,6 +1,6 @@
 import "dccl/protobuf/option_extensions.proto";
-message ACOUSTIC_MOOS_POKE { 
-  option (dccl.msg) = { id: 50           // http://gobysoft.org/wiki/DcclIdTable
+message ACOUSTIC_MOOS_POKE {
+  option (dccl.msg) = { id: 40           // http://gobysoft.org/wiki/DcclIdTable
                         max_bytes: 32    // rate 0
                         codec_version: 3 // use default DCCL3 codecs
                       };

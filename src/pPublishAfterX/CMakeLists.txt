@@ -1,26 +1,20 @@
 #--------------------------------------------------------
-# The CMakeLists.txt for:                           pGP
+# The CMakeLists.txt for:                  pPublishAfterX
 # Author(s): Stephanie Kemna, USC
-# Note: this is a template dir, so you can copy to start
-#       making your MOOSApp
 #--------------------------------------------------------
 
 SET(SRC
-  GP.cpp
+  PublishAfterX.cpp
   main.cpp
 )
 
-ADD_EXECUTABLE(pGP ${SRC})
+ADD_EXECUTABLE(pPublishAfterX ${SRC})
 
-TARGET_LINK_LIBRARIES(pGP
+TARGET_LINK_LIBRARIES(pPublishAfterX
    ${MOOS_LIBRARIES}
-   ${MOOSGeodesy_LIBRARIES}
    geometry
    apputil
    mbutil
    ${SYSTEM_LIBS}
    # whatever other libs you need
-   ${LIBGP_LIBRARIES}
-   ${Boost_LIBRARIES}
 )
-

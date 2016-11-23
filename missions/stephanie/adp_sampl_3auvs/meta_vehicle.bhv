@@ -9,7 +9,8 @@ initialize  MOOS_MANUAL_OVERRIDE=false
 // set vars for mode structure
 // start off with NS pilot survey
 initialize  STAGE=survey
-initialize  PILOT=true
+//initialize  PILOT=true
+initialize  PILOT=false
 initialize  DIRECTION=northsouth
 // note, ADAPTIVE_WPTS is set by launch script
 initialize  ADAPTIVE_WPTS=$(ADAPTIVE_WPTS)
@@ -116,7 +117,7 @@ Behavior = BHV_OpRegionBounce
   duration = no-time-limit
   condition = MODE==MISSION
 
-  polygon = label,OpRegion:400,920:400,1045:480,1215:600,1300:1000,1300:1000,920
+  polygon = label,OpRegion:380,920:380,1045:480,1215:600,1300:1000,1300:1000,920
   max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
   max_time = 25200
@@ -151,63 +152,63 @@ Behavior = BHV_OpRegionBounceDepth
 //---------   Control behaviors   -------------
 // Separate high level control bhvs for separate parts of mission
 //
-Behavior = BHV_Waypoint
-{
-  name      = ns_pilot_survey
-  pwt       = 100
-  condition = MODE==PILOT_NS
-  endflag   = DIRECTION = eastwest
-  updates   = PILOT_WPT_UPDATES
-  perpetual = false
+//Behavior = BHV_Waypoint
+//{
+//  name      = ns_pilot_survey
+//  pwt       = 100
+//  condition = MODE==PILOT_NS
+//  endflag   = DIRECTION = eastwest
+//  updates   = PILOT_WPT_UPDATES
+//  perpetual = false
 
-  speed = 1.5         // m/s
+//  speed = 1.5         // m/s
 
-  radius = 5.0        // m
-  slip_radius = 15.0  // m
-  lead = 10           // m
+//  radius = 5.0        // m
+//  slip_radius = 15.0  // m
+//  lead = 10           // m
 
-  // do lawnmower
-  // note: x, y are middle of lawnmower area
-  points = $(PILOT_LAWNMOWER_NS)
-  order  = normal
+//  // do lawnmower
+//  // note: x, y are middle of lawnmower area
+//  points = $(PILOT_LAWNMOWER_NS)
+//  order  = normal
 
-  repeat = 0 // # times to repeat waypoints list
+//  repeat = 0 // # times to repeat waypoints list
 
-  visual_hints = nextpt_color=red, nextpt_lcolor=green
-  visual_hints = vertex_color=yellow, edge_color=white
-  visual_hints = vertex_size=3, edge_size=2
-}
+//  visual_hints = nextpt_color=red, nextpt_lcolor=green
+//  visual_hints = vertex_color=yellow, edge_color=white
+//  visual_hints = vertex_size=3, edge_size=2
+//}
 
-Behavior = BHV_Waypoint
-{
-  name      = ew_pilot_survey
-  pwt       = 100
-  condition = MODE==PILOT_EW
-  // go to GP HP optimization
-  endflag   = STAGE=hpoptim
-  // prep for next surveys
-  endflag   = PILOT=false
-  endflag   = DIRECTION=northsouth
+//Behavior = BHV_Waypoint
+//{
+//  name      = ew_pilot_survey
+//  pwt       = 100
+//  condition = MODE==PILOT_EW
+//  // go to GP HP optimization
+//  endflag   = STAGE=hpoptim
+//  // prep for next surveys
+//  endflag   = PILOT=false
+//  endflag   = DIRECTION=northsouth
 
-  updates   = PILOT_WPT_UPDATES
-  perpetual = false
+//  updates   = PILOT_WPT_UPDATES
+//  perpetual = false
 
-  speed = 1.5         // m/s
+//  speed = 1.5         // m/s
 
-  radius = 5.0        // m
-  slip_radius = 15.0  // m
-  lead = 10           // m
+//  radius = 5.0        // m
+//  slip_radius = 15.0  // m
+//  lead = 10           // m
 
-  // do lawnmower
-  points = $(PILOT_LAWNMOWER_EW)
-  order  = reverse
+//  // do lawnmower
+//  points = $(PILOT_LAWNMOWER_EW)
+//  order  = reverse
 
-  repeat = 0 // # times to repeat waypoints list
+//  repeat = 0 // # times to repeat waypoints list
 
-  visual_hints = nextpt_color=red, nextpt_lcolor=green
-  visual_hints = vertex_color=yellow, edge_color=white
-  visual_hints = vertex_size=3, edge_size=2
-}
+//  visual_hints = nextpt_color=red, nextpt_lcolor=green
+//  visual_hints = vertex_color=yellow, edge_color=white
+//  visual_hints = vertex_size=3, edge_size=2
+//}
 
 Behavior = BHV_Loiter
 {

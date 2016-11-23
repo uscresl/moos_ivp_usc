@@ -1,0 +1,331 @@
+ProcessConfig = pAcommsHandler
+{
+  modem_id: $(MODEMID)
+  common {
+    verbosity: DEBUG1 show_gui: true
+  }
+  load_proto_file: "$(MSG_DIR)/acoustic_moospoke.proto"
+  translator_entry {  protobuf_name: "ACOUSTIC_MOOS_POKE"
+    trigger {  type: TRIGGER_PUBLISH  moos_var: "ACOUSTIC_MOOS_POKE"  }
+    create {  technique: TECHNIQUE_COMMA_SEPARATED_KEY_EQUALS_VALUE_PAIRS  moos_var: "ACOUSTIC_MOOS_POKE"  }
+    publish {  technique: TECHNIQUE_FORMAT  moos_var: "%100%"  format: "%5%"
+      algorithm {  name: "to_upper"  output_virtual_field: 100  primary_field: 4  }
+    }
+  }
+  load_proto_file: "$(MSG_DIR)/status_min.proto"
+  translator_entry {
+    protobuf_name: "Status"
+    trigger {
+      type: TRIGGER_TIME
+      period: 5
+    }
+    // packing
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "DB_TIME"
+      format: "%1%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "VEHICLE_ID"
+      format: "%2%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NAV_X"
+      format: "%5%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NAV_Y"
+      format: "%6%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NAV_SPEED"
+      format: "%7%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NAV_HEADING"
+      format: "%8%"
+      algorithm {
+        name: "angle_0_360"
+        primary_field: 8
+      }
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NAV_DEPTH"
+      format: "%9%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NAV_ALTITUDE"
+      format: "%10%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NAV_PITCH"
+      format: "%11%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NAV_ROLL"
+      format: "%12%"
+    }
+    // unpacking
+    publish {
+      technique: TECHNIQUE_PREFIXED_PROTOBUF_TEXT_FORMAT
+      moos_var: "STATUS_IN"
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "STATUS_REPORT_IN"
+      format: "Timestamp=%1%,Node=%2%,MessageType=%4%,nav_x=%5%,nav_y=%6%,Speed=%7%,Heading=%8%,Depth=%9%,Altitude=%10%,Pitch=%11%,Roll=%12%"
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "NODE_REPORT"
+      format: "NAME=%100%,TYPE=%101%,UTC_TIME=%1$.0lf,X=%5%,Y=%6%,LAT=%102$lf,LON=%103$lf,SPD=%7%,HDG=%8%,DEPTH=%9%,ALTITUDE=%10%,PITCH=%11%,ROLL=%12%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 100
+        primary_field: 2
+      }
+      algorithm {
+        name: "modem_id2type"
+        output_virtual_field: 101
+        primary_field: 2
+      }
+      algorithm {
+        name: "utm_y2lat"
+        output_virtual_field: 102
+        primary_field: 6
+        reference_field: 5
+      }
+      algorithm {
+        name: "utm_x2lon"
+        output_virtual_field: 103
+        primary_field: 5
+        reference_field: 6
+      }
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "%104%_STATUS"
+      format: "t:%1$.0lf,x:%5%,y:%6%,spd=%7%,hdg=%8%,depth=%9%,alt=%10%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 104
+        primary_field: 2
+      }
+      algorithm {
+        name: "to_upper"
+        output_virtual_field: 104
+        primary_field: 2
+      }
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "COMMUNITY_STAT"
+      format: "node=%2%,x=%5%,y=%6%,heading=%8%,speed=%7%,time=%1$.0lf"
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "%101%_NAV_X"
+      format: "%5%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 101
+        primary_field: 2
+      }
+      algorithm {
+        name: "to_upper"
+        output_virtual_field: 101
+        primary_field: 2
+      }
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "%102%_NAV_Y"
+      format: "%6%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 102
+        primary_field: 2
+      }
+      algorithm {
+        name: "to_upper"
+        output_virtual_field: 102
+        primary_field: 2
+      }
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "%103%_NAV_SPEED"
+      format: "%7%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 103
+        primary_field: 2
+      }
+      algorithm {
+        name: "to_upper"
+        output_virtual_field: 103
+        primary_field: 2
+      }
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "%104%_NAV_HEADING"
+      format: "%8%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 104
+        primary_field: 2
+      }
+      algorithm {
+        name: "to_upper"
+        output_virtual_field: 104
+        primary_field: 2
+      }
+    }
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "%105%_NAV_DEPTH"
+      format: "%9%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 105
+        primary_field: 2
+      }
+      algorithm {
+        name: "to_upper"
+        output_virtual_field: 105
+        primary_field: 2
+      }
+    }
+    use_short_enum: true
+  }
+  load_proto_file: "$(MSG_DIR)/surfacing_request.proto"
+  translator_entry {  protobuf_name: "SurfacingRequest"
+    trigger {  type: TRIGGER_PUBLISH  moos_var: "REQ_SURFACING"  }
+    // packing
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "VEHICLE_ID"
+      format: "%2%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "REQ_SURFACING"
+      format: "%5%"
+    }
+    // unpacking
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "REQ_SURFACING_REC"
+      format: "veh=%101%,val=%5%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 101
+        primary_field: 2
+      }
+    }
+  }
+  load_proto_file: "$(MSG_DIR)/surfacing_request_ack.proto"
+  translator_entry {  protobuf_name: "SurfacingRequestAck"
+    trigger {  type: TRIGGER_PUBLISH  moos_var: "REQ_SURFACING_ACK"  }
+    // packing
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "VEHICLE_ID"
+      format: "%2%"
+    }
+    create {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "REQ_SURFACING_ACK"
+      format: "%5%"
+    }
+    // unpacking
+    publish {
+      technique: TECHNIQUE_FORMAT
+      moos_var: "REQ_SURFACING_ACK_REC"
+      format: "veh=%101%,val=%5%"
+      algorithm {
+        name: "modem_id2name"
+        output_virtual_field: 101
+        primary_field: 2
+      }
+    }
+  }
+
+  queue_cfg {
+    message_entry { protobuf_name: "ACOUSTIC_MOOS_POKE"  ack: true  ttl: 600  value_base: 2  newest_first: false
+      role { type: SOURCE_ID  field: "_src_id" }
+      role { type: DESTINATION_ID  field: "destination" }
+      role { type: TIMESTAMP  field: "_time" }
+    }
+    // prev: value base 1.5, ttl 300, blackout_time 10
+    message_entry { protobuf_name: "Status" ack: false blackout_time: 0 max_queue: 1 ttl: 300 value_base: 1.5
+      role { type: SOURCE_ID field: "Node" }
+      role { type: DESTINATION_ID field: "_dest_id" }
+      role { type: TIMESTAMP field: "Timestamp" }
+      manipulator: ON_DEMAND	manipulator: LOOPBACK
+    }
+    message_entry { protobuf_name: "SurfacingRequest"  ack: true  max_queue: 1  ttl: 100  value_base: 1.5  newest_first: true
+      role { type: SOURCE_ID  field: "_src_id" }
+      role { type: DESTINATION_ID  field: "_dest_id" }
+      role { type: TIMESTAMP  field: "_time" }
+    }
+    message_entry { protobuf_name: "SurfacingRequestAck"  ack: true  max_queue: 1  ttl: 100  value_base: 1.5  newest_first: true
+      role { type: SOURCE_ID  field: "_src_id" }
+      role { type: DESTINATION_ID  field: "_dest_id" }
+      role { type: TIMESTAMP  field: "_time" }
+    }
+    minimum_ack_wait_seconds: 4
+  }
+  mac_cfg { // TODO: fix this so it is flexible for adding vehicles
+    type: MAC_FIXED_DECENTRALIZED
+    // time slots estimated based on:
+    //    duration transmission: 1s
+    //    duration one-way travel (1km): 1s
+    //    buffer: 1s
+    //    if ack: +1s
+    // currently there is ack for moos poke, not used in this sim, keeping total to 3s
+    #ifdef NR_VEHICLES 2
+    slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 2  rate: 0 type: DATA slot_seconds: 3 }
+    #endif
+    #ifdef NR_VEHICLES 3
+    slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 2  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 3  rate: 0 type: DATA slot_seconds: 3 }
+    #endif
+    #ifdef NR_VEHICLES 4
+    slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 2  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 3  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 4  rate: 0 type: DATA slot_seconds: 3 }
+    #endif
+    #ifndef NR_VEHICLES
+    slot { src: 1  rate: 0 type: DATA slot_seconds: 3 }
+    slot { src: 2  rate: 0 type: DATA slot_seconds: 3 }
+    #endif
+    // 20141120:1136: rate changed from 1 to 0
+  }
+  driver_type: DRIVER_UFIELD_SIM_DRIVER
+  driver_cfg
+  {
+    [goby.moos.protobuf.Config.moos_server]: "localhost"
+    [goby.moos.protobuf.Config.moos_port]: $(VPORT)
+    [goby.moos.protobuf.Config.rate_to_bytes]: 32
+    [goby.moos.protobuf.Config.rate_to_bytes]: 192
+    [goby.moos.protobuf.Config.rate_to_bytes]: 192
+    [goby.moos.protobuf.Config.rate_to_bytes]: 512
+    [goby.moos.protobuf.Config.rate_to_bytes]: 512
+    [goby.moos.protobuf.Config.rate_to_bytes]: 2048
+  }
+}
+
