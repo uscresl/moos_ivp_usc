@@ -10,16 +10,20 @@ ACOMMS="no"
 NUM_VEHICLES=1
 RUN_SIMULATION="yes"
 VORONOI_PARTITIONING="no"
+AREA="old"
+GUI="true"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
         printf "%s [SWITCHES] [time_warp]   \n" $0
+        printf "  Switches:          \n"
         printf "  --just_make, -j    \n" 
         printf "  --adaptive, -a     \n"
         printf "  --tds, -t          \n"
         printf "  --acomms, -c       \n"
         printf "  --voronoi, -v      \n"
         printf "  --2auvs            \n"
+        printf "  --3auvs            \n"
         printf "  --help, -h         \n" 
         exit 0;
     elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
@@ -38,11 +42,22 @@ for ARGI; do
         NUM_VEHICLES=2
     elif [ "${ARGI}" = "--3auvs" ] ; then
         NUM_VEHICLES=3
+    elif [ "$ARGI" = "--bigger1" -o "${ARGI}" = "-b1" ]; then
+        AREA="bigger1"
+    elif [ "$ARGI" = "--bigger2" -o "${ARGI}" = "-b2" ]; then
+        AREA="bigger2"
+    elif [ "$ARGI" = "--nogui" -o "${ARGI}" = "-ng" ]; then
+        GUI="no"
     else 
         printf "Bad Argument: %s \n" $ARGI
         exit 0
     fi
 done
+
+# check if sim data file present
+if [ ! -f 'test.csv' ]; then 
+echo 'ERROR: No simulated data file presented. Please put a test.csv file in this folder'; exit 0;
+fi
 
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
@@ -52,37 +67,20 @@ EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
 PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="${MOOSIVP_USC_HOME}/proto"
 
-PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=green,vertex_color=green,vertex_size=2,edge_size=2"
-
-# config for lawnmower used to get pilot data for autotuning hyperparams GP
-PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=700,y=1100,width=400,height=200,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south"
-PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
-
-# PILOT PARAMS, WHEN SPLITTING PILOT
-if [ $NUM_VEHICLES -ge 2 ] ; then
-#PILOT_LM_1="format=lawnmower,label=pilot-survey,x=550,y=1050,width=100,height=100,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_1="format=lawnmower,label=pilot-survey,x=600,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
-PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
-#PILOT_LM_2="format=lawnmower,label=pilot-survey,x=650,y=1050,width=100,height=100,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_2="format=lawnmower,label=pilot-survey,x=800,y=1100,width=200,height=200,lane_width=100,degs=0,startx=0,starty=0"
-PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
-PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
+# paint survey area on pMarineViewer
+if [ ${AREA} = "bigger1" ]; then
+# bigger 1
+PAINTSEGLIST="pts={600,900:600,1300:1200,1300:1200,900:600,900},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3"
+BHVOPREGION="label,OpRegion:375,875:375,1050:600,1320:1250,1320:1250,875"
+elif [ ${AREA} = "bigger2" ]; then
+# bigger 2
+PAINTSEGLIST="pts={700,700:700,1300:1200,1300:1200,700:700,700},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3"
+BHVOPREGION="label,OpRegion:375,875:375,1050:600,1320:1250,1320:1250,650:600,650"
+else
+# old area
+PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3"
+BHVOPREGION="label,OpRegion:400,920:400,1045:480,1215:600,1300:1000,1300:1000,920"
 fi
-if [ $NUM_VEHICLES -ge 3 ] ; then
-PILOT_LM_1="format=lawnmower,label=pilot-survey,x=567,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
-PILOT_LM_1_NS="$PILOT_LM_1,rows=north-south"
-PILOT_LM_1_EW="$PILOT_LM_1,rows=east-west"
-PILOT_LM_2="format=lawnmower,label=pilot-survey,x=700,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
-PILOT_LM_2_NS="$PILOT_LM_2,rows=north-south"
-PILOT_LM_2_EW="$PILOT_LM_2,rows=east-west"
-# TODO, FIGURE OUT PILOT FOR 3 VEHICLES ..
-PILOT_LM_3="format=lawnmower,label=pilot-survey,x=833,y=1100,width=133,height=200,lane_width=67,degs=0,startx=0,starty=0"
-PILOT_LM_3_NS="$PILOT_LM_3,rows=north-south"
-PILOT_LM_3_EW="$PILOT_LM_3,rows=east-west"
-fi
-
 
 # loiter for during hyperparameter optimization
 HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
@@ -94,14 +92,40 @@ HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_opt
 fi
 
 # config for lawnmower for actual GP model building
-LAWNMOWER="format=lawnmower,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+if [ ${AREA} = "bigger1" ]; then
+# bigger1
+LX=900
+LY=1100
+LW=600
+LH=400
+elif [ ${AREA} = "bigger2" ]; then
+# bigger2
+LX=950
+LY=1000
+LW=500
+LH=600
+else
+# old area
+LX=700
+LY=1100
+LW=400
+LH=200
+fi
+
+LAWNMOWER="format=lawnmower,x=${LX},y=${LY},width=${LW},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
 if [ $NUM_VEHICLES -eq 2 ] ; then
-LAWNMOWER1="format=lawnmower,x=600,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=800,y=1100,width=200,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LW2v=$[LW/2]
+LX1=$[LX-LW/4]
+LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW2v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+LX2=$[LX+LW/4]
+LAWNMOWER2="format=lawnmower,x=${LX2},y=${LY},width=${LW2v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
 elif [ $NUM_VEHICLES -ge 3 ] ; then
-LAWNMOWER1="format=lawnmower,x=567,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=700,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER3="format=lawnmower,x=833,y=1100,width=133,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LW3v=$[LW/3]
+LX1=$[LX-LW/3]
+LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+LX3=$[LX+LW/3]
+LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
 else
 LAWNMOWER1=$LAWNMOWER
 fi
@@ -142,7 +166,7 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    SHARE_LISTEN=$SHORE_LISTEN VPORT=$SHORE_VPORT SERVER_HOST=$SERVERHOST       \
    LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR   \
    PAINT_SEGLIST=$PAINTSEGLIST   SIMULATION=$RUN_SIMULATION     \
-   DROP_PERCENTAGE=$DROP_PCT
+   DROP_PERCENTAGE=$DROP_PCT  USE_GUI=$GUI
 
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
@@ -195,19 +219,13 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING
-if [ $NUM_VEHICLES -ge 2 ] ; then
-PILOT_LAWNMOWER_C_NS=$PILOT_LM_1_NS
-PILOT_LAWNMOWER_C_EW=$PILOT_LM_1_EW
-fi
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
-    PILOT_LAWNMOWER_NS=$PILOT_LAWNMOWER_C_NS                   \
-    PILOT_LAWNMOWER_EW=$PILOT_LAWNMOWER_C_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
-    OTHER_VEHICLE=$VNAME2
+    OTHER_VEHICLE=$VNAME2 OPREGION=$BHVOPREGION
 # TODO fix OTHER_VEHICLE
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
@@ -223,15 +241,13 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX2 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2                    \
-    PILOT_LAWNMOWER_NS=$PILOT_LM_2_NS                   \
-    PILOT_LAWNMOWER_EW=$PILOT_LM_2_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS2 LAWNMOWER_EW=$LAWNMOWEREW2        \
     HP_LOITER=$HP_LOITER_CONFIG2  ADAPTIVE_WPTS=$ADAPTIVE        \
-    OTHER_VEHICLE=$VNAME1
+    OTHER_VEHICLE=$VNAME1 OPREGION=$BHVOPREGION
 fi
 # TODO fix OTHER_VEHICLE
 
@@ -248,16 +264,14 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX3 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_CORNELIS  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI
 
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3                    \
-    PILOT_LAWNMOWER_NS=$PILOT_LM_3_NS                   \
-    PILOT_LAWNMOWER_EW=$PILOT_LM_3_EW                   \
     LAWNMOWER_NS=$LAWNMOWERNS3 LAWNMOWER_EW=$LAWNMOWEREW3        \
     HP_LOITER=$HP_LOITER_CONFIG3  ADAPTIVE_WPTS=$ADAPTIVE        \
-    OTHER_VEHICLE=$VNAME2
+    OTHER_VEHICLE=$VNAME2 OPREGION=$BHVOPREGION
 fi
 # TODO fix OTHER_VEHICLE
 

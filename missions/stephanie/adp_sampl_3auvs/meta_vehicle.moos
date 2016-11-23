@@ -25,7 +25,11 @@ ProcessConfig = ANTLER
   // moos db, moos util apps
   Run = MOOSDB             @ NewConsole = false
   Run = pLogger            @ NewConsole = false
+  #ifdef USE_GUI true
   Run = uProcessWatch      @ NewConsole = true
+  #else
+  Run = uProcessWatch      @ NewConsole = false
+  #endif
 
   // vehicle sim
   Run = uSimMarine         @ NewConsole = false
@@ -41,8 +45,12 @@ ProcessConfig = ANTLER
   Run = pBasicContactMgr   @ NewConsole = false
 
   // acoustic communications
+  #ifdef USE_GUI true
   pAcommsHandlerConfig = -geometry,179x100+0+20
-  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig
+  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig  
+  #else
+  Run = pAcommsHandler @ NewConsole=false
+  #endif
 
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
@@ -54,9 +62,12 @@ ProcessConfig = ANTLER
   Run = uSimBioSensor @ NewConsole = false
   //,XConfig=uSBSConfig
 
-  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+//  #ifdef USE_GUI true
+//  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+//  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+//  #else
   Run = pGP @ NewConsole = false
-  //true,XConfig=pGPConfig
+//  #endif
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -175,6 +186,9 @@ ProcessConfig = pGP
 
   // take one in X data points for HP optimization
   downsample_factor = 4
+
+  // number of iterations for RProp
+  hp_optim_iterations = 50
 }
 
 //--------------------------------------------------
@@ -260,20 +274,33 @@ ProcessConfig = pPublishAfterX
 
   // how many seconds after above var/val should we publish?
   // you can give either a number, or a range (eg. 10:20)
-  publish_after_secs = 
+//  publish_after_secs = 
+// old area
+//#ifdef NR_VEHICLES 1
+//  publish_after_secs = 8571:8660 //TODO update
+//#endif
+//#ifdef NR_VEHICLES 2
+//  publish_after_secs = 3359:3531 
+//#endif
+//#ifdef NR_VEHICLES 3
+//  publish_after_secs = 2641:2818 //2552:2756
+//#endif
+
+// bigger1
 #ifdef NR_VEHICLES 1
   publish_after_secs = 8571:8660 //TODO update
 #endif
 #ifdef NR_VEHICLES 2
-  publish_after_secs = 3359:3531
+  publish_after_secs = 4950:5050 
 #endif
 #ifdef NR_VEHICLES 3
-  publish_after_secs = 2641:2818 //2552:2756
+  publish_after_secs = 3950:4050
 #endif
 
+
   // the var/val set to publish
-  publish_var = STAGE
-  publish_val = hpoptim
+  publish_var = MISSION_TIME
+  publish_val = end
   
   // skip first message?
   skip_first = false

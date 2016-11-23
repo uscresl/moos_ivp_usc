@@ -36,7 +36,6 @@
 //
 GP::GP() :
   m_verbose(false),
-  m_debug(true),
   m_input_var_data(""),
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
@@ -46,13 +45,12 @@ GP::GP() :
   m_output_filename_prefix(""),
   m_output_var_share_data(""),
   m_prediction_interval(-1),
-  m_use_MI(false),
+  m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
   m_lon(0),
   m_dep(0),
-  m_pause_data_adding(false),
   m_last_published(std::numeric_limits<double>::max()),
   m_last_pred_save(std::numeric_limits<double>::max()),
   m_min_lon(0.0),
@@ -68,24 +66,21 @@ GP::GP() :
   m_lon_deg_to_m(0.0),
   m_lat_deg_to_m(0.0),
   m_start_time(0.0),
-//  m_pilot_done_time(0.0),
-//  m_hp_optim_done_time(0.0),
-  m_need_nxt_wpt(false),
   m_finding_nxt(false),
-  m_gp(2, "CovSum(CovSEiso, CovNoise)"),
+  m_mission_state(STATE_IDLE),
+  m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
   m_hp_optim_running(false),
   m_hp_optim_done(false),
+  m_final_hp_optim(false),
+  m_hp_optim_iterations(50),
   m_data_mail_counter(1),
   m_finished(false),
-  m_hp_optim_mode_cnt(0),
   m_num_vehicles(1),
   m_data_pt_counter(0),
   m_data_send_reserve(0),
   m_received_shared_data(false),
   m_timed_data_sharing(false),
   m_data_sharing_interval(600),
-  m_data_sharing_activated(false),
-  m_sending_data(false),
   m_waiting(false),
   m_received_ready(false),
   m_output_var_handshake_data_sharing(""),
@@ -93,16 +88,13 @@ GP::GP() :
   m_acomms_sharing(false),
   m_last_acomms_string(""),
   m_use_voronoi(false),
-  m_data_sharing_requested(false),
-  m_send_surf_req(false),
-  m_send_ack(false),
   m_calc_prevoronoi(false),
   m_precalc_pred_voronoi_done(false),
   m_vor_timeout(300),
   m_downsample_factor(4),
   m_first_surface(true),
-  m_first_hp_optim(false),
-  m_area_buffer(5.0)
+  m_area_buffer(5.0),
+  m_bhv_state("")
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -118,7 +110,7 @@ GP::GP() :
   // with additive white noise
 
   // Set (log of) hyperparameters of the covariance function
-  Eigen::VectorXd params(m_gp.covf().get_param_dim());
+  Eigen::VectorXd params(m_gp->covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these will be optimized using cg or rprop
   // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
@@ -130,14 +122,14 @@ GP::GP() :
   params << -12.4292, 0.4055, -1.8971;
   //params << -12.4292, -0.9, 0.64;
   //params << -8.927865292, 0.02335186099, -0.9098776951;
-  m_gp.covf().set_loghyper(params);
+  m_gp->covf().set_loghyper(params);
 
   // use a unique seed to initialize srand,
   // using milliseconds because vehicles can start within same second
   struct timeval time;
   gettimeofday(&time,NULL);
   int rand_seed = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-  std::cout << "rand_seed: " << rand_seed << std::endl;
+  std::cout << GetAppName() << " :: rand_seed: " << rand_seed << std::endl;
   srand(rand_seed);
 
 }
@@ -152,6 +144,8 @@ GP::~GP()
     m_ofstream_pmu_GP.close();
   if ( m_ofstream_psigma2_GP.is_open() )
     m_ofstream_psigma2_GP.close();
+
+  delete m_gp;
 }
 
 //---------------------------------------------------------
@@ -185,16 +179,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     if ( key == m_input_var_data )
     {
       // add data to GP, coming from uSimBioSensor
-      // note, if we are circling at location to calculate next waypoint,
-      // then it makes no sense to keep adding those data points, so
-      // let's not do that
-      // presumably we will have added the location just before we reached
-      // the waypoint (if not, maybe change this to add once)
-      // similarly for when we are calculating the hyperparameters
-      // although this is outside the area so should not be a problem anyway
+      // note, only add if we are in sampling state
+      // (we do not want to add when in hp optim, or on surface etc)
       m_data_mail_counter++;
-      if ( !m_pause_data_adding && !m_hp_optim_running &&
-           (m_data_mail_counter % 2 == 0) && !m_data_sharing_activated)
+
+      if ( (m_data_mail_counter % 2 == 0) &&
+            m_mission_state == STATE_SAMPLE )
         handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -202,7 +192,17 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "NAV_LONG" )
       m_lon = dval;
     else if ( key == "NAV_DEPTH" )
+    {
       m_dep = dval;
+
+      if ( std::abs(m_dep) < 0.2 )
+        m_surf_cnt++;
+      else
+        m_surf_cnt = 0;
+
+      if ( m_surf_cnt > 10 )
+        m_on_surface = true;
+    }
     else if ( key == m_input_var_sample_points )
     {
       // store list of sample locations coming pSamplePoints
@@ -220,16 +220,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // check when adaptive waypoint reached
       // these are flags set by the adaptive wpt behavior
       // if we get it, it must mean a wpt/cycle was done
-      m_need_nxt_wpt = true;
-    }
-    else if ( key == "MODE" )
-    {
-      // check the mission state for whether we need to do HP optimization
-      if ( sval.find("HP_OPTIM") != std::string::npos )
+      if ( std::abs(m_last_published - MOOSTime()) > 1.0 &&
+           (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_IDLE ) )
       {
-        m_hp_optim_mode_cnt++;
-//        if ( m_hp_optim_mode_cnt == 1 )
-//          m_pilot_done_time = MOOSTime();
+        std::cout << GetAppName() << " :: STATE_CALCWPT via m_input_var_adaptive_trigger" << std::endl;
+        m_mission_state = STATE_CALCWPT;
+        publishStates();
       }
     }
     else if ( key == m_input_var_share_data )
@@ -258,10 +254,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       if ( sval != m_veh_name )
       {
-        if ( std::abs(m_dep) < 0.2 ) // simulate that we only received on surface
+        if ( m_on_surface ) // simulate that we only received on surface
         {
           if ( m_verbose )
-            std::cout << GetAppName() << " :: received READY at: " << MOOSTime() << " from: " << sval << std::endl;
+            std::cout << GetAppName() << " :: received READY at: " << m_db_uptime << " from: " << sval << std::endl;
 
           // check if vehicle not in list yet, if so, add
           if ( m_rec_ready_veh.find(sval) == m_rec_ready_veh.end() )
@@ -270,12 +266,19 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           // if we have received 'ready' from as many vehicles as exist, then flip bool
           std::cout << GetAppName() << " :: m_rec_ready_veh.size(), m_other_vehicles.size(): "
                     << m_rec_ready_veh.size() << ", " << m_other_vehicles.size() << std::endl;
-          if ( m_rec_ready_veh.size() == m_other_vehicles.size() )
+          if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
+               (m_mission_state == STATE_HANDSHAKE || m_mission_state == STATE_HPOPTIM) )
           {
             for ( auto veh : m_rec_ready_veh )
-            std::cout << "received ready from: " << veh << std::endl;
-            m_received_ready = true;
+              std::cout << GetAppName() << " :: received ready from: " << veh << std::endl;
+            if ( !m_received_ready )
+              m_received_ready = true;
           }
+        }
+        else
+        {
+          if ( m_debug )
+            std::cout << GetAppName() << " :: received ready but not at surface yet, skipping" << std::endl;
         }
       }
     }
@@ -293,31 +296,64 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         std::cout << GetAppName() << " :: calcVoronoi requested by TEST_VORONOI." << std::endl;
       calcVoronoi(m_lon, m_lat, m_other_vehicles);
     }
+    else if ( key == "STAGE" )
+      m_bhv_state = sval;
     else if ( key == "REQ_SURFACING_REC" )
     { // receive surfacing request from other vehicle
       // need to send ack, also start surfacing
       bool own_msg = ownMessage(sval);
       if ( m_debug )
       {
-        std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << std::endl;
-        std::cout << GetAppName() << " :: m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
+        std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << '\n';
+        std::cout << GetAppName() << " :: processing msg? "
+                  << (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+                  << std::endl;
       }
-      if ( !own_msg && !m_data_sharing_requested && !m_send_ack && (MOOSTime() - m_last_voronoi_calc_time) > m_vor_timeout )
+
+      if ( !own_msg )
       {
-        // prep for surfacing
-        m_data_sharing_requested = true;
-        // send ack, do actual sending in Iterate so we send until surface handshake
-        m_send_ack = true;
+        bool final_surface = finalSurface(sval);
+        std::cout << GetAppName() << " :: Received surface request for final surface? " << final_surface << std::endl;
+
+        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT )
+        {
+          // start to surface (bhv)
+          if ( m_bhv_state != "data_sharing" )
+            Notify("STAGE","data_sharing");
+        }
+        if ( m_mission_state == STATE_REQ_SURF )
+        {
+          // start to surface (bhv)
+          if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
+            Notify("STAGE","data_sharing");
+        }
+        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+        {
+          // prep for surfacing
+          // send ack, do actual sending in Iterate so we send until surface handshake
+          m_mission_state = STATE_ACK_SURF;
+          publishStates();
+        }
+
+        if ( final_surface ) //m_mission_state == STATE_HPOPTIM &&
+        {
+          m_final_hp_optim = true;
+
+          if ( m_mission_state == STATE_HPOPTIM ||  m_mission_state == STATE_SAMPLE ||
+               m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+          {
+            if ( m_bhv_state != "hpoptim" )
+              m_Comms.Notify("STAGE","hpoptim");
+          }
+        }
       }
     }
     else if ( key == "REQ_SURFACING_ACK_REC" )
     { // receive surfacing req ack from other vehicle
       bool own_msg = ownMessage(sval);
       if ( m_debug )
-      {
-        std::cout << GetAppName() << " :: REQ_SURFACING_ACK_REC own msg? " << own_msg << std::endl;
-        std::cout << GetAppName() << " :: m_data_sharing_requested? " << m_data_sharing_requested << std::endl;
-      }
+        std::cout << GetAppName() << " :: REQ_SURFACING_ACK_REC own msg? " << own_msg << '\n';
+
       std::string vname;
       bool getval = MOOSValFromString(vname, sval, "veh", true);
       if ( getval )
@@ -327,15 +363,56 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           m_rec_ack_veh.insert(vname);
       }
 
-      if ( !own_msg && !m_data_sharing_requested && m_send_surf_req &&
+      if ( m_debug )
+        std::cout << GetAppName() << " :: processing msg? surf_req: " << ( m_mission_state == STATE_REQ_SURF )
+                  << " nr_veh ok? " << (m_rec_ack_veh.size() == m_other_vehicles.size()) << std::endl;
+
+      // change state if ack received from all other vehicles
+      if ( !own_msg && m_mission_state == STATE_REQ_SURF &&
            m_rec_ack_veh.size() == m_other_vehicles.size() )
       {
-        // ack received, start surfacing
         // prep for surfacing
-        m_data_sharing_requested = true;
-        // received all acks, stop sending surfacing request
-        m_send_surf_req = false;
+        // ack received, start surfacing
+        m_mission_state = STATE_SURFACING;
+        publishStates();
       }
+    }
+    else if ( key == "MISSION_TIME" )
+    {
+      std::cout << GetAppName() << " :: MISSION_TIME: " << sval << std::endl;
+      if ( sval == "end" && !m_final_hp_optim )
+      {
+        // end of adaptive mission, switch to final hp optimization
+        // (if not in it already)
+        m_final_hp_optim = true;
+
+        if ( m_bhv_state != "hpoptim" )
+          m_Comms.Notify("STAGE","hpoptim");
+
+        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT ||
+             m_mission_state == STATE_CALCVOR )
+        {
+          if ( m_use_voronoi )
+            m_mission_state = STATE_REQ_SURF;
+          else
+            m_mission_state = STATE_SURFACING;
+
+          // reset other vars to make sure we can go over procedure again
+          clearHandshakeVars();
+          publishStates();
+        }
+        else if ( m_mission_state != STATE_IDLE || m_mission_state != STATE_DONE )
+        {
+          // in all other cases
+          if ( m_use_voronoi )
+            m_Comms.Notify("REQ_SURFACING","final");
+        }
+
+      }
+    }
+    else if ( key == "DB_UPTIME" )
+    {
+      m_db_uptime = dval;
     }
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
@@ -365,221 +442,158 @@ bool GP::Iterate()
     return true;
   else
   {
-    //// PILOT HP OPTIM ////////////////////////////////////////////////////////
-    // when pilot is done,
-    // we want to optimize the hyperparams of the GP
-
-//    if ( m_hp_optim_mode_cnt == 1 && !m_hp_optim_done && !m_finished )
-//    {
-//      if ( !m_hp_optim_running )
-//      {
-//        // start hyperparameter optimization
-//        m_hp_optim_running = true;
-//
-//        // start thread for hyperparameter optimization,
-//        // because this will take a while..
-//        if ( m_verbose )
-//          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
-//        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, std::ref(m_gp), 20);
-//      }
-//      else
-//      {
-//        std::cout << "checking future m_future_hp_optim" << std::endl;
-//        // running HP optimization
-//        // check if the thread is done
-//        if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-//        {
-//          m_hp_optim_done = m_future_hp_optim.get(); // should be true
-//          if ( !m_hp_optim_done )
-//            std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
-//          m_hp_optim_running = false;
-//          m_hp_optim_done_time = MOOSTime();
-//          if ( m_verbose )
-//            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
-//          m_Comms.Notify("STAGE","survey");
-//        }
-//      }
-//    }
     if ( m_start_time < 1.0 )
       m_start_time = MOOSTime(); // first time, set the start time of process
 
-    //// ADAPTIVE //////////////////////////////////////////////////////////////
-    // when hyperparameter optimization is done,
-    // we want to run adaptive; find next sample locations
-    if ( m_hp_optim_mode_cnt < 1 && !m_finished ) //m_hp_optim_done &&
-    {
-      // **** NXT WAYPOINT (GREEDY) ******************************************//
-      // predict target value and variance for sample locations
-      //    if ( (size_t)std::floor(MOOSTime()) % m_prediction_interval == 0  &&  ) // every 5 min, for now
-      if ( m_need_nxt_wpt && (std::abs(m_last_published - MOOSTime()) > 1.0) && !m_data_sharing_activated  )
-        findAndPublishNextWpt();
-
-
-      // **** ACOMMS VORONOI PARTITIONING ************************************//
-      // check if we need to recalculate Voronoi region
-      if ( m_use_voronoi && m_acomms_sharing && m_voronoi_subset.size() > 0 )
-      {
-          if ( needToRecalculateVoronoi() )
-          {
-            if ( m_debug )
-              std::cout << GetAppName() << " :: calcVoronoi requested by acomms recalc required." << std::endl;
-            calcVoronoi(m_lon, m_lat, m_other_vehicles);
-          }
-      }
-
-      // **** TDS ************************************************************//
-      // if we are doing timed data sharing,
-      if ( m_timed_data_sharing )
-      {
-        // the vehicles may not be done with the pilot at the same time,
-        // so let's time this based on MOOSTime(), and assume that clocks are
-        // synchronised (to be verified)
-        // note; may need to add buffer to block out x seconds after hpoptim_done
-        if ( !m_use_voronoi &&
-              m_num_vehicles > 1 &&
-             ( (size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval ) == 0 &&
-             !m_data_sharing_activated &&
-             (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
-        {
-          // switch to data sharing mode, to switch bhv to surface
-          Notify("STAGE","data_sharing");
-          m_data_sharing_activated = true;
-        }
-
-        // tds with voronoi, trigger for when to request data sharing
-        if ( m_use_voronoi && m_voronoi_subset.size() > 0 && needToRecalculateVoronoi()
-             && !m_data_sharing_requested && !m_data_sharing_activated
-             && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
-        {
-          // request surfacing through acomms
-          m_send_surf_req = true;
-        }
-        // do actual sending of surface request and ack based on global vars
-        // such that we do this until no longer desired
-        if ( m_send_surf_req && (MOOSTime() - m_last_published_req_surf) > 1.0 )
-        {
-          m_Comms.Notify("REQ_SURFACING","true");
-          m_last_published_req_surf = MOOSTime();
-        }
-        if ( m_send_ack && (MOOSTime() - m_last_published_req_surf_ack) > 1.0 )
-        {
-          m_Comms.Notify("REQ_SURFACING_ACK","true");
-          m_last_published_req_surf_ack = MOOSTime();
-        }
-        //
-        // if ack received, trigger requested (in handleMail)
-        //
-        // if received data sharing request, or if ack received, start ds
-        if ( m_use_voronoi && m_data_sharing_requested && !m_data_sharing_activated )
-        { // TODO added time check to avoid calc on first entry- TODO replace?
-          Notify("STAGE","data_sharing");
-          m_data_sharing_activated = true;
-        }
-
-        // when at the surface, send data
-        if ( m_data_sharing_activated && !m_sending_data && std::abs(m_dep) < 0.2 )
-          tdsHandshake();
-
-        // next: check if received data added,
-        // if so, then switch mode back to survey
-        if ( m_data_sharing_activated && m_sending_data && m_received_shared_data && !m_calc_prevoronoi && !m_first_hp_optim )
-          tdsReceiveData();
-
-        if ( m_first_surface && m_first_hp_optim )
-        {
-          if ( m_future_first_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-          {
-            if ( m_use_voronoi )
-            {
-              // after points received, need to run a round of predictions (unvisited set has changed!)
-              m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
-              m_calc_prevoronoi = true;
-            }
-            else
-            {
-              tdsResetStateVars();
-              Notify("STAGE","survey");
-            }
-            m_first_hp_optim = false;
-            m_first_surface = false;
-          }
-          else
-            std::cout << GetAppName() << " :: waiting for first hp optim" << std::endl;
-        }
-
-        if ( m_use_voronoi && m_calc_prevoronoi )
-        {
-          if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-            runVoronoiRoutine();
-          else
-            std::cout << GetAppName() << " :: checking future m_future_calc_prevoronoi" << std::endl;
-        }
-      }
-
-
-      // **** SAVING GP TO FILE **********************************************//
+    // **** SAVING GP TO FILE (independent) **********************************//
+    if ( m_mission_state != STATE_DONE && !(m_hp_optim_running && m_final_hp_optim) )
+    { // TODO consider if we want to run this during HP optimization stage (maybe all but last?)
       // periodically (every 600s = 10min), store all GP predictions
-      // do not store after final hp optimization started
+      // if we did not do so in the last second (apptick)
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 10) &&
-            m_hp_optim_mode_cnt < 1 ) // -m_hp_optim_done_time
+           ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 10) )
       {
         std::cout << GetAppName() << " :: saving state at mission time: " << std::floor(MOOSTime()-m_start_time) << std::endl;
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
         m_last_pred_save = MOOSTime();
       }
-    } // if, after hyperparam optim done
+    }
 
-
-    //// FINAL HP OPTIM ////////////////////////////////////////////////////////
-    // when returning, do a final HP optimization
-    if ( m_hp_optim_mode_cnt == 1 && !m_finished )
+    // **** ACOMMS VORONOI PARTITIONING ************************************//
+    if ( m_mission_state == STATE_SAMPLE && m_acomms_sharing &&
+         m_use_voronoi && m_voronoi_subset.size() > 0 )
     {
-      if ( !m_hp_optim_running )
+      // check if we need to recalculate Voronoi region
+      if ( needToRecalculateVoronoi() )
       {
-        // start hyperparameter optimization
-        m_hp_optim_running = true;
-
-        // if last store was more than 5 min ago, store now
-        // note, could this cause diff nr of saves?
-        if ( MOOSTime() - m_last_pred_save > 300 )
-        {
-          // store predictions before last HP optim
-          std::thread pred_store(&GP::makeAndStorePredictions, this);
-          pred_store.detach();
-        }
-
-        // start thread for hyperparameter optimization,
-        // because this will take a while..
-        if ( m_verbose )
-          std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp.get_sampleset_size() << std::endl;
-
-        m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100); // std::ref(m_gp),  //TODO 10 or 20 or?
-      }
-      else
-      {
-        // running HP optimization
-        // check if the thread is done
-        std::cout << "checking future m_future_hp_optim" << std::endl;
-        if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-        {
-          m_hp_optim_done = m_future_hp_optim.get(); // should be true
-          if ( !m_hp_optim_done )
-            std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
-          m_hp_optim_running = false;
-          if ( m_verbose )
-            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp.covf().get_loghyper() << std::endl;
-          m_Comms.Notify("STAGE","return");
-
-          // store predictions one last time
-          std::thread pred_store(&GP::makeAndStorePredictions, this);
-          pred_store.detach();
-
-          m_finished = true;
-        }
+        m_mission_state = STATE_CALCVOR;
+        publishStates();
       }
     }
+
+    // **** DEBUG **********************************************************//
+    //if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
+    std::cout << GetAppName() << " :: ### Iterate before switch: ### " << std::endl;
+    publishStates();
+
+    // **** MAIN STATE MACHINE *********************************************//
+    switch ( m_mission_state )
+    {
+      case STATE_SAMPLE :
+        if ( m_timed_data_sharing && !m_use_voronoi )
+        {
+          // TDS
+          // let's time this based on MOOSTime(), and assume that clocks are
+          // synchronised (to be verified in field tests)
+          // note; add 60s buffer to block out x seconds after hpoptim_done
+          if ( m_num_vehicles > 1 &&
+               ( (size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval ) == 0 &&
+                 (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
+          {
+            // switch to data sharing mode, to switch bhv to surface
+            m_mission_state = STATE_SURFACING;
+            publishStates();
+          }
+        }
+        // tds with voronoi, trigger for when to request data sharing
+        else if ( m_use_voronoi && m_voronoi_subset.size() > 0 &&
+             needToRecalculateVoronoi() &&
+             ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
+        {
+          // request surfacing through acomms
+          m_mission_state = STATE_REQ_SURF;
+          clearHandshakeVars();
+          publishStates();
+        }
+        // else just sampling, don't do anything else
+        // TODO add in timed? trigger hp optim for parallel sampling?
+
+        break;
+      case STATE_CALCWPT :
+        findAndPublishNextWpt();
+        break;
+      case STATE_SURFACING :
+        if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
+          Notify("STAGE","data_sharing");
+
+        if ( m_timed_data_sharing && m_on_surface )
+        {
+          m_mission_state = STATE_HANDSHAKE;
+          publishStates();
+        }
+
+        break;
+      case STATE_HPOPTIM :
+        if ( !m_calc_prevoronoi )
+          startAndCheckHPOptim();
+        else
+        {
+          // check if future ready. If so, then redirect to sample
+          if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+          {
+            // check if this was supposed to be final hpoptim (received var/msg during calculations)
+            // if so, then end now
+            // if not, then continue
+            if ( m_final_hp_optim )
+              endMission();
+            else
+            {
+              m_mission_state = STATE_CALCVOR;
+              publishStates();
+            }
+          }
+        }
+        break;
+      case STATE_CALCVOR :
+        runVoronoiRoutine();
+        break;
+      case STATE_IDLE :
+        break;
+      // **** STEPS TO GET VEHICLES TO SURFACE *******************************//
+      case STATE_REQ_SURF :
+        // every second, generate var/val for acomms for surfacing
+        if ( (MOOSTime() - m_last_published_req_surf) > 1.0 )
+        {
+          if ( !m_final_hp_optim )
+            m_Comms.Notify("REQ_SURFACING","true");
+          else
+            m_Comms.Notify("REQ_SURFACING","final");
+          m_last_published_req_surf = MOOSTime();
+        }
+        break;
+      case STATE_ACK_SURF :
+        // every second, generate var/val for acomms for surfacing
+        if ( (MOOSTime() - m_last_published_req_surf_ack) > 1.0 )
+        {
+          m_Comms.Notify("REQ_SURFACING_ACK","true");
+          m_last_published_req_surf_ack = MOOSTime();
+        }
+        // when on surface, switch state to start handshake
+        if ( m_on_surface )
+        {
+          m_mission_state = STATE_HANDSHAKE;
+          publishStates();
+        }
+
+        break;
+      case STATE_HANDSHAKE :
+        tdsHandshake();
+        break;
+      case STATE_TX_DATA :
+        if ( m_received_shared_data && !m_calc_prevoronoi )
+        {
+          m_mission_state  = STATE_RX_DATA;
+          publishStates();
+        }
+        break;
+      case STATE_RX_DATA :
+        if ( !m_calc_prevoronoi )
+          tdsReceiveData();
+      default :
+        break;
+    }
+
   }
   return(true);
 }
@@ -679,6 +693,8 @@ bool GP::OnStartUp()
       m_downsample_factor = (size_t)atoi(value.c_str());
     else if ( param == "area_buffer" )
       m_area_buffer = (double)atof(value.c_str());
+    else if ( param == "hp_optim_iterations" )
+      m_hp_optim_iterations = (size_t)atoi(value.c_str());
     else
       handled = false;
 
@@ -774,8 +790,11 @@ void GP::registerVariables()
   m_Comms.Register(m_input_var_sample_points, 0);
   m_Comms.Register(m_input_var_sample_points_specs, 0);
 
-  // get status mission
-  m_Comms.Register("MODE", 0);
+  // get current bhv state
+  m_Comms.Register("STAGE", 0);
+
+  // get trigger end mission
+  m_Comms.Register("MISSION_TIME", 0);
 
   // get when wpt cycle finished
   // (when to run adaptive predictions in adaptive state)
@@ -783,21 +802,24 @@ void GP::registerVariables()
 
   // data sharing
   m_Comms.Register(m_input_var_share_data, 0);
-  m_Comms.Register("LOITER_DIST_TO_POLY",0);
-  m_Comms.Register(m_input_var_handshake_data_sharing,0);
+  m_Comms.Register("LOITER_DIST_TO_POLY", 0);
+  m_Comms.Register(m_input_var_handshake_data_sharing, 0);
 
   // get data from other vehicles
-  m_Comms.Register("INCOMING_DATA_ACOMMS",0);
+  m_Comms.Register("INCOMING_DATA_ACOMMS", 0);
 
   // get other vehicles' locations
-  m_Comms.Register("NODE_REPORT",0);
+  m_Comms.Register("NODE_REPORT", 0);
 
   // tmp test voronoi partitioning
-  m_Comms.Register("TEST_VORONOI",0);
+  m_Comms.Register("TEST_VORONOI", 0);
 
   // surfacing requests
-  m_Comms.Register("REQ_SURFACING_REC",0); // receive surfacing request from other vehicle
-  m_Comms.Register("REQ_SURFACING_ACK_REC",0); // receive surfacing req ack from other vehicle
+  m_Comms.Register("REQ_SURFACING_REC", 0); // receive surfacing request from other vehicle
+  m_Comms.Register("REQ_SURFACING_ACK_REC", 0); // receive surfacing req ack from other vehicle
+
+  // db uptime for debugging
+  m_Comms.Register("DB_UPTIME", 0);
 
   if ( m_verbose )
   {
@@ -865,13 +887,13 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     double data = atof(data_pt_components[2].c_str());
     double save_val = m_use_log_gp ? log(data) : data;
 
-    if ( m_gp.get_sampleset_size() % m_downsample_factor == 0 )
+    if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
     {
       std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
       m_data_for_hp_optim.push(nw_data_pt);
     }
 
-    m_gp.add_pattern(loc, save_val);
+    m_gp->add_pattern(loc, save_val);
 
     // update visited set if needed
     int index = getIndexForMap(veh_lon, veh_lat);
@@ -1136,7 +1158,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   double save_val = m_use_log_gp ? log(value) : value;
 
   // downsampled data for hyperparam optimization
-  if ( m_gp.get_sampleset_size() % m_downsample_factor == 0 )
+  if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
   {
     std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
     m_data_for_hp_optim.push(nw_data_pt);
@@ -1147,7 +1169,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   while ( !ap_lock.try_lock() ) {}
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
-  m_gp.add_pattern(location, save_val);
+  m_gp->add_pattern(location, save_val);
   // release mutex
   ap_lock.unlock();
 }
@@ -1233,7 +1255,7 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 
     // check if the sampled point was nearby, if not, there's something wrong
     bool pt_nearby = checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
-    if ( !pt_nearby && !m_hp_optim_running && !m_data_sharing_activated )
+    if ( !pt_nearby && m_mission_state == STATE_SAMPLE )
     {
       std::cout << GetAppName() << " :: ERROR? distance to sampled point is bigger than the grid spacing\n";
     }
@@ -1306,24 +1328,19 @@ void GP::findNextSampleLocation()
     // calculate the mutual information term
     if ( m_sample_points_unvisited.size() > 0 )
     {
-      m_finding_nxt = true;
-      // use threading because this is a costly operation that would otherwise
-      // interfere with the MOOS app rate
-      if ( m_use_MI )
+      if ( !m_finding_nxt )
       {
-        // get covariance function from GP
-        // such that we can use the get() function from the CovarianceFunction
-        libgp::CovarianceFunction & cov_f = m_gp.covf();
-        m_future_next_pt = std::async(std::launch::async, &GP::calcMICriterion, this, std::ref(cov_f));
-      }
-      else
+        // use threading because this is a costly operation that would otherwise
+        // interfere with the MOOS app rate
         m_future_next_pt = std::async(std::launch::async, &GP::calcMECriterion, this);
+        m_finding_nxt = true;
+      }
     }
     else
       std::cout << GetAppName() << " :: m_sample_points_unvisited is empty, unable to find next location" << std::endl;
   }
-  else if ( m_voronoi_subset.size() == 0 )
-  {
+  else
+  { // if ( m_voronoi_subset.size() == 0 )
     std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
     getRandomStartLocation();
 
@@ -1357,9 +1374,9 @@ void GP::getRandomStartLocation()
   m_Comms.Notify(m_output_var_pred, output_stream.str());
 
   // update state vars
+  m_mission_state = STATE_SAMPLE;
   m_last_published = MOOSTime();
-  m_need_nxt_wpt = false;
-  m_pause_data_adding = false;
+  publishStates();
 }
 
 //---------------------------------------------------------
@@ -1416,7 +1433,7 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
   if ( m_verbose )
     std::cout << GetAppName() << " ::  best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
 
-  if ( best_so_far_idx > 0 )
+  if ( best_so_far_idx >= 0 )
   {
     auto best_itr = m_sample_points_unvisited.find(best_so_far_idx);
 
@@ -1439,8 +1456,14 @@ void GP::publishNextBestPosition() //Eigen::Vector2d best_so_far_y)
 
       // update state vars
       m_last_published = MOOSTime();
-      m_need_nxt_wpt = false;
+      m_mission_state = STATE_SAMPLE;
+      publishStates();
     }
+  }
+  else
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: invalid index: " << best_so_far_idx << ", not publishing." << std::endl;
   }
 }
 
@@ -1465,7 +1488,7 @@ size_t GP::calcMECriterion()
   while ( !gp_lock.try_lock() ) {}
   if ( m_debug )
     std::cout << GetAppName() << " :: make copy GP" << std::endl;
-  libgp::GaussianProcess gp_copy(m_gp);
+  libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   // release lock
   gp_lock.unlock();
 
@@ -1481,7 +1504,7 @@ size_t GP::calcMECriterion()
   map_lock.unlock();
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: calc max entropy" << std::endl;
+    std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
 
   // for each unvisited location
   for ( auto y_itr : unvisited_map_copy )
@@ -1491,8 +1514,9 @@ size_t GP::calcMECriterion()
     double y_loc[2] = {y(0), y(1)};
 
     // calculate its posterior entropy
-    double pred_mean = gp_copy.f(y_loc);
-    double pred_cov = gp_copy.var(y_loc);
+    double pred_mean;
+    double pred_cov;
+    gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
 
     // normal distribution
     //  1/2 ln ( 2*pi*e*sigma^2 )
@@ -1514,147 +1538,10 @@ size_t GP::calcMECriterion()
     std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   // copy of GP and unvisited_map get destroyed when this function exits
+  delete gp_copy;
   return 0;
 }
 
-//---------------------------------------------------------
-// Procedure: calcMICriterion
-//            do the MI criterion calculation and find best y
-//
-size_t GP::calcMICriterion(libgp::CovarianceFunction& cov_f)
-{
-  // for mutual information, we use visited and unvisited sets
-  // we want to calculate, for each possible location y,
-  // the values of k(y,y), k(y,a), k(a,a), k(y,a*), k(a*,a*)
-  // i.e. we calculate the covariance with all the points in the visite
-  // and unvisited sets
-  // then we calculate sigma^2 (kyy - kya kaa kay) for each set
-  // and divide sigma_y_visited by sigma_y_unvisited
-
-  // calculate covariance matrices sets, and their inverses (costly operations)
-  if ( m_debug )
-    std::cout << GetAppName() << " :: Calculate covariance matrices" << std::endl;
-
-  m_unvisited_pred_metric.clear();
-
-  std::unique_lock<std::mutex> mi_lock(m_gp_mutex, std::defer_lock);
-  // use unique_lock here, such that we can release mutex after m_gp operation
-  while ( !mi_lock.try_lock() ) {}
-
-  size_t size_unvisited = m_sample_points_unvisited.size();
-
-  // note; replaced with using predictions from GP
-//    Eigen::MatrixXd K_aa(size_visited, size_visited);
-//    createCovarMatrix(cov_f, "visited", K_aa);
-//    Eigen::MatrixXd K_aa_inv = K_aa.inverse();
-
-  Eigen::MatrixXd K_avav(size_unvisited, size_unvisited);
-  createCovarMatrix(cov_f, "unvisited", K_avav);
-  Eigen::MatrixXd K_avav_inv = K_avav.inverse();
-
-  // TODO replace inverses using Cholesky decomposition
-
-  // construct a vector of target values for the unvisited locations
-  // using the GP
-  if ( m_debug )
-    std::cout << GetAppName() << " :: Get target values for unvisited points" << std::endl;
-  Eigen::VectorXd t_av(size_unvisited);
-  getTgtValUnvisited(t_av);
-
-  if ( m_debug )
-    std::cout << GetAppName() << " :: try for lock map" << std::endl;
-  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-  while ( !map_lock.try_lock() ){}
-  // make copy of map to use instead of map,
-  // such that we do not have to lock it for long
-  std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
-  unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
-  map_lock.unlock();
-
-  if ( m_debug )
-    std::cout << GetAppName() << " :: calc for all y (" << unvisited_map_copy.size() << ")" << std::endl;
-
-  std::clock_t begin = std::clock();
-  for ( auto y_itr : unvisited_map_copy )
-  {
-    Eigen::Vector2d y = y_itr.second;
-
-    // calculate k(y,y)
-    double k_yy = cov_f.get(y,y);
-
-    // calculate covariance with visited set
-//      Eigen::VectorXd k_ya(size_visited);
-//      createCovarVector(cov_f, y, "visited", k_ya);
-//      // TODO: add noise term?
-//      double mat_ops_result = k_ya.transpose() * K_aa_inv * k_ya;
-//      double sigma_y_A = k_yy - mat_ops_result;
-
-    // covariance with visited set should be the predictive covariance
-    // from the GP (note, GP actually contains more data pts .. but at least
-    //              the visited locations)
-    double y_loc[2] = {y(0), y(1)};
-    double pred_mean_yA = m_gp.f(y_loc);
-    double pred_cov_yA = m_gp.var(y_loc);
-
-    // TODO if want to work with voronoi, then change these functions internally
-    // calculate covariance with unvisited set
-    Eigen::VectorXd k_yav(size_unvisited);
-    createCovarVector(cov_f, y, "unvisited", k_yav);
-    // TODO add noise term in both equations! TODO TODO
-    double mat_ops_result = k_yav.transpose() * K_avav_inv * k_yav;
-    double sigma_y_Av = k_yy - mat_ops_result;
-
-    // predictive mean of unvisited set -- TODO check?
-    double pred_mean_yAv = k_yav.transpose() * K_avav_inv * t_av;
-
-    // calculate mutual information term
-    double div;
-    if ( m_use_log_gp )
-    {
-      // convert to log GP
-      double mean_yA_lGP, var_yA_lGP; // visited set
-      getLogGPPredMeanVarFromGPMeanVar(pred_mean_yA, pred_cov_yA, mean_yA_lGP, var_yA_lGP);
-      double mean_yAv_lGP, var_yAv_lGP; // unvisited set
-      getLogGPPredMeanVarFromGPMeanVar(pred_mean_yAv, sigma_y_Av, mean_yAv_lGP, var_yAv_lGP);
-
-      // TODO change for log GP, incorp mean, current incorrect (is for GP)
-      div = 0.5 * log( var_yA_lGP / var_yAv_lGP );
-    }
-    else
-    {
-      // double div = 0.5 * log(sigma_y_A / sigma_y_Av);
-      div = 0.5 * log ( pred_cov_yA / sigma_y_Av );
-    }
-
-    m_unvisited_pred_metric.insert(std::pair<size_t, double>( y_itr.first, div));
-  }
-
-  std::clock_t end = std::clock();
-  if ( m_verbose )
-    std::cout << GetAppName() << " :: MI crit calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-
-  mi_lock.unlock();
-
-  // TODO: store all values, return sorted list?
-  return 0;
-}
-
-//---------------------------------------------------------
-// Procedure: getTgtValUnvisited
-//            construct vector with target values for
-//            unvisited points, as extracted from GP
-//
-void GP::getTgtValUnvisited(Eigen::VectorXd & t_av)
-{
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator av_itr;
-  size_t t_cnt = 0;
-
-  for ( av_itr = m_sample_points_unvisited.begin(); av_itr != m_sample_points_unvisited.end(); av_itr++, t_cnt++ )
-  {
-    double av_loc[2] = {av_itr->second(0), av_itr->second(1)};
-    t_av(t_cnt) = m_gp.f(av_loc);
-  }
-}
 
 //---------------------------------------------------------
 // Procedure: checkGPHasData
@@ -1662,62 +1549,9 @@ void GP::getTgtValUnvisited(Eigen::VectorXd & t_av)
 //
 bool GP::checkGPHasData()
 {
-  return ( m_gp.get_sampleset_size() > 0 );
+  return ( m_gp->get_sampleset_size() > 0 );
 }
 
-//---------------------------------------------------------
-// Procedure: createCovarVector
-//            helper method for mutual information calculation
-//            calculates K_ya
-//
-void GP::createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya)
-{
-  // choose which map to use
-  std::unordered_map<size_t, Eigen::Vector2d> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
-
-  // calculate the covariances
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator a_itr;
-  size_t a_cnt = 0;
-  for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
-  {
-    // calc k_ya
-    Eigen::Vector2d a = a_itr->second;
-
-    k_ya(a_cnt) = cov_f.get(y,a);
-  }
-}
-
-//---------------------------------------------------------
-// Procedure: createCovarMatrix
-//            helper method for mutual information calculation
-//            calculates K_AA
-//
-void GP::createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa)
-{
-  // choose which map to use
-  std::unordered_map<size_t, Eigen::Vector2d> & map_ref = ( set_identifier == "visited" ? m_sample_points_visited : m_sample_points_unvisited);
-
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator a_itr;
-  size_t a_cnt = 0;
-  for ( a_itr = map_ref.begin(); a_itr != map_ref.end(); a_itr++, a_cnt++)
-  {
-    Eigen::Vector2d a = a_itr->second;
-
-    // calc K_aa
-    std::unordered_map<size_t, Eigen::Vector2d>::iterator b_itr;
-    size_t b_cnt = a_cnt;
-    // iterate only over triangle of matrix to reduce computation
-    for ( b_itr = a_itr; b_itr != map_ref.end(); b_itr++, b_cnt++ )
-    {
-      Eigen::Vector2d b = b_itr->second;
-
-      double current_cov_val = cov_f.get(a, b);
-      K_aa(a_cnt, b_cnt) = current_cov_val;
-      if (a_cnt != b_cnt)
-        K_aa(b_cnt, a_cnt) = current_cov_val;
-    }
-  }
-}
 
 //---------------------------------------------------------
 // Procedure: processReceivedData()
@@ -1738,103 +1572,117 @@ size_t GP::processReceivedData()
 
 
 //---------------------------------------------------------
+// Procedure: startAndCheckHPOptim()
+//            start HP optim if not running yet (thread)
+//            if running, check if done
+//            if done, (a) continue sampling, or
+//                     (b) end the mission
+//
+void GP::startAndCheckHPOptim()
+{
+  // start HP optimization, if not running already
+  if ( !m_hp_optim_running )
+  {
+    // start thread for hyperparameter optimization,
+    // because this will take a while..
+    // TODO parameterize nr iterations
+    m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100);
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp->get_sampleset_size() << std::endl;
+    m_hp_optim_running = true;
+  }
+  else
+  {
+    // if running, check if done
+    if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+    {
+        bool hp_optim_done = m_future_hp_optim.get(); // should be true
+        if ( !hp_optim_done )
+        {
+          std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+          return;
+        }
+        else
+        {
+          if ( m_verbose )
+            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
+
+          // after intermediary HP optim
+          if ( m_use_voronoi )
+          {
+            // after points received, need to run a round of predictions (unvisited set has changed!)
+            m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+            m_calc_prevoronoi = true;
+          }
+          else
+          {
+            std::cout << GetAppName() << " :: tdsResetStateVars via hpoptimdone - not m_use_voronoi" << std::endl;
+            tdsResetStateVars();
+          }
+
+          // after final HP optim -- how to know when final?
+          if ( m_final_hp_optim )
+            endMission();
+
+          m_hp_optim_running = false;
+        }
+      }
+      else
+        std::cout << GetAppName() << " :: waiting for hp optim" << std::endl;
+  }
+
+}
+
+//---------------------------------------------------------
+// Procedure: endMission()
+//            set variables to end mission, initiate last save
+//
+void GP::endMission()
+{
+  m_mission_state = STATE_DONE;
+  m_Comms.Notify("STAGE","return");
+  publishStates();
+
+  // store predictions after HP optim
+  m_finished = true;
+  std::thread pred_store(&GP::makeAndStorePredictions, this);
+  pred_store.detach();
+}
+
+
+//---------------------------------------------------------
 // Procedure: runHPOptimization(nr_iterations)
 //            run in thread, call GP's hyperparam optimization
 //
-bool GP::runHPOptimization(size_t nr_iterations) //libgp::GaussianProcess & gp,
+bool GP::runHPOptimization(size_t nr_iterations)
 {
   bool data_processed = false;
   size_t pts_added = 0;
 
-  // first share and wait for data,
-  // in case there are multiple vehicles
-  // and data has not yet been shared through acomms
-  if ( m_num_vehicles > 1 )
-  {
-    // 1. wait until the vehicle is at the surface and at the HP loiter
-    while ( !( std::abs(m_dep) < 0.2 && m_loiter_dist_to_poly < 20) )
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-    // handshake
-
-    // if received ready, let it be known we are ready as well
-    if ( m_received_ready )
-      sendReady();
-
-    // if not received ready, let it be known we are ready, until other also is
-    size_t prev_sent = 0;
-    while ( !m_received_ready )
-    {
-      // this vehicle ready to exchange data, other vehicle not yet,
-      // keep sending that we are ready:
-      // every 30 seconds, notify that we are ready for data exchange
-      // note; we are not in a mail cycle here, so make sure we do only once
-      //       per time slot
-      size_t time_moos = (size_t)std::floor(MOOSTime());
-      if ( time_moos % 30 == 0 && time_moos-prev_sent > 1 )
-      {
-        sendReady();
-        prev_sent = time_moos;
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
-    }
-
-    // share data, if not already shared through acomms
-    if ( !m_acomms_sharing )
-    {
-      sendData();
-      m_received_ready = false;
-
-      // 2. wait for received data to be processed
-      while ( !data_processed )
-      {
-        if ( m_received_shared_data )
-        {
-          pts_added += processReceivedData();
-          data_processed = true;
-        }
-        else
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
-      if ( m_verbose )
-        std::cout << GetAppName() << " :: *added: " << pts_added << " data points." << std::endl;
-      m_received_shared_data = false;
-      m_rec_ready_veh.clear();
-      m_rec_ack_veh.clear();
-    }
-  }
-
-  // 3. run hyperparameter optimization
+  // run hyperparameter optimization
 
   // protect GP access with mutex
   if ( m_verbose)
   {
     std::cout << GetAppName() << " :: continuing HP optimization" << std::endl; //obtained lock,
-    std::cout << GetAppName() << " :: current size GP: " << m_gp.get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: current size GP: " << m_gp->get_sampleset_size() << std::endl;
   }
 
-  Eigen::VectorXd lh_gp(m_gp.covf().get_loghyper()); // via param function
+  Eigen::VectorXd lh_gp(m_gp->covf().get_loghyper()); // via param function
   runHPoptimizationOnDownsampledGP(lh_gp, nr_iterations);
 
   // pass on params to GP
-  Eigen::VectorXd hparams(lh_gp); //downsampled_gp.covf().get_loghyper());
+  Eigen::VectorXd hparams(lh_gp);
   if ( m_verbose )
     std::cout << GetAppName() << " :: new hyperparameters: " << hparams << std::endl;
 
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   while ( !hp_lock.try_lock() ){}
-  m_gp.covf().set_loghyper(hparams);
+  m_gp->covf().set_loghyper(hparams);
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
 
-  // delete the created downsampled GP to clear memory
-
-  std::cout << " new m_GP hyper params: " << m_gp.covf().get_loghyper() << std::endl;
-
-//  // first save of predictions
-//  std::thread pred_store(&GP::makeAndStorePredictions, this);
-//  pred_store.detach();
-//  m_last_pred_save = MOOSTime();
+  std::cout << GetAppName() << " :: new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
 
   return true;
 }
@@ -1853,18 +1701,13 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   // make GP from downsampled data
   libgp::GaussianProcess downsampled_gp(2, "CovSum(CovSEiso, CovNoise)");
   // params, copied from beginning
-  //Eigen::VectorXd lh_gp(m_gp.covf().get_loghyper()); // via param function
-  //Eigen::VectorXd params(downsampled_gp.covf().get_param_dim());
-  //params << -8.927865292, 0.02335186099, -0.9098776951;
-  //params << -12.4292, 0.4055, -1.8971;
-  //params << -12.4292, -0.9, 0.64;
   // set loghyperparams
   downsampled_gp.covf().set_loghyper(loghp);
   std::cout << GetAppName() << " :: loghyperparams before optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
   // fill new GP with downsampled data
   if ( m_verbose )
-    std::cout << "size m_data_for_hp_optim: " << m_data_for_hp_optim.size() << std::endl;
+    std::cout << GetAppName() << " :: size m_data_for_hp_optim: " << m_data_for_hp_optim.size() << std::endl;
   double loc[2];
 
   // keep the data in queue, in case of first_surface
@@ -1878,7 +1721,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     loc[0] = pt[0];
     loc[1] = pt[1];
     double dval = pt[2];
-    std::cout << "data point: " << loc[0] << "," << loc[1] << "," << dval << std::endl;
     downsampled_gp.add_pattern(loc, dval);
   }
   if ( m_first_surface )
@@ -1890,39 +1732,33 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
       temp_queue.pop();
       m_data_for_hp_optim.push(data_pt);
     }
+    m_first_surface = false;
   }
-
 
   std::clock_t end = std::clock();
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: runtime putting data into downsampled_gp: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
     std::cout << GetAppName() << " :: size downsampled GP: " << downsampled_gp.get_sampleset_size() << std::endl;
-    std::cout << GetAppName() << " :: size orig GP: " << m_gp.get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: size orig GP: " << m_gp->get_sampleset_size() << std::endl;
   }
-
-
-//  // test
-//  double ff, var;
-//  downsampled_gp.f_and_var(loc, ff, var);
 
   // HP optimization
   begin = std::clock();
+
+  // TODO: test CG
   // RProp arguments: GP, 'n' (nr iterations), verbose
   rprop.maximize(&downsampled_gp, nr_iterations, 1);
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
-//  // test
-//  downsampled_gp.f_and_var(loc, ff, var);
-
   std::cout << GetAppName() << " :: loghyperparams after optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
   // write new HP to file
   begin = std::clock();
   std::stringstream filenm;
-  filenm << "hp_optim_" << m_veh_name << "_" << nr_iterations;
+  filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
   downsampled_gp.write(filenm.str().c_str());
   end = std::clock();
   if ( m_debug )
@@ -1932,8 +1768,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   loghp = downsampled_gp.covf().get_loghyper();
 }
 
-
-
 //---------------------------------------------------------
 // Procedure: sendReady()
 //            notify other vehicles that this one is ready
@@ -1941,6 +1775,8 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
 //
 void GP::sendReady()
 {
+  std::cout << GetAppName() << " :: send READY (" << m_output_var_handshake_data_sharing
+            << ":" << m_veh_name << ")" << std::endl;
   Notify(m_output_var_handshake_data_sharing,m_veh_name);
 }
 
@@ -2014,7 +1850,8 @@ void GP::makeAndStorePredictions()
   while ( !gp_lock.try_lock() ) {}
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
-  libgp::GaussianProcess gp_copy(m_gp);
+  libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
+  std::cout << GetAppName() << " :: copy vs orig gp address: " << &gp_copy << " -- " << &m_gp << std::endl;
   gp_lock.unlock();
 
   std::clock_t begin = std::clock();
@@ -2038,7 +1875,7 @@ void GP::makeAndStorePredictions()
     double loc[2] {loc_itr->first, loc_itr->second};
     double pred_mean_GP;
     double pred_var_GP;
-    gp_copy.f_and_var(loc, pred_mean_GP, pred_var_GP);
+    gp_copy->f_and_var(loc, pred_mean_GP, pred_var_GP);
 
     double pred_mean_lGP, pred_var_lGP;
     if ( m_use_log_gp )
@@ -2102,6 +1939,7 @@ void GP::makeAndStorePredictions()
 
   if ( m_finished )
   {
+    std::cout << GetAppName() << " :: " << m_db_uptime << " :: closing files." << std::endl;
     m_ofstream_pm_lGP.close();
     m_ofstream_pv_lGP.close();
     if ( m_use_log_gp )
@@ -2121,6 +1959,7 @@ void GP::makeAndStorePredictions()
   }
 
   // copy of GP gets destroyed when this function exits
+  delete gp_copy;
 }
 
 //---------------------------------------------------------
@@ -2400,25 +2239,36 @@ void GP::printVoronoi()
 void GP::tdsHandshake()
 {
   size_t moos_t = (size_t)std::floor(MOOSTime());
-  // send data
-  if ( m_received_ready && std::abs(m_dep) < 0.2 )
+
+  if ( m_debug )
+    std::cout << GetAppName() << " :: tdsHandhake -- mission_state: " << currentMissionStateString() << std::endl;
+
+  if ( !m_on_surface )
   {
-    m_send_ack = false;
-    // other vehicle already ready to exchange data
-    // send that we are ready, when we are at the surface
-    sendReady();
-
-    // send the data
-    m_last_ready_sent = moos_t;
-    m_sending_data = true;
-    sendData();
-
-    // reset for next time
-    m_received_ready = false;
+    if ( m_debug )
+      std::cout << GetAppName() << " :: not on surface yet, do not yet send handshake" << std::endl;
   }
   else
   {
-    if ( std::abs(m_dep) < 0.2 ) // send only when at surface
+    // send data
+    if ( m_received_ready )
+    {
+      // other vehicle already ready to exchange data
+      // send that we are ready, when we are at the surface
+      sendReady();
+
+      // send the data
+      m_last_ready_sent = moos_t;
+      //m_data_sharing_state = DATA_SEND;
+      m_mission_state = STATE_TX_DATA;
+      publishStates();
+
+      sendData();
+
+      // reset for next time
+      m_received_ready = false;
+    }
+    else
     {
       // this vehicle is ready to exchange data, other vehicle not yet,
       // keep sending that we are ready:
@@ -2448,9 +2298,9 @@ void GP::tdsReceiveData()
     m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
     m_waiting = true;
   }
-  else
+  else if ( m_waiting && !m_calc_prevoronoi )
   {
-    std::cout << "checking future m_future_received_data_processed" << std::endl;
+    std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
     if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
       size_t pts_added = m_future_received_data_processed.get();
@@ -2459,10 +2309,12 @@ void GP::tdsReceiveData()
         std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
 
       // add in a HP optimization, if this is the first time.
-      if ( m_first_surface )
+      if ( m_first_surface || m_final_hp_optim )
       {
-        m_future_first_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 50);
-        m_first_hp_optim = true;
+        m_first_surface = false;
+
+        m_mission_state = STATE_HPOPTIM;
+        publishStates();
       }
       else
       {
@@ -2471,11 +2323,16 @@ void GP::tdsReceiveData()
           // after points received, need to run a round of predictions (unvisited set has changed!)
           m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
           m_calc_prevoronoi = true;
+          std::cout << GetAppName() << " :: started m_future_calc_prevoronoi";
+
+          // need to switch state - future is being checked in STATE_HPOPTIM;
+          m_mission_state = STATE_HPOPTIM;
+          publishStates();
         }
         else
         {
+          std::cout << GetAppName() << " :: tdsResetStateVars via tdsReceiveData - not m_use_voronoi" << std::endl;
           tdsResetStateVars();
-          Notify("STAGE","survey");
         }
       }
     }
@@ -2492,44 +2349,55 @@ void GP::tdsResetStateVars()
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: reset state vars" << std::endl;
+
   // move to next step; need wpt
-  m_need_nxt_wpt = true;
+  std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
+  m_mission_state = STATE_CALCWPT;
+  publishStates();
+
+  if ( m_bhv_state != "survey" )
+    Notify("STAGE","survey");
+
   // reset surfacing/handshake vars
-  m_data_sharing_activated = false;
-  m_received_shared_data = false;
-  m_sending_data = false;
   m_waiting = false;
-  m_received_ready = false;
-  m_data_sharing_requested = false;
-  if ( m_use_voronoi )
+    if ( m_use_voronoi )
   {
     // move to next step: voronoi calc & predictions done
     m_precalc_pred_voronoi_done = true;
-    // reset surfacing / handshake vars
-    m_send_surf_req = false;
-    m_send_ack = false;
   }
+
+  clearHandshakeVars();
+}
+
+//---------------------------------------------------------
+// Procedure: clearHandshakeVars
+//            clear handshake counters
+//
+void GP::clearHandshakeVars()
+{
   // reset surfacing/handshake other vehicles sets
   m_rec_ready_veh.clear();
   m_rec_ack_veh.clear();
+
+  m_received_shared_data = false;
+  m_received_ready = false;
 }
 
 //---------------------------------------------------------
 // Procedure: findAndPublishNextWpt
-//            called upon m_need_nxt_wpt in Iterate
 //            calculate the next sample location,
 //            and publish to MOOSDB when found
 //
 void GP::findAndPublishNextWpt()
 {
-  // reset var to avoid second call of this function when apptick > 1
-  m_need_nxt_wpt = false;
-
   // only run calculation of predictions if we did not already do
   // this during the voronoi calculation
   if ( m_precalc_pred_voronoi_done )
   {
+    // publish best location
     publishNextBestPosition();
+
+    // reset vars
     m_precalc_pred_voronoi_done = false;
     m_finding_nxt = false;
   }
@@ -2543,15 +2411,20 @@ void GP::findAndPublishNextWpt()
     }
     else
     {
-      m_pause_data_adding = true;
       // see if we can get result from future
-      std::cout << "checking future m_future_next_pt" << std::endl;
+      std::cout << GetAppName() << " :: checking future m_future_next_pt" << std::endl;
       if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
       {
         m_finding_nxt = false;
+
         // publish greedy best
         publishNextBestPosition();
-        m_pause_data_adding = false;
+
+        // continue survey
+        if ( m_bhv_state != "survey" )
+          m_Comms.Notify("STAGE","survey");
+        m_mission_state = STATE_SAMPLE;
+        publishStates();
       }
     }
   }
@@ -2585,56 +2458,66 @@ bool GP::ownMessage(std::string input)
 }
 
 //---------------------------------------------------------
+// Procedure: finalSurface(std::string input)
+//            check if message contains word 'final'
+//
+bool GP::finalSurface(std::string input)
+{
+  // note; we give value 'final', but surface request is a bool
+  // given message size, so it would be converted to 'false'
+  size_t index = input.find("false");
+  return ( index != std::string::npos );
+}
+
+
+//---------------------------------------------------------
 // Procedure: runVoronoiRoutine()
 //            after calculation predictions, calculate
 //            and recalculate voronoi regions
 //
 void GP::runVoronoiRoutine()
 {
-  // TODO move
-  if ( m_use_voronoi )
+  if ( m_debug )
+    std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (1)." << std::endl;
+  calcVoronoi(m_lon, m_lat, m_other_vehicles);
+
+  // got initial voronoi partitioning
+  // now let's use density function to get new voronoi initiators
+  //
+  double own_centroid_lon(0.0), own_centroid_lat(0.0);
+  std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
+
+  calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
+
+  if ( m_verbose )
   {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (1)." << std::endl;
-    calcVoronoi(m_lon, m_lat, m_other_vehicles);
-
-    // got initial voronoi partitioning
-    // now let's use density function to get new voronoi initiators
-    //
-    double own_centroid_lon(0.0), own_centroid_lat(0.0);
-    std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
-    calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
-
-    if ( m_verbose )
-    {
-      std::cout << GetAppName() << " :: old centroids: " << m_lon << "," << m_lat << ";";
-      for ( auto veh : m_other_vehicles )
-        std::cout << (veh.second).first << "," << (veh.second).second << ";";
-      std::cout << std::endl;
-      std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
-      for ( auto veh : other_vehicle_centroids )
-        std::cout << (veh.second).first << "," << (veh.second).second << ";";
-      std::cout << std::endl;
-    }
-
-    // now, recalculate the voronoi partitioning, given the new centroids
-    // if it is not zero
-    if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
-    {
-      if ( m_debug )
-        std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2)." << std::endl;
-      calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
-    }
-
-    m_last_voronoi_calc_time = MOOSTime();
+    std::cout << GetAppName() << " :: old centroids: " << m_lon << "," << m_lat << ";";
+    for ( auto veh : m_other_vehicles )
+      std::cout << (veh.second).first << "," << (veh.second).second << ";";
+    std::cout << std::endl;
+    std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
+    for ( auto veh : other_vehicle_centroids )
+      std::cout << (veh.second).first << "," << (veh.second).second << ";";
+    std::cout << std::endl;
   }
 
-  tdsResetStateVars();
+  // now, recalculate the voronoi partitioning, given the new centroids
+  // if it is not zero
+  if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2)." << std::endl;
+    calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
+  }
 
-  Notify("STAGE","survey");
+  m_last_voronoi_calc_time = MOOSTime();
+
+  std::cout << GetAppName() << " :: tdsResetStateVars via runVoronoiRoutine" << std::endl;
+  tdsResetStateVars();
 
   m_calc_prevoronoi = false;
 }
+
 
 
 //---------------------------------------------------------
@@ -2666,7 +2549,7 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
   if ( m_voronoi_subset_other_vehicles.size() == 0 )
   {
     if ( m_debug )
-      std::cout << "m_voronoi_subset_other_vehicles is empty" << std::endl;
+      std::cout << GetAppName() << " :: m_voronoi_subset_other_vehicles is empty" << std::endl;
     return;
   }
 
@@ -2764,4 +2647,12 @@ void GP::printVoronoiPartitions()
     std::cout << GetAppName() << " :: partition for " << veh.first << " has " << (veh.second).size() << " points\n";
 
   std::cout << std::endl;
+}
+
+void GP::publishStates()
+{
+  if ( m_debug )
+    std::cout << GetAppName() << " :: ** db_uptime: " << m_db_uptime << " current state: " << currentMissionStateString() << " **" << std::endl;
+
+  m_Comms.Notify("STATE_MISSION", currentMissionStateString());
 }

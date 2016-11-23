@@ -52,4 +52,7 @@ ProcessConfig = pGP
   // buffer region outside sample area for which
   // vehicle is still counted as inside, for voronoi partitioning
   area_buffer = 10.0
+
+  // number of iterations for RProp
+  hp_optim_iterations = 50
 }

@@ -65,25 +65,19 @@ class GP : public CMOOSApp
    void addPatternToGP(double veh_lon, double veh_lat, double value);
    void dataAddingThread();
 
-   bool runHPOptimization(size_t nr_iterations); //libgp::GaussianProcess & gp,
+   void startAndCheckHPOptim();
+   bool runHPOptimization(size_t nr_iterations);
    void runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations);
 
    void findAndPublishNextWpt();
    void findNextSampleLocation();
    void getRandomStartLocation();
 
-   // mutual information
-   size_t calcMICriterion(libgp::CovarianceFunction& cov_f);
-   void createCovarVector(libgp::CovarianceFunction& cov_f, Eigen::Vector2d y, std::string const & set_identifier, Eigen::VectorXd & k_ya);
-   void createCovarMatrix(libgp::CovarianceFunction& cov_f, std::string const & set_identifier, Eigen::MatrixXd & K_aa);
-   void getTgtValUnvisited(Eigen::VectorXd & t_av);
-   //, size_t size_unvisited, Eigen::Vector2d & best_so_far_y, double & best_so_far);
-   void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
-
    // maximum entropy
    size_t calcMECriterion();
+   void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
 
-   void publishNextBestPosition(); //Eigen::Vector2d best_so_far_y);
+   void publishNextBestPosition();
 
    void makeAndStorePredictions();
 
@@ -115,12 +109,18 @@ class GP : public CMOOSApp
    bool inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const;
 
    void tdsResetStateVars();
+   void clearHandshakeVars();
    void tdsHandshake();
    void tdsReceiveData();
 
    size_t processReceivedData();
 
    bool ownMessage(std::string input);
+   bool finalSurface(std::string input);
+
+   void publishStates();
+
+   void endMission();
 
    // Configuration variables
    bool m_verbose;
@@ -137,7 +137,6 @@ class GP : public CMOOSApp
    std::string m_output_var_share_data;
 
    size_t m_prediction_interval;
-   bool m_use_MI;
 
    // State variables
    bool m_debug;
@@ -147,8 +146,10 @@ class GP : public CMOOSApp
    double m_lat;
    double m_lon;
    double m_dep;
+   size_t m_surf_cnt;
+   bool m_on_surface;
+
    // process state
-   bool m_pause_data_adding;
    double m_last_published;
    double m_last_pred_save;
    // sample points grid specs
@@ -166,19 +167,27 @@ class GP : public CMOOSApp
    double m_lat_deg_to_m;
    // mission status
    double m_start_time;
-//   double m_pilot_done_time;
-//   double m_hp_optim_done_time;
-   bool m_need_nxt_wpt;
    bool m_finding_nxt;
 
-   //std::vector< std::pair<double, double> > m_sample_points;
+   // states through enums
+   enum MissionState{ STATE_IDLE, STATE_CALCWPT, STATE_SAMPLE,
+                      STATE_HPOPTIM, STATE_DONE,
+                      STATE_SURFACING, STATE_HANDSHAKE,
+                      STATE_TX_DATA, STATE_RX_DATA,
+                      STATE_CALCVOR, STATE_REQ_SURF, STATE_ACK_SURF };
+   MissionState m_mission_state;
+   char const * currentMissionStateString() { return (char const *[]) {
+   "STATE_IDLE", "STATE_CALCWPT", "STATE_SAMPLE", "STATE_HPOPTIM", "STATE_DONE",
+   "STATE_SURFACING", "STATE_HANDSHAKE", "STATE_TX_DATA", "STATE_RX_DATA",
+   "STATE_CALCVOR", "STATE_REQ_SURF", "STATE_ACK_SURF" }[m_mission_state]; };
+
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
    std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_visited;
    std::vector< std::pair<double, double> > m_sample_locations;
    std::unordered_map<size_t, double> m_unvisited_pred_metric;
 
    // GP, and create mutex for protection of parts of code accessing m_gp
-   libgp::GaussianProcess m_gp;
+   libgp::GaussianProcess * m_gp;
    std::mutex m_gp_mutex;
    std::mutex m_sample_maps_mutex;
    std::mutex m_file_writing_mutex;
@@ -191,6 +200,8 @@ class GP : public CMOOSApp
    std::future<bool> m_future_hp_optim;
    bool m_hp_optim_running;
    bool m_hp_optim_done;
+   bool m_final_hp_optim;
+   size_t m_hp_optim_iterations;
 
    // future for result MI criterion calculations
    std::future<size_t> m_future_next_pt;
@@ -201,7 +212,6 @@ class GP : public CMOOSApp
    // mission states,
    // check when returning to base
    bool m_finished;
-   size_t m_hp_optim_mode_cnt;
 
    // file writing
    std::ofstream m_ofstream_pm_lGP, m_ofstream_pv_lGP;
@@ -222,8 +232,6 @@ class GP : public CMOOSApp
    // timed data sharing
    bool m_timed_data_sharing;
    size_t m_data_sharing_interval;
-   bool m_data_sharing_activated;
-   bool m_sending_data;
    std::future<size_t> m_future_received_data_processed;
    bool m_waiting;
    bool m_received_ready;
@@ -255,10 +263,7 @@ class GP : public CMOOSApp
    void printVoronoiPartitions();
 
    // voronoi data sharing
-   bool m_data_sharing_requested;
    double m_last_voronoi_calc_time;
-   bool m_send_surf_req;
-   bool m_send_ack;
    std::unordered_set<std::string> m_rec_ack_veh;
 
    std::future<size_t> m_future_calc_prevoronoi;
@@ -271,8 +276,6 @@ class GP : public CMOOSApp
 
    // do HP optim on first surface for adaptive
    bool m_first_surface;
-   std::future<bool> m_future_first_hp_optim;
-   bool m_first_hp_optim;
 
    // to publish only once a second
    double m_last_published_req_surf;
@@ -280,6 +283,12 @@ class GP : public CMOOSApp
 
    // buffer around area for which vehicle is counted to be inside the area
    double m_area_buffer;
+
+   // keep track of bhv state
+   std::string m_bhv_state;
+
+   // debugging
+   double m_db_uptime;
 };
 
 #endif

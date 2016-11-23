@@ -29,7 +29,9 @@ ProcessConfig = ANTLER
   Run = pShare @ NewConsole = false ~ pShare
 
   // shoreside visualization
-//  Run = pMarineViewer    @ NewConsole = true ~ pMarineViewer_shorebroker
+  #ifdef USE_GUI true
+  Run = pMarineViewer    @ NewConsole = true ~ pMarineViewer_shorebroker
+  #endif
 
   // paint extra polygons etc
   Run = uTimerScript     @ NewConsole = false
@@ -61,6 +63,7 @@ ProcessConfig = uTimerScript
 
   verbose = true
 
+  // show survey area in pMarineViewer
   event = var=VIEW_SEGLIST,val="$(PAINT_SEGLIST)",time=10
 
   reset_max = nolimit
