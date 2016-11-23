@@ -35,7 +35,7 @@
 // Constructor
 //
 GP::GP() :
-  m_verbose(false),
+  m_verbose(true),
   m_input_var_data(""),
   m_input_var_sample_points(""),
   m_input_var_sample_points_specs(""),
@@ -45,12 +45,15 @@ GP::GP() :
   m_output_filename_prefix(""),
   m_output_var_share_data(""),
   m_prediction_interval(-1),
-  m_debug(true),
+  m_debug(false),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
   m_lon(0),
   m_dep(0),
+  m_surf_cnt(0),
+  m_on_surface(false),
+  m_adaptive(false),
   m_last_published(std::numeric_limits<double>::max()),
   m_last_pred_save(std::numeric_limits<double>::max()),
   m_min_lon(0.0),
@@ -70,9 +73,9 @@ GP::GP() :
   m_mission_state(STATE_IDLE),
   m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
   m_hp_optim_running(false),
-  m_hp_optim_done(false),
   m_final_hp_optim(false),
   m_hp_optim_iterations(50),
+  m_last_hp_optim_done(0),
   m_data_mail_counter(1),
   m_finished(false),
   m_num_vehicles(1),
@@ -472,10 +475,29 @@ bool GP::Iterate()
       }
     }
 
+    // **** HPOPTIM FOR 1 AUV **********************************************//
+    if ( m_num_vehicles == 1 )
+    {
+      // run hpoptim every .. 500 seconds ..
+      if ( (std::abs(m_last_hp_optim_done - MOOSTime()) > 1.0 ) &&
+           ((size_t)std::floor(MOOSTime()-m_start_time) % 500 == 10) )
+      {
+        if ( m_mission_state != STATE_DONE )
+        {
+          m_mission_state = STATE_HPOPTIM;
+          publishStates();
+        }
+      }
+    }
+
+
     // **** DEBUG **********************************************************//
-    //if ( (size_t)std::floor(MOOSTime() - m_start_time) % 1 == 0 )
-    std::cout << GetAppName() << " :: ### Iterate before switch: ### " << std::endl;
-    publishStates();
+    if ( m_debug )
+    {
+      std::cout << GetAppName() << " :: ### Iterate before switch: ### " << std::endl;
+      publishStates();
+    }
+
 
     // **** MAIN STATE MACHINE *********************************************//
     switch ( m_mission_state )
@@ -695,6 +717,8 @@ bool GP::OnStartUp()
       m_area_buffer = (double)atof(value.c_str());
     else if ( param == "hp_optim_iterations" )
       m_hp_optim_iterations = (size_t)atoi(value.c_str());
+    else if ( param == "adaptive" )
+      m_adaptive = (value == "true" ? true : false);
     else
       handled = false;
 
@@ -1604,6 +1628,7 @@ void GP::startAndCheckHPOptim()
         }
         else
         {
+          m_last_hp_optim_done = (size_t)std::floor(MOOSTime());
           if ( m_verbose )
             std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
 
@@ -1620,7 +1645,7 @@ void GP::startAndCheckHPOptim()
             tdsResetStateVars();
           }
 
-          // after final HP optim -- how to know when final?
+          // after final HP optim
           if ( m_final_hp_optim )
             endMission();
 
@@ -1673,8 +1698,6 @@ bool GP::runHPOptimization(size_t nr_iterations)
 
   // pass on params to GP
   Eigen::VectorXd hparams(lh_gp);
-  if ( m_verbose )
-    std::cout << GetAppName() << " :: new hyperparameters: " << hparams << std::endl;
 
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   while ( !hp_lock.try_lock() ){}
@@ -1682,7 +1705,8 @@ bool GP::runHPOptimization(size_t nr_iterations)
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
 
-  std::cout << GetAppName() << " :: new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
 
   return true;
 }
@@ -1703,7 +1727,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   // params, copied from beginning
   // set loghyperparams
   downsampled_gp.covf().set_loghyper(loghp);
-  std::cout << GetAppName() << " :: loghyperparams before optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
   // fill new GP with downsampled data
   if ( m_verbose )
@@ -1713,26 +1736,15 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   // keep the data in queue, in case of first_surface
   std::queue< std::vector<double> > temp_queue(m_data_for_hp_optim);
 
-  while ( !m_data_for_hp_optim.empty() )
+  while ( !temp_queue.empty() )
   {
-    std::vector<double> pt = m_data_for_hp_optim.front();
-    m_data_for_hp_optim.pop();
+    std::vector<double> pt = temp_queue.front();
+    temp_queue.pop();
 
     loc[0] = pt[0];
     loc[1] = pt[1];
     double dval = pt[2];
     downsampled_gp.add_pattern(loc, dval);
-  }
-  if ( m_first_surface )
-  {
-    std::cout << GetAppName() << " :: copying over " << temp_queue.size() << "items" << std::endl;
-    while ( !temp_queue.empty() )
-    {
-      std::vector<double> data_pt = temp_queue.front();
-      temp_queue.pop();
-      m_data_for_hp_optim.push(data_pt);
-    }
-    m_first_surface = false;
   }
 
   std::clock_t end = std::clock();
@@ -1752,8 +1764,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-
-  std::cout << GetAppName() << " :: loghyperparams after optim: " << downsampled_gp.covf().get_loghyper() << std::endl;
 
   // write new HP to file
   begin = std::clock();
@@ -1851,7 +1861,6 @@ void GP::makeAndStorePredictions()
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
-  std::cout << GetAppName() << " :: copy vs orig gp address: " << &gp_copy << " -- " << &m_gp << std::endl;
   gp_lock.unlock();
 
   std::clock_t begin = std::clock();
@@ -2351,22 +2360,31 @@ void GP::tdsResetStateVars()
     std::cout << GetAppName() << " :: reset state vars" << std::endl;
 
   // move to next step; need wpt
-  std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
-  m_mission_state = STATE_CALCWPT;
-  publishStates();
+  if ( m_adaptive && m_num_vehicles > 1 )
+  {
+    std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
+    m_mission_state = STATE_CALCWPT;
+    publishStates();
+  }
+  else
+  {
+    m_mission_state = STATE_SAMPLE;
+    publishStates();
+  }
 
   if ( m_bhv_state != "survey" )
     Notify("STAGE","survey");
 
   // reset surfacing/handshake vars
   m_waiting = false;
-    if ( m_use_voronoi )
+  if ( m_use_voronoi )
   {
     // move to next step: voronoi calc & predictions done
     m_precalc_pred_voronoi_done = true;
   }
 
-  clearHandshakeVars();
+  if ( m_timed_data_sharing || m_use_voronoi )
+    clearHandshakeVars();
 }
 
 //---------------------------------------------------------
@@ -2483,32 +2501,68 @@ void GP::runVoronoiRoutine()
 
   // got initial voronoi partitioning
   // now let's use density function to get new voronoi initiators
+  // k-means like, we do this until some convergence
   //
   double own_centroid_lon(0.0), own_centroid_lat(0.0);
   std::map<std::string, std::pair<double, double> > other_vehicle_centroids;
 
-  calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
+  double prev_own_centroid_lon(0.0), prev_own_centroid_lat(0.0);
+  std::map<std::string, std::pair<double, double> > prev_other_vehicle_centroids;
 
-  if ( m_verbose )
+  std::cout << GetAppName() << " :: run calcVoronoiCentroids till convergence! \n";
+  size_t conv_ctr = 0;
+  while ( !centroidConvergence(prev_own_centroid_lon, prev_own_centroid_lat, prev_other_vehicle_centroids,
+                                 own_centroid_lon, own_centroid_lat, other_vehicle_centroids) )
   {
-    std::cout << GetAppName() << " :: old centroids: " << m_lon << "," << m_lat << ";";
-    for ( auto veh : m_other_vehicles )
-      std::cout << (veh.second).first << "," << (veh.second).second << ";";
-    std::cout << std::endl;
-    std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
-    for ( auto veh : other_vehicle_centroids )
-      std::cout << (veh.second).first << "," << (veh.second).second << ";";
-    std::cout << std::endl;
+    std::cout << GetAppName() << " :: previously (lon, lat, other): " << own_centroid_lon << ", "
+              << own_centroid_lat << ", ";
+    for ( auto other_veh : other_vehicle_centroids )
+      std::cout << (other_veh.second).first << ", " << (other_veh.second).second << "; ";
+    std::cout << '\n';
+
+    // save previous locations
+    if ( own_centroid_lon == 0.0 )
+      prev_own_centroid_lon = m_lon;
+    else
+      prev_own_centroid_lon = own_centroid_lon;
+    if ( own_centroid_lat == 0.0 )
+      prev_own_centroid_lat = m_lat;
+    else
+      prev_own_centroid_lat = own_centroid_lat;
+    prev_other_vehicle_centroids.clear();
+    if ( other_vehicle_centroids.size() == 0 )
+      prev_other_vehicle_centroids.insert(m_other_vehicles.begin(), m_other_vehicles.end());
+    else
+      prev_other_vehicle_centroids.insert(other_vehicle_centroids.begin(), other_vehicle_centroids.end());
+
+    // calculate new locations
+    calcVoronoiCentroids(own_centroid_lon, own_centroid_lat, other_vehicle_centroids );
+
+    if ( m_verbose )
+    {
+      std::cout << GetAppName() << " :: old centroids: " << prev_own_centroid_lon << "," << prev_own_centroid_lat << ";";
+      for ( auto veh : prev_other_vehicle_centroids )
+        std::cout << (veh.second).first << "," << (veh.second).second << ";";
+      std::cout << '\n';
+      std::cout << GetAppName() << " :: new centroids: " << own_centroid_lon << "," << own_centroid_lat << ";";
+      for ( auto veh : other_vehicle_centroids )
+        std::cout << (veh.second).first << "," << (veh.second).second << ";";
+      std::cout << '\n';
+    }
+
+    // now, recalculate the voronoi partitioning, given the new centroids
+    // if it is not zero
+    if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
+    {
+      if ( m_debug )
+        std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2).\n";
+      calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
+    }
+
+    conv_ctr++;
   }
 
-  // now, recalculate the voronoi partitioning, given the new centroids
-  // if it is not zero
-  if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
-  {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2)." << std::endl;
-    calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
-  }
+  std::cout << GetAppName() << " :: nr convergence iterations: " << conv_ctr << '\n';
 
   m_last_voronoi_calc_time = MOOSTime();
 
@@ -2518,6 +2572,40 @@ void GP::runVoronoiRoutine()
   m_calc_prevoronoi = false;
 }
 
+
+bool GP::centroidConvergence ( double old_lon, double old_lat, std::map<std::string, std::pair<double, double> > old_centr,
+                               double new_lon, double new_lat, std::map<std::string, std::pair<double, double> > new_centr )
+{
+  // degrees = meters / {lat,long}_deg_to_m
+  double threshold = 1.0 / (m_lon_deg_to_m + m_lat_deg_to_m / 2.0) ;
+
+  if ( old_centr.size() != new_centr.size() || old_centr.empty() )
+  {
+    std::cout << GetAppName() << " :: ERROR, incorrect map sizes." << std::endl;
+    std::cout << GetAppName() << " :: old_centr_size, new_centr_size: " << old_centr.size() << ", " << new_centr.size() << std::endl;
+    return false;
+  }
+  else
+  {
+    bool significant_diff = false;
+    if ( sqrt( pow(old_lon-new_lon, 2) + pow(old_lat - new_lat, 2) ) > threshold )
+      significant_diff = true;
+    for ( std::map<std::string, std::pair<double, double> >::iterator itr = old_centr.begin(); itr != old_centr.end(); ++itr )
+    {
+      std::pair<double, double> old_loc = itr->second;
+      std::map<std::string, std::pair<double, double> >::iterator nw_itr = new_centr.find(itr->first);
+      std::pair<double, double> new_loc = nw_itr->second;
+      double diff = sqrt( pow(old_loc.first - new_loc.first,2) + pow(old_loc.second - new_loc.second,2) );
+      std::cout << GetAppName() << " :: test convergence, threshold: " << threshold << " vs. diff: " << diff << std::endl;
+      if ( diff > threshold )
+        significant_diff = true;
+    }
+    // if no significant difference for any centroid, then there is convergence
+    std::cout << GetAppName() << " :: sign diff? " << significant_diff << std::endl;
+    return !significant_diff;
+  }
+  return false;
+}
 
 
 //---------------------------------------------------------
@@ -2552,16 +2640,20 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
       std::cout << GetAppName() << " :: m_voronoi_subset_other_vehicles is empty" << std::endl;
     return;
   }
-
-  if ( m_debug )
     std::cout << GetAppName() << " :: calculate others" << std::endl;
+  if ( m_debug )
   for ( auto veh : m_voronoi_subset_other_vehicles )
   {
     double centr_lon(0.0), centr_lat(0.0);
     std::vector<size_t> veh_voronoi_subset = veh.second;
     if ( veh_voronoi_subset.size() > 0 )
       calcVoronoiPartitionCentroid(veh_voronoi_subset, centr_lon, centr_lat);
-    other_vehicle_centroids.insert(std::pair<std::string, std::pair<double, double> >(veh.first, std::pair<double, double>(centr_lon, centr_lat)));
+
+    auto veh_map_itr = other_vehicle_centroids.find(veh.first);
+    if ( veh_map_itr == other_vehicle_centroids.end() )
+      other_vehicle_centroids.insert(std::pair<std::string, std::pair<double, double> >(veh.first, std::pair<double, double>(centr_lon, centr_lat)));
+    else
+      veh_map_itr->second = std::pair<double, double>(centr_lon, centr_lat);
   }
 
   // check if there are vehicles for whom there is not
