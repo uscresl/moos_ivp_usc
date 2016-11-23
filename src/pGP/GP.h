@@ -77,8 +77,11 @@ class GP : public CMOOSApp
    size_t calcMECriterion();
    void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
 
+   // path planning & passing on to behavior
+   void greedyWptSelection(Eigen::Vector2d & best_location);
    void publishNextBestPosition();
 
+   // timed saving of GP
    void makeAndStorePredictions();
 
    // data sending surface
