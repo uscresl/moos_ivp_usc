@@ -154,6 +154,13 @@ ProcessConfig = pGP
   // number of vehicles (data exchange?)
   nr_vehicles = $(NR_VEHICLES)
 
+  // run in adaptive mode?
+#ifdef ADAPTIVE_WPTS yes
+  adaptive = true
+#else
+  adaptive = false
+#endif
+
   // elementary coordination (implicit): share data at set intervals
 #ifdef USE_TDS yes
   timed_data_sharing = true
@@ -288,7 +295,7 @@ ProcessConfig = pPublishAfterX
 
 // bigger1
 #ifdef NR_VEHICLES 1
-  publish_after_secs = 8571:8660 //TODO update
+  publish_after_secs = 6400:6450 //TODO update
 #endif
 #ifdef NR_VEHICLES 2
   publish_after_secs = 4950:5050 
