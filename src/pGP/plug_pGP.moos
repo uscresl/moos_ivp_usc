@@ -56,6 +56,10 @@ ProcessConfig = pGP
   // vehicle is still counted as inside, for voronoi partitioning
   area_buffer = 10.0
 
-  // number of iterations for RProp
+  // specify method of hyperparameter optimization ('cg' vs 'rprop')
+  hp_optim_method = rprop
+
+  // number of iterations for CG/RProp
   hp_optim_iterations = 50
+  
 }

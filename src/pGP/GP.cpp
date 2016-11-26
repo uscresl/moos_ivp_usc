@@ -24,6 +24,7 @@
 
 // GPLib Rprop
 #include "rprop.h"
+#include "cg.h"
 
 // write to file
 #include <fstream>
@@ -75,6 +76,7 @@ GP::GP() :
   m_hp_optim_running(false),
   m_final_hp_optim(false),
   m_hp_optim_iterations(50),
+  m_hp_optim_cg(false),
   m_last_hp_optim_done(0),
   m_data_mail_counter(1),
   m_finished(false),
@@ -228,7 +230,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         std::cout << GetAppName() << " :: STATE_CALCWPT via m_input_var_adaptive_trigger" << std::endl;
         m_mission_state = STATE_CALCWPT;
-        publishStates();
+        publishStates("OnNewMail_wpt_trigger");
       }
     }
     else if ( key == m_input_var_share_data )
@@ -335,7 +337,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           // prep for surfacing
           // send ack, do actual sending in Iterate so we send until surface handshake
           m_mission_state = STATE_ACK_SURF;
-          publishStates();
+          publishStates("OnNewMail_REQ_SURFACING_REC");
         }
 
         if ( final_surface ) //m_mission_state == STATE_HPOPTIM &&
@@ -377,7 +379,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         // prep for surfacing
         // ack received, start surfacing
         m_mission_state = STATE_SURFACING;
-        publishStates();
+        publishStates("OnNewMail_REQ_SURFACING_ACK_REC");
       }
     }
     else if ( key == "MISSION_TIME" )
@@ -399,10 +401,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             m_mission_state = STATE_REQ_SURF;
           else
             m_mission_state = STATE_SURFACING;
+          publishStates("OnNewMail_MISSION_TIME");
 
           // reset other vars to make sure we can go over procedure again
           clearHandshakeVars();
-          publishStates();
         }
         else if ( m_mission_state != STATE_IDLE || m_mission_state != STATE_DONE )
         {
@@ -471,7 +473,7 @@ bool GP::Iterate()
       if ( needToRecalculateVoronoi() )
       {
         m_mission_state = STATE_CALCVOR;
-        publishStates();
+        publishStates("Iterate_acomms_vor");
       }
     }
 
@@ -485,19 +487,10 @@ bool GP::Iterate()
         if ( m_mission_state != STATE_DONE )
         {
           m_mission_state = STATE_HPOPTIM;
-          publishStates();
+          publishStates("Iterate_hpoptim_1AUV");
         }
       }
     }
-
-
-    // **** DEBUG **********************************************************//
-    if ( m_debug )
-    {
-      std::cout << GetAppName() << " :: ### Iterate before switch: ### " << std::endl;
-      publishStates();
-    }
-
 
     // **** MAIN STATE MACHINE *********************************************//
     switch ( m_mission_state )
@@ -515,7 +508,7 @@ bool GP::Iterate()
           {
             // switch to data sharing mode, to switch bhv to surface
             m_mission_state = STATE_SURFACING;
-            publishStates();
+            publishStates("Iterate_STATE_SAMPLE_TDS");
           }
         }
         // tds with voronoi, trigger for when to request data sharing
@@ -525,8 +518,8 @@ bool GP::Iterate()
         {
           // request surfacing through acomms
           m_mission_state = STATE_REQ_SURF;
+          publishStates("Iterate_STATE_SAMPLE_need_to_recalc");
           clearHandshakeVars();
-          publishStates();
         }
         // else just sampling, don't do anything else
         // TODO add in timed? trigger hp optim for parallel sampling?
@@ -542,7 +535,7 @@ bool GP::Iterate()
         if ( m_timed_data_sharing && m_on_surface )
         {
           m_mission_state = STATE_HANDSHAKE;
-          publishStates();
+          publishStates("Iterate_STATE_SURFACING_on_surface");
         }
 
         break;
@@ -562,7 +555,7 @@ bool GP::Iterate()
             else
             {
               m_mission_state = STATE_CALCVOR;
-              publishStates();
+              publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
             }
           }
         }
@@ -595,7 +588,7 @@ bool GP::Iterate()
         if ( m_on_surface )
         {
           m_mission_state = STATE_HANDSHAKE;
-          publishStates();
+          publishStates("Iterate_STATE_ACK_SURF_on_surface");
         }
 
         break;
@@ -606,7 +599,7 @@ bool GP::Iterate()
         if ( m_received_shared_data && !m_calc_prevoronoi )
         {
           m_mission_state  = STATE_RX_DATA;
-          publishStates();
+          publishStates("Iterate_STATE_TX_DATA_received_data");
         }
         break;
       case STATE_RX_DATA :
@@ -719,6 +712,11 @@ bool GP::OnStartUp()
       m_hp_optim_iterations = (size_t)atoi(value.c_str());
     else if ( param == "adaptive" )
       m_adaptive = (value == "true" ? true : false);
+    else if ( param == "hp_optim_method" )
+    {
+      // default: rprop
+      m_hp_optim_cg = ( value == "cg" ) ? true : false;
+    }
     else
       handled = false;
 
@@ -1399,8 +1397,8 @@ void GP::getRandomStartLocation()
 
   // update state vars
   m_mission_state = STATE_SAMPLE;
+  publishStates("getRandomStartLocation");
   m_last_published = MOOSTime();
-  publishStates();
 }
 
 
@@ -1508,7 +1506,7 @@ void GP::publishNextBestPosition()
     // update state vars
     m_last_published = MOOSTime();
     m_mission_state = STATE_SAMPLE;
-    publishStates();
+    publishStates("publishNextBestPosition");
   }
 }
 
@@ -1686,8 +1684,9 @@ void GP::startAndCheckHPOptim()
 void GP::endMission()
 {
   m_mission_state = STATE_DONE;
+  publishStates("endMission");
+
   m_Comms.Notify("STAGE","return");
-  publishStates();
 
   // store predictions after HP optim
   m_finished = true;
@@ -1734,13 +1733,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
 
 void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations)
 {
-  // optimization
-
-  // there are 2 methods in gplib, conjugate gradient and RProp,
-  // the latter should be more efficient
-  libgp::RProp rprop;
-  rprop.init();
-
+  //// downsample data for HP optimization /////////////////////////////////////
   std::clock_t begin = std::clock();
 
   // make GP from downsampled data
@@ -1754,9 +1747,7 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     std::cout << GetAppName() << " :: size m_data_for_hp_optim: " << m_data_for_hp_optim.size() << std::endl;
   double loc[2];
 
-  // keep the data in queue, in case of first_surface
   std::queue< std::vector<double> > temp_queue(m_data_for_hp_optim);
-
   while ( !temp_queue.empty() )
   {
     std::vector<double> pt = temp_queue.front();
@@ -1767,7 +1758,6 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     double dval = pt[2];
     downsampled_gp.add_pattern(loc, dval);
   }
-
   std::clock_t end = std::clock();
   if ( m_verbose )
   {
@@ -1776,17 +1766,26 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     std::cout << GetAppName() << " :: size orig GP: " << m_gp->get_sampleset_size() << std::endl;
   }
 
-  // HP optimization
+  //// actual HP optimization /////////////////////////////////////
   begin = std::clock();
-
-  // TODO: test CG
-  // RProp arguments: GP, 'n' (nr iterations), verbose
-  rprop.maximize(&downsampled_gp, nr_iterations, 1);
+  // there are 2 methods in gplib, conjugate gradient and RProp,
+  // the latter should be more efficient
+  if ( m_hp_optim_cg )
+  {
+    libgp::CG cg;
+    cg.maximize(&downsampled_gp, nr_iterations, 1);
+  }
+  else
+  {
+    libgp::RProp rprop;
+    // RProp arguments: GP, 'n' (nr iterations), verbose
+    rprop.maximize(&downsampled_gp, nr_iterations, 1);
+  }
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
-  // write new HP to file
+  //// write new HP to file ////////////////////////////////////////////////////
   begin = std::clock();
   std::stringstream filenm;
   filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
@@ -2291,7 +2290,7 @@ void GP::tdsHandshake()
       m_last_ready_sent = moos_t;
       //m_data_sharing_state = DATA_SEND;
       m_mission_state = STATE_TX_DATA;
-      publishStates();
+      publishStates("tdsHandhake_received_ready");
 
       sendData();
 
@@ -2344,20 +2343,25 @@ void GP::tdsReceiveData()
         m_first_surface = false;
 
         m_mission_state = STATE_HPOPTIM;
-        publishStates();
+        publishStates("tdsReceiveData_first_surface_or_final_hp_optim");
       }
       else
       {
         if ( m_use_voronoi )
         {
-          // after points received, need to run a round of predictions (unvisited set has changed!)
-          m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
-          m_calc_prevoronoi = true;
-          std::cout << GetAppName() << " :: started m_future_calc_prevoronoi";
-
-          // need to switch state - future is being checked in STATE_HPOPTIM;
+          // change 20161125, run HPOPTIM always
+          // let the rest be handled by that state
           m_mission_state = STATE_HPOPTIM;
-          publishStates();
+          publishStates("tdsReceiveData_use_voronoi");
+
+//          // after points received, need to run a round of predictions (unvisited set has changed!)
+//          m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+//          m_calc_prevoronoi = true;
+//          std::cout << GetAppName() << " :: started m_future_calc_prevoronoi";
+//
+//          // need to switch state - future is being checked in STATE_HPOPTIM;
+//          m_mission_state = STATE_HPOPTIM;
+//          publishStates("tdsReceiveData_use_voronoi");
         }
         else
         {
@@ -2385,12 +2389,12 @@ void GP::tdsResetStateVars()
   {
     std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
     m_mission_state = STATE_CALCWPT;
-    publishStates();
+    publishStates("tdsResetStateVars_adp_nrveh_le_1");
   }
   else
   {
     m_mission_state = STATE_SAMPLE;
-    publishStates();
+    publishStates("tdsResetStateVards_else");
   }
 
   if ( m_bhv_state != "survey" )
@@ -2463,7 +2467,7 @@ void GP::findAndPublishNextWpt()
         if ( m_bhv_state != "survey" )
           m_Comms.Notify("STAGE","survey");
         m_mission_state = STATE_SAMPLE;
-        publishStates();
+        publishStates("findAndPublishWpt");
       }
     }
   }
@@ -2762,10 +2766,10 @@ void GP::printVoronoiPartitions()
   std::cout << std::endl;
 }
 
-void GP::publishStates()
+void GP::publishStates(std::string const calling_method)
 {
-  if ( m_debug )
-    std::cout << GetAppName() << " :: ** db_uptime: " << m_db_uptime << " current state: " << currentMissionStateString() << " **" << std::endl;
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: ** " << m_db_uptime << " switch to: " << currentMissionStateString() << " from " << calling_method << " **\n";
 
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
 }
