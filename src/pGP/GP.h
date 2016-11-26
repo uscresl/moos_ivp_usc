@@ -123,9 +123,11 @@ class GP : public CMOOSApp
    bool ownMessage(std::string input);
    bool finalSurface(std::string input);
 
-   void publishStates();
+   void publishStates(std::string const calling_method);
 
    void endMission();
+
+   void printCoutPrefix();
 
    // Configuration variables
    bool m_verbose;
@@ -208,6 +210,7 @@ class GP : public CMOOSApp
    bool m_hp_optim_running;
    bool m_final_hp_optim;
    size_t m_hp_optim_iterations;
+   bool m_hp_optim_cg;
    size_t m_last_hp_optim_done;
 
    // future for result MI criterion calculations
