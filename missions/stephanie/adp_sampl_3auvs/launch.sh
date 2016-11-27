@@ -12,6 +12,7 @@ RUN_SIMULATION="yes"
 VORONOI_PARTITIONING="no"
 AREA="old"
 GUI="true"
+CG="false"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
@@ -24,6 +25,10 @@ for ARGI; do
         printf "  --voronoi, -v      \n"
         printf "  --2auvs            \n"
         printf "  --3auvs            \n"
+        printf "  --bigger1, -b1     \n"
+        printf "  --bigger2, -b2     \n"
+        printf "  --nogui, -ng       \n"
+        printf "  --cg, -cg          \n"
         printf "  --help, -h         \n" 
         exit 0;
     elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
@@ -48,6 +53,8 @@ for ARGI; do
         AREA="bigger2"
     elif [ "$ARGI" = "--nogui" -o "${ARGI}" = "-ng" ]; then
         GUI="no"
+    elif [ "$ARGI" = "--cg" -o "${ARGI}" = "-cg" ]; then
+        CG="yes"
     else 
         printf "Bad Argument: %s \n" $ARGI
         exit 0
@@ -219,7 +226,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
@@ -241,7 +248,7 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX2 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2                    \
@@ -264,8 +271,7 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX3 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_CORNELIS  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI
-
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3                    \
