@@ -45,12 +45,15 @@ ProcessConfig = ANTLER
   Run = pBasicContactMgr   @ NewConsole = false
 
   // acoustic communications
+#ifdef NR_VEHICLES 1
+#else
   #ifdef USE_GUI true
   pAcommsHandlerConfig = -geometry,179x100+0+20
   Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig  
   #else
   Run = pAcommsHandler @ NewConsole=false
   #endif
+#endif
 
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
@@ -193,6 +196,14 @@ ProcessConfig = pGP
 
   // take one in X data points for HP optimization
   downsample_factor = 4
+
+  // specify method of hyperparameter optimization ('cg' vs 'rprop')
+  // default: rprop
+#ifdef USE_CG yes
+  hp_optim_method = cg
+#else
+  hp_optim_method = rprop
+#endif
 
   // number of iterations for RProp
   hp_optim_iterations = 50
