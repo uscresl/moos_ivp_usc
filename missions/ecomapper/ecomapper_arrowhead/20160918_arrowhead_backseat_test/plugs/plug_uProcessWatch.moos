@@ -1,0 +1,14 @@
+//----------------------------------------------------------------------------
+ProcessConfig = uProcessWatch
+{
+    AppTick   = 2
+    CommsTick = 2
+
+    WATCH = pLogger
+    WATCH = pHelmIvP
+//    #ifdef runtime
+    WATCH = iOceanServerComms
+//    #endif
+    WATCH = pNodeReporter
+    WATCH = pShare
+}

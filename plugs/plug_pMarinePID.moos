@@ -12,7 +12,7 @@ ProcessConfig = pMarinePID
   AppTick    = 10
   CommsTick  = 10
   
-  VERBOSE       = true
+  VERBOSE       = false
   ACTIVE_START  = true
 
 #ifdef VTYPE SHIP

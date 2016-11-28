@@ -1,0 +1,10 @@
+import "dccl/protobuf/option_extensions.proto";
+message SurfacingRequest {
+	option (dccl.msg).id = 41; // http://gobysoft.org/wiki/DcclIdTable
+	option (dccl.msg).max_bytes = 8; // rate 0
+	optional double _time = 1 [(dccl.field).codec="_time", (dccl.field).in_head=true];
+	optional int32 _src_id = 2 [(dccl.field).max=31, (dccl.field).min=0, (dccl.field).in_head=true];
+	optional int32 _dest_id = 3 [(dccl.field).max=31, (dccl.field).min=0, (dccl.field).in_head=true];
+	optional string MessageType = 4 [default="SURFACING_REQUEST", (dccl.field).static_value="SURF_REQ", (dccl.field).codec="_static"];
+	optional bool Surf_Request = 5;
+}

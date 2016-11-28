@@ -1,0 +1,453 @@
+//****************************************************************************//
+// initialize MOOS variables
+//
+
+initialize DEPLOY = true
+initialize MOOS_MANUAL_OVERRIDE = false
+initialize SAFETY = true
+
+initialize INPUT = waypoints //loiter // or 'hsd' or 'waypoints'
+initialize WPT_UNDERWAY = true
+initialize NS_SURVEY_DONE = false
+initialize EW_SURVEY_DONE = false
+
+initialize START=true
+initialize END = false
+initialize END_DEPTH = false
+
+// tmp hack
+initialize NAV_ALTITUDE = 10
+
+//****************************************************************************//
+// Behaviors
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+
+// Waypoint control ////////////////////////////////////////////////////////////
+Behavior = BHV_Waypoint
+{ 
+  name      = waypoints_start_surface
+  pwt       = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = true
+  condition = NS_SURVEY_DONE = false
+  condition = EW_SURVEY_DONE = false
+  condition = START=true
+
+  duration = no-time-limit
+  
+  endflag = START = false
+  
+  // be able to run again after completion
+  perpetual = true
+
+  // be able to update below bhv parameters through this var
+  updates   = WPT_UPDATE
+
+  // bhv params
+  points = 2255,1035:2250,1035 //440,950:440,1000:440,1030:400,1015:400,975:440,950
+  // 440,950:440,1025:440,950
+  speed = 1.0   // m/s
+  capture_radius = 5.0
+  slip_radius = 15.0
+  capture_line = true
+  // track-line following
+  lead = 15
+  lead_damper = 1
+  // repeat waypoints?
+  repeat = 0
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=blue, edge_color=pink
+  visual_hints = vertex_size=4, edge_size=1
+}
+
+// Waypoint control ////////////////////////////////////////////////////////////
+Behavior = BHV_Waypoint
+{ 
+  name      = waypoints_start_depth
+  pwt       = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = true
+  condition = NS_SURVEY_DONE = false
+  condition = EW_SURVEY_DONE = false
+  condition = START=false
+
+  duration = no-time-limit
+  
+  endflag = WPT_UNDERWAY = false
+  
+  // be able to run again after completion
+  perpetual = true
+
+  // be able to update below bhv parameters through this var
+  updates   = WPT_UPDATE
+
+  // bhv params
+  points = 2080,1030
+  speed = 1.0   // m/s
+  capture_radius = 5.0
+  slip_radius = 15.0
+  capture_line = true
+  // track-line following
+  lead = 15
+  lead_damper = 1
+  // repeat waypoints?
+  repeat = 0
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=blue, edge_color=pink
+  visual_hints = vertex_size=4, edge_size=1
+}
+
+// depth bhv to go with wpt bhv
+Behavior = BHV_ConstantDepth
+{
+  name = depth_start_surface
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = true
+  condition = START = true
+  
+  duration = no-time-limit
+  perpetual = true
+
+  updates = WPT_UPDATE
+
+  depth = 0
+}
+// depth bhv to go with wpt bhv
+Behavior = BHV_ConstantDepth
+{
+  name = depth_start_depth
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = true
+  condition = START = false
+  
+  duration = no-time-limit
+  perpetual = true
+
+  updates = WPT_UPDATE
+
+  depth = 3
+}
+
+
+Behavior = BHV_Waypoint
+{ 
+  name      = ns_survey
+  pwt       = 100
+  
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = false
+  
+  endflag   = NS_SURVEY_DONE = true
+  
+  updates   = SURVEY_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+  // do lawnmower
+  // note: x, y are middle of lawnmower area
+  points = format=lawnmower,label=pilot-survey,x=1850,y=930,width=400,height=200,lane_width=100,degs=0,startx=0,starty=0,rows=north-south,order=reverse
+  order  = reverse
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+
+Behavior = BHV_Waypoint
+{ 
+  name      = ew_survey
+  pwt       = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = false
+  condition = NS_SURVEY_DONE = true
+  
+  endflag = EW_SURVEY_DONE = true
+  endflag = END = true
+  
+  updates   = SURVEY_UPDATES
+  perpetual = false
+
+  speed = 1.5         // m/s
+
+  radius = 5.0        // m
+  slip_radius = 15.0  // m
+  lead = 10           // m
+
+  // do lawnmower
+  points = format=lawnmower,label=pilot-survey,x=1850,y=930,width=400,height=200,lane_width=100,degs=0,startx=0,starty=0,rows=east-west
+  order  = normal
+
+  repeat = 0 // # times to repeat waypoints list
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=yellow, edge_color=white
+  visual_hints = vertex_size=3, edge_size=2
+}
+
+// depth bhv to go with wpt bhv
+Behavior = BHV_YoYo
+{
+  name = depth_survey_yoyo
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = false
+  condition = END=false
+  
+  endflag = END = true
+  
+  duration = no-time-limit
+  perpetual = true
+
+  updates = SURVEY_UPDATES
+
+  // upper depth
+  min_depth = 5
+  // lower depth
+  max_depth = 20
+  // altitude
+  min_altitude = 2
+}
+
+
+Behavior = BHV_Waypoint
+{ 
+  name      = end_wpt_at_depth
+  pwt       = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = false
+  condition = END = true
+  
+  endflag = END_DEPTH=true
+  
+  duration = no-time-limit
+  // be able to run again after completion
+  perpetual = false
+
+  // be able to update below bhv parameters through this var
+  updates   = END_WPT_UPDATE
+
+  // bhv params
+  points = 2150,1030:2255,1035
+  order=normal
+  
+  // 440,950:440,1025:440,950
+  speed = 1.0   // m/s
+  capture_radius = 5.0
+  slip_radius = 15.0
+  capture_line = true
+  // track-line following
+  lead = 8
+  lead_damper = 1
+  // repeat waypoints?
+  repeat = 0
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=blue, edge_color=pink
+  visual_hints = vertex_size=4, edge_size=1
+}
+Behavior = BHV_Waypoint
+{ 
+  name      = end_wpt_at_surface
+  pwt       = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = false
+  condition = END_DEPTH = true
+  
+  endflag = VEHICLE_UNDERWAY=false
+  
+  duration = no-time-limit
+  // be able to run again after completion
+  perpetual = false
+
+  // bhv params
+  points = 2270,1040
+  order=normal
+  
+  // 440,950:440,1025:440,950
+  speed = 0.5   // m/s
+  capture_radius = 5.0
+  slip_radius = 15.0
+  capture_line = true
+  // track-line following
+  lead = 8
+  lead_damper = 1
+  // repeat waypoints?
+  repeat = 0
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=blue, edge_color=pink
+  visual_hints = vertex_size=4, edge_size=1
+}
+
+// depth bhv to go with wpt bhv
+Behavior = BHV_ConstantDepth
+{
+  name = end_depth_at_depth
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = false
+  condition = END = true
+  
+  duration = no-time-limit
+  perpetual = true
+
+  updates = END_WPT_UPDATE
+
+  depth = 3
+}
+
+// depth bhv to go with wpt bhv
+Behavior = BHV_ConstantDepth
+{
+  name = end_depth_at_surface
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = waypoints
+  condition = WPT_UNDERWAY = false
+  condition = END_DEPTH = true
+  
+  duration = no-time-limit
+  perpetual = true
+
+  depth = 0
+}
+
+// Loiter control ////////////////////////////////////////////////////////////
+//----------------------------------------------
+Behavior = BHV_Loiter
+{
+  name      = loiter
+  priority  = 100
+  condition = INPUT=loiter
+  duration = 600
+  updates   = LTR_UPDATE
+  endflag = INPUT=waypoints
+  endflag = WPT_UNDERWAY=false
+
+  speed = 1.0
+  clockwise = true
+  radius = 4.0
+  nm_radius = 10.0
+  polygon = format=radial, x=300, y=980, radius=15, pts=6, snap=1
+
+  visual_hints = nextpt_color=yellow, nextpt_lcolor=khaki
+  visual_hints = edge_color=white, vertex_color=invisible
+  visual_hints = edge_size=1, vertex_size=0, label=LOITER_POLYGON
+  visual_hints = nextpt_vertex_size=5
+}
+// depth bhv to go with wpt bhv
+Behavior = BHV_ConstantDepth
+{
+  name = depth_loiter
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = loiter
+  duration = no-time-limit
+  perpetual = true
+
+  updates = LTR_UPDATE
+
+  depth = 0
+}
+
+
+// HeadingSpeedDepth control ///////////////////////////////////////////////////
+Behavior = BHV_ConstantHeading
+{
+  name = const_heading
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = hsd
+  duration = no-time-limit
+  perpetual = true
+
+  updates = HSD_UPDATE
+
+  heading = 0
+}
+
+Behavior = BHV_ConstantSpeed
+{
+  name = const_speed
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = hsd
+  duration = no-time-limit
+  perpetual = true
+
+  updates = HSD_UPDATE
+
+  speed = 1.0
+}
+
+Behavior = BHV_ConstantDepth
+{
+  name = const_depth
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = INPUT = hsd
+  duration = no-time-limit
+  perpetual = true
+
+  updates = HSD_UPDATE
+
+  depth = 0
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+Behavior = BHV_OpRegion
+{
+  name       = opregion
+  pwt        = 200
+  condition  = SAFETY = true
+  updates    = OPREGION_UPDATE
+
+  polygon = 1395,805:1400,1050:1600,1195:1925,1200:2275,1055:2225,800
+  trigger_entry_time = 1
+  trigger_exit_time  = 1
+
+  max_time = 7200
+  max_depth = 30
+  min_altitude = 0
+
+  reset_var = OPREGION_RESET
+
+}
+
+

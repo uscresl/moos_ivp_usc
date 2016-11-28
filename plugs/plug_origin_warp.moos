@@ -21,4 +21,10 @@ LatOrigin = 34.0784000000111
 LongOrigin = -117.815
 #endif
 
+// SCMI San Pedro / Long Beach
+#ifdef LOCATION scmi
+LatOrigin = 33.726420
+LongOrigin = -118.278220
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////

@@ -17,8 +17,9 @@ ProcessConfig = pMarineViewer
 #ifdef LOCATION puddingstone
   tiff_file     = $(USC_DATA_DIR)/maps/puddingstone_all.tif
 #endif
-
-// puddingstone_all.tif //  AerialMIT.tif
+#ifdef LOCATION scmi
+  tiff_file     = $(USC_DATA_DIR)/maps/scmi17.tif
+#endif
 
 //  // store the img for alogview
 //  log_the_image = true

@@ -43,7 +43,7 @@ ProcessConfig = ANTLER
   // acoustic communications
   pAcommsHandlerConfig = -geometry,179x100+0+20
   Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig
-  
+
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
@@ -55,17 +55,17 @@ ProcessConfig = ANTLER
   //true,XConfig=uSBSConfig
 
   pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+  Run = pGP @ NewConsole = false
 
   pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
   //true,XConfig=pSPConfig
 
   Run = pLonLatToWptUpdate @ NewConsole = false
-  
+
   #ifdef ADAPTIVE_WPTS yes
-  Run = uTimerScript @ NewConsole = false
-  //true
+  //Run = uTimerScript @ NewConsole = false
+  Run = pPublishAfterX @ NewConsole = true
   #endif
 
   #ifdef USE_ACOMMS yes
@@ -96,7 +96,11 @@ ProcessConfig = ANTLER
 #ifdef USE_ACOMMS yes
 #include plugs/plug_pAcommsHandler.moos
 #else
-#include $(PLUG_DIR)/plug_pAcommsHandler.moos
+  #ifdef USE_VORONOI yes
+    #include plugs/plug_pAcommsHandler_tds_voronoi.moos
+  #else
+    #include $(PLUG_DIR)/plug_pAcommsHandler.moos
+  #endif
 #endif
 #include $(PLUG_DIR)/plug_pHostInfo.moos
 #include $(PLUG_DIR)/plug_uFldNodeBroker.moos
@@ -113,6 +117,9 @@ ProcessConfig = pGP
 {
   AppTick   = 2
   CommsTick = 2
+
+  // verbose: true or false
+  verbose = true
 
   // GP or log GP?
   use_log_gp = true
@@ -149,6 +156,12 @@ ProcessConfig = pGP
   acomms_sharing = true
 #else
   acomms_sharing = false
+#endif
+
+#ifdef USE_VORONOI yes
+  use_voronoi = true
+#else
+  use_voronoi = false
 #endif
 }
 
@@ -188,31 +201,63 @@ ProcessConfig = pLonLatToWptUpdate
   output_var_wpt_update = ADAPTIVE_WPT_UPDATES
 }
 
+//#ifdef ADAPTIVE_WPTS yes
+//ProcessConfig = uTimerScript
+//{
+//  AppTick = 4
+//  CommsTick = 4
+
+//  verbose = true
+
+//  // lawnmower duration ca 6362-6375
+//  // lawnmower start at 2339-2472, avg 2211
+//  // 2211+bnds = 8571-8586
+//#ifdef NR_VEHICLES 1
+//  event = var=STAGE,val="hpoptim",time=8571:8660
+//#endif
+//#ifdef NR_VEHICLES 2
+//  event = var=STAGE,val="hpoptim",time=4934:5167
+//#endif
+
+//  reset_max = 0
+////  reset_time = all-posted
+//  reset_var = UTS_RESET
+
+//  status_var = UTS_STATUS
+
+////  time_warp=$(WARP)
+//}
+//#endif
+
 #ifdef ADAPTIVE_WPTS yes
-ProcessConfig = uTimerScript
+//--------------------------------------------------
+// pPublishAfterX configuration block
+//
+ProcessConfig = pPublishAfterX
 {
-  AppTick = 4
-  CommsTick = 4
+  AppTick   = 2
+  CommsTick = 2
 
-  verbose = true
+  // which var/val to monitor
+  publish_after_var = STAGE
+  publish_after_val = survey
 
-  // lawnmower duration ca 6362-6375
-  // lawnmower start at 2339-2472, avg 2211
-  // 2211+bnds = 8571-8586
+  // how many seconds after above var/val should we publish?
+  // you can give either a number, or a range (eg. 10:20)
+  publish_after_secs = 
 #ifdef NR_VEHICLES 1
-  event = var=STAGE,val="hpoptim",time=8571:8660
+  publish_after_secs = 8571:8660 //TODO update
 #endif
 #ifdef NR_VEHICLES 2
-  event = var=STAGE,val="hpoptim",time=4934:5167
+  publish_after_secs = 3359:3531
+#endif
+#ifdef NR_VEHICLES 3
+  publish_after_secs = 2552:2756
 #endif
 
-  reset_max = 0
-//  reset_time = all-posted
-  reset_var = UTS_RESET
-
-  status_var = UTS_STATUS
-
-//  time_warp=$(WARP)
+  // the var/val set to publish
+  publish_var = STAGE
+  publish_val = hpoptim
 }
 #endif
 

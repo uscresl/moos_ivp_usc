@@ -1,0 +1,8 @@
+ACOMMS msg IDs
+
+20 - LamssStatus
+24 - Status / StatusData / StatusData(64)
+25 - Data / Data(64)
+40 - ACOUSTIC_MOOS_POKE
+41 - SurfacingRequest
+42 - SurfacingRequestAck

@@ -2,7 +2,7 @@ ProcessConfig = pAcommsHandler
 {
   modem_id: $(MODEMID)
   common {
-    verbosity: DEBUG1 show_gui: true
+    verbosity: DEBUG1 show_gui: false
   }
   load_proto_file: "$(MSG_DIR)/acoustic_moospoke.proto"
   translator_entry {  protobuf_name: "ACOUSTIC_MOOS_POKE"

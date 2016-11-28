@@ -1,0 +1,146 @@
+//****************************************************************************//
+// initialize MOOS variables
+//
+
+initialize DEPLOY = true
+initialize MOOS_MANUAL_OVERRIDE = false
+initialize SAFETY = true
+
+initialize START=true
+initialize END = false
+
+// tmp hack
+initialize NAV_ALTITUDE = 10
+
+//****************************************************************************//
+// Behaviors
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+
+// Waypoint control ////////////////////////////////////////////////////////////
+Behavior = BHV_Waypoint
+{ 
+  name      = waypoints_start_surface
+  pwt       = 100
+
+  condition = DEPLOY = true
+  condition = START=true
+
+  duration = no-time-limit
+  
+  endflag = START = false
+  endflag = END = true
+  
+  // be able to run again after completion
+  perpetual = true
+
+  // be able to update below bhv parameters through this var
+  updates   = WPT_UPDATE
+
+  // bhv params
+  points = $(WAYPOINTS)
+  order = reverse
+  
+  speed = 1.0   // m/s
+  capture_radius = 3.0
+  slip_radius = 10.0
+  capture_line = true
+  // track-line following
+  lead = 15
+  lead_damper = 1
+  // repeat waypoints?
+  repeat = 0
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=blue, edge_color=pink
+  visual_hints = vertex_size=4, edge_size=1
+}
+
+
+// depth bhv to go with wpt bhv
+Behavior = BHV_ConstantDepth
+{
+  name = depth_start_surface
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = START = true
+  
+  duration = no-time-limit
+  perpetual = true
+
+  updates = WPT_UPDATE
+
+  depth = 4
+}
+
+Behavior = BHV_Waypoint
+{ 
+  name      = end_wpt_at_surface
+  pwt       = 100
+
+  condition = DEPLOY = true
+  condition = END = true
+  
+  endflag = END = false
+  endflag = VEHICLE_UNDERWAY=false
+  
+  duration = no-time-limit
+  // be able to run again after completion
+  perpetual = false
+
+  // bhv params
+  points = 2262,1033:2270,1035
+  order=normal
+  
+  // 440,950:440,1025:440,950
+  speed = 0.8   // m/s
+  capture_radius = 3.0
+  slip_radius = 10.0
+  capture_line = true
+  // track-line following
+  lead = 8
+  lead_damper = 1
+  // repeat waypoints?
+  repeat = 0
+
+  visual_hints = nextpt_color=red, nextpt_lcolor=green
+  visual_hints = vertex_color=blue, edge_color=pink
+  visual_hints = vertex_size=4, edge_size=1
+}
+
+// depth bhv to go with wpt bhv
+Behavior = BHV_ConstantDepth
+{
+  name = end_depth_at_surface
+  pwt = 100
+
+  condition = DEPLOY = true
+  condition = END = true
+  
+  duration = no-time-limit
+  perpetual = true
+
+  depth = 0
+}
+
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+Behavior = BHV_OpRegion
+{
+  name       = opregion
+  pwt        = 200
+  condition  = SAFETY = true
+  updates    = OPREGION_UPDATE
+
+  polygon = 1395,805:1400,1050:1595,1200:1925,1200:2288,1055:2250,800
+  trigger_entry_time = 1
+  trigger_exit_time  = 1
+
+  max_time = 7200
+  max_depth = 30
+  min_altitude = 0
+
+  reset_var = OPREGION_RESET
+}
+

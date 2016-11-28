@@ -5,7 +5,10 @@ ProcessConfig = pGP
 {
   AppTick   = 2
   CommsTick = 2
-  
+
+  // verbose: true or false
+  verbose = true
+
   // GP or log GP?
   use_log_gp = true
 
@@ -27,11 +30,36 @@ ProcessConfig = pGP
   // number of vehicles (data exchange?)
   nr_vehicles = $(NUM_VEHICLES)
 
+  // run in adaptive mode?
+  adaptive = $(ADAPTIVE_WPTS)
+
   // elementary coordination (implicit): share data at set intervals
   timed_data_sharing = false
+  // interval between data sharing events (seconds)
+  data_sharing_interval = 600
+  // vars for data sharing
   output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
   input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
 
   // data sharing through acomms
-  acomms_sharing = true
+  acomms_sharing = false
+
+  // use voronoi partitioning?
+  use_voronoi = false
+  // minimum timeout between voronoi calculations (sec)
+  voronoi_timeout = 300
+
+  // take one in X data points for HP optimization
+  downsample_factor = 4
+
+  // buffer region outside sample area for which
+  // vehicle is still counted as inside, for voronoi partitioning
+  area_buffer = 10.0
+
+  // specify method of hyperparameter optimization ('cg' vs 'rprop')
+  hp_optim_method = rprop
+
+  // number of iterations for CG/RProp
+  hp_optim_iterations = 50
+  
 }
