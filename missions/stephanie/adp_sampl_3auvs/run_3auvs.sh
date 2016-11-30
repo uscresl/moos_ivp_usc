@@ -18,7 +18,7 @@ for idx in `seq 1 5`; do
 	sleep 2500 && ./kill.sh
 
 	# move log files to dir
-	sleep 5 && ./mv_logs_to_dir.sh td_tds_3auvs_$idx
+	sleep 5 && ./mv_logs_to_dir.sh curr_results/td_tds_3auvs_$idx
 
 	# clean up whatever remains
 	sleep 5 && ./clean.sh
@@ -34,7 +34,7 @@ for idx in `seq 1 5`; do
 	sleep 2500 && ./kill.sh
 
 	# move log files to dir
-	sleep 5 && ./mv_logs_to_dir.sh td_vor_3auvs_$idx
+	sleep 5 && ./mv_logs_to_dir.sh curr_results/td_vor_3auvs_$idx
 
 	# clean up whatever remains
 	sleep 5 && ./clean.sh
