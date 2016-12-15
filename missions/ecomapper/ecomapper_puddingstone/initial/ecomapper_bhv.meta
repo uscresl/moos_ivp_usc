@@ -114,14 +114,14 @@ Behavior = BHV_OpRegion
   condition  = SAFETY = true
   updates    = OPREGION_UPDATE
 
-  polygon = 350,940:400,1070:480,1215:600,1300:1000,1300:1000,940
+  polygon = 350,920:400,1070:480,1215:600,1300:1000,1300:1000,920
 
   trigger_entry_time = 1
   trigger_exit_time  = 1
 
-  max_time = 7200
+  max_time = 13400
   max_depth = 10
-  min_altitude = 3
+  min_altitude = 0
 
   reset_var = OPREGION_RESET
 }
