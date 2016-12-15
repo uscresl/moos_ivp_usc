@@ -1,0 +1,8 @@
+// data read from Google Earth
+lat_north = 34.025619
+lat_south = 34.016383
+lon_west = -118.291575
+lon_east = -118.280118
+// for now, set to bottom left corner
+datum_lat = 34.016383
+datum_lon = -118.291575
