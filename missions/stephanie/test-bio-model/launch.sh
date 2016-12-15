@@ -129,7 +129,7 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 START_HEADING="230"
 
 VNAME1="anna"        # The first  vehicle community
-START_DEPTH1="5"
+START_DEPTH1="10"
 START_POS1="430,950"
 WAYPOINTS1="455,980:455,965:430,965:430,980:455,980"
 MODEMID1="1"
@@ -138,7 +138,7 @@ PREDICTIONS_PREFIX1="${VNAME1}_predictions"
 
 # The second vehicle community
 VNAME2="bernard"
-START_DEPTH2="5"
+START_DEPTH2="10"
 START_POS2="450,950"
 WAYPOINTS2="455,980:455,965:430,965:430,980:455,980"
 MODEMID2="2"
