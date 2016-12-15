@@ -84,15 +84,15 @@ if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   START_POS1="440,950"
   START_HEADING1="0"
 
-LAWNMOWER="format=lawnmower,x=700,y=1100,width=400,height=200,lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER="format=lawnmower,x=640,y=1120,width=90,height=90,lane_width=30,degs=0,startx=0,starty=0"
 LAWNMOWEREW="$LAWNMOWER,rows=east-west,label=east-west-survey"
 LAWNMOWERNS="$LAWNMOWER,rows=north-south,label=north-south-survey"
 
-PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=700,y=1100,width=400,height=200,lane_width=100,degs=0,startx=0,starty=0"
+PILOT_LAWNMOWER_CONFIG="format=lawnmower,label=pilot-survey,x=640,y=1120,width=90,height=90,lane_width=30,degs=0,startx=0,starty=0"
 PILOT_LAWNMOWER_C_NS="$PILOT_LAWNMOWER_CONFIG,rows=north-south"
 PILOT_LAWNMOWER_C_EW="$PILOT_LAWNMOWER_CONFIG,rows=east-west"
 
-  WAYPOINTS1="445,945:445,1045:500,1045"
+  WAYPOINTS1="440,975:470,1045"
   MODEMID1="1"
   VTYPE1="UUV" # UUV, SHIP
   nsplug ecomapper.meta ecomapper.moos -f WARP=$TIME_WARP  \
