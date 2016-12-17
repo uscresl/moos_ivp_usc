@@ -157,7 +157,7 @@ Behavior = BHV_ConstantDepth
 
   updates = SURVEY_UPDATES
 
-  depth = 5
+  depth = 3
 }
 
 Behavior = BHV_Waypoint
@@ -311,21 +311,15 @@ Behavior = BHV_OpRegion
   condition  = SAFETY = true
   updates    = OPREGION_UPDATE
 
-  polygon = 400,940:400,1045:480,1215:600,1300:1000,1300:1000,940
-  // 470,935:395,910:340,920:255,965:255,1035:335,1035:480,1035:480,975
-  //             polygon = pts="0,-100:0,-200:150,-200:150,-100"
-  trigger_entry_time = 1
+  polygon = 400,920:400,1045:480,1215:600,1300:1000,1300:1000,920
+  
+trigger_entry_time = 1
   trigger_exit_time  = 1
 
   max_time = 7200
   max_depth = 10
-  min_altitude = 3
+  min_altitude = 0
 
   reset_var = OPREGION_RESET
-//  opregion_poly_var = OPREGION_POLY
-//  time_remaining_var = MISSION_TIME_REMAINING
-
-//  breached_poly_flag = SAY_MOOS = Sir, the Op Region has been violated
-//  breached_time_flag = SAY_MOOS = Excuse me, the mission has timed out
 }
 
