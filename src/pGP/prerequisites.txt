@@ -1,7 +1,8 @@
-1. install libGP:
+1. Install libGP:
    https://github.com/StephanieKemna/libgp.git
    (fork from https://github.com/mblum/libgp.git)
 
 2. Add an environment variable for the GP library to your .bashrc, e.g.:
    export GPLIB_LOCATION="/home/stephanie/git/gp_mblum"
 
+3. (optional, required for Voronoi partitioning) Install Boost libraries 1.58 or higher

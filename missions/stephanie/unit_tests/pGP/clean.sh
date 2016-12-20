@@ -1,3 +1,3 @@
 #!/bin/bash
 
-rm -r MOOSLog_* .LastOpenedMOOSLogDirectory
+rm -r MOOSLog_* .LastOpenedMOOSLogDirectory hp_optim* predictions* output.txt
