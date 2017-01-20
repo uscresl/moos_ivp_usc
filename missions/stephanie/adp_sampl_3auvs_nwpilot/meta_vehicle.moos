@@ -69,7 +69,7 @@ ProcessConfig = ANTLER
 //  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
 //  Run = pGP @ NewConsole = true,XConfig=pGPConfig
 //  #else
-  Run = pGP @ NewConsole = false
+  Run = pGP @ NewConsole = true
 //  #endif
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
@@ -206,7 +206,7 @@ ProcessConfig = pGP
 #endif
 
   // number of iterations for CG/RProp
-  hp_optim_iterations = 100
+  hp_optim_iterations = 50
 }
 
 //--------------------------------------------------

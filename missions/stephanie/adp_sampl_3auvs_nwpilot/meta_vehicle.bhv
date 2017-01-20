@@ -15,7 +15,7 @@ initialize  DIRECTION=northsouth
 
 // note, ADAPTIVE_WPTS is set by launch script
 initialize  ADAPTIVE_WPTS=$(ADAPTIVE_WPTS)
-initialize  ADP_PTS=$(ADAPTIVE_PTS)
+initialize  ADP_PTS=static
 
 // quick fix opregion altitude requirement
 #ifdef VTYPE UUV
@@ -163,8 +163,11 @@ Behavior = BHV_Waypoint
 {
   name      = survey_start
   pwt       = 100
-  condition = MODE==PILOT_NS
-  endflag   = 
+  condition = MODE==ADAPTIVE_STATIC
+  
+  endflag   = ADP_PTS=adaptive
+  endflag   = ADAPTIVE_WPT_UPDATES=points=900,1000
+  
   perpetual = false
 
   speed = 1.5         // m/s
@@ -239,7 +242,7 @@ Behavior = BHV_Waypoint
 {
   name      = adaptive_survey
   pwt       = 100
-  condition = MODE==ADAPTIVE
+  condition = MODE==ADAPTIVE_ADP
 
   updates   = ADAPTIVE_WPT_UPDATES
   perpetual = true
