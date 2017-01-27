@@ -186,7 +186,13 @@ WAYPOINTS1="455,980:455,965:430,965:430,980:455,980"
 MODEMID1="1"
 VTYPE1="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX1="${VNAME1}_predictions"
-PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+# cross pilot
+#PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+
+# random points pilot
+randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..10 + ","')
+echo " 10 random points: " $randpts
+PILOT_PTS1=${randpts}
 
 # The second vehicle community
 VNAME2="bernard"

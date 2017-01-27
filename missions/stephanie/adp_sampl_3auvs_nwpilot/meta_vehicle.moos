@@ -79,7 +79,7 @@ ProcessConfig = ANTLER
   Run = pLonLatToWptUpdate @ NewConsole = false
 
   #ifdef ADAPTIVE_WPTS yes
-//  Run = uTimerScript @ NewConsole = false
+  Run = uTimerScript @ NewConsole = false
   Run = pPublishAfterX @ NewConsole = false
   #endif
 
@@ -339,3 +339,24 @@ ProcessConfig = pRePublishDataPtWithNav
   nr_data_points = 2
 }
 #endif
+
+// stop the random waypoints in the static state
+#ifdef ADAPTIVE_WPTS yes
+ProcessConfig = uTimerScript
+{
+  AppTick = 4
+  CommsTick = 4
+
+  verbose = true
+
+#ifdef NR_VEHICLES 1
+  event = var=ADP_PTS,val="adaptive",time=986:987
+  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
+#endif
+
+  reset_max = 0
+//  reset_time = all-posted
+  reset_var = UTS_RESET
+
+  status_var = UTS_STATUS
+}
