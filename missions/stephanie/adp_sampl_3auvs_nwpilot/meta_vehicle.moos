@@ -65,12 +65,12 @@ ProcessConfig = ANTLER
   Run = uSimBioSensor @ NewConsole = false
   //,XConfig=uSBSConfig
 
-//  #ifdef USE_GUI true
-//  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-//  Run = pGP @ NewConsole = true,XConfig=pGPConfig
-//  #else
-  Run = pGP @ NewConsole = true
-//  #endif
+  #ifdef USE_GUI true
+  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+  #else
+  Run = pGP @ NewConsole = false
+  #endif
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -206,7 +206,7 @@ ProcessConfig = pGP
 #endif
 
   // number of iterations for CG/RProp
-  hp_optim_iterations = 50
+  hp_optim_iterations = 100
 }
 
 //--------------------------------------------------
@@ -350,6 +350,16 @@ ProcessConfig = uTimerScript
   verbose = true
 
 #ifdef NR_VEHICLES 1
+  event = var=ADP_PTS,val="adaptive",time=986:987
+  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
+#endif
+#ifdef NR_VEHICLES 2
+// TODO update times
+  event = var=ADP_PTS,val="adaptive",time=986:987
+  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
+#endif
+#ifdef NR_VEHICLES 3
+// TODO update times
   event = var=ADP_PTS,val="adaptive",time=986:987
   event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
 #endif
