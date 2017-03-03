@@ -13,6 +13,7 @@ VORONOI_PARTITIONING="no"
 AREA="old"
 GUI="true"
 CG="false"
+ADP_START="random"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
@@ -29,6 +30,7 @@ for ARGI; do
         printf "  --bigger2, -b2     \n"
         printf "  --nogui, -ng       \n"
         printf "  --cg, -cg          \n"
+        printf "  --cross_pilot, -cp \n"
         printf "  --help, -h         \n" 
         exit 0;
     elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
@@ -55,6 +57,8 @@ for ARGI; do
         GUI="no"
     elif [ "$ARGI" = "--cg" -o "${ARGI}" = "-cg" ]; then
         CG="yes"
+    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp"]; then
+        ADP_START="cross"
     else 
         printf "Bad Argument: %s \n" $ARGI
         exit 0
@@ -151,6 +155,52 @@ if [ "${ADAPTIVE}" = "no" ] ; then
   fi
 fi
 
+##### specify for adaptive whether to use integrated cross or random pilot #####
+if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "cross" ] ; then
+  # 1auv cross
+  PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+  if [ $NUM_VEHICLES -ge 2 ] ; then
+  # 2auv cross
+  PILOT_PTS1=500,1000:700,1200:500,1200:700,1000
+  PILOT_PTS2=700,1000:900,1200:700,1200:900,1000
+  fi
+  if [ $NUM_VEHICLES -ge 3 ] ; then
+  # 3auv cross
+  PILOT_PTS1=500,1000:633,1200:500,1200:633,1000
+  PILOT_PTS2=634,1000:767,1200:634,1200:767,1000
+  PILOT_PTS3=768,1000:900,1200:768,1200:900,1000  
+  fi
+fi
+
+if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "random" ] ; then
+  # 1auv random
+  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..10 + ","')
+  echo " 10 random points: " $randpts
+  PILOT_PTS1=${randpts}
+  if [ $NUM_VEHICLES -ge 2 ] ; then
+  # 2auv random
+  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..5 + ","')
+  echo " 5 random points: " $randpts
+  PILOT_PTS1=${randpts}
+  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..5 + ","')
+  echo " 5 random points: " $randpts
+  PILOT_PTS2=${randpts}
+  fi
+  if [ $NUM_VEHICLES -ge 3 ] ; then
+  # 3auv random
+  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..3 + ","')
+  echo " 3 random points: " $randpts
+  PILOT_PTS1=${randpts}
+  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..3 + ","')
+  echo " 3 random points: " $randpts
+  PILOT_PTS2=${randpts}
+  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..3 + ","')
+  echo " 3 random points: " $randpts
+  PILOT_PTS3=${randpts}
+  fi
+fi
+#####
+
 # ports
 SHORE_LISTEN="9300"
 SHORE_VPORT="9000"
@@ -186,13 +236,6 @@ WAYPOINTS1="455,980:455,965:430,965:430,980:455,980"
 MODEMID1="1"
 VTYPE1="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX1="${VNAME1}_predictions"
-# cross pilot
-#PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
-
-# random points pilot
-randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..10 + ","')
-echo " 10 random points: " $randpts
-PILOT_PTS1=${randpts}
 
 # The second vehicle community
 VNAME2="bernard"
@@ -203,7 +246,6 @@ MODEMID2="2"
 VTYPE2="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX2="${VNAME2}_predictions"
 PSHARE_BERNARD="./plugs/pShare_auv.moos"
-PILOT_PTS2=500,1000:900,1200:500,1200:900,1000
 
 # The third vehicle community
 VNAME3="cornelis"
@@ -214,7 +256,6 @@ MODEMID3="3"
 VTYPE3="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX3="${VNAME3}_predictions"
 PSHARE_CORNELIS="./plugs/pShare_auv.moos"
-PILOT_PTS3=500,1000:900,1200:500,1200:900,1000
 
 if [ $NUM_VEHICLES -ge 3 ] ; then
 SHAREGP3=$CORNELIS_LISTEN_GP
