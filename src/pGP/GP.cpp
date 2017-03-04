@@ -46,7 +46,7 @@ GP::GP() :
   m_output_filename_prefix(""),
   m_output_var_share_data(""),
   m_prediction_interval(-1),
-  m_debug(false),
+  m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
@@ -491,8 +491,22 @@ bool GP::Iterate()
         }
       }
     }
+    else
+    {
+      // start with a hyperparameter optimization
+      if ( std::abs(MOOSTime() - m_start_time) < 1.0 )
+      {
+        if ( m_mission_state == STATE_IDLE )
+        {
+          m_mission_state = STATE_HPOPTIM;
+          publishStates("Iterate_hpoptim_1+AUV_start");
+        }
+      }
+    }
 
     // **** MAIN STATE MACHINE *********************************************//
+    if ( m_debug )
+      std::cout << GetAppName() << " :: Current state: " << m_mission_state << std::endl;
     switch ( m_mission_state )
     {
       case STATE_SAMPLE :
@@ -554,8 +568,16 @@ bool GP::Iterate()
               endMission();
             else
             {
-              m_mission_state = STATE_CALCVOR;
-              publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+              if ( std::abs(MOOSTime() - m_start_time) < 10.0 )
+              {
+                m_mission_state = STATE_CALCWPT;
+                publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+              }
+              else
+              {
+                m_mission_state = STATE_CALCVOR;
+                publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+              }
             }
           }
         }
@@ -1156,6 +1178,10 @@ void GP::dataAddingThread()
       // add data pt
       addPatternToGP(veh_lon, veh_lat, data_pt[2]);
 
+      if ( m_debug )
+        std::cout << GetAppName() << " :: adding data point: " << veh_lon
+                  << "," << veh_lat << ":" << data_pt[2] << std::endl;
+
       // update visited set if needed
       int index = getIndexForMap(veh_lon, veh_lat);
       if ( index >= 0 && needToUpdateMaps((size_t)index) )
@@ -1254,6 +1280,11 @@ int GP::getIndexForMap(double veh_lon, double veh_lat)
     int index = m_y_resolution*x_cell_rnd + y_cell_rnd;
 
     return index;
+  }
+  else
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: Location not in sample rectangle." << std::endl;
   }
   return -1;
 }
