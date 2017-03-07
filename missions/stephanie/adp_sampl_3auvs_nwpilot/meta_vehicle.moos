@@ -355,12 +355,12 @@ ProcessConfig = uTimerScript
 #endif
 #ifdef NR_VEHICLES 2
 // TODO update times
-  event = var=ADP_PTS,val="adaptive",time=986:987
+  event = var=ADP_PTS,val="adaptive",time=550:600
   event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
 #endif
 #ifdef NR_VEHICLES 3
 // TODO update times
-  event = var=ADP_PTS,val="adaptive",time=986:987
+  event = var=ADP_PTS,val="adaptive",time=350:400
   event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
 #endif
 
