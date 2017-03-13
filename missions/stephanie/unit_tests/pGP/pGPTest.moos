@@ -22,10 +22,12 @@ ProcessConfig = ANTLER
   Run = MOOSDB        @ NewConsole = false
   Run = pLogger       @ NewConsole = true
 
-  Run = pGP @ NewConsole = true
+  Run = pGP @ NewConsole = false
 
   // add fake data to be read by pGP
-  Run = uTimerScript @ NewConsole = false
+  Run = uTimerScript @ NewConsole = false ~ uTimerScript_startup
+  Run = uTimerScript @ NewConsole = false ~ uTimerScript_data
+  Run = uTimerScript @ NewConsole = false ~ uTimerScript_wpts
 }
 
 // Logging tool (MOOSEssentials)
@@ -62,22 +64,97 @@ ProcessConfig = pGP
   AppTick   = 2
   CommsTick = 2
 
-  // define the names of input variables
+  // verbose: true or false
+  verbose = true
+
+  // GP or log GP?
+  use_log_gp = true
+
+  // define the names of input & output variables
   input_var_data = SIM_DATA
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
   input_var_pilot_done = PILOT_SURVEY_DONE
   input_var_adaptive_trigger = WPT_REACHED
+  input_var_share_data = INCOMING_DATA
   output_var_predictions = GP_PREDICTIONS
+  output_var_share_data = SHARE_DATA
 
   // define the filename for saving GP predictions
   output_filename_prefix = unit_test
 
   // define the prediction interval (predict every X seconds)
   prediction_interval = 300
+
+  // number of vehicles (data exchange?)
+  nr_vehicles = 1
+
+  // run in adaptive mode?
+  adaptive = true
+
+  // elementary coordination (implicit): share data at set intervals
+  timed_data_sharing = false
+  // interval between data sharing events (seconds)
+  data_sharing_interval = 600
+  // vars for data sharing
+  output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
+  input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
+
+  // data sharing through acomms
+  acomms_sharing = false
+
+  // use voronoi partitioning?
+  use_voronoi = false
+  // minimum timeout between voronoi calculations (sec)
+  voronoi_timeout = 300
+
+  // take one in X data points for HP optimization
+  downsample_factor = 4
+
+  // buffer region outside sample area for which
+  // vehicle is still counted as inside, for voronoi partitioning
+  area_buffer = 10.0
+
+  // specify method of hyperparameter optimization ('cg' vs 'rprop')
+  hp_optim_method = cg
+
+  // number of iterations for CG/RProp
+  hp_optim_iterations = 50
 }
 
-ProcessConfig = uTimerScript
+
+// add uTimerScript for taking care of variables that do not exist 
+// in a unit test
+
+ProcessConfig = uTimerScript_startup
+{
+  AppTick = 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose = true// or {false}
+  
+  event = var=SAMPLE_POINTS, val="-117.809667078311,34.0874537159634;-117.809667078311,34.0875438677862;-117.809667078311,34.087634019609;-117.809667078311,34.0877241714319;-117.809667078311,34.0878143232547;-117.809667078311,34.0879044750775;-117.809667078311,34.0879946269003;-117.809667078311,34.0880847787231;-117.809667078311,34.0881749305459;", time=1
+  event = var=SAMPLE_POINTS_SPECS, val="width=400,height=200,lane_width=10", time=1
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max = 0 // or in range [0,inf)
+  // A point when the script is reset
+  reset_time = inf // or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+//  reset_var = UTS_RESET // or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var = UTS_STATUS_SU // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp = 1
+}
+
+ProcessConfig = uTimerScript_data
 {
   AppTick = 4
   CommsTick = 4
@@ -86,7 +163,7 @@ ProcessConfig = uTimerScript
   verbose = true// or {false}
 
   // Declaration of random var macro expanded in event values
-  randvar = varname=VAL, min=0, max=30, key=at_post
+  randvar = varname=VAL1, min=0, max=40, key=at_post
   randvar = varname=LAT, min=34.020000, max=34.040000, key=at_reset
   randvar = varname=LON, min=-118.290000, max=-118.270000, key=at_reset
   randvar = varname=DEP, min=0, max=15, key=at_reset
@@ -96,17 +173,7 @@ ProcessConfig = uTimerScript
   event = var=NAV_LAT, val=$[LAT], time=1
   event = var=NAV_LONG, val=$[LON], time=1
   event = var=NAV_DEPTH, val=$[DEP], time=1
-  event = var=SIM_DATA, val=$[VAL], time=5
-  event = var=SIM_DATA, val=$[VAL], time=5
-  event = var=SIM_DATA, val=$[VAL], time=15
-
-  event = var=SAMPLE_POINTS, val="-117.809667078311,34.0874537159634;-117.809667078311,34.0875438677862;-117.809667078311,34.087634019609;-117.809667078311,34.0877241714319;-117.809667078311,34.0878143232547;-117.809667078311,34.0879044750775;-117.809667078311,34.0879946269003;-117.809667078311,34.0880847787231;-117.809667078311,34.0881749305459;", time=1
-  event = var=SAMPLE_POINTS_SPECS, val="width=400,height=200,lane_width=10", time=1
-
-  // status mission
-  event = var=PILOT_SURVEY_DONE, val="true", time=100
-
-  event = var=WPT_REACHED, val="true", time=200
+  event = var=SIM_DATA, val=$[VAL1], time=1
 
   // If true script is paused upon launch
   paused = false
@@ -119,7 +186,35 @@ ProcessConfig = uTimerScript
   reset_var = UTS_RESET // or other MOOS variable
 
   // A MOOS variable for posting the status summary
-  status_var = UTS_STATUS // or other MOOS variable
+  status_var = UTS_STATUS_DAT // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp = 1
+}
+
+ProcessConfig = uTimerScript_wpts
+{
+  AppTick = 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose = true// or {false}
+
+  // status mission
+  event = var=WPT_REACHED, val="true", time=20
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max = nolimit // or in range [0,inf)
+  // A point when the script is reset
+  reset_time = all-posted // or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+  reset_var = UTS_RESET // or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var = UTS_STATUS_WPTS // or other MOOS variable
 
   // Rate at which time is accelerated in execuing the script
   time_warp = 1

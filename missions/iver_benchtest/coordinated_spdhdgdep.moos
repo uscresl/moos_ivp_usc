@@ -27,6 +27,9 @@ ProcessConfig = ANTLER
   Run = uTimerScript  @ NewConsole = false
   // add the frontseat interface
   Run = iOceanServerComms @ NewConsole = false
+
+  // test bridge
+  Run = pNodeReporter @ NewConsole = false
 }
 
 // Log what we do
