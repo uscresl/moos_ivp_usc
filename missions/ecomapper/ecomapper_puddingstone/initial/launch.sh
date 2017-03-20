@@ -85,7 +85,7 @@ if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   START_HEADING1="0"
   MISSION_DEPTH="0"
 
-  WAYPOINTS1="445,950:400,1030:445,950"
+  WAYPOINTS1="435,970:405,1020:435,970"
   MODEMID1="1"
   VTYPE1="UUV" # UUV, SHIP
   nsplug ecomapper.meta ecomapper.moos -f WARP=$TIME_WARP  \
