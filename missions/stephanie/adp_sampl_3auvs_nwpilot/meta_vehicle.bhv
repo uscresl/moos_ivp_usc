@@ -178,7 +178,11 @@ Behavior = BHV_Waypoint
 
   // do lawnmower
   // note: x, y are middle of lawnmower area
+  #ifdef ADAPTIVE_WPTS yes
   points = $(PILOT_PTS)
+  #else
+  points = 0,0
+  #endif
   order  = normal
 
   repeat = 0 // # times to repeat waypoints list
