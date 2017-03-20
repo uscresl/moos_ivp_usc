@@ -95,11 +95,6 @@ else()
   message("   Build VORONOI? NO")
 endif()
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> merge in new pGP, compile only that which does not used Boost libraries 1.58 or higher (Voronoi stuff)
 if ( LIBGP_FOUND AND MOOSGeodesy_FOUND AND Boost_FOUND )
 #  if (Boost_VERSION 1.56)
 #  message("     found LibGP")
