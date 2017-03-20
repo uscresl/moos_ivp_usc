@@ -137,6 +137,12 @@ GP::GP() :
   std::cout << GetAppName() << " :: rand_seed: " << rand_seed << std::endl;
   srand(rand_seed);
 
+#if BUILD_VORONOI
+  m_use_voronoi = true;
+#else
+  m_use_voronoi = false;
+#endif
+
 }
 
 GP::~GP()
@@ -294,6 +300,14 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "NODE_REPORT")
     {
       handleMailNodeReports(sval);
+    }
+    else if ( key == "TEST_VORONOI" )
+    {
+      if ( m_debug )
+        std::cout << GetAppName() << " :: calcVoronoi requested by TEST_VORONOI." << std::endl;
+      #if BUILD_VORONOI
+      calcVoronoi(m_lon, m_lat, m_other_vehicles);
+      #endif
     }
     else if ( key == "STAGE" )
       m_bhv_state = sval;
@@ -487,8 +501,22 @@ bool GP::Iterate()
         }
       }
     }
+    else
+    {
+      // start with a hyperparameter optimization
+      if ( std::abs(MOOSTime() - m_start_time) < 1.0 )
+      {
+        if ( m_mission_state == STATE_IDLE )
+        {
+          m_mission_state = STATE_HPOPTIM;
+          publishStates("Iterate_hpoptim_1+AUV_start");
+        }
+      }
+    }
 
     // **** MAIN STATE MACHINE *********************************************//
+    if ( m_debug )
+      std::cout << GetAppName() << " :: Current state: " << m_mission_state << std::endl;
     switch ( m_mission_state )
     {
       case STATE_SAMPLE :
@@ -507,18 +535,20 @@ bool GP::Iterate()
             publishStates("Iterate_STATE_SAMPLE_TDS");
           }
         }
-        #if BUILD_VORONOI
         // tds with voronoi, trigger for when to request data sharing
-        if ( m_use_voronoi && m_voronoi_subset.size() > 0 &&
-             needToRecalculateVoronoi() &&
+        else if ( m_use_voronoi && m_voronoi_subset.size() > 0 &&
              ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
         {
-          // request surfacing through acomms
-          m_mission_state = STATE_REQ_SURF;
-          publishStates("Iterate_STATE_SAMPLE_need_to_recalc");
-          clearHandshakeVars();
+          #if BUILD_VORONOI
+          if ( needToRecalculateVoronoi() )
+          {
+            // request surfacing through acomms
+            m_mission_state = STATE_REQ_SURF;
+            publishStates("Iterate_STATE_SAMPLE_need_to_recalc");
+            clearHandshakeVars();
+          }
+          #endif
         }
-        #endif
         // else just sampling, don't do anything else
         // TODO add in timed? trigger hp optim for parallel sampling?
 
@@ -552,17 +582,25 @@ bool GP::Iterate()
               endMission();
             else
             {
-              m_mission_state = STATE_CALCVOR;
-              publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+              if ( std::abs(MOOSTime() - m_start_time) < 10.0 )
+              {
+                m_mission_state = STATE_CALCWPT;
+                publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+              }
+              else
+              {
+                m_mission_state = STATE_CALCVOR;
+                publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+              }
             }
           }
         }
         break;
+      #if BUILD_VORONOI
       case STATE_CALCVOR :
-        #if BUILD_VORONOI
         runVoronoiRoutine();
-        #endif
         break;
+      #endif
       case STATE_IDLE :
         break;
       // **** STEPS TO GET VEHICLES TO SURFACE *******************************//
@@ -700,6 +738,8 @@ bool GP::OnStartUp()
       m_input_var_handshake_data_sharing = toupper(value);
     else if ( param == "acomms_sharing" )
       m_acomms_sharing = (value == "true" ? true : false);
+    else if ( param == "use_voronoi" )
+      m_use_voronoi = (value == "true" ? true : false);
     else if ( param == "voronoi_timeout" )
       m_vor_timeout = (size_t)atoi(value.c_str());
     else if ( param == "downsample_factor" )
@@ -717,16 +757,6 @@ bool GP::OnStartUp()
     }
     else
       handled = false;
-
-    #if BUILD_VORONOI
-      if ( param == "use_voronoi" )
-      {
-        m_use_voronoi = (value == "true" ? true : false);
-        handled = true;
-      }
-    #else
-      m_use_voronoi = false;
-    #endif
 
     if ( !handled )
       std::cout << GetAppName() << " :: Unhandled Config: " << orig << std::endl;
@@ -1164,6 +1194,10 @@ void GP::dataAddingThread()
       // add data pt
       addPatternToGP(veh_lon, veh_lat, data_pt[2]);
 
+      if ( m_debug )
+        std::cout << GetAppName() << " :: adding data point: " << veh_lon
+                  << "," << veh_lat << ":" << data_pt[2] << std::endl;
+
       // update visited set if needed
       int index = getIndexForMap(veh_lon, veh_lat);
       if ( index >= 0 && needToUpdateMaps((size_t)index) )
@@ -1179,9 +1213,6 @@ void GP::dataAddingThread()
 //
 void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
 {
-  if ( m_debug )
-    std::cout << GetAppName() << " :: Adding: " << veh_lon << "," << veh_lat << "," << value << std::endl;
-
   // limit scope mutex, protect when adding data
   // because this is now happening in a detached thread
   double location[2] = {veh_lon, veh_lat};
@@ -1265,6 +1296,11 @@ int GP::getIndexForMap(double veh_lon, double veh_lat)
     int index = m_y_resolution*x_cell_rnd + y_cell_rnd;
 
     return index;
+  }
+  else
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: Location not in sample rectangle." << std::endl;
   }
   return -1;
 }
@@ -1377,6 +1413,7 @@ void GP::findNextSampleLocation()
     std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
     getRandomStartLocation();
 
+    #if BUILD_VORONOI
     // if m_voronoi, init voronoi subset to whole region
     if ( m_use_voronoi )
     {
@@ -1384,13 +1421,12 @@ void GP::findNextSampleLocation()
       // copy over all unvisited locations
       for ( auto map_item : m_sample_points_unvisited )
         m_voronoi_subset.push_back(map_item.first);
-      #if BUILD_VORONOI
       // calculate the convex hull
       voronoiConvexHull();
       // print convex hull
       printVoronoi();
-      #endif
     }
+    #endif
   }
 }
 
@@ -2177,7 +2213,7 @@ bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) cons
              veh_lon <= m_max_lon && veh_lat <= m_max_lat );
 }
 
-#if BUILD_VORONOI 
+#if BUILD_VORONOI
 //---------------------------------------------------------
 // Procedure: voronoiConvexHull()
 //            get the convex hull of the Voronoi region
@@ -2406,12 +2442,12 @@ void GP::tdsResetStateVars()
   {
     std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
     m_mission_state = STATE_CALCWPT;
-    publishStates("tdsResetStateVars");
+    publishStates("tdsResetStateVars_adp_nrveh_le_1");
   }
   else
   {
     m_mission_state = STATE_SAMPLE;
-    publishStates("tdsResetStateVars");
+    publishStates("tdsResetStateVards_else");
   }
 
   if ( m_bhv_state != "survey" )
@@ -2615,6 +2651,7 @@ void GP::runVoronoiRoutine()
 
   m_calc_prevoronoi = false;
 }
+
 
 bool GP::centroidConvergence ( double old_lon, double old_lat, std::map<std::string, std::pair<double, double> > old_centr,
                                double new_lon, double new_lat, std::map<std::string, std::pair<double, double> > new_centr )

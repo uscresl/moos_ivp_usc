@@ -28,15 +28,13 @@
 // geodesy for conversion x/y to lon/lat
 #include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
 
-// compile only if libraries exist
-#if BUILD_VORONOI 
+#if BUILD_VORONOI
 // boost geometry libraries for multipoint and convex hull
 // requires boost 1.56 for multi_point
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/geometries/multi_point.hpp>
 #endif
-
 
 class GP : public CMOOSApp
 {
@@ -264,9 +262,10 @@ class GP : public CMOOSApp
    std::map< std::string, std::pair<double,double> > m_other_vehicles;
 
    // voronoi partitioning
-   bool m_use_voronoi;
    std::vector<size_t> m_voronoi_subset;
    std::map<std::string,std::vector<size_t>> m_voronoi_subset_other_vehicles;
+
+   bool m_use_voronoi;
 #if BUILD_VORONOI
    typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> boost_pt;
    typedef boost::geometry::model::multi_point< boost_pt > boost_multi_pt;
@@ -287,6 +286,7 @@ class GP : public CMOOSApp
    bool m_calc_prevoronoi;
    bool m_precalc_pred_voronoi_done;
    size_t m_vor_timeout;
+
 
    // downsampling data for HP optimization
    size_t m_downsample_factor;

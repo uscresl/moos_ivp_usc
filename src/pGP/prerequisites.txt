@@ -1,4 +1,4 @@
-1. Install libGP:
+1. install libGP:
    https://github.com/StephanieKemna/libgp.git
    (fork from https://github.com/mblum/libgp.git)
 
