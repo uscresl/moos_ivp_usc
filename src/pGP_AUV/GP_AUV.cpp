@@ -721,7 +721,7 @@ bool GP_AUV::needToUpdateMaps(size_t grid_index)
     // add mutex for changing of global maps
     std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
     while ( !map_lock.try_lock() ){}
-    std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
+    std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > >::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
     map_lock.unlock();
 
     return ( curr_loc_itr != m_sample_points_unvisited.end() );
@@ -979,7 +979,7 @@ size_t GP_AUV::calcMECriterion()
   while ( !map_lock.try_lock() ){}
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
-  std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
+  std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > unvisited_map_copy;
   // calculate for all, because we need it for density voronoi calc for other vehicles
   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();

@@ -28,6 +28,8 @@
 // geodesy for conversion x/y to lon/lat
 #include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
 
+#include <Eigen/StdVector>
+
 class GP_AUV : public CMOOSApp
 {
  public:
@@ -157,8 +159,8 @@ class GP_AUV : public CMOOSApp
    "STATE_IDLE", "STATE_CALCWPT", "STATE_SAMPLE", "STATE_HPOPTIM", "STATE_DONE",
    "STATE_SURFACING" }[m_mission_state]; };
 
-   std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_unvisited;
-   std::unordered_map< size_t, Eigen::Vector2d > m_sample_points_visited;
+   std::unordered_map< size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > m_sample_points_unvisited;
+   std::unordered_map< size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > m_sample_points_visited;
    std::vector< std::pair<double, double> > m_sample_locations;
    std::unordered_map<size_t, double> m_unvisited_pred_metric;
 
