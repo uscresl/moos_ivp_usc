@@ -1,5 +1,5 @@
 #--------------------------------------------------------
-# The CMakeLists.txt for:                           pGP
+# The CMakeLists.txt for:                       pGP_AUV
 # Author(s): Stephanie Kemna, USC
 # Note: this is a template dir, so you can copy to start
 #       making your MOOSApp
