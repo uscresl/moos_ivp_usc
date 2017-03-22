@@ -1,6 +1,6 @@
 On zoomer:
 
-pAntler zoomer.moos |&tee zoomer.log &
+pAntler zoomer.moos |&tee zoomer.log
 
 On your pc:
 
