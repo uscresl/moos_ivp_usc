@@ -142,7 +142,7 @@ ProcessConfig = pSamplePoints
   CommsTick = 2
 
   // potential process parameters would go here
-  lawnmower_config = $(LAWNMOWER_CONFIG)
+  lawnmower_config = format=lawnmower,x=${LX},y=${LY},width=${LW},height=${LH},lane_width=20,degs=0,startx=0,starty=0
 
   // division factor for grid spacing (increase resolution vs lawnmower spec)
   division_factor = 2
