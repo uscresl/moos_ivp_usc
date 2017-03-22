@@ -95,7 +95,7 @@ Behavior = BHV_OpRegionBounce
   bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
   no_zone_factor = .2
 }
-#ifdef VTYPE UUV
+
 Behavior = BHV_OpRegionBounceDepth
 {
   name = bhv_opregion_depth_bounce
@@ -111,7 +111,6 @@ Behavior = BHV_OpRegionBounceDepth
   // no_zone_factor: used for: no_zone = buffer * no_zone_factor
   no_zone_factor = .2
 }
-#endif
 
 //---------   Control behaviors   -------------
 // Separate high level control bhvs for separate parts of mission
@@ -166,7 +165,6 @@ Behavior = BHV_Loiter
 }
 
 // adaptive survey /////////////////////////////////////////////////////////////
-#ifdef ADAPTIVE_WPTS yes
 Behavior = BHV_Waypoint
 {
   name      = adaptive_survey
@@ -221,10 +219,8 @@ Behavior = BHV_Waypoint
   visual_hints = vertex_size=3, edge_size=2
 }
 // need depth bhv for data sharing on surface (see bottom)
-#endif
 
 // lawnmower survey ////////////////////////////////////////////////////////////
-#ifdef ADAPTIVE_WPTS no
 Behavior = BHV_Waypoint
 { 
   name      = ns_survey
@@ -276,7 +272,6 @@ Behavior = BHV_Waypoint
   visual_hints = vertex_color=yellow, edge_color=white
   visual_hints = vertex_size=3, edge_size=2
 }
-#endif
 
 // return //////////////////////////////////////////////////////////////////////
 Behavior = BHV_Waypoint
@@ -295,7 +290,7 @@ Behavior = BHV_Waypoint
 }
 
 // UUV - depth bhvs ////////////////////////////////////////////////////////////
-#ifdef VTYPE UUV
+
 //----------------------------------------------
 // survey
 Behavior = BHV_ConstantDepth
@@ -324,7 +319,7 @@ Behavior = BHV_ConstantDepth
   summitdelta = 20  // m
 }
 // depth during surface data sharing
-#ifdef ADAPTIVE_WPTS yes
+
 Behavior = BHV_ConstantDepth
 {
   name      = bhv_data_sharing_depth
@@ -337,7 +332,7 @@ Behavior = BHV_ConstantDepth
   basewidth = 2     // m
   summitdelta = 20  // m
 }
-#endif
+
 // depth during return
 Behavior = BHV_ConstantDepth
 {
@@ -351,4 +346,3 @@ Behavior = BHV_ConstantDepth
   basewidth = 2     // m
   summitdelta = 20  // m
 }
-#endif
