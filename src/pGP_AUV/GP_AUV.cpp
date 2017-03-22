@@ -174,9 +174,15 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
         handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
-      m_lat = dval;
+    {
+      if ( sval != "nan" && dval >= -180 && dval <= 180 )
+        m_lat = dval;
+    }
     else if ( key == "NAV_LONG" )
-      m_lon = dval;
+    {
+      if ( sval != "nan" && dval >= -180 && dval <= 180 )
+        m_lon = dval;
+    }
     else if ( key == "NAV_DEPTH" )
     {
       m_dep = dval;
