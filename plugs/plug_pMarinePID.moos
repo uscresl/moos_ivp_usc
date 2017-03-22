@@ -17,8 +17,7 @@ ProcessConfig = pMarinePID
 
 #ifdef VTYPE SHIP
   DEPTH_CONTROL = false
-#endif
-#ifdef VTYPE UUV
+#else
   DEPTH_CONTROL = true
 #endif
 

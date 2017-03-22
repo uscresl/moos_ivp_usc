@@ -1,0 +1,212 @@
+//*******************************************************
+// Simulation/Computer Configuration File
+//
+
+// MOOS community specs
+NoNetwork = true
+ServerHost = localhost // 192.168.10.11
+ServerPort = 6000
+Community  = hil_zoomer
+
+Simulator  = true
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = 1
+
+// Location: Puddingstone
+LatOrigin = 34.0784000000111
+LongOrigin = -117.815
+
+//****************************************************************************//
+// Base Processes
+//
+
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  // start everything that would otherwise not run on the vehicle //
+
+  // vehicle sim
+  Run = uSimMarine @ NewConsole = false
+  Run = pMarinePID @ NewConsole = false
+
+  // run uBioSensor if not running iOceanServerComms
+  Run = uSimBioSensor @ NewConsole = false
+  
+  Run = pMarineViewer @ NewConsole = true
+}
+//------------------------------------------------------------
+// vehicle simulation
+
+//------------------------------------------------------
+// uSimMarine Configuration Block  (Created from plugin)
+//
+// uSimMarine (ivp): very simple 3D vehicle simulator that considers the current
+//        vehicle pose and actuator commands and produces a new vehicle pose
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-tools.pdf
+//
+ProcessConfig = uSimMarine
+{
+  AppTick   = 10
+  CommsTick = 10
+
+  PREFIX    = NAV
+  // specify a start position
+  START_POS = 430, 950, 0, 0
+
+//  // external forces
+//  force_x       = 0
+//  force_y       = 0
+//  force_theta   = 0
+//  force_vector  = 0,0 // heading, magnitude
+
+//  // vehicle dynamics
+//  buoyancy_rate        = 0.025 // meters/sec
+//  max_acceleration     = 0     // meters/sec^2
+//  max_deceleration     = 0.5   // meters/sec^2
+//  max_depth_rate       = 0.5   // meters/sec
+//  max_depth_rate_speed = 2.0   // meters/sec
+
+  BUOYANCY_RATE    = 0.025
+  MAX_DEPTH_RATE = 0.5
+  MAX_DEPTH_RATE_SPEED = 2.0
+
+//  sim_pause            = false // or {true}
+//  dual_state           = false // or {true}
+//  thrust_reflect       = false // or {true}
+//  thrust_factor        = 20    // range [0,inf)
+//  turn_rate            = 70    // range [0,100]
+//  thrust_map           = 0:0, 20:1, 40:2, 60:3, 80:5, 100:5
+}
+
+
+
+
+//-----------------------------------------------------
+// pMarinePID Configuration Block (created from plugin)
+//
+// pMarinePID (ivp): simple PID controller which produces values suitable for
+//        actuator control based on inputs from the helm. In simulation the
+//        output is consumed by the vehicle simulator rather than the vehicle
+//        actuators.
+// documentation: none currently
+//
+ProcessConfig = pMarinePID
+{
+  AppTick    = 10
+  CommsTick  = 10
+  
+  VERBOSE       = false
+  ACTIVE_START  = true
+
+  DEPTH_CONTROL = true
+
+  sim_instability = 0     // Range [0,inf)
+  tardy_helm_threshold = 2.0
+  tardy_nav_threshold  = 2.0
+
+  // Yaw PID controller
+  YAW_PID_KP             = 0.4
+  YAW_PID_KD             = 0.1
+  YAW_PID_KI             = 0.0
+  YAW_PID_INTEGRAL_LIMIT = 0.07
+  
+  // Speed PID controller
+  SPEED_PID_KP           = 1.0
+  SPEED_PID_KD           = 0.0
+  SPEED_PID_KI           = 0.0
+  SPEED_PID_INTEGRAL_LIMIT = 0.07
+  
+  //Pitch PID controller
+  PITCH_PID_KP                   = 0.5
+  PITCH_PID_KD                   = 1.0
+  PITCH_PID_KI                   = 0
+  PITCH_PID_INTEGRAL_LIMIT       = 0
+
+  //ZPID controller
+  Z_TO_PITCH_PID_KP              = 0.12
+  Z_TO_PITCH_PID_KD              = 1.0 //0
+  Z_TO_PITCH_PID_KI              = 0.004
+  Z_TO_PITCH_PID_INTEGRAL_LIMIT  = 0.05
+
+  MAXPITCH     = 15
+  MAXELEVATOR  = 13
+
+  // Maximums
+  MAXRUDDER  = 100
+  MAXTHRUST  = 100
+  
+  // A non-zero SPEED_FACTOR overrides use of SPEED_PID
+  // Will set DESIRED_THRUST = DESIRED_SPEED * SPEED_FACTOR
+  SPEED_FACTOR = 20
+}
+
+
+// simulate bio data
+
+//--------------------------------------------------
+// uSimBioSensor configuration block
+//
+ProcessConfig = uSimBioSensor
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // verbosity: true or false
+  verbose = false
+
+  // process parameters
+  input_filename = ../../../data/fake_bio/two_depths.csv
+  variance = 1.5
+  output_var = SIM_DATA
+}
+
+
+// visualization
+
+//--------------------------------------------------------
+// pMarineViewer (ivp): to render vehicles, history & info during sim & ops
+// documentation: http://oceanai.mit.edu/moos-ivp-pdf/moosivp-helm.pdf
+//
+ProcessConfig = pMarineViewer
+{
+  AppTick    = 4
+  CommsTick  = 4
+
+  tiff_viewable = true
+  tiff_file     = ../../../maps/puddingstone_all.tif
+
+//  // store the img for alogview
+//  log_the_image = true
+
+  // pan, zoom to be set for puddingstone file
+  set_pan_x = 1800
+  set_pan_y = -845
+  zoom      = 0.55
+
+  vehicles_shape_scale = 2.0
+  vehicles_name_mode   = names+shortmode
+  stale_vehicles_viewable = true
+
+  seglist_viewable_labels = false
+  marker_viewable_labels = false
+  hash_viewable = true
+  
+  // do not start up comms visualization (overhead)
+  comms_pulse_viewable_all = false
+
+  appcast_viewable     = false //true
+//  appcast_width = 30
+//  appcast_color_scheme = indigo
+
+  button_one   = DEPLOY_ALL  # DEPLOY_ALL=true
+  button_one   = DEPLOY=true
+  button_one   = MOOS_MANUAL_OVERIDE_ALL=false 
+  button_one   = RETURN_ALL=false
+  button_two   = RETURN_ALL  # RETURN_ALL=true
+  button_three = TRAIL_ALL   # TRAIL_ALL=true
+  
+//  scope = NODE_REPORT,DB_TIME
+}
+
