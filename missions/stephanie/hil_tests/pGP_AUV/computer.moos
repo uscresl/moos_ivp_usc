@@ -4,7 +4,7 @@
 
 // MOOS community specs
 NoNetwork = true
-ServerHost = localhost // 192.168.10.11
+ServerHost = 192.168.10.11
 ServerPort = 6000
 Community  = hil_zoomer
 
@@ -175,7 +175,7 @@ ProcessConfig = pMarineViewer
   CommsTick  = 4
 
   tiff_viewable = true
-  tiff_file     = ../../../maps/puddingstone_all.tif
+  tiff_file     = ../../../moos-ivp-usc/maps/puddingstone_all.tif
 
 //  // store the img for alogview
 //  log_the_image = true

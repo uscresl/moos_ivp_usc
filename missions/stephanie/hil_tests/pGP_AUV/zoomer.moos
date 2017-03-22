@@ -4,7 +4,7 @@
 
 // MOOS community specs
 NoNetwork = true
-ServerHost = localhost //192.168.10.11
+ServerHost = 192.168.10.11
 ServerPort = 6000
 Community  = hil_zoomer
 
