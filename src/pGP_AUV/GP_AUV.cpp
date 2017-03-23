@@ -577,6 +577,11 @@ void GP_AUV::handleMailData(double received_data)
       std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
       m_queue_data_points_for_gp.push(nw_data_pt);
     }
+    else
+    {
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: " << "Error: received data < 0: " << received_data << std::endl;
+    }
   }
 }
 
