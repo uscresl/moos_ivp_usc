@@ -179,7 +179,10 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( std::abs(dval) >= 0 && std::abs(dval) <= 180.0 && ( std::abs(dval) - 0.00 > 0.000001 ) )
           m_lat = dval;
         else
-          std::cout << GetAppName() << " :: latitude out of range: " << dval << std::endl;
+        {
+          if ( m_debug ) 
+            std::cout << GetAppName() << " :: latitude out of range: " << dval << std::endl;
+        }
       }
     }
     else if ( key == "NAV_LONG" )
@@ -189,7 +192,10 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( std::abs(dval) >= 0 && std::abs(dval) <= 180.0 && ( std::abs(dval) - 0.00 > 0.000001 ) )
           m_lon = dval;
         else
-          std::cout << GetAppName() << " :: longitude out of range: " << dval << std::endl;
+        {
+          if ( m_debug )
+            std::cout << GetAppName() << " :: longitude out of range: " << dval << std::endl;        
+        }
       }
     }
     else if ( key == "NAV_DEPTH" )
