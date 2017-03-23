@@ -169,8 +169,7 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
       // (we do not want to add when in hp optim, or on surface etc)
       m_data_mail_counter++;
 
-      if ( (m_data_mail_counter % 2 == 0) &&
-            m_mission_state == STATE_SAMPLE )
+      if ( m_mission_state == STATE_SAMPLE )
         handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -184,7 +183,7 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
       }
     }
     else if ( key == "NAV_LONG" )
-    {  
+    {
       if ( sval != "nan" )
       {
         if ( std::abs(dval) >= 0 && std::abs(dval) <= 180.0 && ( std::abs(dval) - 0.00 > 0.000001 ) )
@@ -564,9 +563,14 @@ void GP_AUV::handleMailData(double received_data)
     double veh_lon = m_lon;
     double veh_lat = m_lat;
 
-    // pass into data adding queue
-    std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
-    m_queue_data_points_for_gp.push(nw_data_pt);
+    // we cannot handle negative numbers, given the log we are taking
+    // skip those samples for now
+    if ( received_data >= 0 )
+    {
+      // pass into data adding queue
+      std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
+      m_queue_data_points_for_gp.push(nw_data_pt);
+    }
   }
 }
 
