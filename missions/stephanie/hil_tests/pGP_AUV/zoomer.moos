@@ -29,7 +29,7 @@ ProcessConfig = ANTLER
   Run = uProcessWatch @ NewConsole = false
 
   // frontseat interface
-//  Run = iOceanServerComms @ NewConsole = false
+  Run = iOceanServerComms @ NewConsole = false
 
   // behaviors
   Run = pHelmIvP           @ NewConsole = false
@@ -184,7 +184,8 @@ ProcessConfig = pGP_AUV
   use_log_gp = true
 
   // define the names of input & output variables
-  input_var_data = SIM_DATA
+  input_var_data = YSI_CHL
+
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
   input_var_adaptive_trigger = WPT_REACHED
