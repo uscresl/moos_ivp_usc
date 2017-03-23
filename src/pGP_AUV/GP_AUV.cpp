@@ -177,16 +177,20 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       if ( sval != "nan" )
       {
-        if ( dval >= -180 && dval <= 180 && ( dval - 0.00 > 0.000001) )
+        if ( std::abs(dval) >= 0 && std::abs(dval) <= 180.0 && ( std::abs(dval) - 0.00 > 0.000001 ) )
           m_lat = dval;
+        else
+          std::cout << GetAppName() << " :: latitude out of range: " << dval << std::endl;
       }
     }
     else if ( key == "NAV_LONG" )
-    {
+    {  
       if ( sval != "nan" )
       {
-        if ( dval >= -180 && dval <= 180 && ( dval - 0.00 > 0.000001) )
+        if ( std::abs(dval) >= 0 && std::abs(dval) <= 180.0 && ( std::abs(dval) - 0.00 > 0.000001 ) )
           m_lon = dval;
+        else
+          std::cout << GetAppName() << " :: longitude out of range: " << dval << std::endl;
       }
     }
     else if ( key == "NAV_DEPTH" )
@@ -1193,13 +1197,13 @@ void GP_AUV::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr
   if ( m_hp_optim_cg )
   {
     libgp::CG cg;
-    cg.maximize(&downsampled_gp, nr_iterations, 1);
+    cg.maximize(&downsampled_gp, nr_iterations, 0);
   }
   else
   {
     libgp::RProp rprop;
     // RProp arguments: GP, 'n' (nr iterations), verbose
-    rprop.maximize(&downsampled_gp, nr_iterations, 1);
+    rprop.maximize(&downsampled_gp, nr_iterations, 0);
   }
   end = std::clock();
   if ( m_verbose )
