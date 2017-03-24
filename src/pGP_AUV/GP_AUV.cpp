@@ -903,6 +903,8 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
     {
       best_so_far = loc.second;
       best_so_far_idx = loc.first;
+      if ( m_debug )
+        std::cout << GetAppName() << " :: replacing best with: " << loc.second << ", " << loc.first << std::endl;
     }
   }
 
@@ -1027,6 +1029,8 @@ size_t GP_AUV::calcMECriterion()
     }
 
     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
+    if ( m_debug )
+      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
   }
 
   std::clock_t end = std::clock();
