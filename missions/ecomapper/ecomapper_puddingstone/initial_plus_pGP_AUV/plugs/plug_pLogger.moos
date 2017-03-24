@@ -1,0 +1,23 @@
+//----------------------------------------------------------------------------
+// Log what we do
+ProcessConfig = pLogger
+{
+  AppTick   = 8
+  CommsTick = 8
+
+  Path = ./
+  AsyncLog = true
+  FileTimeStamp = true
+
+  BridgeFrequency = 0
+  // For variables that are published in a bundle on their first post,
+  // explicitly declare their logging request
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
+  Log = APPCASE @ 0 NOSYNC
+
+  // Log everything
+  LogAuxSrc = true
+  WildCardLogging = true
+  //WildCardOmitPattern = *_STATUS
+  WildCardExclusionLog = true
+}
