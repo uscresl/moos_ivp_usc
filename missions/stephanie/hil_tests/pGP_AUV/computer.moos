@@ -32,7 +32,7 @@ ProcessConfig = ANTLER
   Run = pMarinePID @ NewConsole = false
 
   // run uBioSensor if not running iOceanServerComms
-  Run = uSimBioSensor @ NewConsole = false
+//  Run = uSimBioSensor @ NewConsole = false
   
   Run = pMarineViewer @ NewConsole = true
 }
@@ -157,7 +157,7 @@ ProcessConfig = uSimBioSensor
   verbose = false
 
   // process parameters
-  input_filename = ../../../data/fake_bio/two_depths.csv
+  input_filename = ../../../../data/fake_bio/two_depths.csv
   variance = 1.5
   output_var = SIM_DATA
 }
