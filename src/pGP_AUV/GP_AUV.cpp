@@ -555,7 +555,7 @@ void GP_AUV::handleMailData(double received_data)
 
     // we cannot handle negative numbers, given the log we are taking
     // skip those samples for now
-    if ( received_data >= 0 )
+    if ( received_data > 0 )
     {
       // pass into data adding queue
       std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
@@ -564,7 +564,7 @@ void GP_AUV::handleMailData(double received_data)
     else
     {
       if ( m_verbose )
-        std::cout << GetAppName() << " :: " << "Error: received data < 0: " << received_data << std::endl;
+        std::cout << GetAppName() << " :: " << "Error: received data <= 0: " << received_data << std::endl;
     }
   }
 }
