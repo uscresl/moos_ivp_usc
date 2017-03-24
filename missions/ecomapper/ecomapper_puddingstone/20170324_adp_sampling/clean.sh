@@ -47,4 +47,6 @@ rm -f   $VERBOSE   *.moos
 rm -f   $VERBOSE   *.bhv
 rm -f   $VERBOSE   .LastOpenedMOOSLogDirectory
 rm -rf  $VERBOSE   .phostinfo
+rm $VERBOSE hp_optim*
+rm $VERBOSE predictions_*
 
