@@ -49,9 +49,6 @@ GP_AUV::GP_AUV() :
   m_use_log_gp(true),
   m_lat(0),
   m_lon(0),
-  m_dep(0),
-  m_surf_cnt(0),
-  m_on_surface(false),
   m_adaptive(false),
   m_last_published(std::numeric_limits<double>::max()),
   m_last_pred_save(std::numeric_limits<double>::max()),
@@ -180,7 +177,7 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
           m_lat = dval;
         else
         {
-          if ( m_debug ) 
+          if ( m_debug )
             std::cout << GetAppName() << " :: latitude out of range: " << dval << std::endl;
         }
       }
@@ -194,21 +191,9 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
         else
         {
           if ( m_debug )
-            std::cout << GetAppName() << " :: longitude out of range: " << dval << std::endl;        
+            std::cout << GetAppName() << " :: longitude out of range: " << dval << std::endl;
         }
       }
-    }
-    else if ( key == "NAV_DEPTH" )
-    {
-      m_dep = dval;
-
-      if ( std::abs(m_dep) < 0.2 )
-        m_surf_cnt++;
-      else
-        m_surf_cnt = 0;
-
-      if ( m_surf_cnt > 10 )
-        m_on_surface = true;
     }
     else if ( key == m_input_var_sample_points )
     {
@@ -287,7 +272,7 @@ bool GP_AUV::OnConnectToServer()
 //
 bool GP_AUV::Iterate()
 {
-  if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
+  if ( m_lon == 0 && m_lat == 0 )
     return true;
   else
   {
@@ -515,7 +500,6 @@ void GP_AUV::registerVariables()
   // get vehicle location
   m_Comms.Register("NAV_LAT", 0);
   m_Comms.Register("NAV_LONG", 0);
-  m_Comms.Register("NAV_DEPTH", 0);
 
   // get data for GP
   m_Comms.Register(m_input_var_data, 0);
@@ -556,8 +540,8 @@ void GP_AUV::registerVariables()
 //
 void GP_AUV::handleMailData(double received_data)
 {
-  if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
-    std::cout << GetAppName() << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
+  if ( m_lon == 0 && m_lat == 0 )
+    std::cout << GetAppName() << "No NAV_LAT/LON received, not processing data." << std::endl;
   else
   {
     // if not running hyperparameter optimization or calculating nxt wpt

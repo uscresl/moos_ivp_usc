@@ -124,9 +124,6 @@ class GP_AUV : public CMOOSApp
    // vehicle location
    double m_lat;
    double m_lon;
-   double m_dep;
-   size_t m_surf_cnt;
-   bool m_on_surface;
 
    bool m_adaptive;
 
