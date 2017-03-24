@@ -10,6 +10,7 @@ JUST_MAKE="no"
 SIMULATION_MODE="no"
 TOPSIDE="no"
 ECOMAPPER="no"
+ADAPTIVE="no"
 
 #overwrite with arguments
 printUsage ()
@@ -20,6 +21,7 @@ printUsage ()
   printf "  --simulation, -s (includes -e, -t)  \n"
   printf "  --ecomapper, -e    \n"
   printf "  --topside, -t      \n" 
+  printf "  --adaptive, -a     \n"
   printf "  --help, -h         \n" 
   exit 0;
 }
@@ -41,6 +43,8 @@ for ARGI; do
         ECOMAPPER="yes"
     elif [ "${ARGI}" = "--topside" -o "${ARGI}" = "-t" ] ; then
         TOPSIDE="yes"
+    elif [ "${ARGI}" = "--adaptive" -o "${ARGI}" = "-a" ] ; then
+        ADAPTIVE="yes"
     else 
         printf "Bad Argument: %s \n" $ARGI
         exit 0
@@ -58,6 +62,30 @@ fi
 # simulation set-up
 LAKE="puddingstone"
 PLUGDIR="../../../../plugs" # no leading slash
+
+# copying from adp_sampl_1auv
+PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3"
+BHVOPREGION="label,OpRegion:400,920:400,1045:480,1215:600,1300:1000,1300:1000,920"
+# loiter for during hyperparameter optimization
+HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
+# old area
+LX=700
+LY=1100
+LW=400
+LH=200
+LAWNMOWER1="format=lawnmower,x=${LX},y=${LY},width=${LW},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+if [ "${ADAPTIVE}" = "no" ] ; then
+  # lawnmower
+  LAWNMOWEREW="$LAWNMOWER1,rows=east-west,label=east-west-survey"
+  LAWNMOWERNS="$LAWNMOWER1,rows=north-south,label=north-south-survey"
+fi
+##### specify for adaptive whether to use integrated cross or random pilot #####
+if [ "${ADAPTIVE}" = "yes" ] ; then
+  # 1auv cross
+  PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+fi
+
+
 
 if [ "${SIMULATION_MODE}" = "yes" ] ; then
   SERVERHOST_EM="localhost"
@@ -84,7 +112,6 @@ if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   START_POS1="440,950"
   START_HEADING1="0"
   MISSION_DEPTH="0"
-
   WAYPOINTS1="435,970:405,1020:435,970"
   MODEMID1="1"
   VTYPE1="UUV" # UUV, SHIP
@@ -93,11 +120,15 @@ if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
      VPORT="9001"       SHARE_LISTEN="9301"                      \
      VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
      SERVER_HOST=$SERVERHOST_EM SERVER_HOST_SS=$SERVERHOST_SS    \
-     SIMULATION=$SIMULATION_MODE  PLUG_DIR=$PLUGDIR  LOCATION=$LAKE
+     SIMULATION=$SIMULATION_MODE  PLUG_DIR=$PLUGDIR  LOCATION=$LAKE \
+     LAWNMOWER_CONFIG=$LAWNMOWER1  ADAPTIVE_WPTS=$ADAPTIVE  
   nsplug ecomapper_bhv.meta ecomapper.bhv -f VNAME=$VNAME1       \
       START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
       START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
-      WPT_DEPTH=$MISSION_DEPTH
+      WPT_DEPTH=$MISSION_DEPTH  ADAPTIVE_WPTS=$ADAPTIVE          \
+      LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
+      HP_LOITER=$HP_LOITER_CONFIG  OPREGION=$BHVOPREGION         \
+      PILOT_PTS=$PILOT_PTS1
 fi
 
 if [ ${JUST_MAKE} = "yes" ] ; then

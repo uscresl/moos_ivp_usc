@@ -17,7 +17,7 @@ initialize  PILOT=false
 initialize  DIRECTION=northsouth
 
 // note, ADAPTIVE_WPTS is set by launch script
-initialize  ADAPTIVE_WPTS=false
+initialize  ADAPTIVE_WPTS=$(ADAPTIVE_WPTS)
 initialize  ADP_PTS=static
 
 // tmp hack
@@ -97,7 +97,11 @@ Behavior = BHV_Waypoint
   // note: x, y are middle of lawnmower area
   
   //TODO change pilot for cross/random adaptive
+  #ifdef ADAPTIVE_WPTS yes
+  points = $(PILOT_PTS)
+  #else
   points = 0,0
+  #endif
 
   order  = normal
 
@@ -321,7 +325,7 @@ Behavior = BHV_OpRegionBounce
   duration = no-time-limit
   condition = MODE==MISSION
 
-  polygon = label,OpRegion:375,875:370,1080:560,1320:1250,1320:1250,875
+  polygon = $(OPREGION) 
   max_depth = 20 // match with BHV_OpRegionBounceDepth
   min_altitude = 10
   max_time = 25200
