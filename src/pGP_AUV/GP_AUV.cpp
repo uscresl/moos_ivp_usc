@@ -709,6 +709,9 @@ void GP_AUV::addPatternToGP(double veh_lon, double veh_lat, double value)
   // log GP: take log (ln) of measurement
   double save_val = m_use_log_gp ? log(value) : value;
 
+  if ( m_debug )
+    std::cout << GetAppName() << " :: location, save_val: " << location[0] << ", " << location[1] << ", " << save_val << std::endl;
+
   // downsampled data for hyperparam optimization
   if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
   {
