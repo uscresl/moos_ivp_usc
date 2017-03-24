@@ -299,7 +299,7 @@ bool GP_AUV::Iterate()
     if ( (std::abs(m_last_hp_optim_done - MOOSTime()) > 1.0 ) &&
          ((size_t)std::floor(MOOSTime()-m_start_time) % 500 == 10) )
     {
-      if ( m_mission_state != STATE_DONE )
+      if ( m_mission_state != STATE_DONE && m_mission_state != STATE_HPOPTIM )
       {
         m_mission_state = STATE_HPOPTIM;
         publishStates("Iterate_hpoptim_1AUV");
