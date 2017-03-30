@@ -118,6 +118,8 @@ Behavior = BHV_Loiter
   pwt = 100
   condition = MODE==HP_OPTIM
   perpetual = true
+  
+  endflag = STAGE=return
 
   speed = 1.5
 
@@ -203,7 +205,12 @@ Behavior = BHV_Waypoint
 
   // do lawnmower
   // note: x, y are middle of lawnmower area
+  #ifdef ADAPTIVE_WPTS no
   points = $(LAWNMOWER_NS)
+  #else
+  points = 0,0
+  #endif
+  
   order  = normal
 
   repeat = 0 // # times to repeat waypoints list
@@ -227,8 +234,13 @@ Behavior = BHV_Waypoint
   radius = 5.0        // m
   slip_radius = 15.0  // m
   lead = 10           // m
-  
+
+  #ifdef ADAPTIVE_WPTS no
   points = $(LAWNMOWER_EW)
+  #else
+  points = 0,0
+  #endif
+
   order  = reverse
 
   repeat = 0 // # times to repeat waypoints list
