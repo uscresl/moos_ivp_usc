@@ -10,7 +10,7 @@ Getting MOOS-IvP
 * add env vars to .bashrc (add bin dirs to PATH, add lib_behaviors* to IVP_BEHAVIOR_DIRS)
 * test that it works (e.g. run ivp/missions/m2_berta/, to quit: Ctrl+C)
 
-For this repos:
+For this repo:
 * run $ ./build.sh
 * add the bin dirs to your PATH and lib_behaviors* to IVP_BEHAVIOR_DIRS
 * test that it works 
