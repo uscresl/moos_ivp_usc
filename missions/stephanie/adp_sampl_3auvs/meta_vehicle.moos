@@ -205,8 +205,8 @@ ProcessConfig = pGP
   hp_optim_method = rprop
 #endif
 
-  // number of iterations for RProp
-  hp_optim_iterations = 50
+  // number of iterations for CG/RProp
+  hp_optim_iterations = 100
 }
 
 //--------------------------------------------------
