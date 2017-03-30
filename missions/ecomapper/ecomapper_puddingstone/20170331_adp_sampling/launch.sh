@@ -83,7 +83,7 @@ fi
 ##### specify for adaptive whether to use integrated cross or random pilot #####
 if [ "${ADAPTIVE}" = "yes" ] ; then
   # 1auv cross
-  PILOT_PTS1=450,1000:800,1200:450,1200:800,1000
+  PILOT_PTS1=450,1000:750,1200:450,1200:750,1000
 fi
 
 
