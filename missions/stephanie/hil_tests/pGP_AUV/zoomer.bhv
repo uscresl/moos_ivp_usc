@@ -14,7 +14,7 @@ initialize  PILOT=false
 initialize  DIRECTION=northsouth
 
 // note, ADAPTIVE_WPTS is set by launch script
-initialize  ADAPTIVE_WPTS=false
+initialize  ADAPTIVE_WPTS=yes
 initialize  ADP_PTS=static
 
 // quick fix opregion altitude requirement
@@ -122,7 +122,7 @@ Behavior = BHV_Waypoint
   condition = MODE==ADAPTIVE_STATIC
   
   endflag   = ADP_PTS=adaptive
-  endflag   = ADAPTIVE_WPT_UPDATES=points=900,1000
+  endflag   = ADAPTIVE_WPT_UPDATES=points=800,1000
   
   perpetual = false
 
@@ -136,7 +136,7 @@ Behavior = BHV_Waypoint
   // note: x, y are middle of lawnmower area
   
   //TODO change pilot for cross/random adaptive
-  points = 0,0
+  points = 500,1000:700,1100:500,1100:700,1000
 
   order  = normal
 
