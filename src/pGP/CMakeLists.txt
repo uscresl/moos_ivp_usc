@@ -8,6 +8,7 @@
 SET(SRC
   GP.cpp
   main.cpp
+  GraphNode.cpp
 )
 
 ADD_EXECUTABLE(pGP ${SRC})
