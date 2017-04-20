@@ -134,15 +134,13 @@ GP::GP() :
   struct timeval time;
   gettimeofday(&time,NULL);
   int rand_seed = (time.tv_sec * 1000) + (time.tv_usec / 1000);
-  std::cout << GetAppName() << " :: rand_seed: " << rand_seed << std::endl;
   srand(rand_seed);
 
-#if BUILD_VORONOI
+#ifdef BUILD_VORONOI
   m_use_voronoi = true;
 #else
   m_use_voronoi = false;
 #endif
-
 }
 
 GP::~GP()
@@ -305,7 +303,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       if ( m_debug )
         std::cout << GetAppName() << " :: calcVoronoi requested by TEST_VORONOI." << std::endl;
-      #if BUILD_VORONOI
+      #ifdef BUILD_VORONOI
       calcVoronoi(m_lon, m_lat, m_other_vehicles);
       #endif
     }
@@ -477,7 +475,7 @@ bool GP::Iterate()
     if ( m_mission_state == STATE_SAMPLE && m_acomms_sharing &&
          m_use_voronoi && m_voronoi_subset.size() > 0 )
     {
-      #if BUILD_VORONOI
+      #ifdef BUILD_VORONOI
       // check if we need to recalculate Voronoi region
       if ( needToRecalculateVoronoi() )
       {
@@ -539,7 +537,7 @@ bool GP::Iterate()
         else if ( m_use_voronoi && m_voronoi_subset.size() > 0 &&
              ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
         {
-          #if BUILD_VORONOI
+          #ifdef BUILD_VORONOI
           if ( needToRecalculateVoronoi() )
           {
             // request surfacing through acomms
@@ -596,7 +594,7 @@ bool GP::Iterate()
           }
         }
         break;
-      #if BUILD_VORONOI
+      #ifdef BUILD_VORONOI
       case STATE_CALCVOR :
         runVoronoiRoutine();
         break;
@@ -739,7 +737,11 @@ bool GP::OnStartUp()
     else if ( param == "acomms_sharing" )
       m_acomms_sharing = (value == "true" ? true : false);
     else if ( param == "use_voronoi" )
+    {
       m_use_voronoi = (value == "true" ? true : false);
+      if ( m_debug )
+        std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
+    }
     else if ( param == "voronoi_timeout" )
       m_vor_timeout = (size_t)atoi(value.c_str());
     else if ( param == "downsample_factor" )
@@ -790,6 +792,9 @@ bool GP::OnStartUp()
   m_last_published_req_surf = MOOSTime();
   m_last_published_req_surf_ack = MOOSTime();
   m_last_published = MOOSTime();
+
+  if ( m_debug )
+  std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
 
   return(true);
 }
@@ -1411,9 +1416,21 @@ void GP::findNextSampleLocation()
   else
   { // if ( m_voronoi_subset.size() == 0 )
     std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
-    getRandomStartLocation();
 
-    #if BUILD_VORONOI
+    if ( m_debug )
+    {
+      std::cout << GetAppName() << " :: BUILD_VORONOI: ";
+      #ifdef BUILD_VORONOI
+        std::cout << "yes";
+      #else
+        std::cout << "no";
+      #endif // BUILD_VORONOI
+      std::cout << '\n';
+
+      std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
+    }
+
+    #ifdef BUILD_VORONOI
     // if m_voronoi, init voronoi subset to whole region
     if ( m_use_voronoi )
     {
@@ -1427,6 +1444,8 @@ void GP::findNextSampleLocation()
       printVoronoi();
     }
     #endif
+
+    getRandomStartLocation();
   }
 }
 
@@ -2085,7 +2104,7 @@ bool GP::convUTMToLonLat (double lx, double ly, double & lon, double & lat )
   return successful;
 }
 
-#if BUILD_VORONOI
+#ifdef BUILD_VORONOI
 //---------------------------------------------------------
 // Procedure: calcVoronoi
 //            given all other vehicles (stored in map),
@@ -2213,7 +2232,7 @@ bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) cons
              veh_lon <= m_max_lon && veh_lat <= m_max_lat );
 }
 
-#if BUILD_VORONOI
+#ifdef BUILD_VORONOI
 //---------------------------------------------------------
 // Procedure: voronoiConvexHull()
 //            get the convex hull of the Voronoi region
@@ -2526,7 +2545,7 @@ void GP::findAndPublishNextWpt()
   }
 }
 
-#if BUILD_VORONOI
+#ifdef BUILD_VORONOI
 //---------------------------------------------------------
 // Procedure: needToRecalculateVoronoi
 //            see if we need to recalculate the voronoi region
@@ -2567,7 +2586,7 @@ bool GP::finalSurface(std::string input)
   return ( index != std::string::npos );
 }
 
-#if BUILD_VORONOI
+#ifdef BUILD_VORONOI
 //---------------------------------------------------------
 // Procedure: runVoronoiRoutine()
 //            after calculation predictions, calculate
