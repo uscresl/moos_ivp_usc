@@ -93,6 +93,7 @@ GP::GP() :
   m_acomms_sharing(false),
   m_last_acomms_string(""),
   m_use_voronoi(false),
+  m_running_voronoi_routine(false),
   m_calc_prevoronoi(false),
   m_precalc_pred_voronoi_done(false),
   m_vor_timeout(300),
@@ -597,7 +598,11 @@ bool GP::Iterate()
         break;
       #ifdef BUILD_VORONOI
       case STATE_CALCVOR :
-        runVoronoiRoutine();
+        if ( !m_running_voronoi_routine )
+        {
+          m_running_voronoi_routine = true;
+          runVoronoiRoutine();
+        }
         break;
       #endif
       case STATE_IDLE :
@@ -2675,6 +2680,7 @@ void GP::runVoronoiRoutine()
   tdsResetStateVars();
 
   m_calc_prevoronoi = false;
+  m_running_voronoi_routine = false;
 }
 
 

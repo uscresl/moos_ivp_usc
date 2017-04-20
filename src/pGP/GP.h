@@ -266,6 +266,7 @@ class GP : public CMOOSApp
    std::map<std::string,std::vector<size_t>> m_voronoi_subset_other_vehicles;
 
    bool m_use_voronoi;
+   bool m_running_voronoi_routine;
 #ifdef BUILD_VORONOI
    typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> boost_pt;
    typedef boost::geometry::model::multi_point< boost_pt > boost_multi_pt;
