@@ -558,7 +558,7 @@ bool GP::Iterate()
         if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
           Notify("STAGE","data_sharing");
 
-        if ( m_timed_data_sharing && m_on_surface )
+        if ( m_on_surface && (m_timed_data_sharing || m_use_voronoi) )
         {
           m_mission_state = STATE_HANDSHAKE;
           publishStates("Iterate_STATE_SURFACING_on_surface");
@@ -590,6 +590,7 @@ bool GP::Iterate()
                 m_mission_state = STATE_CALCVOR;
                 publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
               }
+              m_calc_prevoronoi = false;
             }
           }
         }
@@ -727,7 +728,12 @@ bool GP::OnStartUp()
     else if ( param == "input_var_share_data" )
       m_input_var_share_data = toupper(value);
     else if ( param == "timed_data_sharing" )
+    {
       m_timed_data_sharing = (value == "true" ? true : false);
+
+      if ( m_debug )
+        std::cout << GetAppName() << " :: m_timed_data_sharing: " << m_timed_data_sharing << std::endl;
+    }
     else if ( param == "data_sharing_interval" )
       m_data_sharing_interval = (size_t)atoi(value.c_str());
     else if ( param == "output_var_handshake_data_sharing" )
