@@ -44,6 +44,7 @@ GP_AUV::GP_AUV() :
   m_output_var_pred(""),
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
+  m_path_planning_method("greedy"),
   m_debug(false),
   m_veh_name(""),
   m_use_log_gp(true),
@@ -410,6 +411,17 @@ bool GP_AUV::OnStartUp()
     {
       // default: rprop
       m_hp_optim_cg = ( value == "cg" ) ? true : false;
+    }
+    else if ( param == "path_planning_method" )
+    {
+      if ( value == "greedy" || value == "dynamic_programming" || value == "recursive_greedy")
+        m_path_planning_method = value;
+      else
+      {
+        std::cout << GetAppName() << " :: Error, unknown method. Choose from: greedy, "
+                  << "dynamic_programming, recursive_greedy. Default: greedy." << std::endl;
+        handled = false;
+      }
     }
     else
       handled = false;
@@ -819,7 +831,9 @@ bool GP_AUV::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::
 
 //---------------------------------------------------------
 // Procedure: findNextSampleLocation
-//            find next sample location, using mutual information
+//            we need to find the next sampling locations:
+//            launch the maximum entropy calculations,
+//            and store results to map
 //
 void GP_AUV::findNextSampleLocation()
 {
@@ -873,11 +887,15 @@ void GP_AUV::getRandomStartLocation()
 
 //---------------------------------------------------------
 // Procedure: greedyWptSelection()
-//            check over all predictions to find best (greedy)
+//            check over all predictions to find best:
+//            greedy choice to maximize entropy for unvisited
+//            locations
 //
-void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
+void GP_AUV::greedyWptSelection(std::string & next_waypoint)
 {
-  // get next position, for now, greedy pick
+  Eigen::Vector2d best_location;
+
+  // get next position, greedy pick (max entropy location)
   double best_so_far = -1*std::numeric_limits<double>::max();
   size_t best_so_far_idx = -1;
 
@@ -919,6 +937,11 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
     best_location(0) = 0;
     best_location(1) = 0;
   }
+
+  // make a string from the single lon/lat location
+  std::ostringstream output_stream;
+  output_stream << std::setprecision(15) << best_location(0) << "," << best_location(1);
+  next_waypoint = output_stream.str();
 }
 
 
@@ -929,17 +952,25 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
 void GP_AUV::publishNextBestPosition()
 {
   // procedures for finding the next waypoint(s)
-  Eigen::Vector2d next_wpt;
-  greedyWptSelection(next_wpt);
+  std::string next_wpts("");
+  if ( m_path_planning_method == "greedy" )
+    greedyWptSelection(next_wpts);
+  else if ( m_path_planning_method == "dynamic_programming" )
+  {
+    // call Ying's method
+  }
+  else if ( m_path_planning_method == "recursive_greedy" )
+  {
+    // call Jaimin's method
+  }
 
-  if ( next_wpt(0) == 0 && next_wpt(1) == 0 )
+  if ( next_wpts == "" )
     std::cout << GetAppName() << " :: Error: no waypoint found yet." << std::endl;
   else
   {
     // publishing for behavior (pLonLatToWptUpdate)
-    std::ostringstream output_stream;
-    output_stream << std::setprecision(15) << next_wpt(0) << "," << next_wpt(1);
-    m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+    m_Comms.Notify(m_output_var_pred, next_wpts);
 
     // update state vars
     m_last_published = MOOSTime();
@@ -1445,7 +1476,9 @@ void GP_AUV::findAndPublishNextWpt()
     {
       m_finding_nxt = false;
 
-      // publish greedy best
+      // done with maximum entropy calculations,
+      // now call functions for path planning
+      // called from inside publishNextBestPosition method
       publishNextBestPosition();
 
       // continue survey

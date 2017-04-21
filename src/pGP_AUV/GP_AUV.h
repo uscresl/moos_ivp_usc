@@ -1,7 +1,7 @@
 /*****************************************************************/
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
-/*    FILE: GP_AUV.h                                                 */
+/*    FILE: GP_AUV.h                                             */
 /*    DATE: 2015 - 2016                                          */
 /*                                                               */
 /*****************************************************************/
@@ -51,35 +51,37 @@ class GP_AUV : public CMOOSApp
    // Own functions
    void initGeodesy();
 
+   //// methods for handling incoming 'mail' //////////////////////////////////
    void handleMailData(double received_data);
    void handleMailSamplePoints(std::string input_string);
    void handleMailSamplePointsSpecs(std::string input_string);
 
+   //// methods for handling sampled data /////////////////////////////////////
    void updateVisitedSet(double veh_lon, double veh_lat, size_t index );
 
    void addPatternToGP(double veh_lon, double veh_lat, double value);
    void dataAddingThread();
 
+   //// methods for hyperparameter optimization ///////////////////////////////
    void startAndCheckHPOptim();
    bool runHPOptimization(size_t nr_iterations);
    void runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations);
 
+   //// methods for finding next waypoint /////////////////////////////////////
    void findAndPublishNextWpt();
    void findNextSampleLocation();
    void getRandomStartLocation();
-
-   // maximum entropy
+   // maximum entropy calculations
    size_t calcMECriterion();
    void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
-
    // path planning & passing on to behavior
-   void greedyWptSelection(Eigen::Vector2d & best_location);
+   void greedyWptSelection(std::string & next_waypoint);
    void publishNextBestPosition();
 
-   // timed saving of GP
+   // timed saving of GP  /////////////////////////////////////////////////////
    void makeAndStorePredictions();
 
-   // helper/test functions
+   // helper/test functions  //////////////////////////////////////////////////
    bool needToUpdateMaps(size_t grid_index);
    int getIndexForMap(double veh_lon, double veh_lat);
    bool checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt);
@@ -102,7 +104,7 @@ class GP_AUV : public CMOOSApp
 
    void printCoutPrefix();
 
-   // Configuration variables
+   // Configuration variables /////////////////////////////////////////////////
    bool m_verbose;
 
    CMOOSGeodesy m_geodesy;
@@ -116,11 +118,16 @@ class GP_AUV : public CMOOSApp
    std::string m_output_filename_prefix;
 
    size_t m_prediction_interval;
+   std::string m_path_planning_method;
 
-   // State variables
+   // State variables /////////////////////////////////////////////////////////
    bool m_debug;
+
    std::string m_veh_name;
+
+   // use log gp or normal gp?
    bool m_use_log_gp;
+
    // vehicle location
    double m_lat;
    double m_lon;
@@ -128,11 +135,13 @@ class GP_AUV : public CMOOSApp
    size_t m_surf_cnt;
    bool m_on_surface;
 
+   // run lawnmower (passive, create GP, no wpt selection) or adaptive
    bool m_adaptive;
 
    // process state
    double m_last_published;
    double m_last_pred_save;
+
    // sample points grid specs
    double m_min_lon;
    double m_min_lat;
@@ -146,6 +155,7 @@ class GP_AUV : public CMOOSApp
    double m_y_resolution;
    double m_lon_deg_to_m;
    double m_lat_deg_to_m;
+
    // mission status
    double m_start_time;
    bool m_finding_nxt;
@@ -159,9 +169,12 @@ class GP_AUV : public CMOOSApp
    "STATE_IDLE", "STATE_CALCWPT", "STATE_SAMPLE", "STATE_HPOPTIM", "STATE_DONE",
    "STATE_SURFACING" }[m_mission_state]; };
 
+   // maps for storing visited and unvisited sampling location (size_t index, Eigen::Vector2d location),
    std::unordered_map< size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > m_sample_points_unvisited;
    std::unordered_map< size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > m_sample_points_visited;
+   // vector for storing all sampling locations
    std::vector< std::pair<double, double> > m_sample_locations;
+   // map for storing all sample locations 'value' given metric (eg posterior entropy)
    std::unordered_map<size_t, double> m_unvisited_pred_metric;
 
    // GP, and create mutex for protection of parts of code accessing m_gp
