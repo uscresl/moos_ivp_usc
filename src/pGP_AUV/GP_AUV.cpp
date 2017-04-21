@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP.cpp                                               */
-/*    DATE: 2015 - 2016                                          */
+/*    DATE: 2015 - 2017                                          */
 /*                                                               */
 /*****************************************************************/
 
@@ -830,15 +830,18 @@ bool GP_AUV::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::
 }
 
 //---------------------------------------------------------
-// Procedure: findNextSampleLocation
+// Procedure: kickOffCalcMetric
 //            we need to find the next sampling locations:
 //            launch the maximum entropy calculations,
 //            and store results to map
 //
-void GP_AUV::findNextSampleLocation()
+void GP_AUV::kickOffCalcMetric()
 {
   if ( m_verbose )
-    std::cout << GetAppName() << " :: find nxt sample loc" << std::endl;
+  {
+    std::cout << GetAppName() << " :: kick off calculation metric (MECriterion), "
+              << "or choose random sampling location if GP empty." << std::endl;
+  }
 
   if ( checkGPHasData() )
   {
@@ -946,10 +949,10 @@ void GP_AUV::greedyWptSelection(std::string & next_waypoint)
 
 
 //---------------------------------------------------------
-// Procedure: publishNextBestPosition
-//            call Notify & publish location
+// Procedure: publishNextWaypointLocations
+//            call MOOS's Notify & publish location(s)
 //
-void GP_AUV::publishNextBestPosition()
+void GP_AUV::publishNextWaypointLocations()
 {
   // procedures for finding the next waypoint(s)
   std::string next_wpts("");
@@ -1457,8 +1460,10 @@ void GP_AUV::tdsResetStateVars()
 
 //---------------------------------------------------------
 // Procedure: findAndPublishNextWpt
-//            calculate the next sample location,
+//            we need to calculate the next waypoints,
 //            and publish to MOOSDB when found
+//            because the calculations are heavy, we start
+//            a thread here.
 //
 void GP_AUV::findAndPublishNextWpt()
 {
@@ -1466,26 +1471,28 @@ void GP_AUV::findAndPublishNextWpt()
   {
     if ( m_verbose )
       std::cout << GetAppName() << " :: calling to find next sample location" << std::endl;
-    findNextSampleLocation();
+    kickOffCalcMetric();
   }
   else
   {
-    // see if we can get result from future
+    // see if we can get result from future, which was created via kickOffCalcMetric
     std::cout << GetAppName() << " :: checking future m_future_next_pt" << std::endl;
     if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
       m_finding_nxt = false;
 
-      // done with maximum entropy calculations,
+      // done with maximum entropy calculations
+
       // now call functions for path planning
-      // called from inside publishNextBestPosition method
-      publishNextBestPosition();
+      // called from inside publishNextWaypointLocations method
+      publishNextWaypointLocations();
 
       // continue survey
       if ( m_bhv_state != "survey" )
         m_Comms.Notify("STAGE","survey");
       m_mission_state = STATE_SAMPLE;
-      publishStates("findAndPublishWpt");
+      // publish states for debugging/eval purposes
+      publishStates("findAndPublishNextWpt");
     }
   }
 }

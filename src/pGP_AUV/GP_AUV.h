@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP_AUV.h                                             */
-/*    DATE: 2015 - 2016                                          */
+/*    DATE: 2015 - 2017                                          */
 /*                                                               */
 /*****************************************************************/
 
@@ -69,14 +69,14 @@ class GP_AUV : public CMOOSApp
 
    //// methods for finding next waypoint /////////////////////////////////////
    void findAndPublishNextWpt();
-   void findNextSampleLocation();
+   void kickOffCalcMetric();
    void getRandomStartLocation();
    // maximum entropy calculations
    size_t calcMECriterion();
    void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
    // path planning & passing on to behavior
    void greedyWptSelection(std::string & next_waypoint);
-   void publishNextBestPosition();
+   void publishNextWaypointLocations();
 
    // timed saving of GP  /////////////////////////////////////////////////////
    void makeAndStorePredictions();
