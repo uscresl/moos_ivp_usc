@@ -14,6 +14,9 @@
 #include "math.h"
 #include <limits>
 
+// string tokenizer
+#include <boost/tokenizer.hpp>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -27,7 +30,7 @@ LonLatToWptUpdate::LonLatToWptUpdate()
 //---------------------------------------------------------
 // Procedure: OnNewMail
 //
-// when variables are updated in the MOOSDB, 
+// when variables are updated in the MOOSDB,
 // there is 'new mail', check to see if
 // there is anything for this process.
 //
@@ -49,7 +52,7 @@ bool LonLatToWptUpdate::OnNewMail(MOOSMSG_LIST &NewMail)
     bool   mdbl  = msg.IsDouble();
     bool   mstr  = msg.IsString();
 #endif
-    
+
     if ( key == m_input_var_lonlat )
       handleMailLonLatToWptUpdateVarIn(sval);
     else
@@ -86,7 +89,7 @@ bool LonLatToWptUpdate::Iterate()
 bool LonLatToWptUpdate::OnStartUp()
 {
   CMOOSApp::OnStartUp();
-  
+
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
   if ( !m_MissionReader.GetConfiguration(GetAppName(), sParams) )
@@ -174,30 +177,45 @@ void LonLatToWptUpdate::handleMailLonLatToWptUpdateVarIn(std::string str)
 {
   std::cout << GetAppName() << " :: processing mail: " << str << std::endl;
 
-  // expected format string: "<lon>,<lat>"
-  // handle comma-separated string
-  std::vector<std::string> svector = parseString(str, ',');
-  double lon = atof(svector[0].c_str());
-  double lat = atof(svector[1].c_str());
+  std::ostringstream converted_str;
 
-  // convert to x/y
-  double lx, ly;
-  bool converted = lonLatToUTM(lon, lat, lx, ly);
+  boost::char_separator<char> ch_sep(":");
+  boost::tokenizer<boost::char_separator<char>> all_waypoints(str, ch_sep);
+  for ( const auto & waypoint : all_waypoints )
+  {
+    // convert lon/lat to x/y
 
-  // publish wpt
-  if ( converted )
-    publishWpt(lx, ly);
+    // expected format string: "<lon>,<lat>"
+    // handle comma-separated string
+    std::vector<std::string> svector = parseString(waypoint, ',');
+    double lon = atof(svector[0].c_str());
+    double lat = atof(svector[1].c_str());
+
+    // convert to x/y
+    double lx, ly;
+    bool converted = lonLatToUTM(lon, lat, lx, ly);
+
+    if ( converted )
+      converted_str << lx << "," << ly << ":";
+  }
+
+  if ( converted_str.str() != "" )
+    publishWpts(converted_str.str());
+  else
+    std::cout << GetAppName() << " :: ERROR converting waypoints: " << str << std::endl;
 }
 
 //---------------------------------------------------------
-// Procedure: publishWpt
-//            format and publish the x/y value for wpt update
+// Procedure: publishWpts
+//            format and publish the x/y values for wpt bhv update
 //
-void LonLatToWptUpdate::publishWpt(double lx, double ly)
+void LonLatToWptUpdate::publishWpts(std::string list_of_waypoints)
 {
   std::ostringstream output;
-  output << "points=" << lx << "," << ly;
-  Notify(m_output_var_wpt_update, output.str());
+  output << "points=" << list_of_waypoints;
+  std::string output_str = output.str();
+  std::cout << GetAppName() << " :: Publishing: " << output_str << std::endl;
+  Notify(m_output_var_wpt_update, output_str);
 }
 
 //---------------------------------------------------------

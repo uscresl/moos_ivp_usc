@@ -61,5 +61,7 @@ ProcessConfig = pGP
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 50
-  
+
+  // path planning method
+  path_planning_method = greedy
 }

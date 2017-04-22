@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP.cpp                                               */
-/*    DATE: 2015 - 2016                                          */
+/*    DATE: 2015 - 2017                                          */
 /*                                                               */
 /*****************************************************************/
 
@@ -44,6 +44,7 @@ GP_AUV::GP_AUV() :
   m_output_var_pred(""),
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
+  m_path_planning_method("greedy"),
   m_debug(false),
   m_veh_name(""),
   m_use_log_gp(true),
@@ -410,6 +411,17 @@ bool GP_AUV::OnStartUp()
     {
       // default: rprop
       m_hp_optim_cg = ( value == "cg" ) ? true : false;
+    }
+    else if ( param == "path_planning_method" )
+    {
+      if ( value == "greedy" || value == "dynamic_programming" || value == "recursive_greedy")
+        m_path_planning_method = value;
+      else
+      {
+        std::cout << GetAppName() << " :: Error, unknown method. Choose from: greedy, "
+                  << "dynamic_programming, recursive_greedy. Default: greedy." << std::endl;
+        handled = false;
+      }
     }
     else
       handled = false;
@@ -819,13 +831,18 @@ bool GP_AUV::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::
 }
 
 //---------------------------------------------------------
-// Procedure: findNextSampleLocation
-//            find next sample location, using mutual information
+// Procedure: kickOffCalcMetric
+//            we need to find the next sampling locations:
+//            launch the maximum entropy calculations,
+//            and store results to map
 //
-void GP_AUV::findNextSampleLocation()
+void GP_AUV::kickOffCalcMetric()
 {
   if ( m_verbose )
-    std::cout << GetAppName() << " :: find nxt sample loc" << std::endl;
+  {
+    std::cout << GetAppName() << " :: kick off calculation metric (MECriterion), "
+              << "or choose random sampling location if GP empty." << std::endl;
+  }
 
   if ( checkGPHasData() )
   {
@@ -874,11 +891,15 @@ void GP_AUV::getRandomStartLocation()
 
 //---------------------------------------------------------
 // Procedure: greedyWptSelection()
-//            check over all predictions to find best (greedy)
+//            check over all predictions to find best:
+//            greedy choice to maximize entropy for unvisited
+//            locations
 //
-void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
+void GP_AUV::greedyWptSelection(std::string & next_waypoint)
 {
-  // get next position, for now, greedy pick
+  Eigen::Vector2d best_location;
+
+  // get next position, greedy pick (max entropy location)
   double best_so_far = -1*std::numeric_limits<double>::max();
   size_t best_so_far_idx = -1;
 
@@ -920,6 +941,11 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
     best_location(0) = 0;
     best_location(1) = 0;
   }
+
+  // make a string from the single lon/lat location
+  std::ostringstream output_stream;
+  output_stream << std::setprecision(15) << best_location(0) << "," << best_location(1);
+  next_waypoint = output_stream.str();
 }
 
 double GP_AUV::pathLength(GraphNode *start_node, GraphNode *end_node, double start_time)
@@ -1012,23 +1038,31 @@ void GP_AUV::recursiveGreedyWptSelection(Eigen::Vector2d & best_location)
 }
 
 //---------------------------------------------------------
-// Procedure: publishNextBestPosition
-//            call Notify & publish location
+// Procedure: publishNextWaypointLocations
+//            call MOOS's Notify & publish location(s)
 //
-void GP_AUV::publishNextBestPosition()
+void GP_AUV::publishNextWaypointLocations()
 {
   // procedures for finding the next waypoint(s)
-  Eigen::Vector2d next_wpt;
-  greedyWptSelection(next_wpt);
+  std::string next_wpts("");
+  if ( m_path_planning_method == "greedy" )
+    greedyWptSelection(next_wpts);
+  else if ( m_path_planning_method == "dynamic_programming" )
+  {
+    // call Ying's method
+  }
+  else if ( m_path_planning_method == "recursive_greedy" )
+  {
+    // call Jaimin's method
+  }
 
-  if ( next_wpt(0) == 0 && next_wpt(1) == 0 )
+  if ( next_wpts == "" )
     std::cout << GetAppName() << " :: Error: no waypoint found yet." << std::endl;
   else
   {
     // publishing for behavior (pLonLatToWptUpdate)
-    std::ostringstream output_stream;
-    output_stream << std::setprecision(15) << next_wpt(0) << "," << next_wpt(1);
-    m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+    m_Comms.Notify(m_output_var_pred, next_wpts);
 
     // update state vars
     m_last_published = MOOSTime();
@@ -1515,8 +1549,10 @@ void GP_AUV::tdsResetStateVars()
 
 //---------------------------------------------------------
 // Procedure: findAndPublishNextWpt
-//            calculate the next sample location,
+//            we need to calculate the next waypoints,
 //            and publish to MOOSDB when found
+//            because the calculations are heavy, we start
+//            a thread here.
 //
 void GP_AUV::findAndPublishNextWpt()
 {
@@ -1524,24 +1560,28 @@ void GP_AUV::findAndPublishNextWpt()
   {
     if ( m_verbose )
       std::cout << GetAppName() << " :: calling to find next sample location" << std::endl;
-    findNextSampleLocation();
+    kickOffCalcMetric();
   }
   else
   {
-    // see if we can get result from future
+    // see if we can get result from future, which was created via kickOffCalcMetric
     std::cout << GetAppName() << " :: checking future m_future_next_pt" << std::endl;
     if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
       m_finding_nxt = false;
 
-      // publish greedy best
-      publishNextBestPosition();
+      // done with maximum entropy calculations
+
+      // now call functions for path planning
+      // called from inside publishNextWaypointLocations method
+      publishNextWaypointLocations();
 
       // continue survey
       if ( m_bhv_state != "survey" )
         m_Comms.Notify("STAGE","survey");
       m_mission_state = STATE_SAMPLE;
-      publishStates("findAndPublishWpt");
+      // publish states for debugging/eval purposes
+      publishStates("findAndPublishNextWpt");
     }
   }
 }
