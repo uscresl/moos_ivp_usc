@@ -33,7 +33,7 @@ class LonLatToWptUpdate : public CMOOSApp
     // Own functions
     void initGeodesy();
     bool lonLatToUTM (double lon, double lat, double & lx, double & ly );
-    void publishWpt(double lx, double ly);
+    void publishWpts(std::string list_of_waypoints);
 
     // Configuration variables
     std::string m_input_var_lonlat;
@@ -45,4 +45,4 @@ class LonLatToWptUpdate : public CMOOSApp
     CMOOSGeodesy m_geodesy;
 };
 
-#endif 
+#endif
