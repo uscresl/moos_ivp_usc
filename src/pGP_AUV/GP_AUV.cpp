@@ -694,6 +694,7 @@ void GP_AUV::addPatternToGP(double veh_lon, double veh_lat, double value)
   // log GP: take log (ln) of measurement
   double save_val = m_use_log_gp ? log(value) : value;
 
+
   // downsampled data for hyperparam optimization
   if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
   {
@@ -921,6 +922,94 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
   }
 }
 
+double GP_AUV::pathLength(GraphNode *start_node, GraphNode *end_node, double start_time)
+{
+  // Path length is the number of nodes between start and end nodes.
+}
+
+std::vector< GraphNode* > GP_AUV::getAllMiddleNodes(GraphNode * start_node, GraphNode * end_node)
+{
+  // Get all nodes between start and end nodes.
+}
+
+std::vector< double > GP_AUV::getAllMiddleTimes(GraphNode *middle_node, double start_time, double end_time)
+{
+  // Get all times between start and end times.
+}
+
+std::vector< GraphNode* > GP_AUV::getPathNodes(std::vector<GraphNode *> first_half_path, double start_time)
+{
+  // Get all path nodes for the given path starting at given start time.
+}
+
+std::vector< GraphNode* > GP_AUV::getConcatenatedPath(std::vector<GraphNode*> first_half_path, std::vector<GraphNode*> second_half_path)
+{
+  // Get a concatenated path for first and second halves of the path.
+}
+
+double GP_AUV::getInformativeValue(std::vector< GraphNode* > cur_path, double start_time)
+{
+  // Objective function to get the entropy of a path.
+}
+
+std::vector<GraphNode*> GP_AUV::generalizedRecursiveGreedy(GraphNode* start_node, GraphNode* end_node, double start_time, double end_time, std::set< GraphNode* > ground_set, unsigned int max_depth)
+{
+  // TODO: Remove time consideration from the algorithm.
+  // TODO: Make path operations consitent with path data structure.
+  if ( pathLength(start_node, end_node, start_time) > end_time - start_time )
+  {
+    // Length of path is greater than the remaining budget so a path is infeasible
+    return (std::vector<GraphNode*>(2, NULL));
+  }
+
+  std::vector< GraphNode* > best_path = std::vector< GraphNode* >();
+  best_path.push_back(start_node); 
+  best_path.push_back(end_node);
+
+  if ( max_depth = 0 )
+  {
+    // Return the current path when max depth reached
+    return (best_path);
+  }
+
+  double best_informative_value = std::numeric_limits< double >::min();
+
+  std::vector< GraphNode* > all_middle_nodes = getAllMiddleNodes(start_node, end_node);
+  for ( std::vector< GraphNode* >::iterator middle_node = all_middle_nodes.begin(); middle_node != all_middle_nodes.end() ; middle_node++ )
+  {
+    std::vector< double > all_middle_times = getAllMiddleTimes(*middle_node, start_time, end_time);
+    for ( std::vector< double >::iterator middle_time = all_middle_times.begin(); middle_time != all_middle_times.end(); middle_time++ )
+    {
+      std::vector< GraphNode* > first_half_path = generalizedRecursiveGreedy(start_node, *middle_node, start_time, *middle_time, ground_set, max_depth - 1);
+
+      std::vector< GraphNode* > path_nodes = getPathNodes(first_half_path, start_time);
+      std::set< GraphNode* > second_half_ground_set(ground_set.begin(), ground_set.end());
+      second_half_ground_set.insert(path_nodes.begin(), path_nodes.end());
+
+      std::vector< GraphNode* > second_half_path = generalizedRecursiveGreedy(*middle_node, end_node, *middle_time, end_time, second_half_ground_set, max_depth - 1);
+
+      std::vector< GraphNode* > cur_path = getConcatenatedPath(first_half_path, second_half_path);
+      double cur_path_informative_value = getInformativeValue(cur_path, start_time);
+
+      if ( cur_path_informative_value > best_informative_value )
+      {
+        // Concatenate two halves and assign it to the current best path
+        best_path = cur_path;
+        best_informative_value = cur_path_informative_value;
+      }
+    }
+  }
+  return best_path;
+}
+
+//---------------------------------------------------------
+// Procedure: recursiveGreedyWptSelection()
+//            recursively check over unvisited predictions to find best (greedy)
+//
+void GP_AUV::recursiveGreedyWptSelection(Eigen::Vector2d & best_location)
+{
+
+}
 
 //---------------------------------------------------------
 // Procedure: publishNextBestPosition

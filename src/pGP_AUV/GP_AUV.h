@@ -30,6 +30,8 @@
 
 #include <Eigen/StdVector>
 
+#include "GraphNode.h"
+
 class GP_AUV : public CMOOSApp
 {
  public:
@@ -74,6 +76,23 @@ class GP_AUV : public CMOOSApp
 
    // path planning & passing on to behavior
    void greedyWptSelection(Eigen::Vector2d & best_location);
+
+   double pathLength(GraphNode *start_node, GraphNode *end_node, double start_time);
+
+   std::vector< GraphNode* > getAllMiddleNodes(GraphNode * start_node, GraphNode * end_node);
+
+   std::vector< double > getAllMiddleTimes(GraphNode *middle_node, double start_time, double end_time);
+
+   std::vector< GraphNode* > getPathNodes(std::vector<GraphNode *> first_half_path, double start_time);
+
+   std::vector< GraphNode* > getConcatenatedPath(std::vector<GraphNode*> first_half_path, std::vector<GraphNode*> second_half_path);
+
+   double getInformativeValue(std::vector< GraphNode* > cur_path, double start_time);
+
+   void recursiveGreedyWptSelection(Eigen::Vector2d & best_location);
+
+   std::vector< GraphNode* > generalizedRecursiveGreedy(GraphNode* start_node, GraphNode* end_node, double start_time, double end_time, std::set< GraphNode* > ground_set, unsigned int max_depth);
+ 
    void publishNextBestPosition();
 
    // timed saving of GP
