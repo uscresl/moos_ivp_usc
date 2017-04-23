@@ -32,6 +32,9 @@
 // init srand
 #include <chrono>
 
+// include GraphNode
+#include "GraphNode.h"
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -118,6 +121,8 @@ GP_AUV::GP_AUV() :
   int rand_seed = (time.tv_sec * 1000) + (time.tv_usec / 1000);
   std::cout << GetAppName() << " :: rand_seed: " << rand_seed << std::endl;
   srand(rand_seed);
+
+  std::map<int, GraphNode> sampling_locations;
 }
 
 GP_AUV::~GP_AUV()
@@ -921,6 +926,178 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
   }
 }
 
+//---------------------------------------------------------
+// Procedure: dynamicProgrammingWptSelection()
+//            check over all predictions to find best (dynamic programming method)
+//
+void GP_AUV::dynamicProgrammingWptSelection(Eigen::Vector2d & best_location) {
+  // needs:
+  // 1. how to calculate upper and lower bounds
+  // 2. how to determine user-defined value a
+
+  // continue algorithm if difference between upper and lower bounds is greater than user-specified bounds
+  double upper_bounds;
+  double lower_bounds;
+  double user_specified_bounds;
+
+  if (upper_bounds - lower_bounds > user_specified_bounds) {
+    // create vector of posterior entropy values to use for dynamic programming
+    std::vector<double> posterior_entropy_values;
+
+    // check all unvisited locations
+    for ( auto loc : sampling_locations )
+    {
+      // get unvisited location
+      Eigen::Vector2d y = loc.get_value();
+      double y_loc[2] = {y(0), y(1)};
+
+      // calculate its posterior entropy
+      double pred_mean;
+      double pred_cov;
+      gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
+
+      // normal distribution
+      //  1/2 ln ( 2*pi*e*sigma^2 )
+      double post_entropy;
+      if ( !m_use_log_gp )
+        post_entropy = log( 2 * M_PI * exp(1) * pred_cov);
+      else
+      {
+        // lognormal distribution
+        double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
+        post_entropy = var_part + pred_mean;
+      }
+
+      m_unvisited_pred_metric.insert(std::pair<size_t, double>(loc, post_entropy));
+      posterior_entropy_values.push_back(post_entropy);
+    }
+  }
+
+  // find best possible path and the neighbor that leads to it
+  calcMaxME(posterior_entropy_values, sampling_locations, ); // figure out index to pass in
+
+  // backtrack and update upper and lower bounds
+  upper_bounds = // max entropy calculation
+  lower_bounds = // min entropy calculation
+
+}
+
+/* NOTE: When I did dynamic programming questions in CSCI270, there was always a bounds,
+* so I knew when to stop running the algorithm - not sure what to do in this case when there isn't necessarily
+* a desired end location. May need suggestions for how to approach this.
+*/
+
+//---------------------------------------------------------
+// Procedure: calcMaxME
+//            dynamic programming method to calculate max entropy
+//
+int GP_AUV::calcMaxME(std::vector<double> post_entropy_values, std::map<int, GraphNode> sampling_locations, int index) {
+  if (index == 0) {
+    return post_entropy_values[index];
+  }
+  else if {
+    return post_entropy_values[index]
+          + max(calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_left_neighbour())),
+                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_right_neighbour())),
+                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_front_neighbour())));
+
+  }
+}
+
+//---------------------------------------------------------
+// Procedure: findIndexOfNode()
+//
+//
+int GP_AUV::findIndexOfNode(GraphNode node) {
+  std::map<int, GraphNode>::iterator it;
+  for (it = sampling_locations.begin(); it != sampling_locations.end(); ++it) {
+    if (it->second == node) {
+      return it->first;
+    }
+  }
+
+}
+
+// this function should be replaced by the new calculate maximum entropy function
+
+//---------------------------------------------------------
+// Procedure: calcME
+//            for each unvisited neighbor
+//            calculate the max ME for a path
+//            starting at that neighbor
+//            return the neighbor that would produce path with max ME
+//
+// void GP_AUV::calcME() {
+//   if ( m_verbose )
+//     std::cout << GetAppName() << " :: max entropy start" << std::endl;
+//   m_unvisited_pred_metric.clear();
+//
+//   std::clock_t begin = std::clock();
+//   if ( m_debug )
+//     std::cout << GetAppName() << " :: try for lock gp" << std::endl;
+//   // lock for access to m_gp
+//   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
+//   // use unique_lock here, such that we can release mutex after m_gp operation
+//   while ( !gp_lock.try_lock() ) {}
+//   if ( m_debug )
+//     std::cout << GetAppName() << " :: make copy GP" << std::endl;
+//   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
+//   // release lock
+//   gp_lock.unlock();
+//
+//   if ( m_debug )
+//     std::cout << GetAppName() << " :: try for lock map" << std::endl;
+//   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+//   while ( !map_lock.try_lock() ){}
+//   // make copy of map to use instead of map,
+//   // such that we do not have to lock it for long
+//   std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > unvisited_map_copy;
+//   // calculate for all, because we need it for density voronoi calc for other vehicles
+//   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
+//   map_lock.unlock();
+//
+//   if ( m_debug )
+//     std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
+//
+//   // create vector of posterior entropy values to use for dynamic programming
+//   std::vector<double> posterior_entropy_values;
+//
+//   // for each unvisited location
+//   for ( auto y_itr : unvisited_map_copy )
+//   {
+//     // get unvisited location
+//     Eigen::Vector2d y = y_itr.second;
+//     double y_loc[2] = {y(0), y(1)};
+//
+//     // calculate its posterior entropy
+//     double pred_mean;
+//     double pred_cov;
+//     gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
+//
+//     // normal distribution
+//     //  1/2 ln ( 2*pi*e*sigma^2 )
+//     double post_entropy;
+//     if ( !m_use_log_gp )
+//       post_entropy = log( 2 * M_PI * exp(1) * pred_cov);
+//     else
+//     {
+//       // lognormal distribution
+//       double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
+//       post_entropy = var_part + pred_mean;
+//     }
+//
+//     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
+//     posterior_entropy_values.push_back(post_entropy);
+//   }
+//
+//   std::clock_t end = std::clock();
+//   if ( m_verbose )
+//     std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+//
+//   // copy of GP and unvisited_map get destroyed when this function exits
+//   delete gp_copy;
+//   return 0;
+// }
 
 //---------------------------------------------------------
 // Procedure: publishNextBestPosition
