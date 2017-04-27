@@ -318,11 +318,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << '\n';
         std::cout << GetAppName() << " :: processing msg? "
-                  << (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+                  << ((m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF ) && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
                   << std::endl;
       }
 
-      if ( !own_msg )
+      if ( !own_msg && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
       {
         bool final_surface = finalSurface(sval);
         std::cout << GetAppName() << " :: Received surface request for final surface? " << final_surface << std::endl;
