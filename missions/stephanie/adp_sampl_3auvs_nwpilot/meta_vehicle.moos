@@ -79,8 +79,11 @@ ProcessConfig = ANTLER
   Run = pLonLatToWptUpdate @ NewConsole = false
 
   #ifdef ADAPTIVE_WPTS yes
-  Run = uTimerScript @ NewConsole = false
   Run = pPublishAfterX @ NewConsole = false
+  #endif
+
+  #ifdef ADP_START_PILOT random
+  Run = uTimerScript @ NewConsole = false
   #endif
 
   #ifdef USE_ACOMMS yes
@@ -341,7 +344,7 @@ ProcessConfig = pRePublishDataPtWithNav
 #endif
 
 // stop the random waypoints in the static state
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADP_START_PILOT random
 ProcessConfig = uTimerScript
 {
   AppTick = 4
@@ -370,3 +373,4 @@ ProcessConfig = uTimerScript
 
   status_var = UTS_STATUS
 }
+#endif
