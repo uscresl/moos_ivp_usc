@@ -576,12 +576,13 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
   // separate by semicolon
   std::vector<std::string> sample_points = parseString(input_string, ';');
   // for each, add to vector
-  m_sample_locations.reserve(sample_points.size());
+  m_sample_graph_nodes.reserve(sample_points.size());
 
   std::ofstream ofstream_loc;
   std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
   ofstream_loc.open(m_file_loc, std::ios::out);
 
+  size_t lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
   for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
   {
     std::string location = sample_points.at(id_pt);
@@ -596,9 +597,29 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     Eigen::Vector2d loc_vec;
     loc_vec(0) = lon;
     loc_vec(1) = lat;
-    m_sample_points_unvisited.insert( std::pair<size_t, Eigen::Vector2d>(id_pt, loc_vec) );
+
     // copy the points to have all sample points for easier processing for predictions
-    m_sample_locations.push_back(std::pair<double, double>(lon, lat));
+    m_sample_graph_nodes.push_back(GraphNode( loc_vec, 0.0 ));
+
+    GraphNode* graph_node = &m_sample_graph_nodes.back();
+    size_t left_neighbour_index = id_pt - lanes_y;
+    size_t back_neighbour_index = id_pt - 1;
+    GraphNode* left_neighbour = left_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[left_neighbour_index];
+    GraphNode* back_neighbour = back_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[back_neighbour_index];
+    graph_node->set_left_neighbour(left_neighbour);
+    if ( left_neighbour )
+    {
+      left_neighbour->set_right_neighbour(graph_node);
+    }
+    graph_node->set_back_neighbour(back_neighbour);
+    if ( back_neighbour )
+    {
+      back_neighbour->set_front_neighbour(graph_node);
+    }
+
+    // Alternative would be to have objects in maps or allocating them dynamically.
+    m_sample_points_unvisited.insert( std::pair<size_t, GraphNode*>(id_pt, graph_node) );
+
     // save to file
     ofstream_loc << std::setprecision(15) << lon << ", " << lat << '\n';
 
@@ -734,7 +755,7 @@ bool GP_AUV::needToUpdateMaps(size_t grid_index)
     // add mutex for changing of global maps
     std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
     while ( !map_lock.try_lock() ){}
-    std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > >::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
+    std::unordered_map<size_t, GraphNode*>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
     map_lock.unlock();
 
     return ( curr_loc_itr != m_sample_points_unvisited.end() );
@@ -777,11 +798,11 @@ void GP_AUV::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
   while ( !map_lock.try_lock() ){}
 
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
+  std::unordered_map<size_t, GraphNode*>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
   if ( curr_loc_itr != m_sample_points_unvisited.end() )
   {
     // remove point from unvisited set
-    Eigen::Vector2d move_pt = curr_loc_itr->second;
+    Eigen::Vector2d move_pt = curr_loc_itr->second->get_location();
 
     // check if the sampled point was nearby, if not, there's something wrong
     bool pt_nearby = checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
@@ -791,7 +812,7 @@ void GP_AUV::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     }
 
     // add the point to the visited set
-    m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
+    m_sample_points_visited.insert(std::pair<size_t, GraphNode*>(index, curr_loc_itr->second));
 
     // and remove it from the unvisited set
     m_sample_points_unvisited.erase(curr_loc_itr);
@@ -875,11 +896,11 @@ void GP_AUV::kickOffCalcMetric()
 //
 void GP_AUV::getRandomStartLocation()
 {
-  int random_idx = (int)(rand() % (m_sample_locations.size()));
-  std::pair<double, double> rand_loc = m_sample_locations.at(random_idx);
+  int random_idx = (int)(rand() % (m_sample_graph_nodes.size()));
+  Eigen::Vector2d rand_loc = m_sample_graph_nodes.at(random_idx).get_location();
 
   std::ostringstream output_stream;
-  output_stream << std::setprecision(15) << rand_loc.first << "," << rand_loc.second;
+  output_stream << std::setprecision(15) << rand_loc(0) << "," << rand_loc(1);
   m_Comms.Notify(m_output_var_pred, output_stream.str());
 
   // update state vars
@@ -904,11 +925,11 @@ void GP_AUV::greedyWptSelection(std::string & next_waypoint)
   size_t best_so_far_idx = -1;
 
   // check for all unvisited locations
-  for ( auto loc : m_unvisited_pred_metric )
+  for ( auto loc : m_sample_points_unvisited )
   {
-    if ( loc.second > best_so_far )
+    if ( loc.second->get_value() > best_so_far )
     {
-      best_so_far = loc.second;
+      best_so_far = loc.second->get_value();
       best_so_far_idx = loc.first;
     }
   }
@@ -924,7 +945,7 @@ void GP_AUV::greedyWptSelection(std::string & next_waypoint)
       std::cout << GetAppName() << " :: Error: best is not in unsampled locations" << std::endl;
     else
     {
-      best_location = best_itr->second;
+      best_location = best_itr->second->get_location();
 
       // app feedback
       if ( m_verbose )
@@ -1081,7 +1102,6 @@ size_t GP_AUV::calcMECriterion()
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: max entropy start" << std::endl;
-  m_unvisited_pred_metric.clear();
 
   std::clock_t begin = std::clock();
   if ( m_debug )
@@ -1102,19 +1122,18 @@ size_t GP_AUV::calcMECriterion()
   while ( !map_lock.try_lock() ){}
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
-  std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > unvisited_map_copy;
+  std::vector<GraphNode> sample_graph_node_copy(m_sample_graph_nodes.begin(), m_sample_graph_nodes.end());
   // calculate for all, because we need it for density voronoi calc for other vehicles
-  unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
+    std::cout << GetAppName() << " :: calc max entropy, size map: " << sample_graph_node_copy.size() << std::endl;
 
   // for each unvisited location
-  for ( auto y_itr : unvisited_map_copy )
+  for ( auto y_itr : sample_graph_node_copy )
   {
     // get unvisited location
-    Eigen::Vector2d y = y_itr.second;
+    Eigen::Vector2d y = y_itr.get_location();
     double y_loc[2] = {y(0), y(1)};
 
     // calculate its posterior entropy
@@ -1134,8 +1153,16 @@ size_t GP_AUV::calcMECriterion()
       post_entropy = var_part + pred_mean;
     }
 
-    m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
+    y_itr.set_value(post_entropy);
   }
+
+  while ( !map_lock.try_lock() ){}
+  // update map entropies from calculated values in copy
+  for ( size_t i = 0; i < sample_graph_node_copy.size(); i++)
+  {
+    m_sample_graph_nodes[i].set_value(sample_graph_node_copy[i].get_value());
+  }
+  map_lock.unlock();
 
   std::clock_t end = std::clock();
   if ( m_verbose )
@@ -1356,23 +1383,23 @@ void GP_AUV::makeAndStorePredictions()
 
   std::clock_t begin = std::clock();
 
-  std::vector< std::pair<double, double> >::iterator loc_itr;
+  std::vector< GraphNode >::iterator loc_itr;
   // get the predictive mean and var values for all sample locations
   std::vector<double> all_pred_means_lGP;
   std::vector<double> all_pred_vars_lGP;
   std::vector<double> all_pred_mu_GP;
   std::vector<double> all_pred_sigma2_GP;
   // pre-alloc vectors
-  size_t nr_sample_locations = m_sample_locations.size();
+  size_t nr_sample_locations = m_sample_graph_nodes.size();
   all_pred_means_lGP.reserve(nr_sample_locations);
   all_pred_vars_lGP.reserve(nr_sample_locations);
   all_pred_mu_GP.reserve(nr_sample_locations);
   all_pred_sigma2_GP.reserve(nr_sample_locations);
 
   // make predictions for all sample locations
-  for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
+  for ( loc_itr = m_sample_graph_nodes.begin(); loc_itr < m_sample_graph_nodes.end(); loc_itr++ )
   {
-    double loc[2] {loc_itr->first, loc_itr->second};
+    double loc[2] {loc_itr->get_location()[0], loc_itr->get_location()[1]};
     double pred_mean_GP;
     double pred_var_GP;
     gp_copy->f_and_var(loc, pred_mean_GP, pred_var_GP);

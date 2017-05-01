@@ -187,13 +187,12 @@ class GP_AUV : public CMOOSApp
    "STATE_IDLE", "STATE_CALCWPT", "STATE_SAMPLE", "STATE_HPOPTIM", "STATE_DONE",
    "STATE_SURFACING" }[m_mission_state]; };
 
-   // maps for storing visited and unvisited sampling location (size_t index, Eigen::Vector2d location),
-   std::unordered_map< size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > m_sample_points_unvisited;
-   std::unordered_map< size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > m_sample_points_visited;
-   // vector for storing all sampling locations
-   std::vector< std::pair<double, double> > m_sample_locations;
-   // map for storing all sample locations 'value' given metric (eg posterior entropy)
-   std::unordered_map<size_t, double> m_unvisited_pred_metric;
+   // maps for storing visited and unvisited sampling graph nodes (size_t index, GraphNode* graph_node)
+   std::unordered_map< size_t, GraphNode* > m_sample_points_unvisited;
+   std::unordered_map< size_t, GraphNode* > m_sample_points_visited;
+   // vector for storing all sampling graph nodes
+   std::vector< GraphNode > m_sample_graph_nodes;
+
 
    // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess * m_gp;
