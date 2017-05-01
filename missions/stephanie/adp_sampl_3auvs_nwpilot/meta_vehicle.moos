@@ -296,28 +296,28 @@ ProcessConfig = pPublishAfterX
   // how many seconds after above var/val should we publish?
   // you can give either a number, or a range (eg. 10:20)
 //  publish_after_secs = 
-// old area
-//#ifdef NR_VEHICLES 1
-//  publish_after_secs = 8571:8660 //TODO update
-//#endif
-//#ifdef NR_VEHICLES 2
-//  publish_after_secs = 3359:3531 
-//#endif
-//#ifdef NR_VEHICLES 3
-//  publish_after_secs = 2641:2818 //2552:2756
-//#endif
-
-// bigger1
+  
+  // old area
 #ifdef NR_VEHICLES 1
-  publish_after_secs = 6400:6450 //TODO update
+  publish_after_secs = 6400:6450  // from FSR 1 AUV sims
 #endif
 #ifdef NR_VEHICLES 2
-  publish_after_secs = 4950:5050 
+  publish_after_secs = 3359:3531 
 #endif
 #ifdef NR_VEHICLES 3
-  publish_after_secs = 3950:4050
+  publish_after_secs = 2641:2818 //2552:2756
 #endif
 
+//// bigger1
+//#ifdef NR_VEHICLES 1
+//  publish_after_secs = 6400:6450 //TODO update
+//#endif
+//#ifdef NR_VEHICLES 2
+//  publish_after_secs = 4950:5050 
+//#endif
+//#ifdef NR_VEHICLES 3
+//  publish_after_secs = 3950:4050
+//#endif
 
   // the var/val set to publish
   publish_var = MISSION_TIME
@@ -356,16 +356,16 @@ ProcessConfig = uTimerScript
   event = var=ADP_PTS,val="adaptive",time=986:987
   event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
 #endif
-#ifdef NR_VEHICLES 2
-// TODO update times
-  event = var=ADP_PTS,val="adaptive",time=550:600
-  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
-#endif
-#ifdef NR_VEHICLES 3
-// TODO update times
-  event = var=ADP_PTS,val="adaptive",time=350:400
-  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
-#endif
+//#ifdef NR_VEHICLES 2
+//// TODO update times
+//  event = var=ADP_PTS,val="adaptive",time=550:600
+//  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
+//#endif
+//#ifdef NR_VEHICLES 3
+//// TODO update times
+//  event = var=ADP_PTS,val="adaptive",time=350:400
+//  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
+//#endif
 
   reset_max = 0
 //  reset_time = all-posted
