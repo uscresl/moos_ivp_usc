@@ -100,7 +100,8 @@ GP::GP() :
   m_downsample_factor(4),
   m_first_surface(true),
   m_area_buffer(5.0),
-  m_bhv_state("")
+  m_bhv_state(""),
+  m_adp_state("")
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -310,6 +311,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == "STAGE" )
       m_bhv_state = sval;
+    else if ( key == "ADP_PTS" )
+      m_adp_state = sval;
     else if ( key == "REQ_SURFACING_REC" )
     { // receive surfacing request from other vehicle
       // need to send ack, also start surfacing
@@ -536,7 +539,8 @@ bool GP::Iterate()
         }
         // tds with voronoi, trigger for when to request data sharing
         else if ( m_use_voronoi && m_voronoi_subset.size() > 0 &&
-             ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
+             ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) &&
+                 m_adp_state != "static" )
         {
           #ifdef BUILD_VORONOI
           if ( needToRecalculateVoronoi() )
@@ -868,6 +872,7 @@ void GP::registerVariables()
 
   // get current bhv state
   m_Comms.Register("STAGE", 0);
+  m_Comms.Register("ADP_PTS", 0);
 
   // get trigger end mission
   m_Comms.Register("MISSION_TIME", 0);
