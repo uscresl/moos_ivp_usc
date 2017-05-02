@@ -14,6 +14,8 @@
 #include "math.h"
 #include <limits>
 
+#include <ctime>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -30,8 +32,13 @@ PublishAfterX::PublishAfterX() :
 {
   // class variable instantiations can go up here
 
-  // seed the random number generator
-  srand((int)time(0));
+  // seed the random number generator, using
+  // current date/time based on current system
+  // use minutes to get same seed on multi-robot sim
+  time_t now = time(nullptr);
+  tm *local_tm = localtime(&now);
+  srand(local_tm->tm_min);
+
 }
 
 //---------------------------------------------------------
