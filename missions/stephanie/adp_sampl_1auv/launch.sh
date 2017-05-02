@@ -5,7 +5,6 @@
 TIME_WARP=1
 JUST_MAKE="no"
 ADAPTIVE="no"
-RUN_SIMULATION="yes"
 AREA="old"
 GUI="true"
 CG="false"
@@ -17,17 +16,12 @@ for ARGI; do
         printf "  Switches:          \n"
         printf "  --just_make, -j    \n" 
         printf "  --adaptive, -a     \n"
-        printf "  --tds, -t          \n"
-        printf "  --acomms, -c       \n"
-        printf "  --voronoi, -v      \n"
-        printf "  --2auvs            \n"
-        printf "  --3auvs            \n"
         printf "  --bigger1, -b1     \n"
         printf "  --bigger2, -b2     \n"
         printf "  --nogui, -ng       \n"
         printf "  --cg, -cg          \n"
         printf "  --cross_pilot, -cp \n"
-        printf "  --help, -h         \n" 
+        printf "  --help, -h         \n"
         exit 0;
     elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
         TIME_WARP=$ARGI
@@ -43,7 +37,7 @@ for ARGI; do
         GUI="no"
     elif [ "$ARGI" = "--cg" -o "${ARGI}" = "-cg" ]; then
         CG="yes"
-    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp"]; then
+    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp" ]; then
         ADP_START="cross"
     else 
         printf "Bad Argument: %s \n" $ARGI
@@ -139,7 +133,7 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="../../../data"        \
    SHARE_LISTEN=$SHORE_LISTEN VPORT=$SHORE_VPORT SERVER_HOST=$SERVERHOST       \
    LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR   \
-   PAINT_SEGLIST=$PAINTSEGLIST   SIMULATION=$RUN_SIMULATION     \
+   PAINT_SEGLIST=$PAINTSEGLIST \
    DROP_PERCENTAGE=$DROP_PCT  USE_GUI=$GUI
 
 # START HEADING same for all vehicles - can be customized (not needed here)
