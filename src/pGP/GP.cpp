@@ -2479,12 +2479,12 @@ void GP::tdsReceiveData()
       }
       else
       {
-        if ( m_use_voronoi )
-        {
+//        if ( m_use_voronoi )
+//        {
           // change 20161125, run HPOPTIM always
           // let the rest be handled by that state
           m_mission_state = STATE_HPOPTIM;
-          publishStates("tdsReceiveData_use_voronoi");
+          publishStates("tdsReceiveData_not_first_or_final");
 
 //          // after points received, need to run a round of predictions (unvisited set has changed!)
 //          m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
@@ -2494,12 +2494,12 @@ void GP::tdsReceiveData()
 //          // need to switch state - future is being checked in STATE_HPOPTIM;
 //          m_mission_state = STATE_HPOPTIM;
 //          publishStates("tdsReceiveData_use_voronoi");
-        }
-        else
-        {
-          std::cout << GetAppName() << " :: tdsResetStateVars via tdsReceiveData - not m_use_voronoi" << std::endl;
-          tdsResetStateVars();
-        }
+//        }
+//        else
+//        {
+//          std::cout << GetAppName() << " :: tdsResetStateVars via tdsReceiveData - not m_use_voronoi" << std::endl;
+//          tdsResetStateVars();
+//        }
       }
     }
     // else, continue waiting
