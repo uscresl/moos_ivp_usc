@@ -582,7 +582,7 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
   std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
   ofstream_loc.open(m_file_loc, std::ios::out);
 
-  size_t lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
+  long lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
   for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
   {
     std::string location = sample_points.at(id_pt);
@@ -602,10 +602,10 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     m_sample_graph_nodes.push_back(GraphNode( loc_vec, 0.0 ));
 
     GraphNode* graph_node = &m_sample_graph_nodes.back();
-    size_t left_neighbour_index = id_pt - lanes_y;
-    size_t back_neighbour_index = id_pt - 1;
+    long left_neighbour_index = id_pt - (lanes_y + 1);
+    long back_neighbour_index = id_pt - 1;
     GraphNode* left_neighbour = left_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[left_neighbour_index];
-    GraphNode* back_neighbour = back_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[back_neighbour_index];
+    GraphNode* back_neighbour = back_neighbour_index < 0 || id_pt % (lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[back_neighbour_index];
     graph_node->set_left_neighbour(left_neighbour);
     if ( left_neighbour )
     {
