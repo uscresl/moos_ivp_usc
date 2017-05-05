@@ -2521,7 +2521,7 @@ void GP::tdsResetStateVars()
   {
     std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
     m_mission_state = STATE_CALCWPT;
-    publishStates("tdsResetStateVars_adp_nrveh_le_1");
+    publishStates("tdsResetStateVars_adp_nrveh_gt_1");
   }
   else
   {
