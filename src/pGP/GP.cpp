@@ -90,6 +90,9 @@ GP::GP() :
   m_received_ready(false),
   m_output_var_handshake_data_sharing(""),
   m_last_ready_sent(0),
+  m_handshake_timer_counter(0),
+  m_tx_timer_counter(0),
+  m_req_surf_timer_counter(0),
   m_acomms_sharing(false),
   m_last_acomms_string(""),
   m_use_voronoi(false),
@@ -457,18 +460,19 @@ bool GP::Iterate()
     return true;
   else
   {
-    if ( m_start_time < 1.0 )
-      m_start_time = MOOSTime(); // first time, set the start time of process
-
     // **** SAVING GP TO FILE (independent) **********************************//
     if ( m_mission_state != STATE_DONE && !(m_hp_optim_running && m_final_hp_optim) )
-    { // TODO consider if we want to run this during HP optimization stage (maybe all but last?)
-      // periodically (every 600s = 10min), store all GP predictions
+    {
+      // periodically (every X s), store all GP predictions
       // if we did not do so in the last second (apptick)
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 10) )
+           ((size_t)std::floor(MOOSTime()-m_start_time) % m_prediction_interval == 10) )
       {
-        std::cout << GetAppName() << " :: saving state at mission time: " << std::floor(MOOSTime()-m_start_time) << std::endl;
+        if ( m_verbose )
+        {
+          std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
+                    << std::floor(MOOSTime()-m_start_time)  << "(" << MOOSTime() << ")" << std::endl;
+        }
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
         m_last_pred_save = MOOSTime();
@@ -622,6 +626,17 @@ bool GP::Iterate()
             m_Comms.Notify("REQ_SURFACING","final");
           m_last_published_req_surf = MOOSTime();
         }
+        else {
+          // timer to not wait too long
+          m_req_surf_timer_counter++;
+          // if we waited > 5 min (2*300), continue
+          if ( m_req_surf_timer_counter > 600 )
+          {
+            m_mission_state = STATE_SURFACING;
+            publishStates("Iterate_STATE_REQ_SURF_timeout");
+            m_req_surf_timer_counter = 0;
+          }
+        }
         break;
       case STATE_ACK_SURF :
         // every second, generate var/val for acomms for surfacing
@@ -636,7 +651,6 @@ bool GP::Iterate()
           m_mission_state = STATE_HANDSHAKE;
           publishStates("Iterate_STATE_ACK_SURF_on_surface");
         }
-
         break;
       case STATE_HANDSHAKE :
         tdsHandshake();
@@ -646,6 +660,15 @@ bool GP::Iterate()
         {
           m_mission_state  = STATE_RX_DATA;
           publishStates("Iterate_STATE_TX_DATA_received_data");
+          m_tx_timer_counter = 0;
+        }
+        else if ( !m_calc_prevoronoi )
+        {
+          // run timer to avoid being stuck waiting for data
+          m_tx_timer_counter++;
+          // if waited for 5 min (2*300s), continue
+          if ( m_tx_timer_counter > 600 )
+            m_received_shared_data = true;
         }
         break;
       case STATE_RX_DATA :
@@ -803,6 +826,7 @@ bool GP::OnStartUp()
   data_thread.detach();
 
   // init last calculations times to start of process
+  m_start_time = MOOSTime();
   m_last_voronoi_calc_time = MOOSTime();
   m_last_published_req_surf = MOOSTime();
   m_last_published_req_surf_ack = MOOSTime();
@@ -1774,6 +1798,12 @@ void GP::endMission()
 
   // store predictions after HP optim
   m_finished = true;
+
+  if ( m_verbose )
+  {
+    std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
+              << std::floor(MOOSTime()-m_start_time)  << "(" << MOOSTime() << ")" << std::endl;
+  }
   std::thread pred_store(&GP::makeAndStorePredictions, this);
   pred_store.detach();
 }
@@ -1959,6 +1989,7 @@ void GP::getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double 
 //
 void GP::makeAndStorePredictions()
 {
+  std::clock_t begin = std::clock();
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   while ( !gp_lock.try_lock() ) {}
@@ -1966,9 +1997,13 @@ void GP::makeAndStorePredictions()
     std::cout << GetAppName() << " :: store predictions" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   gp_lock.unlock();
+  std::clock_t end = std::clock();
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions], at MOOSTime: "
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << MOOSTime() << std::endl;
 
-  std::clock_t begin = std::clock();
 
+  begin = std::clock();
   std::vector< std::pair<double, double> >::iterator loc_itr;
   // get the predictive mean and var values for all sample locations
   std::vector<double> all_pred_means_lGP;
@@ -2012,9 +2047,10 @@ void GP::makeAndStorePredictions()
       all_pred_vars_lGP.push_back(pred_var_GP);
     }
   }
-  std::clock_t end = std::clock();
+  end = std::clock();
   if ( m_verbose )
-    std::cout << GetAppName() << " :: runtime make predictions: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+    std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions], at MOOSTime: "
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << MOOSTime() << std::endl;
 
   begin = std::clock();
   // grab file writing mutex
@@ -2052,7 +2088,8 @@ void GP::makeAndStorePredictions()
 
   if ( m_finished )
   {
-    std::cout << GetAppName() << " :: " << m_db_uptime << " :: closing files." << std::endl;
+    if ( m_debug )
+      std::cout << GetAppName() << " :: " << m_db_uptime << " :: closing files." << std::endl;
     m_ofstream_pm_lGP.close();
     m_ofstream_pv_lGP.close();
     if ( m_use_log_gp )
@@ -2061,14 +2098,12 @@ void GP::makeAndStorePredictions()
       m_ofstream_psigma2_GP.close();
     }
   }
-
   file_write_lock.unlock();
-
   end = std::clock();
   if ( m_verbose )
   {
-    std::cout << GetAppName() << " :: runtime save to file: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-    std::cout << GetAppName() << " :: done saving predictions to file" << std::endl;
+    std::cout << GetAppName() << " :: runtime save to file [makeAndStorePredictions], at MOOSTime: "
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << MOOSTime() << std::endl;
   }
 
   // copy of GP gets destroyed when this function exits
@@ -2384,6 +2419,7 @@ void GP::tdsHandshake()
 
       // reset for next time
       m_received_ready = false;
+      m_handshake_timer_counter = 0;
     }
     else
     {
@@ -2396,6 +2432,12 @@ void GP::tdsHandshake()
         sendReady();
         m_last_ready_sent = moos_t;
       }
+      // update timer for timeout
+      m_handshake_timer_counter++;
+      // if we have not received all ready messages within 5 minutes, proceed
+      // 300s = 600 iterations
+      if ( m_handshake_timer_counter > 600)
+        m_received_ready = true;
     }
   }
 }
@@ -2413,6 +2455,8 @@ void GP::tdsReceiveData()
     // data received, need to add
     // TODO make sure we only kick this off once
     m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
+    if ( m_debug )
+      std::cout << GetAppName() << " :: kicking off processReceivedData" << std::endl;
     m_waiting = true;
   }
   else if ( m_waiting && !m_calc_prevoronoi )

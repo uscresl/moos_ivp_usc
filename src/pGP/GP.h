@@ -253,6 +253,9 @@ class GP : public CMOOSApp
    std::string m_output_var_handshake_data_sharing;
    size_t m_last_ready_sent;
    std::unordered_set<std::string> m_rec_ready_veh;
+   size_t m_handshake_timer_counter;
+   size_t m_tx_timer_counter;
+   size_t m_req_surf_timer_counter;
 
    // acomms data sharing
    bool m_acomms_sharing;
