@@ -1634,6 +1634,10 @@ size_t GP::calcMECriterion()
     std::cout << GetAppName() << " :: max entropy start" << std::endl;
   m_unvisited_pred_metric.clear();
 
+  // stop calculations if we are surfacing suddenly
+  if ( m_mission_state == STATE_SURFACING )
+    return 0;
+
   std::clock_t begin = std::clock();
   if ( m_debug )
     std::cout << GetAppName() << " :: try for lock gp" << std::endl;
@@ -1647,6 +1651,13 @@ size_t GP::calcMECriterion()
   // release lock
   gp_lock.unlock();
 
+  // stop calculations if we are surfacing suddenly
+  if ( m_mission_state == STATE_SURFACING )
+  {
+    delete gp_copy;
+    return 0;
+  }
+
   if ( m_debug )
     std::cout << GetAppName() << " :: try for lock map" << std::endl;
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
@@ -1658,12 +1669,23 @@ size_t GP::calcMECriterion()
   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
+  // stop calculations if we are surfacing suddenly
+  if ( m_mission_state == STATE_SURFACING )
+  {
+    delete gp_copy;
+    return 0;
+  }
+
   if ( m_debug )
     std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
 
   // for each unvisited location
   for ( auto y_itr : unvisited_map_copy )
   {
+    // stop calculations if we are surfacing suddenly
+    if ( m_mission_state == STATE_SURFACING )
+      break;
+
     // get unvisited location
     Eigen::Vector2d y = y_itr.second;
     double y_loc[2] = {y(0), y(1)};
@@ -1686,6 +1708,13 @@ size_t GP::calcMECriterion()
     }
 
     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
+  }
+
+  // stop calculations if we are surfacing suddenly
+  if ( m_mission_state == STATE_SURFACING )
+  {
+    delete gp_copy;
+    return 0;
   }
 
   std::clock_t end = std::clock();
@@ -2609,8 +2638,25 @@ void GP::findAndPublishNextWpt()
         m_mission_state = STATE_SAMPLE;
         publishStates("findAndPublishWpt");
       }
-    }
-  }
+      else
+      {
+        if ( m_timed_data_sharing && !m_use_voronoi )
+        {
+          // for TDS, we need to make sure we initiate surfacing,
+          // even if we were finding a new waypoint,
+          // such that we keep all vehicles synched
+          if ( m_num_vehicles > 1 &&
+               ( (size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval ) == 0 &&
+               (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
+          {
+            // switch to data sharing mode, to switch bhv to surface
+            m_mission_state = STATE_SURFACING;
+            publishStates("Iterate_STATE_SAMPLE_TDS");
+          }
+        }
+      } // else future check
+    } // else !m_finding_nxt
+  } // else m_precalc_pred_voronoi_done
 }
 
 #ifdef BUILD_VORONOI
