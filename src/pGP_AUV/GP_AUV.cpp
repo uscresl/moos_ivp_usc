@@ -582,7 +582,7 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
   std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
   ofstream_loc.open(m_file_loc, std::ios::out);
 
-  size_t lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
+  long lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
   for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
   {
     std::string location = sample_points.at(id_pt);
@@ -602,10 +602,10 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     m_sample_graph_nodes.push_back(GraphNode( loc_vec, 0.0 ));
 
     GraphNode* graph_node = &m_sample_graph_nodes.back();
-    size_t left_neighbour_index = id_pt - lanes_y;
-    size_t back_neighbour_index = id_pt - 1;
+    long left_neighbour_index = id_pt - (lanes_y + 1);
+    long back_neighbour_index = id_pt - 1;
     GraphNode* left_neighbour = left_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[left_neighbour_index];
-    GraphNode* back_neighbour = back_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[back_neighbour_index];
+    GraphNode* back_neighbour = back_neighbour_index < 0 || id_pt % (lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[back_neighbour_index];
     graph_node->set_left_neighbour(left_neighbour);
     if ( left_neighbour )
     {
@@ -726,7 +726,6 @@ void GP_AUV::addPatternToGP(double veh_lon, double veh_lat, double value)
   // GP: pass in value
   // log GP: take log (ln) of measurement
   double save_val = m_use_log_gp ? log(value) : value;
-
 
   // downsampled data for hyperparam optimization
   if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
@@ -1154,6 +1153,13 @@ size_t GP_AUV::calcMECriterion()
     }
 
     y_itr.set_value(post_entropy);
+  }
+
+  while ( !map_lock.try_lock() ){}
+  // update map entropies from calculated values in copy
+  for ( size_t i = 0; i < sample_graph_node_copy.size(); i++)
+  {
+    m_sample_graph_nodes[i].set_value(sample_graph_node_copy[i].get_value());
   }
 
   while ( !map_lock.try_lock() ){}
