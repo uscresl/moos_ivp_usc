@@ -633,6 +633,7 @@ bool GP::Iterate()
           if ( m_req_surf_timer_counter > 600 )
           {
             m_mission_state = STATE_SURFACING;
+            std::cout << GetAppName() << " :: m_req_surf_timer_counter timeout" << std::endl;
             publishStates("Iterate_STATE_REQ_SURF_timeout");
             m_req_surf_timer_counter = 0;
           }
@@ -660,7 +661,6 @@ bool GP::Iterate()
         {
           m_mission_state  = STATE_RX_DATA;
           publishStates("Iterate_STATE_TX_DATA_received_data");
-          m_tx_timer_counter = 0;
         }
         else if ( !m_calc_prevoronoi )
         {
@@ -668,7 +668,11 @@ bool GP::Iterate()
           m_tx_timer_counter++;
           // if waited for 5 min (2*300s), continue
           if ( m_tx_timer_counter > 600 )
+          {
             m_received_shared_data = true;
+            std::cout << GetAppName() << " :: m_tx_timer_counter timeout" << std::endl;
+            m_tx_timer_counter = 0;
+          }
         }
         break;
       case STATE_RX_DATA :
@@ -2419,7 +2423,6 @@ void GP::tdsHandshake()
 
       // reset for next time
       m_received_ready = false;
-      m_handshake_timer_counter = 0;
     }
     else
     {
@@ -2432,12 +2435,17 @@ void GP::tdsHandshake()
         sendReady();
         m_last_ready_sent = moos_t;
       }
+
       // update timer for timeout
       m_handshake_timer_counter++;
       // if we have not received all ready messages within 5 minutes, proceed
       // 300s = 600 iterations
-      if ( m_handshake_timer_counter > 600)
+      if ( m_handshake_timer_counter > 600 )
+      {
         m_received_ready = true;
+        std::cout << GetAppName() << " :: m_handshake_timer_counter timeout" << std::endl;
+        m_handshake_timer_counter = 0;
+      }
     }
   }
 }
