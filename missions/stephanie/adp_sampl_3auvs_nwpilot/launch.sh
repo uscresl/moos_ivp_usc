@@ -33,7 +33,7 @@ for ARGI; do
         printf "  --cross_pilot, -cp \n"
         printf "  --help, -h         \n" 
         exit 0;
-    elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
+    elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ] ; then 
         TIME_WARP=$ARGI
     elif [ "${ARGI}" = "--just_build" -o "${ARGI}" = "-j" ] ; then
         JUST_MAKE="yes"
@@ -43,21 +43,21 @@ for ARGI; do
         TDS="yes"
     elif [ "${ARGI}" = "--acomms" -o "${ARGI}" = "-c" ] ; then
         ACOMMS="yes"
-    elif [ "${ARGI}" = "--voronoi" -o "${ARGI}" = "-v" ]; then
+    elif [ "${ARGI}" = "--voronoi" -o "${ARGI}" = "-v" ] ; then
         VORONOI_PARTITIONING="yes"
     elif [ "${ARGI}" = "--2auvs" ] ; then
         NUM_VEHICLES=2
     elif [ "${ARGI}" = "--3auvs" ] ; then
         NUM_VEHICLES=3
-    elif [ "$ARGI" = "--bigger1" -o "${ARGI}" = "-b1" ]; then
+    elif [ "$ARGI" = "--bigger1" -o "${ARGI}" = "-b1" ] ; then
         AREA="bigger1"
-    elif [ "$ARGI" = "--bigger2" -o "${ARGI}" = "-b2" ]; then
+    elif [ "$ARGI" = "--bigger2" -o "${ARGI}" = "-b2" ] ; then
         AREA="bigger2"
-    elif [ "$ARGI" = "--nogui" -o "${ARGI}" = "-ng" ]; then
+    elif [ "$ARGI" = "--nogui" -o "${ARGI}" = "-ng" ] ; then
         GUI="no"
-    elif [ "$ARGI" = "--cg" -o "${ARGI}" = "-cg" ]; then
+    elif [ "$ARGI" = "--cg" -o "${ARGI}" = "-cg" ] ; then
         CG="yes"
-    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp" ]; then
+    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp" ] ; then
         ADP_START="cross"
     else 
         printf "Bad Argument: %s \n" $ARGI
@@ -66,7 +66,7 @@ for ARGI; do
 done
 
 # check if sim data file present
-if [ ! -f 'test.csv' ]; then 
+if [ ! -f 'test.csv' ] ; then 
 echo 'ERROR: No simulated data file presented. Please put a test.csv file in this folder'; exit 0;
 fi
 
@@ -79,11 +79,11 @@ PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="${MOOSIVP_USC_HOME}/proto"
 
 # paint survey area on pMarineViewer
-if [ ${AREA} = "bigger1" ]; then
+if [ ${AREA} = "bigger1" ] ; then
 # bigger 1
 PAINTSEGLIST="pts={600,900:600,1300:1200,1300:1200,900:600,900},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3"
 BHVOPREGION="label,OpRegion:375,875:375,1050:600,1320:1250,1320:1250,875"
-elif [ ${AREA} = "bigger2" ]; then
+elif [ ${AREA} = "bigger2" ] ; then
 # bigger 2
 PAINTSEGLIST="pts={700,700:700,1300:1200,1300:1200,700:700,700},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3"
 BHVOPREGION="label,OpRegion:375,875:375,1050:600,1320:1250,1320:1250,650:600,650"
@@ -103,13 +103,13 @@ HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_opt
 fi
 
 # config for lawnmower for actual GP model building
-if [ ${AREA} = "bigger1" ]; then
+if [ ${AREA} = "bigger1" ] ; then
 # bigger1
 LX=900
 LY=1100
 LW=600
 LH=400
-elif [ ${AREA} = "bigger2" ]; then
+elif [ ${AREA} = "bigger2" ] ; then
 # bigger2
 LX=950
 LY=1000
@@ -157,7 +157,7 @@ fi
 
 ##### specify for adaptive whether to use integrated cross or random pilot #####
 if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "cross" ] ; then
-  if [ ${AREA} = "bigger1" ]; then
+  if [ ${AREA} = "bigger1" ] ; then
     # 1auv cross
     PILOT_PTS1=600,900:1200,1300:600,1300:1200,900
     CROSS_END1=1200,900 # last wpt
@@ -177,7 +177,7 @@ if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "cross" ] ; then
       PILOT_PTS3=1000,900:1200,1300:1000,1300:1200,900  
       CROSS_END3=1200,900
     fi
-  elif [ ${AREA} = "bigger2" ]; then
+  elif [ ${AREA} = "bigger2" ] ; then
     # 1auv cross
     PILOT_PTS1=700,700:1200,1300:700,1300:1200,700
     CROSS_END1=1200,700 # last wpt
