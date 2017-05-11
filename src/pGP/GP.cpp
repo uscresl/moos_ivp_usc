@@ -466,7 +466,8 @@ bool GP::Iterate()
       // periodically (every X s), store all GP predictions
       // if we did not do so in the last second (apptick)
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_start_time) % m_prediction_interval == 10) )
+           ((size_t)std::floor(MOOSTime()-m_start_time) % m_prediction_interval == 10) &&
+           !m_final_hp_optim )
       {
         if ( m_verbose )
         {
@@ -567,7 +568,8 @@ bool GP::Iterate()
         if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
           Notify("STAGE","data_sharing");
 
-        if ( m_on_surface && (m_timed_data_sharing || m_use_voronoi) )
+        if ( m_on_surface && m_num_vehicles > 1 )
+        //(m_timed_data_sharing || m_use_voronoi) )
         {
           m_mission_state = STATE_HANDSHAKE;
           publishStates("Iterate_STATE_SURFACING_on_surface");
@@ -1747,6 +1749,8 @@ size_t GP::processReceivedData()
   size_t pts_added = 0;
   while ( !m_incoming_data_to_be_added.empty() )
   {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: adding received data, remaining: " << m_incoming_data_to_be_added.size() << std::endl;
     std::string data = m_incoming_data_to_be_added.back();
     m_incoming_data_to_be_added.pop_back();
     pts_added += handleMailReceivedDataPts(data);
