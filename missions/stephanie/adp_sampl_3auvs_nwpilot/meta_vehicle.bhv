@@ -333,6 +333,7 @@ Behavior = BHV_Waypoint
   pwt       = 100
   condition = MODE==LAWNMOWER_EW
   endflag   = STAGE=hpoptim
+  endflag   = MISSION_TIME=end
   updates   = WAYPOINT_UPDATES
   perpetual = false
 

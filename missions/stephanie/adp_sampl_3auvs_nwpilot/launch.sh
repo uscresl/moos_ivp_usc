@@ -93,15 +93,6 @@ PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_ar
 BHVOPREGION="label,OpRegion:400,920:400,1045:480,1215:600,1300:1000,1300:1000,920"
 fi
 
-# loiter for during hyperparameter optimization
-HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
-if [ $NUM_VEHICLES -ge 2 ] ; then
-HP_LOITER_CONFIG2="format=radial,x=470,y=990,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
-fi
-if [ $NUM_VEHICLES -ge 3 ] ; then
-HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
-fi
-
 # config for lawnmower for actual GP model building
 if [ ${AREA} = "bigger1" ] ; then
 # bigger1
@@ -133,10 +124,16 @@ LAWNMOWER2="format=lawnmower,x=${LX2},y=${LY},width=${LW2v},height=${LH},lane_wi
 elif [ $NUM_VEHICLES -ge 3 ] ; then
 LW3v=$[LW/3]
 LX1=$[LX-LW/3]
-LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
 LX3=$[LX+LW/3]
-LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+  if [ ${AREA} = "bigger2" ] ; then
+    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
+  else
+    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+  fi
 else
 LAWNMOWER1=$LAWNMOWER
 fi
@@ -276,10 +273,37 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
 
+if [ ${AREA} = "bigger2" ] ; then
+  START_POS1="635,790"
+  START_POS2="635,770"
+  START_POS3="635,750"
+  HP_LOITER_CONFIG="format=radial,x=655,y=720,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  if [ $NUM_VEHICLES -ge 2 ] ; then
+  HP_LOITER_CONFIG2="format=radial,x=655,y=750,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  fi
+  if [ $NUM_VEHICLES -ge 3 ] ; then
+  HP_LOITER_CONFIG3="format=radial,x=655,y=780,radius=10,pts=4,snap=1,label=hp_optimloiter"
+  fi
+
+else
+  START_POS1="430,950"
+  START_POS2="450,950"
+  START_POS3="410,950"
+
+  # loiter for during hyperparameter optimization
+  HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  if [ $NUM_VEHICLES -ge 2 ] ; then
+  HP_LOITER_CONFIG2="format=radial,x=470,y=990,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  fi
+  if [ $NUM_VEHICLES -ge 3 ] ; then
+  HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_optimloiter"
+  fi
+
+fi
+
 # The first vehicle community
 VNAME1="anna"
 START_DEPTH1="5"
-START_POS1="430,950"
 WAYPOINTS1="455,980:455,965:430,965:430,980:455,980"
 MODEMID1="1"
 VTYPE1="UUV" # UUV, SHIP
@@ -288,7 +312,6 @@ PREDICTIONS_PREFIX1="${VNAME1}_predictions"
 # The second vehicle community
 VNAME2="bernard"
 START_DEPTH2="5"
-START_POS2="450,950"
 WAYPOINTS2="455,980:455,965:430,965:430,980:455,980"
 MODEMID2="2"
 VTYPE2="UUV" # UUV, SHIP
@@ -298,7 +321,6 @@ PSHARE_BERNARD="./plugs/pShare_auv.moos"
 # The third vehicle community
 VNAME3="cornelis"
 START_DEPTH3="5"
-START_POS3="410,950"
 WAYPOINTS3="455,980:455,965:430,965:430,980:455,980"
 MODEMID3="3"
 VTYPE3="UUV" # UUV, SHIP
