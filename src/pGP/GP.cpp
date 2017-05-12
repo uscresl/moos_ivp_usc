@@ -523,7 +523,7 @@ bool GP::Iterate()
 
     // **** MAIN STATE MACHINE *********************************************//
     if ( m_debug )
-      std::cout << GetAppName() << " :: Current state: " << m_mission_state << std::endl;
+      std::cout << GetAppName() << " :: Current state: " << currentMissionStateString() << std::endl;
     switch ( m_mission_state )
     {
       case STATE_SAMPLE :
