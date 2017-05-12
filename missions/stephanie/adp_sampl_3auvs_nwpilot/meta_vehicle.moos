@@ -65,12 +65,12 @@ ProcessConfig = ANTLER
   Run = uSimBioSensor @ NewConsole = false
   //,XConfig=uSBSConfig
 
-  #ifdef USE_GUI true
-  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP @ NewConsole = true,XConfig=pGPConfig
-  #else
+//  #ifdef USE_GUI true
+//  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+//  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+//  #else
   Run = pGP @ NewConsole = false
-  #endif
+//  #endif
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -155,7 +155,11 @@ ProcessConfig = pGP
   output_filename_prefix = $(PREDICTIONS_PREFIX)
 
   // define the prediction interval (predict every X seconds)
+#ifdef SURVEY_AREA bigger2
+  prediction_interval = 480 // every 8 min, timed given LM duration 3AUVs
+#else
   prediction_interval = 300
+#endif
 
   // number of vehicles (data exchange?)
   nr_vehicles = $(NR_VEHICLES)
@@ -308,9 +312,9 @@ ProcessConfig = pPublishAfterX
   publish_after_secs = 2641:2818 //2552:2756
 #endif
 
-//// bigger1
+//// bigger1 //TODO update
 //#ifdef NR_VEHICLES 1
-//  publish_after_secs = 6400:6450 //TODO update
+//  publish_after_secs = 6400:6450 
 //#endif
 //#ifdef NR_VEHICLES 2
 //  publish_after_secs = 4950:5050 
