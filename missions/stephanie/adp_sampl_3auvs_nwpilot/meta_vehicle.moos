@@ -202,7 +202,11 @@ ProcessConfig = pGP
 #endif
 
   // take one in X data points for HP optimization
+#ifdef SURVEY_AREA bigger2
+  downsample_factor = 6
+#else
   downsample_factor = 4
+#endif
 
   // specify method of hyperparameter optimization ('cg' vs 'rprop')
   // default: rprop
