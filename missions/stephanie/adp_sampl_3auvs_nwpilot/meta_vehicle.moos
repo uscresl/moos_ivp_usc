@@ -304,28 +304,31 @@ ProcessConfig = pPublishAfterX
   // how many seconds after above var/val should we publish?
   // you can give either a number, or a range (eg. 10:20)
 //  publish_after_secs = 
-  
-  // old area
-#ifdef NR_VEHICLES 1
-  publish_after_secs = 6400:6450  // from FSR 1 AUV sims
-#endif
-#ifdef NR_VEHICLES 2
-  publish_after_secs = 3359:3531 
-#endif
-#ifdef NR_VEHICLES 3
-  publish_after_secs = 2641:2818 //2552:2756
-#endif
 
-//// bigger1 //TODO update
-//#ifdef NR_VEHICLES 1
-//  publish_after_secs = 6400:6450 
-//#endif
-//#ifdef NR_VEHICLES 2
-//  publish_after_secs = 4950:5050 
-//#endif
-//#ifdef NR_VEHICLES 3
-//  publish_after_secs = 3950:4050
-//#endif
+#ifdef SURVEY_AREA bigger2
+  // area bigger2
+  // old area
+  #ifdef NR_VEHICLES 1
+    publish_after_secs = 6400:6450 //TODO
+  #endif
+  #ifdef NR_VEHICLES 2
+    publish_after_secs = 3359:3531 //TODO
+  #endif
+  #ifdef NR_VEHICLES 3
+    publish_after_secs = 5387:5617 // from b25g lm sims
+  #endif
+#else  
+  // old area
+  #ifdef NR_VEHICLES 1
+    publish_after_secs = 6400:6450  // from FSR 1 AUV sims
+  #endif
+  #ifdef NR_VEHICLES 2
+    publish_after_secs = 3359:3531 
+  #endif
+  #ifdef NR_VEHICLES 3
+    publish_after_secs = 2641:2818 //2552:2756
+  #endif
+#endif
 
   // the var/val set to publish
   publish_var = MISSION_TIME
