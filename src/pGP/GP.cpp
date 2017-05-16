@@ -93,6 +93,7 @@ GP::GP() :
   m_handshake_timer_counter(0),
   m_tx_timer_counter(0),
   m_req_surf_timer_counter(0),
+  m_last_tds_surface(0),
   m_acomms_sharing(false),
   m_last_acomms_string(""),
   m_use_voronoi(false),
@@ -315,7 +316,17 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     else if ( key == "STAGE" )
       m_bhv_state = sval;
     else if ( key == "ADP_PTS" )
+    {
       m_adp_state = sval;
+      if ( m_adp_state == "adaptive" && m_timed_data_sharing && !m_use_voronoi )
+      {
+        std::cout << GetAppName() << " :: done with static survey, initiate surfacing for TDS" << std::endl;
+        // switch to surface
+        m_last_tds_surface = MOOSTime();
+        m_mission_state = STATE_SURFACING;
+        publishStates("OnNewMail_ADP_PTS");
+      }
+    }
     else if ( key == "REQ_SURFACING_REC" )
     { // receive surfacing request from other vehicle
       // need to send ack, also start surfacing
@@ -527,15 +538,15 @@ bool GP::Iterate()
     switch ( m_mission_state )
     {
       case STATE_SAMPLE :
-        if ( m_timed_data_sharing && !m_use_voronoi )
+        if ( m_timed_data_sharing && !m_use_voronoi && m_adp_state != "static" )
         {
           // TDS
           // let's time this based on MOOSTime(), and assume that clocks are
           // synchronised (to be verified in field tests)
-          // note; add 60s buffer to block out x seconds after hpoptim_done
+          // note; add 60s buffer to block out x seconds at beginning
           if ( m_num_vehicles > 1 &&
                ( (size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval ) == 0 &&
-                 (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
+               (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
           {
             // switch to data sharing mode, to switch bhv to surface
             m_mission_state = STATE_SURFACING;
@@ -544,8 +555,8 @@ bool GP::Iterate()
         }
         // tds with voronoi, trigger for when to request data sharing
         else if ( m_use_voronoi && m_voronoi_subset.size() > 0 &&
-             ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) &&
-                 m_adp_state != "static" )
+                  ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) &&
+                  m_adp_state != "static" )
         {
           #ifdef BUILD_VORONOI
           if ( needToRecalculateVoronoi() )
@@ -837,6 +848,7 @@ bool GP::OnStartUp()
   m_last_published_req_surf = MOOSTime();
   m_last_published_req_surf_ack = MOOSTime();
   m_last_published = MOOSTime();
+  m_last_tds_surface = MOOSTime();
 
   if ( m_debug )
   std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;

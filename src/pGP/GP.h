@@ -256,6 +256,7 @@ class GP : public CMOOSApp
    size_t m_handshake_timer_counter;
    size_t m_tx_timer_counter;
    size_t m_req_surf_timer_counter;
+   double m_last_tds_surface;
 
    // acomms data sharing
    bool m_acomms_sharing;
