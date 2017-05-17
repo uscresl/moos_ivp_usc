@@ -338,8 +338,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                   << ((m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF ) && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
                   << std::endl;
       }
+      if ( m_adp_state == "static" )
+        std::cout << GetAppName() << " :: REQ_SURFACING_REC - but running static pts, ignore for now" << std::endl;
 
-      if ( !own_msg && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
+
+      if ( !own_msg && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) && m_adp_state != "static" )
       {
         bool final_surface = finalSurface(sval);
         std::cout << GetAppName() << " :: Received surface request for final surface? " << final_surface << std::endl;
