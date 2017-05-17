@@ -15,13 +15,8 @@ for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
         printf "%s [SWITCHES] [time_warp]   \n" $0
         printf "  Switches:          \n"
-        printf "  --just_make, -j    \n" 
+        printf "  --just_build, -j    \n" 
         printf "  --adaptive, -a     \n"
-        printf "  --tds, -t          \n"
-        printf "  --acomms, -c       \n"
-        printf "  --voronoi, -v      \n"
-        printf "  --2auvs            \n"
-        printf "  --3auvs            \n"
         printf "  --bigger1, -b1     \n"
         printf "  --bigger2, -b2     \n"
         printf "  --nogui, -ng       \n"
