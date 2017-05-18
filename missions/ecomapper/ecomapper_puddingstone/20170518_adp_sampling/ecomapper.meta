@@ -126,10 +126,10 @@ ProcessConfig = pGP_AUV
   use_log_gp = true
 
   // define the names of input & output variables
-  // use NAV_ALTITUDE for ground truth testing
-  input_var_data = NAV_ALTITUDE
-//  // use YSI_CHL for bio purposes
-//  input_var_data = YSI_CHL
+//  // use NAV_ALTITUDE for ground truth testing
+//  input_var_data = NAV_ALTITUDE
+  // use YSI_CHL for bio purposes
+  input_var_data = YSI_CHL
 
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
