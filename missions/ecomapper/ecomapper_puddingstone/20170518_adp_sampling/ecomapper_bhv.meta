@@ -386,8 +386,8 @@ Behavior = BHV_OpRegionBounce
   condition = MODE==MISSION
 
   polygon = $(OPREGION) 
-  max_depth = 20 // match with BHV_OpRegionBounceDepth
-  min_altitude = 10
+  max_depth = 15 // match with BHV_OpRegionBounceDepth
+  min_altitude = 2
   max_time = 25200
 
   trigger_entry_time = 1.0
@@ -399,4 +399,20 @@ Behavior = BHV_OpRegionBounce
   bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
   no_zone_factor = .2
 }
+Behavior = BHV_OpRegionBounceDepth
+{
+  name = bhv_opregion_depth_bounce
+  pwt = 200
+  duration = no-time-limit
+  condition = MODE==MISSION
+
+  max_depth = 15  // set to the max depth of the lake?
+  min_altitude = 2
+  // if buffer is not set, it is set to 0, which is in fact inactive
+  // bounce_buffer_depth: size of the buffer for depth bouncing
+  bounce_buffer_depth = 3
+  // no_zone_factor: used for: no_zone = buffer * no_zone_factor
+  no_zone_factor = .2
+}
+
 
