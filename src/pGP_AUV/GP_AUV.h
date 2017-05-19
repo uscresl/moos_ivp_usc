@@ -79,24 +79,19 @@ class GP_AUV : public CMOOSApp
    // path planning & passing on to behavior
    void greedyWptSelection(std::string & next_waypoint);
    void publishNextWaypointLocations();
-   double pathLength(GraphNode *start_node, GraphNode *end_node, double start_time);
 
-   std::vector< GraphNode* > getAllMiddleNodes(GraphNode * start_node, GraphNode * end_node);
+   // helper methods for path planning using GRG algorithm
+   size_t getX(size_t id_pt);
+   size_t getY(size_t id_pt);
+   double manhattanDistance(size_t start_node_index, size_t end_node_index);
+   double informativeValue(std::vector< size_t > cur_path);
+   // path planning using generalized recursive greedy algorithm and passing on to behavior
+   std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, long prev_node, size_t budget);
+   void recursiveGreedyWptSelection(size_t budget, size_t current_node_index, std::string & next_waypoint);
 
-   std::vector< double > getAllMiddleTimes(GraphNode *middle_node, double start_time, double end_time);
 
-   std::vector< GraphNode* > getPathNodes(std::vector<GraphNode *> first_half_path, double start_time);
 
-   std::vector< GraphNode* > getConcatenatedPath(std::vector<GraphNode*> first_half_path, std::vector<GraphNode*> second_half_path);
-
-   double getInformativeValue(std::vector< GraphNode* > cur_path, double start_time);
-
-   void recursiveGreedyWptSelection(Eigen::Vector2d & best_location);
-
-   std::vector< GraphNode* > generalizedRecursiveGreedy(GraphNode* start_node, GraphNode* end_node, double start_time, double end_time, std::set< GraphNode* > ground_set, unsigned int max_depth);
- 
-
-   // timed saving of GP  /////////////////////////////////////////////////////
+  // timed saving of GP  /////////////////////////////////////////////////////
    void makeAndStorePredictions();
 
    // helper/test functions  //////////////////////////////////////////////////
@@ -192,6 +187,7 @@ class GP_AUV : public CMOOSApp
    std::unordered_map< size_t, GraphNode* > m_sample_points_visited;
    // vector for storing all sampling graph nodes
    std::vector< GraphNode > m_sample_graph_nodes;
+   long m_lanes_x, m_lanes_y;
 
 
    // GP, and create mutex for protection of parts of code accessing m_gp

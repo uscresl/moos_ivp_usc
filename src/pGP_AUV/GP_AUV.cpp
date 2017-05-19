@@ -582,7 +582,8 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
   std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
   ofstream_loc.open(m_file_loc, std::ios::out);
 
-  long lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
+  m_lanes_x = std::floor(m_pts_grid_width / m_pts_grid_spacing);
+  m_lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
   for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
   {
     std::string location = sample_points.at(id_pt);
@@ -602,10 +603,10 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     m_sample_graph_nodes.push_back(GraphNode( loc_vec, 0.0 ));
 
     GraphNode* graph_node = &m_sample_graph_nodes.back();
-    long left_neighbour_index = id_pt - (lanes_y + 1);
+    long left_neighbour_index = id_pt - (m_lanes_y + 1);
     long back_neighbour_index = id_pt - 1;
     GraphNode* left_neighbour = left_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[left_neighbour_index];
-    GraphNode* back_neighbour = back_neighbour_index < 0 || id_pt % (lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[back_neighbour_index];
+    GraphNode* back_neighbour = back_neighbour_index < 0 || id_pt % (m_lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[back_neighbour_index];
     graph_node->set_left_neighbour(left_neighbour);
     if ( left_neighbour )
     {
@@ -968,80 +969,106 @@ void GP_AUV::greedyWptSelection(std::string & next_waypoint)
   next_waypoint = output_stream.str();
 }
 
-double GP_AUV::pathLength(GraphNode *start_node, GraphNode *end_node, double start_time)
+//---------------------------------------------------------
+// Procedure: getX
+//            we compute the X axis index of a GraphNode
+//            given it's index in m_sample_graph_nodes
+//
+size_t GP_AUV::getX(size_t id_pt)
 {
-  // Path length is the number of nodes between start and end nodes.
+  return id_pt / (m_lanes_y + 1);
 }
 
-std::vector< GraphNode* > GP_AUV::getAllMiddleNodes(GraphNode * start_node, GraphNode * end_node)
+//---------------------------------------------------------
+// Procedure: getY
+//            we compute the Y axis index of a GraphNode
+//            given it's index in m_sample_graph_nodes
+//
+size_t GP_AUV::getY(size_t id_pt)
 {
-  // Get all nodes between start and end nodes.
+  return id_pt % (m_lanes_y + 1);
 }
 
-std::vector< double > GP_AUV::getAllMiddleTimes(GraphNode *middle_node, double start_time, double end_time)
+//---------------------------------------------------------
+// Procedure: manhattanDistance
+//            we compute the manhattan distance between
+//            two graph nodes in m_sample_graph_nodes
+//
+double GP_AUV::manhattanDistance(size_t start_node_index, size_t end_node_index)
 {
-  // Get all times between start and end times.
+  size_t start_x = getX(start_node_index), start_y = getY(start_node_index);
+  size_t end_x = getX(end_node_index), end_y = getY(end_node_index);
+  size_t dx = std::max(start_x, end_x) - std::min(start_x, end_x);
+  size_t dy = std::max(start_y, end_y) - std::min(start_y, end_y);
+  return dx + dy;
 }
 
-std::vector< GraphNode* > GP_AUV::getPathNodes(std::vector<GraphNode *> first_half_path, double start_time)
+//---------------------------------------------------------
+// Procedure: informativeValue
+//            we calculate a path's informative value by summing values of all nodes in it
+//
+double GP_AUV::informativeValue(std::vector< size_t > cur_path)
 {
-  // Get all path nodes for the given path starting at given start time.
-}
-
-std::vector< GraphNode* > GP_AUV::getConcatenatedPath(std::vector<GraphNode*> first_half_path, std::vector<GraphNode*> second_half_path)
-{
-  // Get a concatenated path for first and second halves of the path.
-}
-
-double GP_AUV::getInformativeValue(std::vector< GraphNode* > cur_path, double start_time)
-{
-  // Objective function to get the entropy of a path.
-}
-
-std::vector<GraphNode*> GP_AUV::generalizedRecursiveGreedy(GraphNode* start_node, GraphNode* end_node, double start_time, double end_time, std::set< GraphNode* > ground_set, unsigned int max_depth)
-{
-  // TODO: Remove time consideration from the algorithm.
-  // TODO: Make path operations consitent with path data structure.
-  if ( pathLength(start_node, end_node, start_time) > end_time - start_time )
+  double path_informative_value = 0.0;
+  for ( size_t node_index : cur_path )
   {
-    // Length of path is greater than the remaining budget so a path is infeasible
-    return (std::vector<GraphNode*>(2, NULL));
+    path_informative_value += m_sample_graph_nodes[node_index].get_value();
   }
+  return path_informative_value;
+}
 
-  std::vector< GraphNode* > best_path = std::vector< GraphNode* >();
-  best_path.push_back(start_node); 
-  best_path.push_back(end_node);
-
-  if ( max_depth = 0 )
+//---------------------------------------------------------
+// Procedure: generalizedRecursiveGreedy
+//            determine most informative path between start and end nodes
+//            using recursive greedy algorithm
+//
+std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, long prev_node_index, size_t budget)
+{
+  std::vector< size_t > best_path;
+  if ( manhattanDistance(start_node_index, end_node_index) <= budget && start_node_index != end_node_index )
   {
-    // Return the current path when max depth reached
-    return (best_path);
-  }
-
-  double best_informative_value = std::numeric_limits< double >::min();
-
-  std::vector< GraphNode* > all_middle_nodes = getAllMiddleNodes(start_node, end_node);
-  for ( std::vector< GraphNode* >::iterator middle_node = all_middle_nodes.begin(); middle_node != all_middle_nodes.end() ; middle_node++ )
-  {
-    std::vector< double > all_middle_times = getAllMiddleTimes(*middle_node, start_time, end_time);
-    for ( std::vector< double >::iterator middle_time = all_middle_times.begin(); middle_time != all_middle_times.end(); middle_time++ )
+    if ( budget == 1 )
     {
-      std::vector< GraphNode* > first_half_path = generalizedRecursiveGreedy(start_node, *middle_node, start_time, *middle_time, ground_set, max_depth - 1);
-
-      std::vector< GraphNode* > path_nodes = getPathNodes(first_half_path, start_time);
-      std::set< GraphNode* > second_half_ground_set(ground_set.begin(), ground_set.end());
-      second_half_ground_set.insert(path_nodes.begin(), path_nodes.end());
-
-      std::vector< GraphNode* > second_half_path = generalizedRecursiveGreedy(*middle_node, end_node, *middle_time, end_time, second_half_ground_set, max_depth - 1);
-
-      std::vector< GraphNode* > cur_path = getConcatenatedPath(first_half_path, second_half_path);
-      double cur_path_informative_value = getInformativeValue(cur_path, start_time);
-
-      if ( cur_path_informative_value > best_informative_value )
+      if ( prev_node_index == -1 || end_node_index != prev_node_index )
       {
-        // Concatenate two halves and assign it to the current best path
-        best_path = cur_path;
-        best_informative_value = cur_path_informative_value;
+        GraphNode* end_node = &m_sample_graph_nodes[end_node_index];
+        std::vector< GraphNode* > start_node_neighbours = m_sample_graph_nodes[start_node_index].get_neighbours();
+        for ( GraphNode* start_node_neighbour : start_node_neighbours )
+        {
+          if ( start_node_neighbour == end_node )
+          {
+            best_path.push_back(start_node_index);
+            best_path.push_back(end_node_index);
+            break;
+          }
+        }
+      }
+    }
+    else
+    {
+      double best_informative_value = std::numeric_limits< double >::min();
+      for ( size_t middle_node_index = 0; middle_node_index < m_sample_graph_nodes.size(); middle_node_index++ )
+      {
+        if ( prev_node_index == -1 || middle_node_index != prev_node_index )
+        {
+          std::vector< size_t > first_half_path = generalizedRecursiveGreedy(start_node_index, middle_node_index, prev_node_index, budget);
+          if ( !first_half_path.empty() )
+          {
+            std::vector< size_t > second_half_path = generalizedRecursiveGreedy(middle_node_index, end_node_index, *(first_half_path.end() - 1),
+              budget - first_half_path.size());
+            if ( !second_half_path.empty() )
+            {
+              std::vector< size_t > & cur_path = first_half_path;
+              cur_path.insert(cur_path.end(), second_half_path.begin() + 1, second_half_path.end());
+              double cur_path_informative_value = informativeValue(cur_path);
+              if ( cur_path_informative_value > best_informative_value )
+              {
+                best_path = cur_path;
+                best_informative_value = cur_path_informative_value;
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -1050,11 +1077,63 @@ std::vector<GraphNode*> GP_AUV::generalizedRecursiveGreedy(GraphNode* start_node
 
 //---------------------------------------------------------
 // Procedure: recursiveGreedyWptSelection()
-//            recursively check over unvisited predictions to find best (greedy)
+//            check over all predictions from generalized
+//            recursive greedy algorithm to find best next way point
 //
-void GP_AUV::recursiveGreedyWptSelection(Eigen::Vector2d & best_location)
+void GP_AUV::recursiveGreedyWptSelection(size_t budget, size_t current_node_index, std::string & next_waypoint)
 {
+  Eigen::Vector2d best_location;
 
+  // get next position, greedy pick from the paths returned by GRG algorithm
+  double best_so_far = -1 * std::numeric_limits< double >::max();
+  long best_so_far_idx = -1;
+
+  // check for all graph nodes
+  for ( size_t i = 0; i < m_sample_graph_nodes.size(); i++ )
+  {
+    std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, -1, budget);
+    if(!cur_path.empty())
+    {
+      double cur_path_value = informativeValue(cur_path);
+      if ( informativeValue(cur_path) > best_so_far )
+      {
+        best_so_far = cur_path_value;
+        best_so_far_idx = cur_path[1];
+      }
+    }
+  }
+
+  if ( m_verbose )
+    std::cout << GetAppName() << " ::  best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
+
+  if ( best_so_far_idx >= 0 )
+  {
+    if ( best_so_far_idx >= m_sample_graph_nodes.size() )
+      std::cout << GetAppName() << " :: Error: best is not in unsampled locations" << std::endl;
+    else
+    {
+      best_location = m_sample_graph_nodes[best_so_far_idx].get_location();
+
+      // app feedback
+      if ( m_verbose )
+      {
+        std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
+        std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_location(0) << ", " << best_location(1) << '\n';
+      }
+    }
+  }
+  else
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: invalid index: " << best_so_far_idx << ", not publishing." << std::endl;
+    best_location(0) = 0;
+    best_location(1) = 0;
+  }
+
+  // make a string from the single lon/lat location
+  std::ostringstream output_stream;
+  output_stream << std::setprecision(15) << best_location(0) << "," << best_location(1);
+  next_waypoint = output_stream.str();
 }
 
 //---------------------------------------------------------
