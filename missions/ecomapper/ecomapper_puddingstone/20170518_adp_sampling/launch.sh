@@ -86,22 +86,28 @@ if [ "${ADAPTIVE}" = "yes" ] ; then
   PILOT_PTS1=450,1000:750,1200:450,1200:750,1000
 fi
 
-
-
 if [ "${SIMULATION_MODE}" = "yes" ] ; then
   SERVERHOST_EM="localhost"
   SERVERHOST_SS="localhost"
+  VPORT_EM="8001"
+  VPORT_SS="8000"
+  SHARE_LISTEN_EM="8300"
+  SHARE_LISTEN_SS="8301"
 fi
 if [ "${SIMULATION_MODE}" = "no" ] ; then
   SERVERHOST_EM="192.168.10.11"
   SERVERHOST_SS="192.168.10.15"
+  VPORT_EM="9001"
+  VPORT_SS="9000"
+  SHARE_LISTEN_EM="9300"
+  SHARE_LISTEN_SS="9301"
 fi
 
 if [ "${TOPSIDE}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   # create shoreside.moos
   nsplug shoreside.meta shoreside.moos -f WARP=$TIME_WARP \
      VNAME="shoreside" USC_DATA_DIR="$MOOSIVP_USC_HOME/data"        \
-     SHARE_LISTEN="9300" VPORT="9000" SERVER_HOST=$SERVERHOST_SS       \
+     SHARE_LISTEN=$SHARE_LISTEN_SS VPORT=$VPORT_SS SERVER_HOST=$SERVERHOST_SS       \
      SERVER_HOST_EM=$SERVERHOST_EM  PLUG_DIR=$PLUGDIR  LOCATION=$LAKE  \
      USC_DATA_DIR=$USC_DATADIR  PAINT_SEGLIST=$PAINTSEGLIST
 fi
@@ -118,7 +124,7 @@ if [ "${ECOMAPPER}" = "yes" -o "${JUST_MAKE}" = "yes" ] ; then
   VTYPE1="UUV" # UUV, SHIP
   nsplug ecomapper.meta ecomapper.moos -f WARP=$TIME_WARP  \
      VNAME=$VNAME1  START_POS=$START_POS1  START_HDG=$START_HEADING1 \
-     VPORT="9001"       SHARE_LISTEN="9301"                      \
+     VPORT=$VPORT_EM       SHARE_LISTEN=$SHARE_LISTEN_EM         \
      VTYPE=$VTYPE1      MODEMID=$MODEMID1                        \
      SERVER_HOST=$SERVERHOST_EM SERVER_HOST_SS=$SERVERHOST_SS    \
      SIMULATION=$SIMULATION_MODE  PLUG_DIR=$PLUGDIR  LOCATION=$LAKE \
