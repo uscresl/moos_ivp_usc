@@ -277,7 +277,7 @@ Behavior = BHV_ConstantDepth
   duration  = no-time-limit
   condition = MODE==SURVEY
 
-  depth = 0
+  depth = $(WPT_DEPTH)
   peakwidth = 3     // m
   basewidth = 2     // m
   summitdelta = 20  // m
