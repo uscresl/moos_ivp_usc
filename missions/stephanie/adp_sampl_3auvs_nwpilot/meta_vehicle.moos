@@ -312,7 +312,7 @@ ProcessConfig = pPublishAfterX
     publish_after_secs = 6400:6450 //TODO
   #endif
   #ifdef NR_VEHICLES 2
-    publish_after_secs = 3359:3531 //TODO
+    publish_after_secs = 12030:12236 // from b22b lm sims (luna)
   #endif
   #ifdef NR_VEHICLES 3
     publish_after_secs = 5387:5617 // from b25g lm sims
