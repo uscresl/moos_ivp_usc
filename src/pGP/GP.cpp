@@ -486,7 +486,7 @@ bool GP::Iterate()
         if ( m_verbose )
         {
           std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
-                    << std::floor(MOOSTime()-m_start_time)  << "(" << MOOSTime() << ")" << std::endl;
+                    << std::floor(MOOSTime()-m_start_time)  << "(" << std::floor(MOOSTime()-m_start_time) << ")" << std::endl;
         }
         std::thread pred_store(&GP::makeAndStorePredictions, this);
         pred_store.detach();
@@ -1854,7 +1854,7 @@ void GP::endMission()
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
-              << std::floor(MOOSTime()-m_start_time)  << "(" << MOOSTime() << ")" << std::endl;
+              << std::floor(MOOSTime()-m_start_time)  << "(" << std::floor(MOOSTime()-m_start_time)  << ")" << std::endl;
   }
   std::thread pred_store(&GP::makeAndStorePredictions, this);
   pred_store.detach();
@@ -2052,7 +2052,7 @@ void GP::makeAndStorePredictions()
   std::clock_t end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << MOOSTime() << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(MOOSTime()-m_start_time) << std::endl;
 
 
   begin = std::clock();
@@ -2102,7 +2102,7 @@ void GP::makeAndStorePredictions()
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << MOOSTime() << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(MOOSTime()-m_start_time) << std::endl;
 
   begin = std::clock();
   // grab file writing mutex
@@ -2155,7 +2155,7 @@ void GP::makeAndStorePredictions()
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: runtime save to file [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << MOOSTime() << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(MOOSTime()-m_start_time)  << std::endl;
   }
 
   // copy of GP gets destroyed when this function exits
