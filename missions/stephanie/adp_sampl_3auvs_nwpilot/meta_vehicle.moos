@@ -156,7 +156,12 @@ ProcessConfig = pGP
 
   // define the prediction interval (predict every X seconds)
 #ifdef SURVEY_AREA bigger2
+  #ifdef NR_VEHICLES 3
   prediction_interval = 480 // every 8 min, timed given LM duration 3AUVs
+  #endif
+  #ifdef NR_VEHICLES 2
+  prediction_interval = 600 // every 10 min, reduce nr save moments for 2AUVs
+  #endif
 #else
   prediction_interval = 300
 #endif
