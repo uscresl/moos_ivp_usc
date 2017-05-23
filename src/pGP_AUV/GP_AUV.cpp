@@ -1092,7 +1092,7 @@ void GP_AUV::recursiveGreedyWptSelection(size_t budget, size_t current_node_inde
   for ( size_t i = 0; i < m_sample_graph_nodes.size(); i++ )
   {
     std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, -1, budget);
-    if(!cur_path.empty())
+    if ( !cur_path.empty() )
     {
       double cur_path_value = informativeValue(cur_path);
       if ( informativeValue(cur_path) > best_so_far )

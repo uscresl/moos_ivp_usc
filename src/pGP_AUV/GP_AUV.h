@@ -89,8 +89,6 @@ class GP_AUV : public CMOOSApp
    std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, long prev_node, size_t budget);
    void recursiveGreedyWptSelection(size_t budget, size_t current_node_index, std::string & next_waypoint);
 
-
-
   // timed saving of GP  /////////////////////////////////////////////////////
    void makeAndStorePredictions();
 
