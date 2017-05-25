@@ -4,65 +4,56 @@
 #-------------------------------------------------------
 TIME_WARP=1
 JUST_MAKE="no"
-ADAPTIVE="no"
+ADAPTIVE="yes"
 TDS="no"
 ACOMMS="no"
 NUM_VEHICLES=1
 RUN_SIMULATION="yes"
 VORONOI_PARTITIONING="no"
 AREA="old"
-GUI="true"
-CG="false"
-ADP_START="random"
+GUI="no"
+CG="yes"
+ADP_START="cross"
+BASE_PORT=9000
 
-for ARGI; do
-    if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
-        printf "%s [SWITCHES] [time_warp]   \n" $0
-        printf "  Switches:          \n"
-        printf "  --just_make, -j    \n" 
-        printf "  --adaptive, -a     \n"
-        printf "  --tds, -t          \n"
-        printf "  --acomms, -c       \n"
-        printf "  --voronoi, -v      \n"
-        printf "  --2auvs            \n"
-        printf "  --3auvs            \n"
-        printf "  --bigger1, -b1     \n"
-        printf "  --bigger2, -b2     \n"
-        printf "  --nogui, -ng       \n"
-        printf "  --cg, -cg          \n"
-        printf "  --cross_pilot, -cp \n"
-        printf "  --help, -h         \n" 
-        exit 0;
-    elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ] ; then 
-        TIME_WARP=$ARGI
-    elif [ "${ARGI}" = "--just_build" -o "${ARGI}" = "-j" ] ; then
-        JUST_MAKE="yes"
-    elif [ "${ARGI}" = "--adaptive" -o "${ARGI}" = "-a" ] ; then
-        ADAPTIVE="yes"
-    elif [ "${ARGI}" = "--tds" -o "${ARGI}" = "-t" ] ; then
-        TDS="yes"
-    elif [ "${ARGI}" = "--acomms" -o "${ARGI}" = "-c" ] ; then
-        ACOMMS="yes"
-    elif [ "${ARGI}" = "--voronoi" -o "${ARGI}" = "-v" ] ; then
-        VORONOI_PARTITIONING="yes"
-    elif [ "${ARGI}" = "--2auvs" ] ; then
-        NUM_VEHICLES=2
-    elif [ "${ARGI}" = "--3auvs" ] ; then
-        NUM_VEHICLES=3
-    elif [ "$ARGI" = "--bigger1" -o "${ARGI}" = "-b1" ] ; then
-        AREA="bigger1"
-    elif [ "$ARGI" = "--bigger2" -o "${ARGI}" = "-b2" ] ; then
-        AREA="bigger2"
-    elif [ "$ARGI" = "--nogui" -o "${ARGI}" = "-ng" ] ; then
-        GUI="no"
-    elif [ "$ARGI" = "--cg" -o "${ARGI}" = "-cg" ] ; then
-        CG="yes"
-    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp" ] ; then
-        ADP_START="cross"
-    else 
-        printf "Bad Argument: %s \n" $ARGI
-        exit 0
-    fi
+function printHelp()
+{
+printf "%s [OPTIONS]  \n" $0
+      printf "  Options:  \n"
+      printf "  -j: just make (not running)    \n" 
+      printf "  -l: lawnmower (not adaptive)   \n"
+      printf "  -t: timed data sharing         \n"
+      printf "  -c: acomms data sharing        \n"
+      printf "  -v: use voronoi partitioning   \n"
+      printf "  -n: '1', '2' or '3' (nr of auvs)  \n"
+      printf "  -b: 'bigger1' or 'bigger2' areas  \n"
+      printf "  -g: use GUI                    \n"
+      printf "  -r: use rprop (default: conj. gradient)  \n"
+      printf "  -s: 'cross' or 'random' (adaptive start) \n"
+      printf "  -w: time warp (int)            \n"
+      printf "  -p: base port (default: 9000)  \n"
+      printf "  --help, -h         \n" 
+      exit 0;
+}
+
+while getopts jltcvn:b:gr:s:hw:p: option
+do
+  case "${option}"
+  in
+  j) JUST_MAKE="yes";;
+  l) ADAPTIVE="no";; # lawnmower
+  t) TDS="yes";;
+  c) ACOMMS="yes";;
+  v) VORONOI_PARTITIONING="yes";;
+  n) NUM_VEHICLES=${OPTARG};;
+  b) AREA=${OPTARG};;
+  g) GUI="yes";;
+  r) CG="no";; # rprop
+  s) ADP_START=${OPTARG};;
+  h) printHelp;;
+  w) TIME_WARP=${OPTARG};;
+  p) BASE_PORT=${OPTARG};;
+  esac
 done
 
 # check if sim data file present
@@ -247,17 +238,20 @@ fi
 #####
 
 # ports
-SHORE_LISTEN="9300"
-SHORE_VPORT="9000"
-ANNA_LISTEN="9301"
-ANNA_LISTEN_GP="9401"
-ANNA_VPORT="9001"
-BERNARD_LISTEN="9302"
-BERNARD_LISTEN_GP="9402"
-BERNARD_VPORT="9002"
-CORNELIS_LISTEN="9303"
-CORNELIS_LISTEN_GP="9403"
-CORNELIS_VPORT="9003"
+SHORE_VPORT=$(($BASE_PORT))
+SHORE_LISTEN=$(($BASE_PORT+300))
+
+ANNA_VPORT=$(($BASE_PORT+1))
+ANNA_LISTEN=$(($BASE_PORT+11))
+ANNA_LISTEN_GP=$(($BASE_PORT+21))
+
+BERNARD_VPORT=$(($BASE_PORT+2))
+BERNARD_LISTEN=$(($BASE_PORT+12))
+BERNARD_LISTEN_GP=$(($BASE_PORT+22))
+
+CORNELIS_VPORT=$(($BASE_PORT+3))
+CORNELIS_LISTEN=$(($BASE_PORT+13))
+CORNELIS_LISTEN_GP=$(($BASE_PORT+23))
 
 # percentage of messages to drop in uFldNodeComms
 DROP_PCT=0
