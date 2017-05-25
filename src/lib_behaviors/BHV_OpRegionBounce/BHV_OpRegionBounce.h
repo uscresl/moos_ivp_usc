@@ -11,6 +11,13 @@
 /*    nb. I tried to follow programming style of the document,   */
 /*        and included comments where I added stuff              */
 /*                                                               */
+/*                                                               */
+/*    Name: Stephanie Kemna (SK) <kemna@usc.edu>                 */
+/*    Organization: University of Southern California, LA, CA, US*/
+/*    Date: May .., 2017                                         */
+/*    Edits: make it possible to have concave polygons           */
+/*                                                               */
+/*                                                               */
 /* This program is free software; you can redistribute it and/or */
 /* modify it under the terms of the GNU General Public License   */
 /* as published by the Free Software Foundation; either version  */
@@ -45,7 +52,7 @@ class BHV_OpRegionBounce : public IvPBehavior {
  public:
   BHV_OpRegionBounce(IvPDomain);
   ~BHV_OpRegionBounce() {};
-  
+
   bool         setParam(std::string, std::string);
   IvPFunction* onRunState();
   void         onIdleState()     {postErasablePolygon();};
@@ -111,7 +118,7 @@ class BHV_OpRegionBounce : public IvPBehavior {
 
   bool      m_first_time;
   bool      m_previously_in_poly;
-  
+
   // 2011-03/04/05 SK
   bool      m_couple;
   bool      m_debug;

@@ -8,6 +8,14 @@
 /*                                                               */
 /*    Copyright (C) 2011  NURC                                   */
 /*                                                               */
+/*                                                               */
+/*    Name: Stephanie Kemna (SK) <kemna@usc.edu>                 */
+/*    Organization: University of Southern California, LA, CA, US*/
+/*    Date: May 24th, 2017                                       */
+/*    Edits: added an averaging filter over last X measurements  */
+/*           to avoid instant action on erroneous measurements   */
+/*                                                               */
+/*                                                               */
 /* This program is free software; you can redistribute it and/or */
 /* modify it under the terms of the GNU General Public License   */
 /* as published by the Free Software Foundation; either version  */
@@ -36,7 +44,7 @@
 #endif
 
 #include <iostream>
-#include <math.h> 
+#include <math.h>
 #include <stdlib.h>
 
 #include "BHV_OpRegionBounceDepth.h"
@@ -48,7 +56,10 @@
 //-----------------------------------------------------------
 // Procedure: Constructor
 //
-BHV_OpRegionBounceDepth::BHV_OpRegionBounceDepth(IvPDomain gdomain) : IvPBehavior(gdomain)
+BHV_OpRegionBounceDepth::BHV_OpRegionBounceDepth(IvPDomain gdomain) : IvPBehavior(gdomain),
+  m_avg_filter_size(0),
+  m_alt_count(0),
+  m_depth_count(0)
 {
   this->setParam("descriptor", "bhv_opregionbouncedepth");
   m_domain = subDomain(m_domain, "depth");
@@ -84,7 +95,7 @@ BHV_OpRegionBounceDepth::BHV_OpRegionBounceDepth(IvPDomain gdomain) : IvPBehavio
 //            The "radius" parameter indicates what it means to have
 //            arrived at the waypoint.
 //
-bool BHV_OpRegionBounceDepth::setParam(std::string param, std::string val) 
+bool BHV_OpRegionBounceDepth::setParam(std::string param, std::string val)
 {
   if(IvPBehavior::setParam(param, val))
     return(true);
@@ -116,10 +127,25 @@ bool BHV_OpRegionBounceDepth::setParam(std::string param, std::string val)
     if((dval > 0) && (isNumber(val)))
       m_no_zone_factor = dval;
     return(true);
-  }  
-  // 2011-03 SK: IvP params as parameters, possible to set, I did not 
-  // include these in the plug, because you should only change them if 
-  // you know what you're doing. The standard values are pretty 
+  }
+  // 2017-05 SK: use X measurements as filter for erroneous measurements
+  else if(param == "averaging_filter_size") {
+    double dval = atof(val.c_str());
+    size_t ival = atoi(val.c_str());
+    if((ival >= 0) && (isNumber(val)))
+    {
+      m_last_altitudes = new double[ival];
+      m_last_depths = new double[ival];
+      m_avg_filter_size = ival;
+    }
+    else
+      std::cout << "Error: invalid averaging filter size for BHV_OpRegionBounceDepth" << std::endl;
+    return(true);
+  }
+
+  // 2011-03 SK: IvP params as parameters, possible to set, I did not
+  // include these in the plug, because you should only change them if
+  // you know what you're doing. The standard values are pretty
   // reasonable for most purposes.
   else if(param == "peakwidth_depth") {
     double dval = atof(val.c_str());
@@ -150,7 +176,7 @@ bool BHV_OpRegionBounceDepth::setParam(std::string param, std::string val)
 //     Notes: Sets state_ok = false and posts an error message if
 //            any of the OpRegionBounce conditions are not met.
 //
-IvPFunction *BHV_OpRegionBounceDepth::onRunState() 
+IvPFunction *BHV_OpRegionBounceDepth::onRunState()
 {
   // initialize IvP functions to avoid crashing the helm
   m_ipfDepth = 0;
@@ -162,7 +188,7 @@ IvPFunction *BHV_OpRegionBounceDepth::onRunState()
   }
   // reset to no emergencies.
   m_depth_emergency = false;
-   
+
   IvPFunction *ipf = 0; // SK: initialize to avoid crashing the helm
 
   depthVerify();
@@ -209,24 +235,43 @@ void BHV_OpRegionBounceDepth::depthVerify()
   double no_zone = m_depth_buffer*m_no_zone_factor;
 
   // Must get ownship depth from info_buffer
-  if(!ok) { 
+  if(!ok) {
     //cout << "No NAV_DEPTH in info_buffer for vehicle: " << m_us_name << endl;
     postEMessage("No ownship depth in info_buffer.");
     //m_info_buffer->print();
     return;
   }
+  else
+  {
+    // average over last X measurements, so we try and filter out erroneous measurements
+    size_t idx = m_depth_count % m_avg_filter_size;
+    m_last_depths[idx] = depth;
 
-  // 2011-04 SK: set params for depth buffer bounce before error.
-  if(ok && (m_depth_buffer > 0) && (depth > (m_max_depth-m_depth_buffer))) {
-    m_depth_emergency = true;
+    // average over last items in queue
+    double dep_sum = 0.0;
+    for ( size_t idx = 0; idx < m_avg_filter_size; ++idx )
+    {
+      dep_sum += m_last_depths[idx];
+    }
+    double dep_avg = m_depth_count > m_avg_filter_size ? dep_sum / m_avg_filter_size : dep_sum / m_depth_count;
+    if ( m_debug )
+      std::cout << "** BHV_OpRegionBounce:: dep_sum = " << dep_sum << ", dep_avg = " << dep_avg << std::endl;
 
-    // new depth: max - buffer - a bit extra
-    m_safe_depth[0] = m_max_depth-m_depth_buffer-no_zone;
-    // weight: maxutil*(1-(max-a bit extra)-depth)/(buffer-a bit extra)
-    m_safe_depth_weights[0] = m_maxutil*(1.0-(((m_max_depth-no_zone)-depth)/m_depth_buffer));
-    if(m_safe_depth_weights[0] > m_maxutil)
-      m_safe_depth_weights[0] = m_maxutil;
+
+    // 2011-04 SK: set params for depth buffer bounce before error.
+    if( (m_depth_buffer > 0) && (depth > (m_max_depth-m_depth_buffer)) ) {
+      m_depth_emergency = true;
+
+      // new depth: max - buffer - a bit extra
+      m_safe_depth[0] = m_max_depth-m_depth_buffer-no_zone;
+      // weight: maxutil*(1-(max-a bit extra)-depth)/(buffer-a bit extra)
+      m_safe_depth_weights[0] = m_maxutil*(1.0-(((m_max_depth-no_zone)-depth)/m_depth_buffer));
+      if(m_safe_depth_weights[0] > m_maxutil)
+        m_safe_depth_weights[0] = m_maxutil;
+    }
   }
+
+
 
   // just bounce, depth error handled by BHV_OpRegionBounce
 }
@@ -248,27 +293,46 @@ void BHV_OpRegionBounceDepth::altitudeVerify()
   double no_zone = m_depth_buffer*m_no_zone_factor;
 
   // Must get ownship altitude from info_buffer
-  if(!ok) { 
+  if(!ok || !ok2) {
     postEMessage("No ownship altitude in info_buffer.");
     return;
   }
+  else
+  {
+    // average over last X measurements, so we try and filter out erroneous measurements
+    size_t idx = m_alt_count % m_avg_filter_size;
+    m_last_altitudes[idx] = curr_altitude;
 
-  // 2011-04 SK: set params for altitude buffer bounce before error.
-  if((m_depth_buffer > 0.0) && (curr_altitude < (m_min_altitude+m_depth_buffer)) && ok && ok2 && (curr_altitude > 0.0)) {
-    // bounce the vehicle back up
-    m_depth_emergency = true;
-    // new altitude: min + buffer + a bit extra
-    double wanted_altitude = m_min_altitude + m_depth_buffer + no_zone;
-    // because of emergency, current altitude < wanted, therefore subtract
-    double diff_altitude = wanted_altitude - curr_altitude;
-    // subtract this difference from the current depth to bounce up
-    m_safe_depth[1] = depth - diff_altitude;
-    m_safe_depth_weights[1] = m_maxutil*(1.0-((curr_altitude - (m_min_altitude+no_zone))/m_depth_buffer));
-    if(m_safe_depth_weights[1] > m_maxutil)
-      m_safe_depth_weights[1] = m_maxutil;
+    // average over last items in queue
+    double alt_sum = 0.0;
+    for ( size_t idx = 0; idx < m_avg_filter_size; ++idx )
+    {
+      alt_sum += m_last_altitudes[idx];
+    }
+    double alt_avg = m_alt_count > m_avg_filter_size ? alt_sum / m_avg_filter_size : alt_sum / m_alt_count;
+    if ( m_debug )
+      std::cout << "** BHV_OpRegionBounce:: alt_sum = " << alt_sum << ", alt_avg = " << alt_avg << std::endl;
+
+    m_alt_count++;
+
+    if((m_depth_buffer > 0.0) && (alt_avg < (m_min_altitude+m_depth_buffer)) && (curr_altitude > 0.0)) {
+      // bounce the vehicle back up
+      m_depth_emergency = true;
+
+      // 2011-04 SK: set params for altitude buffer bounce before error.
+
+      // new altitude: min + buffer + a bit extra
+      double wanted_altitude = m_min_altitude + m_depth_buffer + no_zone;
+      // because of emergency, current altitude < wanted, therefore subtract
+      double diff_altitude = wanted_altitude - curr_altitude;
+      // subtract this difference from the current depth to bounce up
+      m_safe_depth[1] = depth - diff_altitude;
+      m_safe_depth_weights[1] = m_maxutil*(1.0-((curr_altitude - (m_min_altitude+no_zone))/m_depth_buffer));
+      if(m_safe_depth_weights[1] > m_maxutil)
+        m_safe_depth_weights[1] = m_maxutil;
+      // just bounce, altitude error handled by BHV_OpRegionBounce
+    }
   }
-
-  // just bounce, altitude error handled by BHV_OpRegionBounce
 }
 
 //-----------------------------------------------------------
@@ -279,14 +343,14 @@ void BHV_OpRegionBounceDepth::altitudeVerify()
 //   Return:  void (saves to class var)
 //
 void BHV_OpRegionBounceDepth::createDepthBounce()
-{  
+{
   if(m_debug)
     std::cout << std::endl << "** BHV_OpRegionBounce::createDepthBounce" << std::endl;
-    
-  // there can only be two possible depth issues: 
+
+  // there can only be two possible depth issues:
   // through depthVerify() and altitudeVerify()
   ZAIC_PEAK zaicDepth(m_domain, "depth");
-  // ZAIC Params: summit, peakwidth, basewidth, summitdelta, minutil, maxutil, index=0 
+  // ZAIC Params: summit, peakwidth, basewidth, summitdelta, minutil, maxutil, index=0
 
   // if both are present, then scale smaller utility, set highest to 100
   if((m_safe_depth_weights[0] > 0.0) && (m_safe_depth_weights[1] > 0.0)) {
@@ -329,7 +393,7 @@ void BHV_OpRegionBounceDepth::createDepthBounce()
     m_safe_depth_weights[1] *= (m_priority_wt/100.0);
   }
   // determine behaviour weight: take highest individual weight.
-  // The above code will have properly rescaled the other weight if 
+  // The above code will have properly rescaled the other weight if
   // present, so that the final function has the right relation between
   // zaic components.
   if(m_safe_depth_weights[0] >= m_safe_depth_weights[1])
@@ -340,13 +404,13 @@ void BHV_OpRegionBounceDepth::createDepthBounce()
   // debug output
   if(m_debug) {
     std::string zaic_warnings = zaicDepth.getWarnings();
-    if(zaic_warnings != "") 
+    if(zaic_warnings != "")
       postWMessage(zaic_warnings);
 
     std::cout << " Depth IPF: " << std::endl;
     std::cout << "  peakwidth: " << m_peakwidthDepth << std::endl;
     std::cout << "  basewidth: " << m_basewidthDepth << std::endl;
-    std::cout << "  m_summitdelta: " << m_summitdelta << std::endl; 
+    std::cout << "  m_summitdelta: " << m_summitdelta << std::endl;
     std::cout << "  m_minutil: " << m_minutil << std::endl;
     std::cout << "  m_safe_depth[0] " << m_safe_depth[0] << " @  " << m_safe_depth_weights[0] << std::endl;
     std::cout << "  m_safe_depth[1] " << m_safe_depth[1] << " @  " << m_safe_depth_weights[1] << std::endl;
@@ -362,5 +426,5 @@ void BHV_OpRegionBounceDepth::createDepthBounce()
     m_ipfDepth->getPDMap()->print();
 
   if(m_debug)
-    std::cout << "** BHV_OpRegionBounce::createDepthBounce finished" << std::endl;  
+    std::cout << "** BHV_OpRegionBounce::createDepthBounce finished" << std::endl;
 }
