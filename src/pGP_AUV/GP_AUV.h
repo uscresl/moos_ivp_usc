@@ -83,11 +83,12 @@ class GP_AUV : public CMOOSApp
    // helper methods for path planning using GRG algorithm
    size_t getX(size_t id_pt);
    size_t getY(size_t id_pt);
+   int getCurrentNodeIndex();
    double manhattanDistance(size_t start_node_index, size_t end_node_index);
    double informativeValue(std::vector< size_t > cur_path);
    // path planning using generalized recursive greedy algorithm and passing on to behavior
    std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, long prev_node, size_t budget);
-   void recursiveGreedyWptSelection(size_t budget, size_t current_node_index, std::string & next_waypoint);
+   void recursiveGreedyWptSelection(std::string & next_waypoint);
 
 
 
@@ -168,6 +169,8 @@ class GP_AUV : public CMOOSApp
    double m_y_resolution;
    double m_lon_deg_to_m;
    double m_lat_deg_to_m;
+   long m_lanes_x;
+   long m_lanes_y;
 
    // mission status
    double m_start_time;
@@ -187,10 +190,11 @@ class GP_AUV : public CMOOSApp
    std::unordered_map< size_t, GraphNode* > m_sample_points_visited;
    // vector for storing all sampling graph nodes
    std::vector< GraphNode > m_sample_graph_nodes;
-   long m_lanes_x, m_lanes_y;
+
+   size_t m_recursive_greedy_budget;
 
 
-   // GP, and create mutex for protection of parts of code accessing m_gp
+  // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess * m_gp;
    std::mutex m_gp_mutex;
    std::mutex m_sample_maps_mutex;

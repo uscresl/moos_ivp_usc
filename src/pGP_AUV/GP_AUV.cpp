@@ -44,7 +44,7 @@ GP_AUV::GP_AUV() :
   m_output_var_pred(""),
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
-  m_path_planning_method("greedy"),
+  m_path_planning_method("recursive_greedy"),
   m_debug(false),
   m_veh_name(""),
   m_use_log_gp(true),
@@ -82,7 +82,8 @@ GP_AUV::GP_AUV() :
   m_downsample_factor(4),
   m_first_surface(true),
   m_area_buffer(5.0),
-  m_bhv_state("")
+  m_bhv_state(""),
+  m_recursive_greedy_budget(5)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -338,7 +339,6 @@ bool GP_AUV::Iterate()
 bool GP_AUV::OnStartUp()
 {
   CMOOSApp::OnStartUp();
-
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
   if (!m_MissionReader.GetConfiguration(GetAppName(), sParams))
@@ -415,13 +415,22 @@ bool GP_AUV::OnStartUp()
     else if ( param == "path_planning_method" )
     {
       if ( value == "greedy" || value == "dynamic_programming" || value == "recursive_greedy")
+      {
         m_path_planning_method = value;
+        if(m_verbose){
+          std::cout << GetAppName() << " :: Path planning method: " << value << std::endl;
+        }
+      }
       else
       {
         std::cout << GetAppName() << " :: Error, unknown method. Choose from: greedy, "
                   << "dynamic_programming, recursive_greedy. Default: greedy." << std::endl;
         handled = false;
       }
+    }
+    else if ( param == "recursive_greedy_budget" )
+    {
+      m_recursive_greedy_budget = (size_t)atoi(value.c_str());
     }
     else
       handled = false;
@@ -990,6 +999,19 @@ size_t GP_AUV::getY(size_t id_pt)
 }
 
 //---------------------------------------------------------
+// Procedure: getCurrentNodeIndex
+//            we compute the index of the current node
+//            based on vehicle's current location
+//
+int GP_AUV::getCurrentNodeIndex()
+{
+  std::cout << GetAppName() << " :: Current vehicle location: " << m_lon << ", " << m_lat << std::endl;
+  int cur_node_idx = getIndexForMap(m_lon, m_lat);
+  std::cout << GetAppName() << " :: Index for map: " << cur_node_idx << std::endl;
+  return cur_node_idx;
+}
+
+//---------------------------------------------------------
 // Procedure: manhattanDistance
 //            we compute the manhattan distance between
 //            two graph nodes in m_sample_graph_nodes
@@ -1025,7 +1047,10 @@ double GP_AUV::informativeValue(std::vector< size_t > cur_path)
 std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, long prev_node_index, size_t budget)
 {
   std::vector< size_t > best_path;
-  if ( manhattanDistance(start_node_index, end_node_index) <= budget && start_node_index != end_node_index )
+  double manhattan_distance = manhattanDistance(start_node_index, end_node_index);
+
+  // TODO: What if manhattanDistance < budget && start_node_index == end_node_index?
+  if ( manhattan_distance <= budget && start_node_index != end_node_index )
   {
     if ( budget == 1 )
     {
@@ -1080,60 +1105,92 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
 //            check over all predictions from generalized
 //            recursive greedy algorithm to find best next way point
 //
-void GP_AUV::recursiveGreedyWptSelection(size_t budget, size_t current_node_index, std::string & next_waypoint)
+void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
 {
-  Eigen::Vector2d best_location;
-
+  std::cout << GetAppName() << " Recursive Greedy Waypoint Selection" << std::endl;
+  // TODO: Add more comments to the code.
   // get next position, greedy pick from the paths returned by GRG algorithm
   double best_so_far = -1 * std::numeric_limits< double >::max();
-  long best_so_far_idx = -1;
-
-  // check for all graph nodes
-  for ( size_t i = 0; i < m_sample_graph_nodes.size(); i++ )
+  std::vector< size_t > best_path_so_far;
+  std::cout << GetAppName() << " :: Sample graph nodes size: " << m_sample_graph_nodes.size() << std::endl;
+  for(size_t i=0; i<m_sample_graph_nodes.size(); i++){
+    std::cout << "\t" << i+1 << ": " << m_sample_graph_nodes[i].get_location()[0] << ", " << m_sample_graph_nodes[i].get_location()[1] << std::endl;
+  }
+  int current_node_index = getCurrentNodeIndex();
+  if(current_node_index < 0)
   {
-    std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, -1, budget);
-    if(!cur_path.empty())
+    std::cout << GetAppName() << " :: Error: vehicle location is not in sample rectangle" << std::endl;
+  }else if(current_node_index >= m_sample_graph_nodes.size()){
+    std::cout << GetAppName() << " :: Error: vehicle index is not in sample graph nodes" << std::endl;
+  }else{
+    // check for all graph nodes
+    // TODO: Check only the possible end nodes that are within budget?
+    std::cout << GetAppName() << "Running GRG: " << std::endl;
+    for ( size_t i = 0; i < m_sample_graph_nodes.size(); i++ )
     {
-      double cur_path_value = informativeValue(cur_path);
-      if ( informativeValue(cur_path) > best_so_far )
-      {
-        best_so_far = cur_path_value;
-        best_so_far_idx = cur_path[1];
+      if(manhattanDistance(current_node_index, i) >= m_recursive_greedy_budget){
+        std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, -1, m_recursive_greedy_budget);
+        if ( !cur_path.empty() )
+        {
+          double cur_path_value = informativeValue(cur_path);
+          if ( informativeValue(cur_path) > best_so_far )
+          {
+            best_so_far = cur_path_value;
+            best_path_so_far = cur_path;
+          }
+        }
       }
     }
-  }
 
-  if ( m_verbose )
-    std::cout << GetAppName() << " ::  best so far: (idx, val) " << best_so_far_idx << ", " << best_so_far << std::endl;
-
-  if ( best_so_far_idx >= 0 )
-  {
-    if ( best_so_far_idx >= m_sample_graph_nodes.size() )
-      std::cout << GetAppName() << " :: Error: best is not in unsampled locations" << std::endl;
-    else
+    if ( m_verbose )
     {
-      best_location = m_sample_graph_nodes[best_so_far_idx].get_location();
-
-      // app feedback
-      if ( m_verbose )
+      std::cout << GetAppName() << " ::  best path so far: (val, [ path ]) " << best_so_far << ", [ ";
+      for ( int i = 0; i < best_path_so_far.size(); i++ )
       {
-        std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
-        std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_location(0) << ", " << best_location(1) << '\n';
+        if ( i != 0 )
+          std::cout << ", ";
+        std::cout << best_path_so_far[i];
       }
+      std::cout << " ]" << std::endl;
     }
-  }
-  else
-  {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: invalid index: " << best_so_far_idx << ", not publishing." << std::endl;
-    best_location(0) = 0;
-    best_location(1) = 0;
-  }
 
-  // make a string from the single lon/lat location
-  std::ostringstream output_stream;
-  output_stream << std::setprecision(15) << best_location(0) << "," << best_location(1);
-  next_waypoint = output_stream.str();
+    std::ostringstream output_stream;
+    for ( size_t i = 0; i < best_path_so_far.size(); i++ )
+    {
+      Eigen::Vector2d node_loc;
+      size_t node_idx = best_path_so_far[i];
+      if ( node_idx >= 0 )
+      {
+        if ( node_idx >= m_sample_graph_nodes.size() )
+        {
+          std::cout << GetAppName() << " :: Error: path node is not a possible sample locations" << std::endl;
+          break;
+        }
+        else
+        {
+          node_loc = m_sample_graph_nodes[node_idx].get_location();
+
+          // app feedback
+          if ( m_verbose )
+          {
+            std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
+            std::cout << GetAppName() << " :: current path location y: " << std::setprecision(15) << node_loc(0) << ", " << node_loc(1) << '\n';
+          }
+        }
+      }
+      else
+      {
+        if ( m_debug )
+          std::cout << GetAppName() << " :: invalid index: " << node_idx << ", not publishing." << std::endl;
+        node_loc(0) = 0;
+        node_loc(1) = 0;
+        break;
+      }
+      if ( i ) output_stream << ":";
+      output_stream << std::setprecision(15) << node_loc(0) << "," << node_loc(1);
+    }
+    next_waypoint = output_stream.str();
+  }
 }
 
 //---------------------------------------------------------
@@ -1143,17 +1200,21 @@ void GP_AUV::recursiveGreedyWptSelection(size_t budget, size_t current_node_inde
 void GP_AUV::publishNextWaypointLocations()
 {
   // procedures for finding the next waypoint(s)
+  std::cout << GetAppName() << " :: Path planning method: " << m_path_planning_method << std::endl;
   std::string next_wpts("");
   if ( m_path_planning_method == "greedy" )
+  {
     greedyWptSelection(next_wpts);
+  }
   else if ( m_path_planning_method == "dynamic_programming" )
   {
     // call Ying's method
   }
   else if ( m_path_planning_method == "recursive_greedy" )
   {
-    // call Jaimin's method
+    recursiveGreedyWptSelection(next_wpts);
   }
+  std::cout << GetAppName() << " :: Next waypoints: " << next_wpts << std::endl;
 
   if ( next_wpts == "" )
     std::cout << GetAppName() << " :: Error: no waypoint found yet." << std::endl;

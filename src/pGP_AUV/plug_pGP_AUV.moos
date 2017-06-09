@@ -63,5 +63,6 @@ ProcessConfig = pGP
   hp_optim_iterations = 50
 
   // path planning method
-  path_planning_method = greedy
+  path_planning_method = recursive_greedy
+  recursive_greedy_budget = 6
 }
