@@ -44,7 +44,7 @@ GP_AUV::GP_AUV() :
   m_output_var_pred(""),
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
-  m_path_planning_method("recursive_greedy"),
+  m_path_planning_method("greedy"),
   m_debug(false),
   m_veh_name(""),
   m_use_log_gp(true),
@@ -1222,7 +1222,6 @@ void GP_AUV::publishNextWaypointLocations()
   {
     recursiveGreedyWptSelection(next_wpts);
   }
-  std::cout << GetAppName() << " :: Next waypoints: " << next_wpts << std::endl;
 
   if ( next_wpts == "" )
     std::cout << GetAppName() << " :: Error: no waypoint found yet." << std::endl;
