@@ -1044,17 +1044,16 @@ double GP_AUV::informativeValue(std::vector< size_t > cur_path)
 //            determine most informative path between start and end nodes
 //            using recursive greedy algorithm
 //
-std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, long prev_node_index, size_t budget)
+std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, std::set< size_t > ground_set, size_t budget)
 {
   std::vector< size_t > best_path;
   double manhattan_distance = manhattanDistance(start_node_index, end_node_index);
-
   // TODO: What if manhattanDistance < budget && start_node_index == end_node_index?
   if ( manhattan_distance <= budget && start_node_index != end_node_index )
   {
     if ( budget == 1 )
     {
-      if ( prev_node_index == -1 || end_node_index != prev_node_index )
+      if ( ground_set.find(end_node_index) == ground_set.end() )
       {
         GraphNode* end_node = &m_sample_graph_nodes[end_node_index];
         std::vector< GraphNode* > start_node_neighbours = m_sample_graph_nodes[start_node_index].get_neighbours();
@@ -1071,25 +1070,33 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
     }
     else
     {
-      double best_informative_value = std::numeric_limits< double >::min();
+      double best_informative_value = -1;
       for ( size_t middle_node_index = 0; middle_node_index < m_sample_graph_nodes.size(); middle_node_index++ )
       {
-        if ( prev_node_index == -1 || middle_node_index != prev_node_index )
+        if ( middle_node_index != start_node_index && middle_node_index != end_node_index && ground_set.find(middle_node_index) == ground_set.end() )
         {
-          std::vector< size_t > first_half_path = generalizedRecursiveGreedy(start_node_index, middle_node_index, prev_node_index, budget);
-          if ( !first_half_path.empty() )
+          for ( size_t middle_budget = manhattanDistance(start_node_index, middle_node_index);
+                middle_budget <= budget - manhattanDistance(middle_node_index, end_node_index); middle_budget++ )
           {
-            std::vector< size_t > second_half_path = generalizedRecursiveGreedy(middle_node_index, end_node_index, *(first_half_path.end() - 1),
-              budget - first_half_path.size());
-            if ( !second_half_path.empty() )
+            std::set< size_t > first_ground_set(ground_set.begin(), ground_set.end());
+            first_ground_set.insert(end_node_index);
+            std::vector< size_t > first_half_path = generalizedRecursiveGreedy(start_node_index, middle_node_index, first_ground_set, middle_budget);
+            if ( !first_half_path.empty() && manhattanDistance(middle_node_index, end_node_index) <= budget - first_half_path.size() + 1 )
             {
-              std::vector< size_t > & cur_path = first_half_path;
-              cur_path.insert(cur_path.end(), second_half_path.begin() + 1, second_half_path.end());
-              double cur_path_informative_value = informativeValue(cur_path);
-              if ( cur_path_informative_value > best_informative_value )
+              std::set< size_t > new_ground_set(ground_set.begin(), ground_set.end());
+              new_ground_set.insert(first_half_path.begin(), first_half_path.end());
+              std::vector< size_t > second_half_path = generalizedRecursiveGreedy(middle_node_index, end_node_index, new_ground_set,
+                budget - first_half_path.size() + 1);
+              if ( !second_half_path.empty() )
               {
-                best_path = cur_path;
-                best_informative_value = cur_path_informative_value;
+                std::vector< size_t > & cur_path = first_half_path;
+                cur_path.insert(cur_path.end(), second_half_path.begin() + 1, second_half_path.end());
+                double cur_path_informative_value = informativeValue(cur_path);
+                if ( cur_path_informative_value > best_informative_value )
+                {
+                  best_path = cur_path;
+                  best_informative_value = cur_path_informative_value;
+                }
               }
             }
           }
@@ -1112,24 +1119,25 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
   // get next position, greedy pick from the paths returned by GRG algorithm
   double best_so_far = -1 * std::numeric_limits< double >::max();
   std::vector< size_t > best_path_so_far;
-  std::cout << GetAppName() << " :: Sample graph nodes size: " << m_sample_graph_nodes.size() << std::endl;
-  for(size_t i=0; i<m_sample_graph_nodes.size(); i++){
-    std::cout << "\t" << i+1 << ": " << m_sample_graph_nodes[i].get_location()[0] << ", " << m_sample_graph_nodes[i].get_location()[1] << std::endl;
-  }
   int current_node_index = getCurrentNodeIndex();
-  if(current_node_index < 0)
+  if ( current_node_index < 0 )
   {
     std::cout << GetAppName() << " :: Error: vehicle location is not in sample rectangle" << std::endl;
-  }else if(current_node_index >= m_sample_graph_nodes.size()){
+  }
+  else if ( current_node_index >= m_sample_graph_nodes.size() )
+  {
     std::cout << GetAppName() << " :: Error: vehicle index is not in sample graph nodes" << std::endl;
-  }else{
+  }
+  else
+  {
     // check for all graph nodes
-    // TODO: Check only the possible end nodes that are within budget?
     std::cout << GetAppName() << "Running GRG: " << std::endl;
     for ( size_t i = 0; i < m_sample_graph_nodes.size(); i++ )
     {
-      if(manhattanDistance(current_node_index, i) >= m_recursive_greedy_budget){
-        std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, -1, m_recursive_greedy_budget);
+      if ( manhattanDistance(current_node_index, i) >= m_recursive_greedy_budget )
+      {
+        std::set< size_t > ground_set;
+        std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, ground_set, m_recursive_greedy_budget);
         if ( !cur_path.empty() )
         {
           double cur_path_value = informativeValue(cur_path);

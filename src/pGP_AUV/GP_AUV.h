@@ -87,9 +87,8 @@ class GP_AUV : public CMOOSApp
    double manhattanDistance(size_t start_node_index, size_t end_node_index);
    double informativeValue(std::vector< size_t > cur_path);
    // path planning using generalized recursive greedy algorithm and passing on to behavior
-   std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, long prev_node, size_t budget);
+   std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, std::set<size_t> ground_set, size_t budget);
    void recursiveGreedyWptSelection(std::string & next_waypoint);
-
 
 
   // timed saving of GP  /////////////////////////////////////////////////////
