@@ -83,7 +83,6 @@ class GP_AUV : public CMOOSApp
    // helper methods for path planning using GRG algorithm
    size_t getX(size_t id_pt);
    size_t getY(size_t id_pt);
-   int getCurrentNodeIndex();
    double manhattanDistance(size_t start_node_index, size_t end_node_index);
    double informativeValue(std::vector< size_t > cur_path);
    // path planning using generalized recursive greedy algorithm and passing on to behavior

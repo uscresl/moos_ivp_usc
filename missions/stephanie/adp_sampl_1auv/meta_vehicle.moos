@@ -147,7 +147,7 @@ ProcessConfig = pGP_AUV
   // number of iterations for CG/RProp
   hp_optim_iterations = 100
   path_planning_method = recursive_greedy
-  recursive_greedy_budget = 7
+  recursive_greedy_budget = 5
 }
 
 //--------------------------------------------------

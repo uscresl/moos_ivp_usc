@@ -999,19 +999,6 @@ size_t GP_AUV::getY(size_t id_pt)
 }
 
 //---------------------------------------------------------
-// Procedure: getCurrentNodeIndex
-//            we compute the index of the current node
-//            based on vehicle's current location
-//
-int GP_AUV::getCurrentNodeIndex()
-{
-  std::cout << GetAppName() << " :: Current vehicle location: " << m_lon << ", " << m_lat << std::endl;
-  int cur_node_idx = getIndexForMap(m_lon, m_lat);
-  std::cout << GetAppName() << " :: Index for map: " << cur_node_idx << std::endl;
-  return cur_node_idx;
-}
-
-//---------------------------------------------------------
 // Procedure: manhattanDistance
 //            we compute the manhattan distance between
 //            two graph nodes in m_sample_graph_nodes
@@ -1048,11 +1035,12 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
 {
   std::vector< size_t > best_path;
   double manhattan_distance = manhattanDistance(start_node_index, end_node_index);
-  // TODO: What if manhattanDistance < budget && start_node_index == end_node_index?
-  if ( manhattan_distance <= budget && start_node_index != end_node_index )
+  // check if manhattan distance between start and end node is within budget
+  if ( manhattan_distance <= budget )
   {
     if ( budget == 1 )
     {
+      // when budget is one end node can only be start node's neighbour
       if ( ground_set.find(end_node_index) == ground_set.end() )
       {
         GraphNode* end_node = &m_sample_graph_nodes[end_node_index];
@@ -1061,6 +1049,7 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
         {
           if ( start_node_neighbour == end_node )
           {
+            // if end node is a neighbour of start node, add them to the path
             best_path.push_back(start_node_index);
             best_path.push_back(end_node_index);
             break;
@@ -1070,18 +1059,21 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
     }
     else
     {
-      double best_informative_value = -1;
+      double best_informative_value = -1 * std::numeric_limits< double >::max();
+      // check all nodes as middle node between start and end node to find the best path
       for ( size_t middle_node_index = 0; middle_node_index < m_sample_graph_nodes.size(); middle_node_index++ )
       {
         if ( middle_node_index != start_node_index && middle_node_index != end_node_index && ground_set.find(middle_node_index) == ground_set.end() )
         {
+          // check all budgets possible to find the best path
           for ( size_t middle_budget = manhattanDistance(start_node_index, middle_node_index);
                 middle_budget <= budget - manhattanDistance(middle_node_index, end_node_index); middle_budget++ )
           {
             std::set< size_t > first_ground_set(ground_set.begin(), ground_set.end());
             first_ground_set.insert(end_node_index);
             std::vector< size_t > first_half_path = generalizedRecursiveGreedy(start_node_index, middle_node_index, first_ground_set, middle_budget);
-            if ( !first_half_path.empty() && manhattanDistance(middle_node_index, end_node_index) <= budget - first_half_path.size() + 1 )
+            // if a valid path exists from start to middle node find path from middle to end node.
+            if ( !first_half_path.empty() )
             {
               std::set< size_t > new_ground_set(ground_set.begin(), ground_set.end());
               new_ground_set.insert(first_half_path.begin(), first_half_path.end());
@@ -1089,9 +1081,11 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
                 budget - first_half_path.size() + 1);
               if ( !second_half_path.empty() )
               {
+                // concatenate two paths to get path from start to end node
                 std::vector< size_t > & cur_path = first_half_path;
                 cur_path.insert(cur_path.end(), second_half_path.begin() + 1, second_half_path.end());
                 double cur_path_informative_value = informativeValue(cur_path);
+                // update best path if current path is more informative
                 if ( cur_path_informative_value > best_informative_value )
                 {
                   best_path = cur_path;
@@ -1115,11 +1109,11 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
 void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
 {
   std::cout << GetAppName() << " Recursive Greedy Waypoint Selection" << std::endl;
-  // TODO: Add more comments to the code.
   // get next position, greedy pick from the paths returned by GRG algorithm
   double best_so_far = -1 * std::numeric_limits< double >::max();
   std::vector< size_t > best_path_so_far;
-  int current_node_index = getCurrentNodeIndex();
+  // Get current vehicle location's index on map
+  int current_node_index = getIndexForMap(m_lon, m_lat);
   if ( current_node_index < 0 )
   {
     std::cout << GetAppName() << " :: Error: vehicle location is not in sample rectangle" << std::endl;
@@ -1130,8 +1124,7 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
   }
   else
   {
-    // check for all graph nodes
-    std::cout << GetAppName() << "Running GRG: " << std::endl;
+    // calculate path from current node to all nodes within budget
     for ( size_t i = 0; i < m_sample_graph_nodes.size(); i++ )
     {
       if ( manhattanDistance(current_node_index, i) >= m_recursive_greedy_budget )
@@ -1141,6 +1134,7 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
         if ( !cur_path.empty() )
         {
           double cur_path_value = informativeValue(cur_path);
+          // change best path if current calculated path is more informative
           if ( informativeValue(cur_path) > best_so_far )
           {
             best_so_far = cur_path_value;
@@ -1162,6 +1156,7 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
       std::cout << " ]" << std::endl;
     }
 
+    // create string of nodes in the best path
     std::ostringstream output_stream;
     for ( size_t i = 0; i < best_path_so_far.size(); i++ )
     {
