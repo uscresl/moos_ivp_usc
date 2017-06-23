@@ -145,8 +145,8 @@ ProcessConfig = pGP_AUV
 #endif
 
   // number of iterations for CG/RProp
-  hp_optim_iterations = 100
-  path_planning_method = recursive_greedy
+  hp_optim_iterations = 50
+  path_planning_method = greedy
   recursive_greedy_budget = 5
 }
 
@@ -218,7 +218,7 @@ ProcessConfig = pPublishAfterX
 
 
 // stop the random waypoints in the static state
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADAPTIVE_START random
 ProcessConfig = uTimerScript
 {
   AppTick = 4

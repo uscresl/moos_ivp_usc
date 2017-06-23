@@ -8,7 +8,7 @@ ADAPTIVE="no"
 AREA="old"
 GUI="true"
 CG="false"
-ADP_START="random"
+ADP_START="cross"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
@@ -97,7 +97,7 @@ LW=400
 LH=200
 fi
 
-LAWNMOWER1="format=lawnmower,x=${LX},y=${LY},width=${LW},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER1="format=lawnmower,x=${LX},y=${LY},width=${LW},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
 
 if [ "${ADAPTIVE}" = "no" ] ; then
   # lawnmower

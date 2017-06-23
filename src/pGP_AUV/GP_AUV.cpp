@@ -1303,13 +1303,6 @@ size_t GP_AUV::calcMECriterion()
   {
     m_sample_graph_nodes[i].set_value(sample_graph_node_copy[i].get_value());
   }
-
-  while ( !map_lock.try_lock() ){}
-  // update map entropies from calculated values in copy
-  for ( size_t i = 0; i < sample_graph_node_copy.size(); i++)
-  {
-    m_sample_graph_nodes[i].set_value(sample_graph_node_copy[i].get_value());
-  }
   map_lock.unlock();
 
   std::clock_t end = std::clock();
