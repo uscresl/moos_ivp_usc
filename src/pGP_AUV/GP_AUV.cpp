@@ -32,6 +32,9 @@
 // init srand
 #include <chrono>
 
+// reverse auto iterate
+#include <boost/range/adaptor/reversed.hpp>
+
 //---------------------------------------------------------
 // Constructor
 //
@@ -45,7 +48,7 @@ GP_AUV::GP_AUV() :
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
   m_path_planning_method("greedy"),
-  m_debug(false),
+  m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
@@ -609,7 +612,7 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     loc_vec(1) = lat;
 
     // copy the points to have all sample points for easier processing for predictions
-    m_sample_graph_nodes.push_back(GraphNode( loc_vec, 0.0 ));
+    m_sample_graph_nodes.emplace_back(loc_vec, 0.0);
 
     GraphNode* graph_node = &m_sample_graph_nodes.back();
     long left_neighbour_index = id_pt - (m_lanes_y + 1);
@@ -1271,11 +1274,14 @@ size_t GP_AUV::calcMECriterion()
     std::cout << GetAppName() << " :: calc max entropy, size map: " << sample_graph_node_copy.size() << std::endl;
 
   // for each unvisited location
+  std::vector<double> new_values;
   for ( auto y_itr : sample_graph_node_copy )
   {
     // get unvisited location
-    Eigen::Vector2d y = y_itr.get_location();
-    double y_loc[2] = {y(0), y(1)};
+    Eigen::Vector2d yy = y_itr.get_location();
+    if ( m_debug )
+      std::cout << GetAppName() << " :: calculating entropy for: " << yy(0) << ", " << yy(1) << std::endl;
+    double y_loc[2] = {yy(0), yy(1)};
 
     // calculate its posterior entropy
     double pred_mean;
@@ -1294,14 +1300,23 @@ size_t GP_AUV::calcMECriterion()
       post_entropy = var_part + pred_mean;
     }
 
-    y_itr.set_value(post_entropy);
+    if ( m_debug )
+      std::cout << GetAppName() << " :: calculated entropy: " << post_entropy << std::endl;
+    new_values.push_back(post_entropy);
+    if ( m_debug )
+      std::cout << GetAppName() << " :: new value: " << new_values.back() << std::endl;
   }
 
   while ( !map_lock.try_lock() ){}
   // update map entropies from calculated values in copy
-  for ( size_t i = 0; i < sample_graph_node_copy.size(); i++)
+  for ( size_t idx = m_sample_graph_nodes.size(); idx > 0 ; --idx )
   {
-    m_sample_graph_nodes[i].set_value(sample_graph_node_copy[i].get_value());
+    GraphNode* item = &m_sample_graph_nodes[idx];
+    double val = new_values.back();
+    if ( m_debug )
+      std::cout << GetAppName() << " :: setting value to: " << val << std::endl;
+    item->set_value(val);
+    new_values.pop_back();
   }
   map_lock.unlock();
 
