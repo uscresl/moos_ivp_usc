@@ -1472,7 +1472,7 @@ void GP_AUV::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr
   if ( m_hp_optim_cg )
   {
     libgp::CG cg;
-    cg.maximize(&downsampled_gp, nr_iterations, 1);
+    cg.maximize(&downsampled_gp, nr_iterations, 0);
   }
   else
   {

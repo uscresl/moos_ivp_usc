@@ -57,12 +57,13 @@ ProcessConfig = pGP
   area_buffer = 10.0
 
   // specify method of hyperparameter optimization ('cg' vs 'rprop')
-  hp_optim_method = rprop
+  hp_optim_method = cg
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 50
 
-  // path planning method
+  // choice of path planning method, and their parameters
+  // options: greedy, recursive_greedy
   path_planning_method = recursive_greedy
   recursive_greedy_budget = 6
 }
