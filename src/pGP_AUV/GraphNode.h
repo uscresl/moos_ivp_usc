@@ -40,7 +40,7 @@ public:
   void set_value(double value);
 
   void set_location(Eigen::Vector2d location);
-	
+
   Eigen::Vector2d get_location() const;
 
   // Represent indexes of the neighbours in the neighbours vector.
@@ -51,13 +51,12 @@ private:
   std::vector<GraphNode*> m_neighbours;
 
   // Entropy
-  double m_value; 
+  double m_value;
 
   // Latitude and longitude
   Eigen::Vector2d m_location;
 
   static const int MAX_NEIGHBOURS = 4;
-
   static const int MAX_NEIGHBOURS_AHEAD = 3;
 };
 
