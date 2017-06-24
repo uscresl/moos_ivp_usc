@@ -65,7 +65,7 @@ ProcessConfig = ANTLER
 
   Run = pLonLatToWptUpdate @ NewConsole = false
 
-  #ifdef ADAPTIVE_WPTS yes
+  #ifdef ADAPTIVE_WPTS true
   Run = uTimerScript @ NewConsole = false
   Run = pPublishAfterX @ NewConsole = false
   #endif
@@ -125,7 +125,7 @@ ProcessConfig = pGP_AUV
   prediction_interval = 300
 
   // run in adaptive mode?
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADAPTIVE_WPTS true
   adaptive = true
 #else
   adaptive = false
@@ -138,7 +138,7 @@ ProcessConfig = pGP_AUV
 
   // specify method of hyperparameter optimization ('cg' vs 'rprop')
   // default: rprop
-#ifdef USE_CG yes
+#ifdef USE_CG true
   hp_optim_method = cg
 #else
   hp_optim_method = rprop
@@ -146,6 +146,9 @@ ProcessConfig = pGP_AUV
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 50
+  
+  // choice of path planning method, and their parameters
+  // options: greedy, recursive_greedy
   path_planning_method = greedy
   recursive_greedy_budget = 5
 }
@@ -187,7 +190,7 @@ ProcessConfig = pLonLatToWptUpdate
 }
 
 
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADAPTIVE_WPTS true
 //--------------------------------------------------
 // pPublishAfterX configuration block
 //
@@ -218,7 +221,7 @@ ProcessConfig = pPublishAfterX
 
 
 // stop the random waypoints in the static state
-#ifdef ADAPTIVE_START random
+#ifdef ADP_START_PILOT random
 ProcessConfig = uTimerScript
 {
   AppTick = 4
