@@ -50,7 +50,7 @@ done
 # check if sim data file present
 if [ ! -f 'test.csv' ]; then 
   echo 'ERROR: No simulated data file presented. Copying two_depths.csv';
-  cp ../../../data/fake_bio/two_depths.csv .
+  cp ../../../data/fake_bio/two_depths.csv test.csv
 fi
 
 #-------------------------------------------------------
