@@ -21,8 +21,8 @@ for ARGI; do
     printf "  --bigger1, -b1     \n"
     printf "  --bigger2, -b2     \n"
     printf "  --nogui, -ng       \n"
-    printf "  --rprop, -rp          \n"
-    printf "  --cross_pilot, -cp \n"
+    printf "  --rprop, -rp       \n"
+    printf "  --pilot_random     \n"
     printf "  --help, -h         \n"
     exit 0;
   elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
@@ -39,8 +39,8 @@ for ARGI; do
     GUI="false"
   elif [ "$ARGI" = "--rprop" -o "${ARGI}" = "-rp" ]; then
     CG="false"
-  elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp" ]; then
-    ADP_START="cross"
+  elif [ "$ARGI" = "--pilot_random" ]; then
+    ADP_START="random"
   else 
     printf "Bad Argument: %s \n" $ARGI
     exit 0
