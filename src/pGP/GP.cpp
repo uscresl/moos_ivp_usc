@@ -1000,6 +1000,7 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 
   // 1. split all data points into a vector
   std::vector<std::string> sample_points = parseString(incoming_data, ';');
+  size_t pts_added = sample_points.size();
 
   // 2. for each, add to GP
   for ( std::string & data_pt_str : sample_points )
@@ -1030,7 +1031,7 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
   // release lock
   gp_lock.unlock();
 
-  return sample_points.size();
+  return pts_added;
 }
 
 //---------------------------------------------------------
@@ -1762,6 +1763,9 @@ bool GP::checkGPHasData()
 size_t GP::processReceivedData()
 {
   size_t pts_added = 0;
+  if ( m_debug ) 
+    std::cout << GetAppName() << " :: going to add " << m_incoming_data_to_be_added.size() << " data points." << std::endl;
+
   while ( !m_incoming_data_to_be_added.empty() )
   {
     if ( m_debug )
@@ -2520,7 +2524,7 @@ void GP::tdsReceiveData()
     std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
     if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
-      size_t pts_added = m_future_received_data_processed.get();
+      size_t pts_added = m_future_received_data_processed.get(); //TODO TODO TODO
 
       if ( m_verbose )
         std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
