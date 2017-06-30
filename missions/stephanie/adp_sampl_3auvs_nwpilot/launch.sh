@@ -254,7 +254,7 @@ CORNELIS_LISTEN=$(($BASE_PORT+13))
 CORNELIS_LISTEN_GP=$(($BASE_PORT+23))
 
 # percentage of messages to drop in uFldNodeComms
-DROP_PCT=0
+DROP_PCT=25
 
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \

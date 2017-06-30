@@ -475,7 +475,7 @@ bool GP::Iterate()
   else
   {
     // **** SAVING GP TO FILE (independent) **********************************//
-    if ( m_mission_state != STATE_DONE && !(m_hp_optim_running && m_final_hp_optim) )
+    if ( m_mission_state != STATE_DONE && !(m_final_hp_optim) )
     {
       // periodically (every X s), store all GP predictions
       // if we did not do so in the last second (apptick)
