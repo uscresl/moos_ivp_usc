@@ -46,6 +46,7 @@ GP::GP() :
   m_output_filename_prefix(""),
   m_output_var_share_data(""),
   m_prediction_interval(-1),
+  m_max_wait_for_other_vehicles(120),
   m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
@@ -422,8 +423,13 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           m_Comms.Notify("STAGE","hpoptim");
 
         if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT ||
-             m_mission_state == STATE_CALCVOR )
+             m_mission_state == STATE_CALCVOR || m_mission_state == STATE_HPOPTIM )
         {
+          // note:
+          // if already in HPOPTIM state, we want to discard this optimization,
+          // surface for data sharing, and then re-run hp optimization
+          m_hp_optim_running = false;
+
           if ( m_use_voronoi )
             m_mission_state = STATE_REQ_SURF;
           else
@@ -642,17 +648,16 @@ bool GP::Iterate()
             m_Comms.Notify("REQ_SURFACING","final");
           m_last_published_req_surf = MOOSTime();
         }
-        else {
-          // timer to not wait too long
-          m_req_surf_timer_counter++;
-          // if we waited > 5 min (2*300), continue
-          if ( m_req_surf_timer_counter > 600 )
-          {
-            m_mission_state = STATE_SURFACING;
-            std::cout << GetAppName() << " :: m_req_surf_timer_counter timeout" << std::endl;
-            publishStates("Iterate_STATE_REQ_SURF_timeout");
-            m_req_surf_timer_counter = 0;
-          }
+
+        // timer to not wait too long
+        m_req_surf_timer_counter++;
+        if ( m_req_surf_timer_counter > (m_max_wait_for_other_vehicles * GetAppFreq()) )
+        {
+          // if we waited > X min, continue
+          m_mission_state = STATE_SURFACING;
+          std::cout << GetAppName() << " :: m_req_surf_timer_counter timeout" << std::endl;
+          publishStates("Iterate_STATE_REQ_SURF_timeout");
+          m_req_surf_timer_counter = 0;
         }
         break;
       case STATE_ACK_SURF :
@@ -682,8 +687,8 @@ bool GP::Iterate()
         {
           // run timer to avoid being stuck waiting for data
           m_tx_timer_counter++;
-          // if waited for 5 min (2*300s), continue
-          if ( m_tx_timer_counter > 600 )
+          // if waited for X min, continue
+          if ( m_tx_timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq()) )
           {
             m_received_shared_data = true;
             std::cout << GetAppName() << " :: m_tx_timer_counter timeout" << std::endl;
@@ -854,7 +859,11 @@ bool GP::OnStartUp()
   m_last_tds_surface = MOOSTime();
 
   if ( m_debug )
-  std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
+  {
+    std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
+    std::cout << GetAppName() << " :: AppTick: " << GetAppFreq() << std::endl;
+  }
+
 
   return(true);
 }
@@ -1763,7 +1772,7 @@ bool GP::checkGPHasData()
 size_t GP::processReceivedData()
 {
   size_t pts_added = 0;
-  if ( m_debug ) 
+  if ( m_debug )
     std::cout << GetAppName() << " :: going to add " << m_incoming_data_to_be_added.size() << " data points." << std::endl;
 
   while ( !m_incoming_data_to_be_added.empty() )
@@ -2490,9 +2499,8 @@ void GP::tdsHandshake()
 
       // update timer for timeout
       m_handshake_timer_counter++;
-      // if we have not received all ready messages within 5 minutes, proceed
-      // 300s = 600 iterations
-      if ( m_handshake_timer_counter > 600 )
+      // if we have not received all ready messages within X minutes, proceed
+      if ( m_handshake_timer_counter > (m_max_wait_for_other_vehicles * GetAppFreq()) )
       {
         m_received_ready = true;
         std::cout << GetAppName() << " :: m_handshake_timer_counter timeout" << std::endl;
@@ -2522,7 +2530,7 @@ void GP::tdsReceiveData()
   else if ( m_waiting && !m_calc_prevoronoi )
   {
     std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
-    if ( m_future_received_data_processed.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+    if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
     {
       size_t pts_added = m_future_received_data_processed.get(); //TODO TODO TODO
 

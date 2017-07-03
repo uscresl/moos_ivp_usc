@@ -148,6 +148,7 @@ class GP : public CMOOSApp
    std::string m_output_var_share_data;
 
    size_t m_prediction_interval;
+   size_t m_max_wait_for_other_vehicles;
 
    // State variables
    bool m_debug;
