@@ -84,7 +84,7 @@ class GP : public CMOOSApp
    void publishNextBestPosition();
 
    // timed saving of GP
-   void makeAndStorePredictions();
+   void makeAndStorePredictions(bool finished);
 
    // data sending surface
    void storeDataForSending(double vlon, double vlat, double data);

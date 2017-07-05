@@ -510,7 +510,7 @@ bool GP::Iterate()
           std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
                     << std::floor(MOOSTime()-m_start_time)  << "(" << std::floor(MOOSTime()-m_start_time) << ")" << std::endl;
         }
-        std::thread pred_store(&GP::makeAndStorePredictions, this);
+        std::thread pred_store(&GP::makeAndStorePredictions, this, false);
         pred_store.detach();
         m_last_pred_save = MOOSTime();
       }
@@ -1884,7 +1884,7 @@ void GP::endMission()
     std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
               << std::floor(MOOSTime()-m_start_time)  << "(" << std::floor(MOOSTime()-m_start_time)  << ")" << std::endl;
   }
-  std::thread pred_store(&GP::makeAndStorePredictions, this);
+  std::thread pred_store(&GP::makeAndStorePredictions, this, true);
   pred_store.detach();
 }
 
@@ -2067,7 +2067,7 @@ void GP::getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double 
 // Procedure: makeAndStorePredictions
 //            file writing
 //
-void GP::makeAndStorePredictions()
+void GP::makeAndStorePredictions(bool finished)
 {
   std::clock_t begin = std::clock();
   // make a copy of the GP and use that below, to limit lock time
@@ -2166,7 +2166,7 @@ void GP::makeAndStorePredictions()
     m_ofstream_psigma2_GP << '\n';
   }
 
-  if ( m_finished )
+  if ( finished )
   {
     if ( m_debug )
       std::cout << GetAppName() << " :: " << m_db_uptime << " :: closing files." << std::endl;
