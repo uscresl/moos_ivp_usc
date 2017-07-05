@@ -104,6 +104,7 @@ GP::GP() :
   m_vor_timeout(300),
   m_downsample_factor(4),
   m_first_surface(true),
+  m_nr_ack_sent(0),
   m_area_buffer(5.0),
   m_bhv_state(""),
   m_adp_state("")
@@ -290,6 +291,17 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             if ( !m_received_ready )
               m_received_ready = true;
           }
+          else if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
+                    m_mission_state == STATE_REQ_SURF )
+          {
+            if ( m_debug )
+              std::cout << GetAppName() << " :: received READY from both vehicles "
+                        << "while on surface, though still in REQ_SURF."
+                        << "Switch to handshake." << std::endl;
+            m_received_ready = true;
+            m_mission_state = STATE_HANDSHAKE;
+            publishStates("OnNewMail m_input_var_handshake_data_sharing");
+          }
         }
         else
         {
@@ -397,8 +409,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       }
 
       if ( m_debug )
+      {
+        std::cout << GetAppName() << " :: ACK received from: " << vname << std::endl;
         std::cout << GetAppName() << " :: processing msg? surf_req: " << ( m_mission_state == STATE_REQ_SURF )
                   << " nr_veh ok? " << (m_rec_ack_veh.size() == m_other_vehicles.size()) << std::endl;
+      }
 
       // change state if ack received from all other vehicles
       if ( !own_msg && m_mission_state == STATE_REQ_SURF &&
@@ -438,6 +453,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
           // reset other vars to make sure we can go over procedure again
           clearHandshakeVars();
+          m_waiting = false;
         }
         else if ( m_mission_state != STATE_IDLE || m_mission_state != STATE_DONE )
         {
@@ -664,14 +680,19 @@ bool GP::Iterate()
         // every second, generate var/val for acomms for surfacing
         if ( (MOOSTime() - m_last_published_req_surf_ack) > 1.0 )
         {
+          if ( m_debug )
+            std::cout << GetAppName() << " :: sending ACK" << std::endl;
           m_Comms.Notify("REQ_SURFACING_ACK","true");
           m_last_published_req_surf_ack = MOOSTime();
+          m_nr_ack_sent++;
         }
         // when on surface, switch state to start handshake
-        if ( m_on_surface )
+        if ( m_on_surface && m_nr_ack_sent > 5 )
         {
           m_mission_state = STATE_HANDSHAKE;
           publishStates("Iterate_STATE_ACK_SURF_on_surface");
+          // reset ack counter
+          m_nr_ack_sent = 0;
         }
         break;
       case STATE_HANDSHAKE :
@@ -800,11 +821,7 @@ bool GP::OnStartUp()
     else if ( param == "acomms_sharing" )
       m_acomms_sharing = (value == "true" ? true : false);
     else if ( param == "use_voronoi" )
-    {
       m_use_voronoi = (value == "true" ? true : false);
-      if ( m_debug )
-        std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
-    }
     else if ( param == "voronoi_timeout" )
       m_vor_timeout = (size_t)atoi(value.c_str());
     else if ( param == "downsample_factor" )
@@ -1497,8 +1514,6 @@ void GP::findNextSampleLocation()
         std::cout << "no";
       #endif // BUILD_VORONOI
       std::cout << '\n';
-
-      std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
     }
 
     #ifdef BUILD_VORONOI
@@ -1833,8 +1848,8 @@ void GP::startAndCheckHPOptim()
           }
           else
           {
-            std::cout << GetAppName() << " :: tdsResetStateVars via hpoptimdone - not m_use_voronoi" << std::endl;
-            tdsResetStateVars();
+            std::cout << GetAppName() << " :: clearTDSStateVars via hpoptimdone - not m_use_voronoi" << std::endl;
+            clearTDSStateVars();
           }
 
           // after final HP optim
@@ -2565,8 +2580,8 @@ void GP::tdsReceiveData()
 //        }
 //        else
 //        {
-//          std::cout << GetAppName() << " :: tdsResetStateVars via tdsReceiveData - not m_use_voronoi" << std::endl;
-//          tdsResetStateVars();
+//          std::cout << GetAppName() << " :: clearTDSStateVars via tdsReceiveData - not m_use_voronoi" << std::endl;
+//          clearTDSStateVars();
 //        }
       }
     }
@@ -2576,10 +2591,10 @@ void GP::tdsReceiveData()
 
 
 //---------------------------------------------------------
-// Procedure: tdsResetStateVars
+// Procedure: clearTDSStateVars
 //            reset state vars for TDS control
 //
-void GP::tdsResetStateVars()
+void GP::clearTDSStateVars()
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: reset state vars" << std::endl;
@@ -2587,14 +2602,14 @@ void GP::tdsResetStateVars()
   // move to next step; need wpt
   if ( m_adaptive && m_num_vehicles > 1 )
   {
-    std::cout << GetAppName() << " :: STATE_CALCWPT via tdsResetStateVars" << std::endl;
+    std::cout << GetAppName() << " :: STATE_CALCWPT via clearTDSStateVars" << std::endl;
     m_mission_state = STATE_CALCWPT;
-    publishStates("tdsResetStateVars_adp_nrveh_gt_1");
+    publishStates("clearTDSStateVars_adp_nrveh_gt_1");
   }
   else
   {
     m_mission_state = STATE_SAMPLE;
-    publishStates("tdsResetStateVards_else");
+    publishStates("clearTDSStateVards_else");
   }
 
   if ( m_bhv_state != "survey" )
@@ -2810,8 +2825,8 @@ void GP::runVoronoiRoutine()
 
   m_last_voronoi_calc_time = MOOSTime();
 
-  std::cout << GetAppName() << " :: tdsResetStateVars via runVoronoiRoutine" << std::endl;
-  tdsResetStateVars();
+  std::cout << GetAppName() << " :: clearTDSStateVars via runVoronoiRoutine" << std::endl;
+  clearTDSStateVars();
 
   m_calc_prevoronoi = false;
   m_running_voronoi_routine = false;

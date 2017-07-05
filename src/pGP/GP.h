@@ -117,7 +117,7 @@ class GP : public CMOOSApp
    bool convUTMToLonLat (double lx, double ly, double & lon, double & lat );
    bool inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const;
 
-   void tdsResetStateVars();
+   void clearTDSStateVars();
    void clearHandshakeVars();
    void tdsHandshake();
    void tdsReceiveData();
@@ -303,6 +303,7 @@ class GP : public CMOOSApp
    // to publish only once a second
    double m_last_published_req_surf;
    double m_last_published_req_surf_ack;
+   size_t m_nr_ack_sent;
 
    // buffer around area for which vehicle is counted to be inside the area
    double m_area_buffer;
