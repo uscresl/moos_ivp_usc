@@ -716,6 +716,11 @@ bool GP::Iterate()
             m_tx_timer_counter = 0;
           }
         }
+        else
+        {
+          if ( m_debug ) 
+            std::cout << GetAppName() << " :: stuck in TX_DATA, m_calc_prevoronoi:" << m_calc_prevoronoi << ", m_received_shared_data: " << m_received_shared_data << std::endl;
+        }
         break;
       case STATE_RX_DATA :
         if ( !m_calc_prevoronoi )
