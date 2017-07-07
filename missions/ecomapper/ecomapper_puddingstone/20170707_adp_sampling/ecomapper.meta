@@ -1,0 +1,215 @@
+// MOOS community specs
+ServerHost = $(SERVER_HOST) //192.168.1.11
+ServerPort = $(VPORT) //9000
+Community  = $(VNAME) //ecomapper
+NoNetwork = true
+#ifdef SIMULATION yes
+Simulation = true
+#endif
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = $(WARP)
+
+// Location: Puddingstone full
+#include $(PLUG_DIR)/plug_origin_warp.moos
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = false
+  Run = uProcessWatch @ NewConsole = false
+
+  // behaviors
+  Run = pHelmIvP      @ NewConsole = false
+
+  // add the frontseat interface
+#ifdef SIMULATION no
+  Run = iOceanServerComms @ NewConsole = false
+#endif
+#ifdef SIMULATION yes
+  // simulate the AUV
+  Run = uSimMarine @ NewConsole = false
+  Run = pMarinePID @ NewConsole = false
+#endif
+  
+  // node report
+  Run = pNodeReporter @ NewConsole = false
+  
+  // pShare for pMarineViewer
+  Run = pShare @ NewConsole = false
+
+  // pGP_AUV testing
+  Run = pSamplePoints @ NewConsole = false
+  Run = pGP_AUV @ NewConsole = false
+  Run = pLonLatToWptUpdate @ NewConsole = false 
+
+#ifdef ADAPTIVE_WPTS yes
+  // uTimerScript for stopping integrated random pilot
+  Run = uTimerScript @ NewConsole = false
+  // pPublishAfterX for stopping mission
+  Run = pPublishAfterX @ NewConsole = false
+#endif
+}
+
+#include $(PLUG_DIR)/plug_pLogger.moos
+
+#include plugs/plug_pHelmIvP.moos
+
+#ifdef SIMULATION no
+#include plugs/plug_iOceanServerComms.moos
+#endif
+#ifdef SIMULATION yes
+#include plugs/plug_auv_simulation.moos
+#endif
+
+#include $(PLUG_DIR)/plug_pNodeReporter.moos
+
+#include plugs/plug_pShare.moos
+
+#include $(PLUG_DIR)/plug_uProcessWatch.moos
+
+
+//****************************************************************************//
+// TESTING
+
+//--------------------------------------------------
+// pSamplePoints configuration block
+//
+ProcessConfig = pSamplePoints
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // potential process parameters would go here
+  lawnmower_config = $(LAWNMOWER_CONFIG)
+
+  // division factor for grid spacing (increase resolution vs lawnmower spec)
+  division_factor = 2
+
+  // define what output variable name to use
+  // for publishing list of sample points
+  output_var = SAMPLE_POINTS
+
+  // define what output variable name to use
+  // for publishing sample points grid spec
+  output_var_specs = SAMPLE_POINTS_SPECS
+}
+
+//--------------------------------------------------
+// pLonLatToWptUpdate configuration block
+//
+ProcessConfig = pLonLatToWptUpdate
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // specify variable names
+  input_var_lonlat = GP_PREDICTIONS
+  output_var_wpt_update = ADAPTIVE_WPT_UPDATES
+}
+
+//--------------------------------------------------
+// pGP_AUV configuration block
+//
+ProcessConfig = pGP_AUV
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // verbose: true or false
+  verbose = true
+
+  // GP or log GP?
+  use_log_gp = true
+
+  // define the names of input & output variables
+  // use NAV_ALTITUDE for ground truth testing
+  input_var_data = NAV_ALTITUDE
+//  // use YSI_CHL for bio purposes
+//  input_var_data = YSI_CHL
+
+  input_var_sample_points = SAMPLE_POINTS
+  input_var_sample_points_specs = SAMPLE_POINTS_SPECS
+  input_var_adaptive_trigger = WPT_REACHED
+  
+  output_var_predictions = GP_PREDICTIONS
+
+  // define the filename for saving GP predictions
+  output_filename_prefix = predictions
+
+  // define the prediction interval (predict every X seconds)
+  prediction_interval = 300
+
+  // run in adaptive mode?
+#ifdef ADAPTIVE_WPTS yes
+  adaptive = true
+#else
+  adaptive = false
+#endif
+
+  // take one in X data points for HP optimization
+  downsample_factor = 4
+
+  // buffer region outside sample area for which
+  // vehicle is still counted as inside, for voronoi partitioning
+  area_buffer = 10.0
+
+  // specify method of hyperparameter optimization ('cg' vs 'rprop')
+  hp_optim_method = cg
+
+  // number of iterations for CG/RProp
+  hp_optim_iterations = 100
+}
+
+#ifdef ADAPTIVE_WPTS yes
+//--------------------------------------------------
+// pPublishAfterX configuration block
+//
+ProcessConfig = pPublishAfterX
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // which var/val to monitor
+  publish_after_var = VEHICLE_UNDERWAY
+  publish_after_val = true
+
+  // how many seconds after above var/val should we publish?
+
+  // area 300x200 meters, full time
+//  publish_after_secs = 5319:5336
+//  // half time
+  publish_after_secs = 2660:2668
+  
+  // the var/val set to publish
+  publish_var = MISSION_TIME
+  publish_val = end
+  
+  // skip first message?
+  skip_first = false
+}
+#endif
+
+
+// stop the random waypoints in the static state
+#ifdef ADAPTIVE_WPTS yes
+ProcessConfig = uTimerScript
+{
+  AppTick = 4
+  CommsTick = 4
+
+  verbose = true
+
+  event = var=ADP_PTS,val="adaptive",time=986:987
+  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
+
+  reset_max = 0
+//  reset_time = all-posted
+  reset_var = UTS_RESET
+
+  status_var = UTS_STATUS
+}
+#endif
