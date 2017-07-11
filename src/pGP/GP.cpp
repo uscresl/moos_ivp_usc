@@ -718,7 +718,7 @@ bool GP::Iterate()
         }
         else
         {
-          if ( m_debug ) 
+          if ( m_debug )
             std::cout << GetAppName() << " :: stuck in TX_DATA, m_calc_prevoronoi:" << m_calc_prevoronoi << ", m_received_shared_data: " << m_received_shared_data << std::endl;
         }
         break;
