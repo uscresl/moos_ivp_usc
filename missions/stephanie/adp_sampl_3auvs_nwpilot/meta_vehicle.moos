@@ -225,7 +225,11 @@ ProcessConfig = pGP
   hp_optim_iterations = 100
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
+#ifdef ADAPTIVE_WPTS yes
   m_max_wait_for_other_vehicles = 180
+#else
+  m_max_wait_for_other_vehicles = 240
+#endif
 }
 
 //--------------------------------------------------
