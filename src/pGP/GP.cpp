@@ -85,6 +85,7 @@ GP::GP() :
   m_data_pt_counter(0),
   m_data_send_reserve(0),
   m_received_shared_data(false),
+  m_data_received(false),
   m_timed_data_sharing(false),
   m_data_sharing_interval(600),
   m_waiting(false),
@@ -261,6 +262,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         std::string incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
 
         m_incoming_data_to_be_added.push_back(incoming_data);
+        m_data_received = true;
       }
       else
         std::cout << GetAppName() << " :: skipping my own data" << std::endl;
@@ -718,13 +720,18 @@ bool GP::Iterate()
         }
         else
         {
-          if ( m_debug ) 
+          if ( m_debug )
             std::cout << GetAppName() << " :: stuck in TX_DATA, m_calc_prevoronoi:" << m_calc_prevoronoi << ", m_received_shared_data: " << m_received_shared_data << std::endl;
         }
         break;
       case STATE_RX_DATA :
-        if ( !m_calc_prevoronoi )
+        // 20170708 add in check to see if we received data yet, else we wait
+        if ( !m_calc_prevoronoi && m_data_received )
           tdsReceiveData();
+        else
+        {
+          std::cout << GetAppName() << " :: STATE_RX_DATA waiting .. m_calc_prevoronoi: " << m_calc_prevoronoi << ", m_data_received: " << m_data_received << std::endl;
+        }
       default :
         break;
     }
@@ -1025,7 +1032,10 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 {
   // take ownership of m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-  while ( !gp_lock.try_lock() ) {}
+  while ( !gp_lock.try_lock() )
+  {
+    std::cout << GetAppName() << " :: obtaining lock, handleMailReceivedDataPts" << std::endl;
+  }
 
   // parse string
 
@@ -2504,6 +2514,8 @@ void GP::tdsHandshake()
 
       // reset for next time
       m_received_ready = false;
+      // reset handshake timer in case of data received while it was already counting
+      m_handshake_timer_counter = 0;
     }
     else
     {

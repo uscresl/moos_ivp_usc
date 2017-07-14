@@ -244,6 +244,9 @@ class GP : public CMOOSApp
    std::vector<std::string> m_incoming_data_to_be_added;
    double m_loiter_dist_to_poly;
 
+   // check if data received
+   bool m_data_received;
+
    // timed data sharing
    bool m_timed_data_sharing;
    size_t m_data_sharing_interval;
