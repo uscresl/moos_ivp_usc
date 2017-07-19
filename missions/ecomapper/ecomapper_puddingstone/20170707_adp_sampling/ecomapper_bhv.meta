@@ -24,6 +24,7 @@ initialize  ADP_PTS=static
 initialize NAV_ALTITUDE = 10
 
 initialize START=first
+initialize HP_OPTIM_BHV=firstwpt
 
 //****************************************************************************//
 // MODE structure for easier assigning behaviors to mission states
@@ -145,11 +146,30 @@ Behavior = BHV_Waypoint
   visual_hints = vertex_size=3, edge_size=2
 }
 
+Behavior = BHV_Waypoint
+{
+  name = wpt_before_loiter_hpoptim
+  pwt = 100
+  condition = MODE==HP_OPTIM
+  condition = HP_OPTIM_BHV=firstwpt
+  endflag = HP_OPTIM_BHV=loiter
+
+  perpetual = false
+  speed = 1.0
+  radius = 5.0
+  slip_radius = 10.0
+  lead = 10
+  points = 515,1045
+  order = normal
+  repeat = 0
+}
+
 Behavior = BHV_Loiter
 {
   name = loiter_hp_optim
   pwt = 100
   condition = MODE==HP_OPTIM
+  condition = HP_OPTIM_BHV=loiter
   perpetual = true
   
   endflag = STAGE=return
@@ -161,7 +181,7 @@ Behavior = BHV_Loiter
   slip_radius = 5
   acquire_dist = 10  
   
-  polygon = format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter
+  polygon = format=radial,x=440,y=1000,radius=10,pts=4,snap=1,label=hp_optimization_loiter
 }
 
 // adaptive survey /////////////////////////////////////////////////////////////
