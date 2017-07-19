@@ -2119,6 +2119,9 @@ void GP::makeAndStorePredictions(bool finished)
   all_pred_mu_GP.reserve(nr_sample_locations);
   all_pred_sigma2_GP.reserve(nr_sample_locations);
 
+  if ( m_debug )
+    std::cout << GetAppName() << " :: size GP: " << gp_copy->get_sampleset_size() << std::endl;
+
   // make predictions for all sample locations
   for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
   {
@@ -2568,7 +2571,8 @@ void GP::tdsReceiveData()
   }
   else if ( m_waiting && !m_calc_prevoronoi )
   {
-    std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
+    if ( m_debug && (size_t)std::floor(MOOSTime()-m_start_time) % 2 == 0 )
+      std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
     if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
     {
       size_t pts_added = m_future_received_data_processed.get(); //TODO TODO TODO
