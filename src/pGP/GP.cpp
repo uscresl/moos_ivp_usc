@@ -386,6 +386,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         {
           m_final_hp_optim = true;
 
+          if ( m_mission_state == STATE_HPOPTIM )
+          {
+            if ( m_debug )
+              std::cout << GetAppName() << " :: REQ_SURF finale surface, resetting m_calc_prevoronoi" << std::endl;
+            m_calc_prevoronoi = false;
+          }
           if ( m_mission_state == STATE_HPOPTIM ||  m_mission_state == STATE_SAMPLE ||
                m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
           {
@@ -456,6 +462,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           // reset other vars to make sure we can go over procedure again
           clearHandshakeVars();
           m_waiting = false;
+          m_calc_prevoronoi = false;
         }
         else if ( m_mission_state != STATE_IDLE || m_mission_state != STATE_DONE )
         {
