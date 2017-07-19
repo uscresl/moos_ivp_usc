@@ -162,6 +162,9 @@ ProcessConfig = pGP
   #ifdef NR_VEHICLES 2
   prediction_interval = 600 // every 10 min, reduce nr save moments for 2AUVs
   #endif
+  #ifdef NR_VEHICLES 1
+  prediction_interval = 600
+  #endif
 #else
   prediction_interval = 300
 #endif
@@ -321,7 +324,7 @@ ProcessConfig = pPublishAfterX
   // area bigger2
   // old area
   #ifdef NR_VEHICLES 1
-    publish_after_secs = 6400:6450 //TODO
+    publish_after_secs = 22250:22270 //TODO check from more LM sims
   #endif
   #ifdef NR_VEHICLES 2
     publish_after_secs = 12030:12236 // from b22b lm sims (luna)
