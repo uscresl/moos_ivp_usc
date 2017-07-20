@@ -10,6 +10,7 @@ AREA="old"
 GUI="true"
 CG="false"
 ADP_START="random"
+USE_LOG_GP="yes"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
@@ -40,6 +41,8 @@ for ARGI; do
         CG="yes"
     elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp" ]; then
         ADP_START="cross"
+    elif [ "$ARGI" = "--gp" -o "${ARGI}" = "-g" ]; then
+        USE_LOG_GP="no"
     else 
         printf "Bad Argument: %s \n" $ARGI
         exit 0
@@ -159,7 +162,8 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER1  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
-   ADAPTIVE_WPTS=$ADAPTIVE  USE_GUI=$GUI  USE_CG=$CG
+   ADAPTIVE_WPTS=$ADAPTIVE  USE_GUI=$GUI  USE_CG=$CG           \
+   LOG_GP=$USE_LOG_GP
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \

@@ -52,12 +52,12 @@ ProcessConfig = ANTLER
   Run = uSimBioSensor @ NewConsole = false
   //,XConfig=uSBSConfig
 
-  #ifdef USE_GUI true
-  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP_AUV @ NewConsole = true,XConfig=pGPConfig
-  #else
+//  #ifdef USE_GUI true
+//  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+//  Run = pGP_AUV @ NewConsole = true,XConfig=pGPConfig
+//  #else
   Run = pGP_AUV @ NewConsole = false
-  #endif
+//  #endif
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -108,7 +108,11 @@ ProcessConfig = pGP_AUV
   verbose = true
 
   // GP or log GP?
+#ifdef LOG_GP yes
   use_log_gp = true
+#else
+  use_log_gp = false
+#endif
 
   // define the names of input variables
   input_var_data = SIM_DATA
@@ -146,6 +150,12 @@ ProcessConfig = pGP_AUV
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 100
+  
+  // options for when using GP (not log-GP)
+#ifdef LOG_GP no
+  use_exploit_factor_gp = true
+  exploitation_factor = 1.0
+#endif
 }
 
 //--------------------------------------------------
