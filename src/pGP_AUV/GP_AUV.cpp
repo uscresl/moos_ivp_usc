@@ -1062,8 +1062,8 @@ size_t GP_AUV::calcMECriterion()
     }
 
     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
-    if ( m_debug )
-      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
+//    if ( m_debug )
+//      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
   }
 
   std::clock_t end = std::clock();
