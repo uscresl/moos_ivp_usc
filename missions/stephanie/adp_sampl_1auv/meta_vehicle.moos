@@ -154,7 +154,7 @@ ProcessConfig = pGP_AUV
   // options for when using GP (not log-GP)
 #ifdef LOG_GP no
   use_exploit_factor_gp = true
-  exploitation_factor = 1.0
+  exploitation_factor = 0.25
 #endif
 }
 
