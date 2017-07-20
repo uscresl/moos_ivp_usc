@@ -174,7 +174,11 @@ ProcessConfig = pPublishAfterX
   CommsTick = 2
 
   // which var/val to monitor
+#ifdef SIMULATION yes
+  publish_after_var = DEPLOY
+#else
   publish_after_var = VEHICLE_UNDERWAY
+#endif
   publish_after_val = true
 
   // how many seconds after above var/val should we publish?
