@@ -159,7 +159,7 @@ Behavior = BHV_Waypoint
   radius = 5.0
   slip_radius = 10.0
   lead = 10
-  points = 515,1045
+  points = 500,1075
   order = normal
   repeat = 0
 }
@@ -181,7 +181,7 @@ Behavior = BHV_Loiter
   slip_radius = 5
   acquire_dist = 10  
   
-  polygon = format=radial,x=440,y=1000,radius=10,pts=4,snap=1,label=hp_optimization_loiter
+  polygon = format=radial,x=425,y=1030,radius=10,pts=4,snap=1,label=hp_optimization_loiter
 }
 
 // adaptive survey /////////////////////////////////////////////////////////////
@@ -316,7 +316,7 @@ Behavior = BHV_Waypoint
   speed = 1.5
   radius = 2.0
   nm_radius = 8.0
-  points = 430,950
+  points = 450,1030:430,950
 }
 
 // UUV - depth bhvs ////////////////////////////////////////////////////////////
