@@ -44,7 +44,7 @@ GP_AUV::GP_AUV() :
   m_output_var_pred(""),
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
-  m_debug(false),
+  m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
@@ -78,7 +78,9 @@ GP_AUV::GP_AUV() :
   m_downsample_factor(4),
   m_first_surface(true),
   m_area_buffer(5.0),
-  m_bhv_state("")
+  m_bhv_state(""),
+  m_use_exploit_factor_gp(false),
+  m_exploitation_factor(1.0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -417,6 +419,10 @@ bool GP_AUV::OnStartUp()
       // default: rprop
       m_hp_optim_cg = ( value == "cg" ) ? true : false;
     }
+    else if ( param == "use_exploit_factor_gp" )
+      m_use_exploit_factor_gp = (value == "true" ? true : false);
+    else if ( param == "exploitation_factor" )
+      m_exploitation_factor = (double)atof(value.c_str());
     else
       handled = false;
 
@@ -555,7 +561,7 @@ void GP_AUV::handleMailData(double received_data)
 
     // we cannot handle negative numbers, given the log we are taking
     // skip those samples for now
-    if ( received_data > 0 )
+    if ( (m_use_log_gp && received_data > 0) || !m_use_log_gp )
     {
       // pass into data adding queue
       std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
@@ -1033,6 +1039,26 @@ size_t GP_AUV::calcMECriterion()
       // lognormal distribution
       double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
       post_entropy = var_part + pred_mean;
+    }
+
+    if ( !m_use_log_gp && m_use_exploit_factor_gp )
+    {
+      // this is for balancing the exploration-exploitation trade-off
+      // without incorporating the mean, it is pure exploration
+      // or rather, it optimizes for model uncertainty.
+      // the log-GP incorporates the mean, and we want an option
+      // to do the same whilst using GP and not log-GP
+
+      // to balance between the two, we want to set some parameters
+      // we can scale both, but effectively, that is the same as scaling
+      // one of them
+      if ( m_debug )
+      {
+        std::cout << GetAppName() << " :: post_entr: " << post_entropy
+                  << ", expl_factor: " << m_exploitation_factor << ", pred_mean: "
+                  << pred_mean << std::endl;
+      }
+      post_entropy = post_entropy + m_exploitation_factor * pred_mean;
     }
 
     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));

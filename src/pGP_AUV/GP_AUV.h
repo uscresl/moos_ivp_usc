@@ -209,6 +209,10 @@ class GP_AUV : public CMOOSApp
 
    // debugging
    double m_db_uptime;
+
+   // exploration-exploitation for GP (not log-GP)
+   bool m_use_exploit_factor_gp;
+   double m_exploitation_factor;
 };
 
 #endif
