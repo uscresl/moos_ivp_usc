@@ -33,6 +33,8 @@ ProcessConfig = ANTLER
   // simulate the AUV
   Run = uSimMarine @ NewConsole = false
   Run = pMarinePID @ NewConsole = false
+  // simulate the sensor for pGP_AUV
+  Run = uSimBioSensor @ NewConsole = false
 #endif
   
   // node report
@@ -63,6 +65,7 @@ ProcessConfig = ANTLER
 #endif
 #ifdef SIMULATION yes
 #include plugs/plug_auv_simulation.moos
+#include $(PLUG_DIR)/plug_uSimBioSensor.moos
 #endif
 
 #include $(PLUG_DIR)/plug_pNodeReporter.moos
