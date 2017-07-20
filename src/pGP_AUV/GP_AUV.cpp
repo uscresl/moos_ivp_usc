@@ -940,7 +940,7 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
   }
   else
   {
-    if ( m_debug )
+    if ( m_verbose )
       std::cout << GetAppName() << " :: invalid index: " << best_so_far_idx << ", not publishing." << std::endl;
     best_location(0) = 0;
     best_location(1) = 0;
@@ -1010,7 +1010,7 @@ size_t GP_AUV::calcMECriterion()
   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
-  if ( m_debug )
+  if ( m_verbose )
     std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
 
   // for each unvisited location
@@ -1052,7 +1052,7 @@ size_t GP_AUV::calcMECriterion()
       // to balance between the two, we want to set some parameters
       // we can scale both, but effectively, that is the same as scaling
       // one of them
-      if ( m_debug )
+      if ( m_verbose )
       {
         std::cout << GetAppName() << " :: post_entr: " << post_entropy
                   << ", expl_factor: " << m_exploitation_factor << ", pred_mean: "
@@ -1062,8 +1062,8 @@ size_t GP_AUV::calcMECriterion()
     }
 
     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
-//    if ( m_debug )
-//      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
+    if ( m_debug )
+      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
   }
 
   std::clock_t end = std::clock();
@@ -1251,7 +1251,7 @@ void GP_AUV::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr
   filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
   downsampled_gp.write(filenm.str().c_str());
   end = std::clock();
-  if ( m_debug )
+  if ( m_verbose )
     std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   // downsampled gp should be destroyed
