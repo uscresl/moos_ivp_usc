@@ -38,7 +38,7 @@ for ARGI; do
         GUI="no"
     elif [ "$ARGI" = "--cg" -o "${ARGI}" = "-cg" ]; then
         CG="yes"
-    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp"]; then
+    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp" ]; then
         ADP_START="cross"
     else 
         printf "Bad Argument: %s \n" $ARGI
