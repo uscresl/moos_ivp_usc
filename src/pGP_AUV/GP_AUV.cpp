@@ -86,7 +86,9 @@ GP_AUV::GP_AUV() :
   m_first_surface(true),
   m_area_buffer(5.0),
   m_bhv_state(""),
-  m_recursive_greedy_budget(5)
+  m_recursive_greedy_budget(5),
+  m_total_path_selection_time(0),
+  m_total_paths_selected(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -1111,7 +1113,9 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
 //
 void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
 {
-  std::cout << GetAppName() << " Recursive Greedy Waypoint Selection" << std::endl;
+  std::clock_t begin = std::clock();
+  if(m_debug)
+    std::cout << GetAppName() << " :: Recursive Greedy Waypoint Selection" << std::endl;
   // get next position, greedy pick from the paths returned by GRG algorithm
   double best_so_far = -1 * std::numeric_limits< double >::max();
   std::vector< size_t > best_path_so_far;
@@ -1138,7 +1142,9 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
         {
           double cur_path_value = informativeValue(cur_path);
           // change best path if current calculated path is more informative
-          if ( informativeValue(cur_path) > best_so_far )
+          if(m_debug)
+            std::cout << GetAppName() << " :: Curr Value: " << cur_path_value << std::endl;
+          if ( cur_path_value > best_so_far )
           {
             best_so_far = cur_path_value;
             best_path_so_far = cur_path;
@@ -1196,6 +1202,16 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
       output_stream << std::setprecision(15) << node_loc(0) << "," << node_loc(1);
     }
     next_waypoint = output_stream.str();
+  }
+  std::clock_t end = std::clock();
+  double path_selection_time = double(end-begin)/CLOCKS_PER_SEC;
+  m_total_paths_selected++;
+  m_total_path_selection_time += path_selection_time;
+  if(m_debug){
+    std::cout << GetAppName() << ":: Path selected in " << path_selection_time << std::endl;
+    std::cout << GetAppName() << ":: Total paths selected: " << m_total_paths_selected << std::endl;
+    std::cout << GetAppName() << ":: Total path selection time: " << m_total_path_selection_time << std::endl;
+    std::cout << GetAppName() << ":: Avg path selection time: " << m_total_path_selection_time/m_total_paths_selected << std::endl;
   }
 }
 

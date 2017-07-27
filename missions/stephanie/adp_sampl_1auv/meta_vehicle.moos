@@ -122,7 +122,10 @@ ProcessConfig = pGP_AUV
   output_filename_prefix = $(PREDICTIONS_PREFIX)
 
   // define the prediction interval (predict every X seconds)
-  prediction_interval = 300
+  // od and td
+  // prediction_interval = 300
+  // bigger2
+  prediction_interval = 600
 
   // run in adaptive mode?
 #ifdef ADAPTIVE_WPTS true
@@ -149,8 +152,8 @@ ProcessConfig = pGP_AUV
   
   // choice of path planning method, and their parameters
   // options: greedy, recursive_greedy
-  path_planning_method = greedy
-  recursive_greedy_budget = 5
+  path_planning_method = recursive_greedy
+  recursive_greedy_budget = 4
 }
 
 //--------------------------------------------------
@@ -208,7 +211,11 @@ ProcessConfig = pPublishAfterX
 // old area
 //  publish_after_secs = 8571:8660 //TODO update
 
-  publish_after_secs = 6400:6450 //TODO update
+  //od and td
+  //publish_after_secs = 6400:6450 //TODO update
+
+  //bigger2
+  publish_after_secs = 22250:22270
 
   // the var/val set to publish
   publish_var = MISSION_TIME

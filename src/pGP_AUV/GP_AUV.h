@@ -239,6 +239,8 @@ class GP_AUV : public CMOOSApp
 
    // debugging
    double m_db_uptime;
+   double m_total_path_selection_time;
+   unsigned int m_total_paths_selected;
 };
 
 #endif

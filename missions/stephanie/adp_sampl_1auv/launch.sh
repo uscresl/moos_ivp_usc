@@ -111,7 +111,14 @@ fi
 ##### specify for adaptive whether to use integrated cross or random pilot #####
 if [ "${ADAPTIVE}" = "true" ] && [ "${ADP_START}" = "cross" ] ; then
   # 1auv cross
-  PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+  if [ ${AREA} = "bigger2" ]; then
+    # bigger2
+    PILOT_PTS1=700,700:1200,1300:700,1300:1200,700
+    END_FLAG_PT1=1200,700
+  else
+    PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+    END_FLAG_PT1=900,1000
+  fi
 fi
 
 if [ "${ADAPTIVE}" = "true" ] && [ "${ADP_START}" = "random" ] ; then
@@ -168,7 +175,7 @@ nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
     LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
-    OPREGION=$BHVOPREGION  PILOT_PTS=$PILOT_PTS1
+    OPREGION=$BHVOPREGION  PILOT_PTS=$PILOT_PTS1 END_FLAG_PT=$END_FLAG_PT1
 
 if [ ${JUST_MAKE} = "true" ] ; then
     exit 0
