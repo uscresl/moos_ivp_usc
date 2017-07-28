@@ -204,6 +204,8 @@ bool SimBioSensor::OnStartUp()
     else if ( param == "sensor_stddev" )
     {
       m_stddev = atof(value.c_str());
+      std::cout << GetAppName() << " :: Parameter sensor_stddev: " << m_stddev << std::endl;
+      handled = true;
     }
     else if ( param == "output_var" )
     {
@@ -214,6 +216,7 @@ bool SimBioSensor::OnStartUp()
     else if ( param == "verbose" )
     {
       m_verbose = (value == "true") ? true : false;
+      handled = true;
     }
 
     if ( !handled )
@@ -328,25 +331,28 @@ void SimBioSensor::readBioDataFromFile()
       std::vector<std::string> line_items;
       std::stringstream ss(line);
       std::string item;
-      while ( std::getline(ss, item, ',') )
-          line_items.push_back(item);
-      // TODO, store by checking header lines for positions
-      lon = line_items[0];
-      lat = line_items[1];
-      depth = line_items[2];
-      data = line_items[3];
+      if ( line != "" )
+      {
+        while ( std::getline(ss, item, ',') )
+            line_items.push_back(item);
+        // TODO, store by checking header lines for positions
+        lon = line_items[0];
+        lat = line_items[1];
+        depth = line_items[2];
+        data = line_items[3];
 
-      cnt++;
+        cnt++;
 
-      size_t lon_idx, lat_idx, dep_idx;
-      double tmp_lon = (double)atof(lon.c_str());
-      double tmp_lat = (double)atof(lat.c_str());
-      double tmp_dep = (double)atof(depth.c_str());
-      lon_idx = round( ( tmp_lon - d_boundaries_map.at("lon_min")) / m_lon_step );
-      lat_idx = round( ( tmp_lat - d_boundaries_map.at("lat_min")) / m_lat_step );
-      dep_idx = round( ( tmp_dep - d_boundaries_map.at("depth_min")) / m_depth_step );
+        size_t lon_idx, lat_idx, dep_idx;
+        double tmp_lon = (double)atof(lon.c_str());
+        double tmp_lat = (double)atof(lat.c_str());
+        double tmp_dep = (double)atof(depth.c_str());
+        lon_idx = round( ( tmp_lon - d_boundaries_map.at("lon_min")) / m_lon_step );
+        lat_idx = round( ( tmp_lat - d_boundaries_map.at("lat_min")) / m_lat_step );
+        dep_idx = round( ( tmp_dep - d_boundaries_map.at("depth_min")) / m_depth_step );
 
-      d_location_values[lon_idx][lat_idx][dep_idx] = (double)atof(data.c_str());
+        d_location_values[lon_idx][lat_idx][dep_idx] = (double)atof(data.c_str());
+      }
     }
 
     // done with this file, close
