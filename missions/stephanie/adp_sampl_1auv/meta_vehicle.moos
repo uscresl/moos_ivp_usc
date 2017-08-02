@@ -52,12 +52,12 @@ ProcessConfig = ANTLER
   Run = uSimBioSensor @ NewConsole = false
   //,XConfig=uSBSConfig
 
-  #ifdef USE_GUI true
-  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP_AUV @ NewConsole = true,XConfig=pGPConfig
-  #else
+//  #ifdef USE_GUI true
+//  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+//  Run = pGP_AUV @ NewConsole = true,XConfig=pGPConfig
+//  #else
   Run = pGP_AUV @ NewConsole = false
-  #endif
+//  #endif
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -65,7 +65,7 @@ ProcessConfig = ANTLER
 
   Run = pLonLatToWptUpdate @ NewConsole = false
 
-  #ifdef ADAPTIVE_WPTS yes
+  #ifdef ADAPTIVE_WPTS true
   Run = uTimerScript @ NewConsole = false
   Run = pPublishAfterX @ NewConsole = false
   #endif
@@ -122,10 +122,13 @@ ProcessConfig = pGP_AUV
   output_filename_prefix = $(PREDICTIONS_PREFIX)
 
   // define the prediction interval (predict every X seconds)
-  prediction_interval = 300
+  // od and td
+  // prediction_interval = 300
+  // bigger2
+  prediction_interval = 600
 
   // run in adaptive mode?
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADAPTIVE_WPTS true
   adaptive = true
 #else
   adaptive = false
@@ -138,14 +141,19 @@ ProcessConfig = pGP_AUV
 
   // specify method of hyperparameter optimization ('cg' vs 'rprop')
   // default: rprop
-#ifdef USE_CG yes
+#ifdef USE_CG true
   hp_optim_method = cg
 #else
   hp_optim_method = rprop
 #endif
 
   // number of iterations for CG/RProp
-  hp_optim_iterations = 100
+  hp_optim_iterations = 50
+  
+  // choice of path planning method, and their parameters
+  // options: greedy, recursive_greedy
+  path_planning_method = recursive_greedy
+  recursive_greedy_budget = 4
 }
 
 //--------------------------------------------------
@@ -185,7 +193,7 @@ ProcessConfig = pLonLatToWptUpdate
 }
 
 
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADAPTIVE_WPTS true
 //--------------------------------------------------
 // pPublishAfterX configuration block
 //
@@ -203,7 +211,11 @@ ProcessConfig = pPublishAfterX
 // old area
 //  publish_after_secs = 8571:8660 //TODO update
 
-  publish_after_secs = 6400:6450 //TODO update
+  //od and td
+  //publish_after_secs = 6400:6450 //TODO update
+
+  //bigger2
+  publish_after_secs = 22250:22270
 
   // the var/val set to publish
   publish_var = MISSION_TIME
@@ -216,7 +228,7 @@ ProcessConfig = pPublishAfterX
 
 
 // stop the random waypoints in the static state
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADP_START_PILOT random
 ProcessConfig = uTimerScript
 {
   AppTick = 4

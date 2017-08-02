@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP.cpp                                               */
-/*    DATE: 2015 - 2016                                          */
+/*    DATE: 2015 - 2017                                          */
 /*                                                               */
 /*****************************************************************/
 
@@ -34,6 +34,8 @@
 
 // include GraphNode
 #include "GraphNode.h"
+// reverse auto iterate
+#include <boost/range/adaptor/reversed.hpp>
 
 //---------------------------------------------------------
 // Constructor
@@ -47,7 +49,8 @@ GP_AUV::GP_AUV() :
   m_output_var_pred(""),
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
-  m_debug(false),
+  m_path_planning_method("greedy"),
+  m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
@@ -84,7 +87,10 @@ GP_AUV::GP_AUV() :
   m_downsample_factor(4),
   m_first_surface(true),
   m_area_buffer(5.0),
-  m_bhv_state("")
+  m_bhv_state(""),
+  m_recursive_greedy_budget(5),
+  m_total_path_selection_time(0),
+  m_total_paths_selected(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -342,7 +348,6 @@ bool GP_AUV::Iterate()
 bool GP_AUV::OnStartUp()
 {
   CMOOSApp::OnStartUp();
-
   STRING_LIST sParams;
   m_MissionReader.EnableVerbatimQuoting(true);
   if (!m_MissionReader.GetConfiguration(GetAppName(), sParams))
@@ -415,6 +420,26 @@ bool GP_AUV::OnStartUp()
     {
       // default: rprop
       m_hp_optim_cg = ( value == "cg" ) ? true : false;
+    }
+    else if ( param == "path_planning_method" )
+    {
+      if ( value == "greedy" || value == "dynamic_programming" || value == "recursive_greedy")
+      {
+        m_path_planning_method = value;
+        if(m_verbose){
+          std::cout << GetAppName() << " :: Path planning method: " << value << std::endl;
+        }
+      }
+      else
+      {
+        std::cout << GetAppName() << " :: Error, unknown method. Choose from: greedy, "
+                  << "dynamic_programming, recursive_greedy. Default: greedy." << std::endl;
+        handled = false;
+      }
+    }
+    else if ( param == "recursive_greedy_budget" )
+    {
+      m_recursive_greedy_budget = (size_t)atoi(value.c_str());
     }
     else
       handled = false;
@@ -569,12 +594,14 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
   // separate by semicolon
   std::vector<std::string> sample_points = parseString(input_string, ';');
   // for each, add to vector
-  m_sample_locations.reserve(sample_points.size());
+  m_sample_graph_nodes.reserve(sample_points.size());
 
   std::ofstream ofstream_loc;
   std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
   ofstream_loc.open(m_file_loc, std::ios::out);
 
+  m_lanes_x = std::floor(m_pts_grid_width / m_pts_grid_spacing);
+  m_lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
   for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
   {
     std::string location = sample_points.at(id_pt);
@@ -589,9 +616,29 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     Eigen::Vector2d loc_vec;
     loc_vec(0) = lon;
     loc_vec(1) = lat;
-    m_sample_points_unvisited.insert( std::pair<size_t, Eigen::Vector2d>(id_pt, loc_vec) );
+
     // copy the points to have all sample points for easier processing for predictions
-    m_sample_locations.push_back(std::pair<double, double>(lon, lat));
+    m_sample_graph_nodes.emplace_back(loc_vec, 0.0);
+
+    GraphNode* graph_node = &m_sample_graph_nodes.back();
+    long left_neighbour_index = id_pt - (m_lanes_y + 1);
+    long back_neighbour_index = id_pt - 1;
+    GraphNode* left_neighbour = left_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[left_neighbour_index];
+    GraphNode* back_neighbour = back_neighbour_index < 0 || id_pt % (m_lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[back_neighbour_index];
+    graph_node->set_left_neighbour(left_neighbour);
+    if ( left_neighbour )
+    {
+      left_neighbour->set_right_neighbour(graph_node);
+    }
+    graph_node->set_back_neighbour(back_neighbour);
+    if ( back_neighbour )
+    {
+      back_neighbour->set_front_neighbour(graph_node);
+    }
+
+    // Alternative would be to have objects in maps or allocating them dynamically.
+    m_sample_points_unvisited.insert( std::pair<size_t, GraphNode*>(id_pt, graph_node) );
+
     // save to file
     ofstream_loc << std::setprecision(15) << lon << ", " << lat << '\n';
 
@@ -726,7 +773,7 @@ bool GP_AUV::needToUpdateMaps(size_t grid_index)
     // add mutex for changing of global maps
     std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
     while ( !map_lock.try_lock() ){}
-    std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > >::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
+    std::unordered_map<size_t, GraphNode*>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
     map_lock.unlock();
 
     return ( curr_loc_itr != m_sample_points_unvisited.end() );
@@ -769,11 +816,11 @@ void GP_AUV::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
   while ( !map_lock.try_lock() ){}
 
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
+  std::unordered_map<size_t, GraphNode*>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
   if ( curr_loc_itr != m_sample_points_unvisited.end() )
   {
     // remove point from unvisited set
-    Eigen::Vector2d move_pt = curr_loc_itr->second;
+    Eigen::Vector2d move_pt = curr_loc_itr->second->get_location();
 
     // check if the sampled point was nearby, if not, there's something wrong
     bool pt_nearby = checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
@@ -783,7 +830,7 @@ void GP_AUV::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     }
 
     // add the point to the visited set
-    m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
+    m_sample_points_visited.insert(std::pair<size_t, GraphNode*>(index, curr_loc_itr->second));
 
     // and remove it from the unvisited set
     m_sample_points_unvisited.erase(curr_loc_itr);
@@ -823,13 +870,18 @@ bool GP_AUV::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::
 }
 
 //---------------------------------------------------------
-// Procedure: findNextSampleLocation
-//            find next sample location, using mutual information
+// Procedure: kickOffCalcMetric
+//            we need to find the next sampling locations:
+//            launch the maximum entropy calculations,
+//            and store results to map
 //
-void GP_AUV::findNextSampleLocation()
+void GP_AUV::kickOffCalcMetric()
 {
   if ( m_verbose )
-    std::cout << GetAppName() << " :: find nxt sample loc" << std::endl;
+  {
+    std::cout << GetAppName() << " :: kick off calculation metric (MECriterion), "
+              << "or choose random sampling location if GP empty." << std::endl;
+  }
 
   if ( checkGPHasData() )
   {
@@ -862,11 +914,11 @@ void GP_AUV::findNextSampleLocation()
 //
 void GP_AUV::getRandomStartLocation()
 {
-  int random_idx = (int)(rand() % (m_sample_locations.size()));
-  std::pair<double, double> rand_loc = m_sample_locations.at(random_idx);
+  int random_idx = (int)(rand() % (m_sample_graph_nodes.size()));
+  Eigen::Vector2d rand_loc = m_sample_graph_nodes.at(random_idx).get_location();
 
   std::ostringstream output_stream;
-  output_stream << std::setprecision(15) << rand_loc.first << "," << rand_loc.second;
+  output_stream << std::setprecision(15) << rand_loc(0) << "," << rand_loc(1);
   m_Comms.Notify(m_output_var_pred, output_stream.str());
 
   // update state vars
@@ -878,20 +930,24 @@ void GP_AUV::getRandomStartLocation()
 
 //---------------------------------------------------------
 // Procedure: greedyWptSelection()
-//            check over all predictions to find best (greedy)
+//            check over all predictions to find best:
+//            greedy choice to maximize entropy for unvisited
+//            locations
 //
-void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
+void GP_AUV::greedyWptSelection(std::string & next_waypoint)
 {
-  // get next position, for now, greedy pick
+  Eigen::Vector2d best_location;
+
+  // get next position, greedy pick (max entropy location)
   double best_so_far = -1*std::numeric_limits<double>::max();
   size_t best_so_far_idx = -1;
 
   // check for all unvisited locations
-  for ( auto loc : m_unvisited_pred_metric )
+  for ( auto loc : m_sample_points_unvisited )
   {
-    if ( loc.second > best_so_far )
+    if ( loc.second->get_value() > best_so_far )
     {
-      best_so_far = loc.second;
+      best_so_far = loc.second->get_value();
       best_so_far_idx = loc.first;
     }
   }
@@ -907,7 +963,7 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
       std::cout << GetAppName() << " :: Error: best is not in unsampled locations" << std::endl;
     else
     {
-      best_location = best_itr->second;
+      best_location = best_itr->second->get_location();
 
       // app feedback
       if ( m_verbose )
@@ -924,9 +980,22 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
     best_location(0) = 0;
     best_location(1) = 0;
   }
+
+  // make a string from the single lon/lat location
+  std::ostringstream output_stream;
+  output_stream << std::setprecision(15) << best_location(0) << "," << best_location(1);
+  next_waypoint = output_stream.str();
 }
 
 //---------------------------------------------------------
+// Procedure: getX
+//            we compute the X axis index of a GraphNode
+//            given it's index in m_sample_graph_nodes
+//
+size_t GP_AUV::getX(size_t id_pt)
+{
+  return id_pt / (m_lanes_y + 1);
+}
 // Procedure: dynamicProgrammingWptSelection()
 //            check over all predictions to find best (dynamic programming method)
 //
@@ -1100,23 +1169,256 @@ int GP_AUV::findIndexOfNode(GraphNode node) {
 // }
 
 //---------------------------------------------------------
-// Procedure: publishNextBestPosition
-//            call Notify & publish location
+// Procedure: getY
+//            we compute the Y axis index of a GraphNode
+//            given it's index in m_sample_graph_nodes
 //
-void GP_AUV::publishNextBestPosition()
+size_t GP_AUV::getY(size_t id_pt)
+{
+  return id_pt % (m_lanes_y + 1);
+}
+
+//---------------------------------------------------------
+// Procedure: manhattanDistance
+//            we compute the manhattan distance between
+//            two graph nodes in m_sample_graph_nodes
+//
+double GP_AUV::manhattanDistance(size_t start_node_index, size_t end_node_index)
+{
+  size_t start_x = getX(start_node_index), start_y = getY(start_node_index);
+  size_t end_x = getX(end_node_index), end_y = getY(end_node_index);
+  size_t dx = std::max(start_x, end_x) - std::min(start_x, end_x);
+  size_t dy = std::max(start_y, end_y) - std::min(start_y, end_y);
+  return dx + dy;
+}
+
+//---------------------------------------------------------
+// Procedure: informativeValue
+//            we calculate a path's informative value by summing values of all nodes in it
+//
+double GP_AUV::informativeValue(std::vector< size_t > cur_path)
+{
+  double path_informative_value = 0.0;
+  for ( size_t node_index : cur_path )
+  {
+    path_informative_value += m_sample_graph_nodes[node_index].get_value();
+  }
+  return path_informative_value;
+}
+
+//---------------------------------------------------------
+// Procedure: generalizedRecursiveGreedy
+//            determine most informative path between start and end nodes
+//            using recursive greedy algorithm
+//
+std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, std::set< size_t > ground_set, size_t budget)
+{
+  std::vector< size_t > best_path;
+  double manhattan_distance = manhattanDistance(start_node_index, end_node_index);
+  // check if manhattan distance between start and end node is within budget
+  if ( manhattan_distance <= budget )
+  {
+    if ( budget == 1 )
+    {
+      // when budget is one end node can only be start node's neighbour
+      if ( ground_set.find(end_node_index) == ground_set.end() )
+      {
+        GraphNode* end_node = &m_sample_graph_nodes[end_node_index];
+        std::vector< GraphNode* > start_node_neighbours = m_sample_graph_nodes[start_node_index].get_neighbours();
+        for ( GraphNode* start_node_neighbour : start_node_neighbours )
+        {
+          if ( start_node_neighbour == end_node )
+          {
+            // if end node is a neighbour of start node, add them to the path
+            best_path.push_back(start_node_index);
+            best_path.push_back(end_node_index);
+            break;
+          }
+        }
+      }
+    }
+    else
+    {
+      double best_informative_value = -1 * std::numeric_limits< double >::max();
+      // check all nodes as middle node between start and end node to find the best path
+      for ( size_t middle_node_index = 0; middle_node_index < m_sample_graph_nodes.size(); middle_node_index++ )
+      {
+        if ( middle_node_index != start_node_index && middle_node_index != end_node_index && ground_set.find(middle_node_index) == ground_set.end() )
+        {
+          // check all budgets possible to find the best path
+          for ( size_t middle_budget = manhattanDistance(start_node_index, middle_node_index);
+                middle_budget <= budget - manhattanDistance(middle_node_index, end_node_index); middle_budget++ )
+          {
+            std::set< size_t > first_ground_set(ground_set.begin(), ground_set.end());
+            first_ground_set.insert(end_node_index);
+            std::vector< size_t > first_half_path = generalizedRecursiveGreedy(start_node_index, middle_node_index, first_ground_set, middle_budget);
+            // if a valid path exists from start to middle node find path from middle to end node.
+            if ( !first_half_path.empty() )
+            {
+              std::set< size_t > new_ground_set(ground_set.begin(), ground_set.end());
+              new_ground_set.insert(first_half_path.begin(), first_half_path.end());
+              std::vector< size_t > second_half_path = generalizedRecursiveGreedy(middle_node_index, end_node_index, new_ground_set,
+                budget - first_half_path.size() + 1);
+              if ( !second_half_path.empty() )
+              {
+                // concatenate two paths to get path from start to end node
+                std::vector< size_t > & cur_path = first_half_path;
+                cur_path.insert(cur_path.end(), second_half_path.begin() + 1, second_half_path.end());
+                double cur_path_informative_value = informativeValue(cur_path);
+                // update best path if current path is more informative
+                if ( cur_path_informative_value > best_informative_value )
+                {
+                  best_path = cur_path;
+                  best_informative_value = cur_path_informative_value;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return best_path;
+}
+
+//---------------------------------------------------------
+// Procedure: recursiveGreedyWptSelection()
+//            check over all predictions from generalized
+//            recursive greedy algorithm to find best next way point
+//
+void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
+{
+  std::clock_t begin = std::clock();
+  if(m_debug)
+    std::cout << GetAppName() << " :: Recursive Greedy Waypoint Selection" << std::endl;
+  // get next position, greedy pick from the paths returned by GRG algorithm
+  double best_so_far = -1 * std::numeric_limits< double >::max();
+  std::vector< size_t > best_path_so_far;
+  // Get current vehicle location's index on map
+  int current_node_index = getIndexForMap(m_lon, m_lat);
+  if ( current_node_index < 0 )
+  {
+    std::cout << GetAppName() << " :: Error: vehicle location is not in sample rectangle" << std::endl;
+  }
+  else if ( current_node_index >= m_sample_graph_nodes.size() )
+  {
+    std::cout << GetAppName() << " :: Error: vehicle index is not in sample graph nodes" << std::endl;
+  }
+  else
+  {
+    // calculate path from current node to all nodes within budget
+    for ( size_t i = 0; i < m_sample_graph_nodes.size(); i++ )
+    {
+      if ( manhattanDistance(current_node_index, i) >= m_recursive_greedy_budget )
+      {
+        std::set< size_t > ground_set;
+        std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, ground_set, m_recursive_greedy_budget);
+        if ( !cur_path.empty() )
+        {
+          double cur_path_value = informativeValue(cur_path);
+          // change best path if current calculated path is more informative
+          if(m_debug)
+            std::cout << GetAppName() << " :: Curr Value: " << cur_path_value << std::endl;
+          if ( cur_path_value > best_so_far )
+          {
+            best_so_far = cur_path_value;
+            best_path_so_far = cur_path;
+          }
+        }
+      }
+    }
+
+    if ( m_verbose )
+    {
+      std::cout << GetAppName() << " ::  best path so far: (val, [ path ]) " << best_so_far << ", [ ";
+      for ( int i = 0; i < best_path_so_far.size(); i++ )
+      {
+        if ( i != 0 )
+          std::cout << ", ";
+        std::cout << best_path_so_far[i];
+      }
+      std::cout << " ]" << std::endl;
+    }
+
+    // create string of nodes in the best path
+    std::ostringstream output_stream;
+    for ( size_t i = 0; i < best_path_so_far.size(); i++ )
+    {
+      Eigen::Vector2d node_loc;
+      size_t node_idx = best_path_so_far[i];
+      if ( node_idx >= 0 )
+      {
+        if ( node_idx >= m_sample_graph_nodes.size() )
+        {
+          std::cout << GetAppName() << " :: Error: path node is not a possible sample locations" << std::endl;
+          break;
+        }
+        else
+        {
+          node_loc = m_sample_graph_nodes[node_idx].get_location();
+
+          // app feedback
+          if ( m_verbose )
+          {
+            std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
+            std::cout << GetAppName() << " :: current path location y: " << std::setprecision(15) << node_loc(0) << ", " << node_loc(1) << '\n';
+          }
+        }
+      }
+      else
+      {
+        if ( m_debug )
+          std::cout << GetAppName() << " :: invalid index: " << node_idx << ", not publishing." << std::endl;
+        node_loc(0) = 0;
+        node_loc(1) = 0;
+        break;
+      }
+      if ( i ) output_stream << ":";
+      output_stream << std::setprecision(15) << node_loc(0) << "," << node_loc(1);
+    }
+    next_waypoint = output_stream.str();
+  }
+  std::clock_t end = std::clock();
+  double path_selection_time = double(end-begin)/CLOCKS_PER_SEC;
+  m_total_paths_selected++;
+  m_total_path_selection_time += path_selection_time;
+  if(m_debug){
+    std::cout << GetAppName() << ":: Path selected in " << path_selection_time << std::endl;
+    std::cout << GetAppName() << ":: Total paths selected: " << m_total_paths_selected << std::endl;
+    std::cout << GetAppName() << ":: Total path selection time: " << m_total_path_selection_time << std::endl;
+    std::cout << GetAppName() << ":: Avg path selection time: " << m_total_path_selection_time/m_total_paths_selected << std::endl;
+  }
+}
+
+//---------------------------------------------------------
+// Procedure: publishNextWaypointLocations
+//            call MOOS's Notify & publish location(s)
+//
+void GP_AUV::publishNextWaypointLocations()
 {
   // procedures for finding the next waypoint(s)
-  Eigen::Vector2d next_wpt;
-  greedyWptSelection(next_wpt);
+  std::cout << GetAppName() << " :: Path planning method: " << m_path_planning_method << std::endl;
+  std::string next_wpts("");
+  if ( m_path_planning_method == "greedy" )
+  {
+    greedyWptSelection(next_wpts);
+  }
+  else if ( m_path_planning_method == "dynamic_programming" )
+  {
+    // call Ying's method
+  }
+  else if ( m_path_planning_method == "recursive_greedy" )
+  {
+    recursiveGreedyWptSelection(next_wpts);
+  }
 
-  if ( next_wpt(0) == 0 && next_wpt(1) == 0 )
+  if ( next_wpts == "" )
     std::cout << GetAppName() << " :: Error: no waypoint found yet." << std::endl;
   else
   {
     // publishing for behavior (pLonLatToWptUpdate)
-    std::ostringstream output_stream;
-    output_stream << std::setprecision(15) << next_wpt(0) << "," << next_wpt(1);
-    m_Comms.Notify(m_output_var_pred, output_stream.str());
+
+    m_Comms.Notify(m_output_var_pred, next_wpts);
 
     // update state vars
     m_last_published = MOOSTime();
@@ -1135,7 +1437,6 @@ size_t GP_AUV::calcMECriterion()
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: max entropy start" << std::endl;
-  m_unvisited_pred_metric.clear();
 
   std::clock_t begin = std::clock();
   if ( m_debug )
@@ -1156,20 +1457,22 @@ size_t GP_AUV::calcMECriterion()
   while ( !map_lock.try_lock() ){}
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
-  std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > unvisited_map_copy;
+  std::vector<GraphNode> sample_graph_node_copy(m_sample_graph_nodes.begin(), m_sample_graph_nodes.end());
   // calculate for all, because we need it for density voronoi calc for other vehicles
-  unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
+    std::cout << GetAppName() << " :: calc max entropy, size map: " << sample_graph_node_copy.size() << std::endl;
 
   // for each unvisited location
-  for ( auto y_itr : unvisited_map_copy )
+  std::vector<double> new_values;
+  for ( auto y_itr : sample_graph_node_copy )
   {
     // get unvisited location
-    Eigen::Vector2d y = y_itr.second;
-    double y_loc[2] = {y(0), y(1)};
+    Eigen::Vector2d yy = y_itr.get_location();
+    if ( m_debug )
+      std::cout << GetAppName() << " :: calculating entropy for: " << yy(0) << ", " << yy(1) << std::endl;
+    double y_loc[2] = {yy(0), yy(1)};
 
     // calculate its posterior entropy
     double pred_mean;
@@ -1188,8 +1491,25 @@ size_t GP_AUV::calcMECriterion()
       post_entropy = var_part + pred_mean;
     }
 
-    m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
+    if ( m_debug )
+      std::cout << GetAppName() << " :: calculated entropy: " << post_entropy << std::endl;
+    new_values.push_back(post_entropy);
+    if ( m_debug )
+      std::cout << GetAppName() << " :: new value: " << new_values.back() << std::endl;
   }
+
+  while ( !map_lock.try_lock() ){}
+  // update map entropies from calculated values in copy
+  for ( size_t idx = m_sample_graph_nodes.size(); idx > 0 ; --idx )
+  {
+    GraphNode* item = &m_sample_graph_nodes[idx];
+    double val = new_values.back();
+    if ( m_debug )
+      std::cout << GetAppName() << " :: setting value to: " << val << std::endl;
+    item->set_value(val);
+    new_values.pop_back();
+  }
+  map_lock.unlock();
 
   std::clock_t end = std::clock();
   if ( m_verbose )
@@ -1358,7 +1678,7 @@ void GP_AUV::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr
   if ( m_hp_optim_cg )
   {
     libgp::CG cg;
-    cg.maximize(&downsampled_gp, nr_iterations, 1);
+    cg.maximize(&downsampled_gp, nr_iterations, 0);
   }
   else
   {
@@ -1410,23 +1730,23 @@ void GP_AUV::makeAndStorePredictions()
 
   std::clock_t begin = std::clock();
 
-  std::vector< std::pair<double, double> >::iterator loc_itr;
+  std::vector< GraphNode >::iterator loc_itr;
   // get the predictive mean and var values for all sample locations
   std::vector<double> all_pred_means_lGP;
   std::vector<double> all_pred_vars_lGP;
   std::vector<double> all_pred_mu_GP;
   std::vector<double> all_pred_sigma2_GP;
   // pre-alloc vectors
-  size_t nr_sample_locations = m_sample_locations.size();
+  size_t nr_sample_locations = m_sample_graph_nodes.size();
   all_pred_means_lGP.reserve(nr_sample_locations);
   all_pred_vars_lGP.reserve(nr_sample_locations);
   all_pred_mu_GP.reserve(nr_sample_locations);
   all_pred_sigma2_GP.reserve(nr_sample_locations);
 
   // make predictions for all sample locations
-  for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
+  for ( loc_itr = m_sample_graph_nodes.begin(); loc_itr < m_sample_graph_nodes.end(); loc_itr++ )
   {
-    double loc[2] {loc_itr->first, loc_itr->second};
+    double loc[2] {loc_itr->get_location()[0], loc_itr->get_location()[1]};
     double pred_mean_GP;
     double pred_var_GP;
     gp_copy->f_and_var(loc, pred_mean_GP, pred_var_GP);
@@ -1603,8 +1923,10 @@ void GP_AUV::tdsResetStateVars()
 
 //---------------------------------------------------------
 // Procedure: findAndPublishNextWpt
-//            calculate the next sample location,
+//            we need to calculate the next waypoints,
 //            and publish to MOOSDB when found
+//            because the calculations are heavy, we start
+//            a thread here.
 //
 void GP_AUV::findAndPublishNextWpt()
 {
@@ -1612,24 +1934,28 @@ void GP_AUV::findAndPublishNextWpt()
   {
     if ( m_verbose )
       std::cout << GetAppName() << " :: calling to find next sample location" << std::endl;
-    findNextSampleLocation();
+    kickOffCalcMetric();
   }
   else
   {
-    // see if we can get result from future
+    // see if we can get result from future, which was created via kickOffCalcMetric
     std::cout << GetAppName() << " :: checking future m_future_next_pt" << std::endl;
     if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
       m_finding_nxt = false;
 
-      // publish greedy best
-      publishNextBestPosition();
+      // done with maximum entropy calculations
+
+      // now call functions for path planning
+      // called from inside publishNextWaypointLocations method
+      publishNextWaypointLocations();
 
       // continue survey
       if ( m_bhv_state != "survey" )
         m_Comms.Notify("STAGE","survey");
       m_mission_state = STATE_SAMPLE;
-      publishStates("findAndPublishWpt");
+      // publish states for debugging/eval purposes
+      publishStates("findAndPublishNextWpt");
     }
   }
 }

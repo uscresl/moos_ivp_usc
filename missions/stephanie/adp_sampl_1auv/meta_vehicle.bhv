@@ -54,7 +54,7 @@ Set MODE = PILOT_NS {
 
 Set MODE = ADAPTIVE {
   MODE = MISSION:SURVEY:ACTUAL
-  ADAPTIVE_WPTS = yes
+  ADAPTIVE_WPTS = true
 } LAWNMOWER
 
 Set MODE = LAWNMOWER_NS {
@@ -125,7 +125,7 @@ Behavior = BHV_Waypoint
   condition = MODE==ADAPTIVE_STATIC
   
   endflag   = ADP_PTS=adaptive
-  endflag   = ADAPTIVE_WPT_UPDATES=points=900,1000
+  endflag   = ADAPTIVE_WPT_UPDATES=points=$(END_FLAG_PT)
   
   perpetual = false
 
@@ -137,7 +137,7 @@ Behavior = BHV_Waypoint
 
   // do lawnmower
   // note: x, y are middle of lawnmower area
-  #ifdef ADAPTIVE_WPTS yes
+  #ifdef ADAPTIVE_WPTS true
   points = $(PILOT_PTS)
   #else
   points = 0,0
@@ -169,7 +169,7 @@ Behavior = BHV_Loiter
 }
 
 // adaptive survey /////////////////////////////////////////////////////////////
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADAPTIVE_WPTS true
 Behavior = BHV_Waypoint
 {
   name      = adaptive_survey
@@ -227,7 +227,7 @@ Behavior = BHV_Waypoint
 #endif
 
 // lawnmower survey ////////////////////////////////////////////////////////////
-#ifdef ADAPTIVE_WPTS no
+#ifdef ADAPTIVE_WPTS false
 Behavior = BHV_Waypoint
 { 
   name      = ns_survey
@@ -328,7 +328,7 @@ Behavior = BHV_ConstantDepth
   summitdelta = 20  // m
 }
 // depth during surface data sharing
-#ifdef ADAPTIVE_WPTS yes
+#ifdef ADAPTIVE_WPTS true
 Behavior = BHV_ConstantDepth
 {
   name      = bhv_data_sharing_depth

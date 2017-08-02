@@ -1,0 +1,105 @@
+// MOOS community specs (doesn't matter for unit test)
+ServerHost = localhost
+ServerPort = 9000
+Community  = test
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = 1
+
+// Location (puddingstone)
+LatOrigin = 34.0784000000111
+LongOrigin = -117.815
+
+//****************************************************************************//
+// Base Processes
+//
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = true
+
+  Run = pLonLatToWptUpdate @ NewConsole = true
+  Run = uTimerScript @ NewConsole = true
+}
+
+// Logging tool (MOOSEssentials)
+ProcessConfig = pLogger
+{
+  AppTick   = 8
+  CommsTick = 8
+
+  File = LOG_
+  Path = ./
+  AsyncLog = true
+  FileTimeStamp = true
+
+  BridgeFrequency = 0
+  // For variables that are published in a bundle on their first post,
+  // explicitly declare their logging request
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
+  Log = APPCASE @ 0 NOSYNC
+
+  // Log everything
+  LogAuxSrc = true
+  WildCardLogging = true
+  //WildCardOmitPattern = *_STATUS
+  WildCardExclusionLog = true
+}
+
+//****************************************************************************//
+// TESTING
+
+//--------------------------------------------------
+// pLonLatToWptUpdate configuration block
+//
+ProcessConfig = pLonLatToWptUpdate
+{
+  AppTick   = 1
+  CommsTick = 1
+  
+  // specify variable names
+  input_var_lonlat = "GP_PREDICTIONS"
+  output_var_wpt_update = "WPT_UPDATE"
+}
+
+ProcessConfig = uTimerScript
+{
+  AppTick= 1
+  CommsTick = 1
+
+  // If true progress is generated to the console
+  verbose= true // or {false}
+
+  // Declaration of random var macro expanded in event values
+  randvar= varname=LON1, min=-117.809, max=-117.806, key=at_reset
+  randvar= varname=LAT1, min=34.0876, max=34.0892, key=at_reset
+  randvar= varname=LON2, min=-117.809, max=-117.806, key=at_reset
+  randvar= varname=LAT2, min=34.0876, max=34.0892, key=at_reset
+  randvar= varname=LON3, min=-117.809, max=-117.806, key=at_reset
+  randvar= varname=LAT3, min=34.0876, max=34.0892, key=at_reset  
+
+  // Event(s) are the key components of the script
+  event = var=GP_PREDICTIONS, val="$[LON1],$[LAT1]", time=1
+  event = var=GP_PREDICTIONS, val="$[LON1],$[LAT1]:$[LON2],$[LAT2]:$[LON3],$[LAT3]", time=2
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max= nolimit// or in range [0,inf)
+  // A point when the script is reset
+  reset_time= all-posted// or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+  reset_var= UTS_RESET// or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var= UTS_STATUS // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp= 1
+}
+
