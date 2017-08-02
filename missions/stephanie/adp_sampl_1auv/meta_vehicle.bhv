@@ -125,7 +125,7 @@ Behavior = BHV_Waypoint
   condition = MODE==ADAPTIVE_STATIC
   
   endflag   = ADP_PTS=adaptive
-  endflag   = ADAPTIVE_WPT_UPDATES=points=$(END_FLAG_PT)
+  endflag   = ADAPTIVE_WPT_UPDATES=points=$(CROSS_END_WPT)
   
   perpetual = false
 

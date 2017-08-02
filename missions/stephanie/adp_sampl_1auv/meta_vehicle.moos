@@ -122,6 +122,12 @@ ProcessConfig = pGP_AUV
   output_filename_prefix = $(PREDICTIONS_PREFIX)
 
   // define the prediction interval (predict every X seconds)
+  #ifdef SURVEY_AREA bigger2
+    prediction_interval = 600
+  #else
+    prediction_interval = 300
+  #endif
+
   // od and td
   // prediction_interval = 300
   // bigger2
@@ -208,11 +214,11 @@ ProcessConfig = pPublishAfterX
 
   // how many seconds after above var/val should we publish?
 
-// old area
-//  publish_after_secs = 8571:8660 //TODO update
-
-  //od and td
-  //publish_after_secs = 6400:6450 //TODO update
+  #ifdef SURVEY_AREA bigger2
+    publish_after_secs = 14833:14847 //TODO update
+  #else
+    publish_after_secs = 6400:6450 //TODO update
+  #endif
 
   //bigger2
   publish_after_secs = 22250:22270
