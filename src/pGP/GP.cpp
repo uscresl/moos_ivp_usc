@@ -459,9 +459,10 @@ bool GP::Iterate()
       m_start_time = MOOSTime(); // first time, set the start time of process
 
     // **** SAVING GP TO FILE (independent) **********************************//
-    if ( m_mission_state != STATE_DONE && !(m_hp_optim_running && m_final_hp_optim) )
-    { // TODO consider if we want to run this during HP optimization stage (maybe all but last?)
-      // periodically (every 600s = 10min), store all GP predictions
+    if ( m_mission_state != STATE_DONE && !(m_final_hp_optim) )  //m_hp_optim_running &&
+    {
+      // periodically (every X s), store all GP predictions
+
       // if we did not do so in the last second (apptick)
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
            ((size_t)std::floor(MOOSTime()-m_start_time) % 600 == 10) )
