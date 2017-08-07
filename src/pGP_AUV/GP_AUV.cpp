@@ -1019,15 +1019,15 @@ size_t GP_AUV::calcMECriterion()
     // get unvisited location
     Eigen::Vector2d y = y_itr.second;
     double y_loc[2] = {y(0), y(1)};
-    if ( m_debug )
-      std::cout << GetAppName() << " :: checking location: " << y(0) << ", " << y(1) << std::endl;
+//    if ( m_debug )
+//      std::cout << GetAppName() << " :: checking location: " << y(0) << ", " << y(1) << std::endl;
 
     // calculate its posterior entropy
     double pred_mean;
     double pred_cov;
     gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
-    if ( m_debug )
-      std::cout << GetAppName() << " :: values from gp_copy: " << pred_mean << ", " << pred_cov << std::endl;
+//    if ( m_debug )
+//      std::cout << GetAppName() << " :: values from gp_copy: " << pred_mean << ", " << pred_cov << std::endl;
 
     // normal distribution
     //  1/2 ln ( 2*pi*e*sigma^2 )
@@ -1062,8 +1062,8 @@ size_t GP_AUV::calcMECriterion()
     }
 
     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
-    if ( m_debug )
-      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
+//    if ( m_debug )
+//      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
   }
 
   std::clock_t end = std::clock();
