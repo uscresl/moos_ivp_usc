@@ -215,7 +215,8 @@ ProcessConfig = pPublishAfterX
   // how many seconds after above var/val should we publish?
 
 #ifdef SURVEY_AREA bigger2
-  publish_after_secs = 22250:22270
+  // publish_after_secs = 22250:22270 // full high res LM
+  publish_after_secs = 14833:14847 // 2/3rd of above
 #else
   publish_after_secs = 6400:6450
 #endif
