@@ -126,7 +126,7 @@ ProcessConfig = pGP_AUV
   use_log_gp = true
 
   // define the names of input & output variables
-  input_var_data = YSI_CHL
+  input_var_data = NAV_ALTITUDE
 
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
@@ -171,13 +171,14 @@ ProcessConfig = pPublishAfterX
   CommsTick = 2
 
   // which var/val to monitor
-  publish_after_var = DEPLOY
+  publish_after_var = VEHICLE_UNDERWAY
   publish_after_val = true
 
   // how many seconds after above var/val should we publish?
 
   // area 300x200 meters
-  publish_after_secs = 5319:5336
+  publish_after_secs = 2660:2668
+//5319:5336
 
   // the var/val set to publish
   publish_var = MISSION_TIME
