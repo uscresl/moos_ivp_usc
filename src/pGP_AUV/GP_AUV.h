@@ -116,6 +116,7 @@ class GP_AUV : public CMOOSApp
    std::string m_output_filename_prefix;
 
    size_t m_prediction_interval;
+   std::string m_path_planning_method;
 
    // State variables
    bool m_debug;

@@ -152,6 +152,14 @@ ProcessConfig = pGP_AUV
   use_exploit_factor_gp = true
   exploitation_factor = 0.25
 #endif
+
+  // choose method for path planning
+  // current options: global_max or random
+#ifdef PATH_PLANNING_METHOD random
+  path_planning_method = random
+#else
+  path_planning_method = global_max
+#endif
 }
 
 //--------------------------------------------------
@@ -207,8 +215,9 @@ ProcessConfig = pPublishAfterX
   // how many seconds after above var/val should we publish?
 
   //publish_after_secs = 6400:6450 // full field 400x200
-  publish_after_secs = 2660 // human-auv-pp = 0.41*full field (400x200)
+//  publish_after_secs = 2660 // human-auv-pp = 0.41*full field (400x200)
   // estimated from field runs that have 300x200 area, half = 2660
+  publish_after_secs = 1900 // reduced time to better match 190 human samples
 
   // the var/val set to publish
   publish_var = MISSION_TIME

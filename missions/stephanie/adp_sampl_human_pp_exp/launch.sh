@@ -10,6 +10,7 @@ GUI="true"
 ADP_START="cross"
 USE_LOG_GP="yes"
 DATA_DIMENSIONS=3
+PP_METHOD="global_max"
 
 for ARGI; do
     if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
@@ -19,6 +20,8 @@ for ARGI; do
         printf "  --adaptive, -a     \n"
         printf "  --nogui, -ng       \n"
         printf "  --cross_pilot, -cp \n"
+        printf "  --pp_random, -rand \n"
+        printf "  --2d               \n"
         printf "  --help, -h         \n" 
         exit 0;
     elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
@@ -35,6 +38,8 @@ for ARGI; do
         USE_LOG_GP="no"
     elif [ "$ARGI" = "--2d" ]; then
         DATA_DIMENSIONS=2
+    elif [ "$ARGI" = "--pp_random" -o "${ARGI}" = "-rand" ]; then
+        PP_METHOD="random"
     else 
         printf "Bad Argument: %s \n" $ARGI
         exit 0
@@ -133,7 +138,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_GUI=$GUI           \
    LOG_GP=$USE_LOG_GP  SENSOR_STD_DEV=$SENSOR_STDEV \
-   DATA_NUM_DIMENSIONS=$DATA_DIMENSIONS
+   DATA_NUM_DIMENSIONS=$DATA_DIMENSIONS  PATH_PLANNING_METHOD=$PP_METHOD
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \

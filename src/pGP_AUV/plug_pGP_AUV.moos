@@ -61,5 +61,14 @@ ProcessConfig = pGP
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 50
-  
+
+  // options for when using GP (not log-GP)
+#ifdef LOG_GP no
+  use_exploit_factor_gp = true
+  exploitation_factor = 0.25
+#endif
+
+  // choose method for path planning
+  // current options: global_max or random
+  path_planning_method = global_max
 }
