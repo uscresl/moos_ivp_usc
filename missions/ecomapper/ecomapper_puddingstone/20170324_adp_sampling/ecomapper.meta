@@ -126,7 +126,7 @@ ProcessConfig = pGP_AUV
   use_log_gp = true
 
   // define the names of input & output variables
-  input_var_data = YSI_CHL
+  input_var_data = NAV_ALTITUDE
 
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
@@ -178,7 +178,8 @@ ProcessConfig = pPublishAfterX
 
 // old area
 //  publish_after_secs = 8571:8660 //TODO update
-  publish_after_secs = 6400:6450 //TODO update
+//  publish_after_secs = 6400:6450 //TODO update
+  publish_after_secs = 5350:5400
 
   // the var/val set to publish
   publish_var = MISSION_TIME

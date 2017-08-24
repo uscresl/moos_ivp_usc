@@ -41,6 +41,8 @@ for ARGI; do
         CG="yes"
     elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp" ]; then
         ADP_START="cross"
+    elif [ "$ARGI" = "--softmax_pilot" -o "${ARGI}" = "-sfm" ]; then
+        ADP_START="softmax"
     elif [ "$ARGI" = "--gp" -o "${ARGI}" = "-g" ]; then
         USE_LOG_GP="no"
     else 
@@ -117,13 +119,26 @@ if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "cross" ] ; then
     PILOT_PTS1=700,700:1200,1300:700,1300:1200,700
     CROSS_END1=1200,700 # last wpt
   fi
+  echo " cross pilot wpts: " $PILOT_PTS1
 fi
-
 if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "random" ] ; then
   # 1auv random
   randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..10 + ","')
   echo " 10 random points: " $randpts
   PILOT_PTS1=${randpts}
+fi
+if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "softmax" ] ; then
+  # 1auv use softmax function to generate waypoints
+  # this code is in matlab, call that
+
+  script_location=`locate create_sample_path.m`
+  if [ ! -z $script_location ] ; then
+    waypts=`matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path; disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1`
+    echo " softmax waypoints: " $waypts
+    PILOT_PTS1=${waypts}
+  else
+    echo "Cannot find create_sample_path.m, exiting"
+  fi
 fi
 
 # ports
@@ -175,7 +190,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER1  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_GUI=$GUI  USE_CG=$CG           \
-   LOG_GP=$USE_LOG_GP  SURVEY_AREA=$AREA
+   LOG_GP=$USE_LOG_GP  SURVEY_AREA=$AREA  DATA_NUM_DIMENSIONS=3
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \

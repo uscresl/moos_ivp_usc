@@ -44,6 +44,7 @@ GP_AUV::GP_AUV() :
   m_output_var_pred(""),
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
+  m_path_planning_method("global_max"),
   m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
@@ -310,7 +311,8 @@ bool GP_AUV::Iterate()
 
     // **** MAIN STATE MACHINE *********************************************//
     if ( m_debug )
-      std::cout << GetAppName() << " :: Current state: " << m_mission_state << std::endl;
+      std::cout << GetAppName() << " :: Current state: " << m_mission_state
+                << ": " << currentMissionStateString() << std::endl;
     switch ( m_mission_state )
     {
       case STATE_SAMPLE :
@@ -423,6 +425,15 @@ bool GP_AUV::OnStartUp()
       m_use_exploit_factor_gp = (value == "true" ? true : false);
     else if ( param == "exploitation_factor" )
       m_exploitation_factor = (double)atof(value.c_str());
+    else if ( param == "path_planning_method" )
+    {
+      // 'random' or 'global_max'
+      m_path_planning_method = value.c_str();
+      if ( m_path_planning_method != "random" && m_path_planning_method != "global_max" )
+        std::cout << GetAppName() << " :: ERROR: unknown path planning method."
+                  << "Options are: random, global_max" << std::endl;
+      handled = false;
+    }
     else
       handled = false;
 
@@ -850,7 +861,7 @@ void GP_AUV::findNextSampleLocation()
   if ( m_verbose )
     std::cout << GetAppName() << " :: find nxt sample loc" << std::endl;
 
-  if ( checkGPHasData() )
+  if ( checkGPHasData() && m_path_planning_method != "random" )
   {
     // for each y (from unvisited set only, as in greedy algorithm Krause'08)
     // calculate the mutual information term
@@ -869,7 +880,12 @@ void GP_AUV::findNextSampleLocation()
   }
   else
   {
-    std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
+    if ( !checkGPHasData() )
+      std::cout << GetAppName() << " :: GP is empty. Getting random location "
+                << "for initial sample location." << std::endl;
+    else if ( m_path_planning_method == "random" )
+      std::cout << GetAppName() << " :: chosen path planning method is 'random', "
+                << "getting a random location for next wpt." << std::endl;
     getRandomStartLocation();
   }
 }

@@ -33,6 +33,8 @@ ProcessConfig = ANTLER
   // simulate the AUV
   Run = uSimMarine @ NewConsole = false
   Run = pMarinePID @ NewConsole = false
+  // simulate the sensor for pGP_AUV
+  Run = uSimBioSensor @ NewConsole = false
 #endif
   
   // node report
@@ -63,6 +65,7 @@ ProcessConfig = ANTLER
 #endif
 #ifdef SIMULATION yes
 #include plugs/plug_auv_simulation.moos
+#include $(PLUG_DIR)/plug_uSimBioSensor.moos
 #endif
 
 #include $(PLUG_DIR)/plug_pNodeReporter.moos
@@ -123,10 +126,21 @@ ProcessConfig = pGP_AUV
   verbose = true
 
   // GP or log GP?
+#ifdef LOG_GP yes
   use_log_gp = true
+#else
+  use_log_gp = false
+#endif
 
   // define the names of input & output variables
+#ifdef SIMULATION yes
+  input_var_data = SIM_DATA
+#else
+  // use NAV_ALTITUDE for ground truth testing
   input_var_data = NAV_ALTITUDE
+//  // use YSI_CHL for bio purposes
+//  input_var_data = YSI_CHL
+#endif
 
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
@@ -159,6 +173,12 @@ ProcessConfig = pGP_AUV
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 100
+
+  // options for when using GP (not log-GP)
+#ifdef LOG_GP no
+  use_exploit_factor_gp = true
+  exploitation_factor = 0.25
+#endif
 }
 
 #ifdef ADAPTIVE_WPTS yes
@@ -171,15 +191,20 @@ ProcessConfig = pPublishAfterX
   CommsTick = 2
 
   // which var/val to monitor
+#ifdef SIMULATION yes
+  publish_after_var = DEPLOY
+#else
   publish_after_var = VEHICLE_UNDERWAY
+#endif
   publish_after_val = true
 
   // how many seconds after above var/val should we publish?
 
-  // area 300x200 meters
+  // area 300x200 meters, full time
+//  publish_after_secs = 5319:5336
+//  // half time
   publish_after_secs = 2660:2668
-//5319:5336
-
+  
   // the var/val set to publish
   publish_var = MISSION_TIME
   publish_val = end
