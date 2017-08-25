@@ -89,6 +89,11 @@ class GP_AUV : public CMOOSApp
    std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, std::set<size_t> ground_set, size_t budget);
    void recursiveGreedyWptSelection(std::string & next_waypoint);
 
+   // dynamic programming method
+   void dynamicProgrammingWptSelection(Eigen::Vector2d & best_location);
+   int calcMaxME(std::vector<double> post_entropy_values, std::map<int, GraphNode> sampling_locations, int index);
+   int findIndexOfNode(const GraphNode * node);
+
   // timed saving of GP  /////////////////////////////////////////////////////
    void makeAndStorePredictions();
 

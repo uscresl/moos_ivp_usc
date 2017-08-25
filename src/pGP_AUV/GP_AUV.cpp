@@ -996,6 +996,7 @@ size_t GP_AUV::getX(size_t id_pt)
 {
   return id_pt / (m_lanes_y + 1);
 }
+
 // Procedure: dynamicProgrammingWptSelection()
 //            check over all predictions to find best (dynamic programming method)
 //
@@ -1008,46 +1009,19 @@ void GP_AUV::dynamicProgrammingWptSelection(Eigen::Vector2d & best_location) {
   double upper_bounds;
   double lower_bounds;
   double user_specified_bounds;
+  std::vector<double> posterior_entropy_values;
 
   if (upper_bounds - lower_bounds > user_specified_bounds) {
     // create vector of posterior entropy values to use for dynamic programming
-    std::vector<double> posterior_entropy_values;
-
-    // check all unvisited locations
-    for ( auto loc : sampling_locations )
-    {
-      // get unvisited location
-      Eigen::Vector2d y = loc.get_value();
-      double y_loc[2] = {y(0), y(1)};
-
-      // calculate its posterior entropy
-      double pred_mean;
-      double pred_cov;
-      gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
-
-      // normal distribution
-      //  1/2 ln ( 2*pi*e*sigma^2 )
-      double post_entropy;
-      if ( !m_use_log_gp )
-        post_entropy = log( 2 * M_PI * exp(1) * pred_cov);
-      else
-      {
-        // lognormal distribution
-        double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
-        post_entropy = var_part + pred_mean;
-      }
-
-      m_unvisited_pred_metric.insert(std::pair<size_t, double>(loc, post_entropy));
-      posterior_entropy_values.push_back(post_entropy);
-    }
+    //TODO use posterior entropy values from map, do not calculate again
   }
 
   // find best possible path and the neighbor that leads to it
-  calcMaxME(posterior_entropy_values, sampling_locations, ); // figure out index to pass in
+  //calcMaxME(posterior_entropy_values, sampling_locations, ); // figure out index to pass in
 
   // backtrack and update upper and lower bounds
-  upper_bounds = // max entropy calculation
-  lower_bounds = // min entropy calculation
+  upper_bounds = 0;// max entropy calculation
+  lower_bounds = 0;// min entropy calculation
 
 }
 
@@ -1064,11 +1038,13 @@ int GP_AUV::calcMaxME(std::vector<double> post_entropy_values, std::map<int, Gra
   if (index == 0) {
     return post_entropy_values[index];
   }
-  else if {
-    return post_entropy_values[index]
-          + max(calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_left_neighbour())),
-                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_right_neighbour())),
-                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_front_neighbour())));
+  else {
+    return -1;
+    //TODO std::max can only take 2 arguments
+//    return post_entropy_values[index]
+//          + std::max(calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_left_neighbour())),
+//                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_right_neighbour())),
+//                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_front_neighbour())) );
 
   }
 }
@@ -1077,13 +1053,14 @@ int GP_AUV::calcMaxME(std::vector<double> post_entropy_values, std::map<int, Gra
 // Procedure: findIndexOfNode()
 //
 //
-int GP_AUV::findIndexOfNode(GraphNode node) {
+int GP_AUV::findIndexOfNode(const GraphNode * node) {
   std::map<int, GraphNode>::iterator it;
-  for (it = sampling_locations.begin(); it != sampling_locations.end(); ++it) {
-    if (it->second == node) {
-      return it->first;
-    }
-  }
+//  for (it = sampling_locations.begin(); it != sampling_locations.end(); ++it) {
+    //TODO implement operator== for graph nodes?
+//    if (it->second == *node) {
+//      return it->first;
+//    }
+//  }
 
 }
 
