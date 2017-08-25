@@ -42,7 +42,7 @@ SimBioSensor::SimBioSensor() :
   m_new_lat(false),
   m_new_dep(false),
   m_filename(""),
-  m_variance(1.0),
+  m_stddev(1.0),
   m_output_var(""),
   m_file_read(false),
   m_nav_data_received(false),
@@ -201,9 +201,9 @@ bool SimBioSensor::OnStartUp()
       std::cout << GetAppName() << " :: Parameter filename: " << m_filename << std::endl;
       handled = true;
     }
-    else if ( param == "sensor_variance" )
+    else if ( param == "sensor_stddev" )
     {
-      m_variance = atof(value.c_str());
+      m_stddev = atof(value.c_str());
       std::cout << GetAppName() << " :: Parameter sensor_stddev: " << m_stddev << std::endl;
       handled = true;
     }
@@ -418,7 +418,7 @@ double SimBioSensor::addSensorNoise(double value)
   // start a seeded random number generator
   std::default_random_engine generator(seed);
   // create normal distribution with mean 0.0 and std_dev 1.0
-  std::normal_distribution<double> distribution(0.0, m_variance);
+  std::normal_distribution<double> distribution(0.0, m_stddev);
   // grab a random number from the distribution
   double noise = distribution(generator);
 

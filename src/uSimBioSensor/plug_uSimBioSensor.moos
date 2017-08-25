@@ -8,6 +8,6 @@ ProcessConfig = uSimBioSensor
 
   // process parameters
   input_filename = "test.csv"
-  sensor_variance = 1.5
+  sensor_stddev = 1.5
   output_var = "SIM_DATA"
 }
