@@ -709,6 +709,8 @@ void GP_AUV::dataAddingThread()
         updateVisitedSet(veh_lon, veh_lat, (size_t)index);
     }
   }
+  if ( m_debug )
+    std::cout << GetAppName() << " :: m_finished: " << m_finished << " exiting thread." << std::endl;
 }
 
 //---------------------------------------------------------
