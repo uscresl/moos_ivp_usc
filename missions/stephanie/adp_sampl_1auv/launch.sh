@@ -133,9 +133,12 @@ if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "softmax" ] ; then
 
   script_location=`locate create_sample_path.m`
   if [ ! -z $script_location ] ; then
-    waypts=`matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path; disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1`
-    echo " softmax waypoints: " $waypts
+    echo " softmax params: (8, 500, 1000)"
+    waypts=`matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path(8,500,1000); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1`
     PILOT_PTS1=${waypts}
+    echo " softmax waypoints: " $PILOT_PTS1
+    CROSS_END1=$(echo ${waypts##*:})
+    echo " last wpt: " $CROSS_END1
   else
     echo "Cannot find create_sample_path.m, exiting"
   fi
