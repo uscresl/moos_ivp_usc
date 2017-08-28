@@ -125,6 +125,9 @@ ProcessConfig = pGP_AUV
   // define the filename for saving GP predictions
   output_filename_prefix = $(PREDICTIONS_PREFIX)
 
+  // data sharing through acomms
+  acomms_sharing = false
+
   // define the prediction interval (predict every X seconds)
 #ifdef SURVEY_AREA bigger2
   prediction_interval = 600
@@ -160,6 +163,10 @@ ProcessConfig = pGP_AUV
   use_exploit_factor_gp = true
   exploitation_factor = 0.25
 #endif
+
+  // choose method for path planning
+  // current options: global_max or random
+  path_planning_method = global_max
 }
 
 //--------------------------------------------------
