@@ -22,5 +22,6 @@ TARGET_LINK_LIBRARIES(pGP
    # whatever other libs you need
    ${LIBGP_LIBRARIES}
    ${Boost_LIBRARIES}
+   ${EIGEN3_INCLUDE_DIRS}
 )
 
