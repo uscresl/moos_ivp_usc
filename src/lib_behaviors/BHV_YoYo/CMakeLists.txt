@@ -30,6 +30,6 @@ INCLUDE_DIRECTORIES(${IVP_INCLUDE_DIRS})
 #-------------------------------------------------------------
 ADD_LIBRARY(BHV_YoYo SHARED BHV_YoYo.cpp)
 TARGET_LINK_LIBRARIES(BHV_YoYo
-  behaviors ivpbuild logic ivpcore bhvutil mbutil geometry)
+  behaviors ivpbuild logic ivpcore bhvutil mbutil helmivp geometry)
 
 #-------------------------------------------------------------
