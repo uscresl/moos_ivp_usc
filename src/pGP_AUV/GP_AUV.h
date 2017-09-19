@@ -13,6 +13,7 @@
 
 // lib GP
 #include "gp.h"
+
 // use unordered map rather than map, improve efficiency
 #include <unordered_map>
 // use unordered set for fast retrieval of keys in list
@@ -31,6 +32,9 @@
 #include <Eigen/StdVector>
 
 #include "GraphNode.h"
+
+// include Eigen for OS X
+#include <Eigen/Dense>
 
 class GP_AUV : public CMOOSApp
 {
