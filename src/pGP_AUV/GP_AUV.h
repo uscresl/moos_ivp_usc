@@ -1,7 +1,7 @@
 /*****************************************************************/
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
-/*    FILE: GP_AUV.h                                                 */
+/*    FILE: GP_AUV.h                                             */
 /*    DATE: 2015 - 2016                                          */
 /*                                                               */
 /*****************************************************************/
@@ -13,6 +13,7 @@
 
 // lib GP
 #include "gp.h"
+
 // use unordered map rather than map, improve efficiency
 #include <unordered_map>
 // use unordered set for fast retrieval of keys in list
@@ -35,6 +36,9 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/geometries/multi_point.hpp>
 #endif
+
+// include Eigen for OS X
+#include <Eigen/Dense>
 
 class GP_AUV : public CMOOSApp
 {
