@@ -6,7 +6,7 @@
 /*                                                               */
 /*****************************************************************/
 
-#include "GP.h"
+#include "PGP.h"
 
 #include <iterator>
 #include "MBUtils.h"
@@ -1526,17 +1526,6 @@ void GP::findNextSampleLocation()
   else
   { // if ( m_voronoi_subset.size() == 0 )
     std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
-
-    if ( m_debug )
-    {
-      std::cout << GetAppName() << " :: BUILD_VORONOI: ";
-      #ifdef BUILD_VORONOI
-        std::cout << "yes";
-      #else
-        std::cout << "no";
-      #endif // BUILD_VORONOI
-      std::cout << '\n';
-    }
 
     #ifdef BUILD_VORONOI
     // if m_voronoi, init voronoi subset to whole region

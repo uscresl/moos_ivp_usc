@@ -10,7 +10,7 @@
 #include "MBUtils.h"
 #include "ColorParse.h"
 
-#include "GP.h"
+#include "PGP.h"
 
 using namespace std;
 
