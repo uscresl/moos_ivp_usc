@@ -13,6 +13,7 @@
 
 // lib GP
 #include "gp.h"
+
 // use unordered map rather than map, improve efficiency
 #include <unordered_map>
 // use unordered set for fast retrieval of keys in list
@@ -35,6 +36,9 @@
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/geometries/multi_point.hpp>
 #endif
+
+// include Eigen for OS X
+#include <Eigen/Dense>
 
 class GP : public CMOOSApp
 {

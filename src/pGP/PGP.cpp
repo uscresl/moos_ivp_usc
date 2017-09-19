@@ -6,7 +6,7 @@
 /*                                                               */
 /*****************************************************************/
 
-#include "GP.h"
+#include "PGP.h"
 
 #include <iterator>
 #include "MBUtils.h"
