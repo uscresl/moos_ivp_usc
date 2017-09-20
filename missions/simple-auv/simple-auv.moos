@@ -26,6 +26,7 @@ ProcessConfig = ANTLER
   Run = pHelmIvP      @ NewConsole = true
   Run = pMarineViewer @ NewConsole = true
   Run = pNodeReporter @ NewConsole = true
+  Run = uProcessWatch @ NewConsole = true
 }
 
 // Logging tool (MOOSEssentials)
@@ -218,5 +219,26 @@ ProcessConfig = pNodeReporter
   
   PLATFORM_TYPE = auv // (uuv, auv, ship, kayak)
   PLATFORM_LENGTH = 3 // (meters)
+}
+
+//--------------------------------------------------------
+// uProcessWatch Configuration Block
+//
+ProcessConfig = uProcessWatch
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  NOWATCH = uXMS*
+  NOWATCH = uMS*
+
+  WATCH_ALL = true
+
+  WATCH  = pLogger
+  WATCH  = uSimMarine
+  WATCH  = pMarinePID
+  WATCH  = pHelmIvP
+  WATCH  = pMarineViewer
+  WATCH  = pNodeReporter
 }
 
