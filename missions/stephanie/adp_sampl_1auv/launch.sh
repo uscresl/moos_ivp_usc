@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #-------------------------------------------------------
 #  Part 1: Check for and handle command-line arguments
 #-------------------------------------------------------
@@ -16,7 +16,7 @@ for ARGI; do
   if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
     printf "%s [SWITCHES] [time_warp]   \n" $0
     printf "  Switches:          \n"
-    printf "  --just_make, -j    \n" 
+    printf "  --just_make, -j    \n"
     printf "  --adaptive, -a     \n"
     printf "  --bigger1, -b1     \n"
     printf "  --bigger2, -b2     \n"
@@ -25,7 +25,7 @@ for ARGI; do
     printf "  --pilot_random     \n"
     printf "  --help, -h         \n"
     exit 0;
-  elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
+  elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then
     TIME_WARP=$ARGI
   elif [ "${ARGI}" = "--just_build" -o "${ARGI}" = "-j" ] ; then
     JUST_MAKE="true"
@@ -41,20 +41,20 @@ for ARGI; do
     CG="false"
   elif [ "$ARGI" = "--pilot_random" ]; then
     ADP_START="random"
-  else 
+  else
     printf "Bad Argument: %s \n" $ARGI
     exit 0
   fi
 done
 
 # check if sim data file present
-if [ ! -f 'test.csv' ]; then 
+if [ ! -f 'test.csv' ]; then
   echo 'ERROR: No simulated data file presented. Copying two_depths.csv';
   cp ../../../data/fake_bio/two_depths.csv test.csv
 fi
 
 #-------------------------------------------------------
-#  Part 2: Create the .moos and .bhv files. 
+#  Part 2: Create the .moos and .bhv files.
 #-------------------------------------------------------
 # simulation set-up
 EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
@@ -193,10 +193,11 @@ fi
 #-------------------------------------------------------
 printf "Launching shoreside MOOS Community (WARP=%s) \n"  $TIME_WARP
 pAntler targ_shoreside.moos > log_shoreside.log &
+sleep 1
 
 printf "Launching $VNAME1 MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$VNAME1.moos > log_$VNAME1.log &
-sleep .25
+sleep 1
 
 printf "Done \n"
 
