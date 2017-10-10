@@ -82,13 +82,16 @@ class GP_AUV : public CMOOSApp
    void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
    // path planning & passing on to behavior
    void greedyWptSelection(std::string & next_waypoint);
+   void dynamicWptSelection(std::string & next_waypoint);
    void publishNextWaypointLocations();
 
    // helper methods for path planning using GRG algorithm
+   int maxPath(GraphNode loc, vector<GraphNode>& toPublish, int& steps)
    size_t getX(size_t id_pt);
    size_t getY(size_t id_pt);
    double manhattanDistance(size_t start_node_index, size_t end_node_index);
    double informativeValue(std::vector< size_t > cur_path);
+   GraphNode max(const GraphNode& a, const GraphNode& b, const GraphNode& c);
    // path planning using generalized recursive greedy algorithm and passing on to behavior
    std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, std::set<size_t> ground_set, size_t budget);
    void recursiveGreedyWptSelection(std::string & next_waypoint);
