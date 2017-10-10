@@ -460,7 +460,7 @@ bool GP_AUV::OnStartUp()
   }
 
   // store vehicle name
-  if ( !m_MissionReader.get_value("Community",m_veh_name) )
+  if ( !m_MissionReader.GetValue("Community",m_veh_name) )
   {
      m_veh_name = "error";
      std::cout << GetAppName() << " :: Unable to retrieve vehicle name! What is 'Community' set to?" << std::endl;
@@ -486,12 +486,12 @@ void GP_AUV::initGeodesy()
   // get lat/lon origin from MOOS file
   bool failed = false;
   double latOrigin, longOrigin;
-  if ( !m_MissionReader.get_value("LatOrigin", latOrigin) )
+  if ( !m_MissionReader.GetValue("LatOrigin", latOrigin) )
   {
     std::cout << GetAppName() << " :: LatOrigin not set in *.moos file." << std::endl;
     failed = true;
   }
-  else if ( !m_MissionReader.get_value("LongOrigin", longOrigin) )
+  else if ( !m_MissionReader.GetValue("LongOrigin", longOrigin) )
   {
     std::cout << GetAppName() << " :: LongOrigin not set in *.moos file" << std::endl;
     failed = true;
@@ -1025,53 +1025,55 @@ void GP_AUV::dynamicProgrammingWptSelection(Eigen::Vector2d & best_location) {
 
 }
 
-//// ---------------------------------------------------------
-//// Procedure: dynamicWptSelection()
-////            Go through sample locations map of graph nodes
-////            Calculate value of path for a certain length
-////            Choose the path of the highest value
-//void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
-//{
-//    // is this the point we want to start calculating from?
-//    int current_node_index = getIndexForMap(m_lon, m_lat);
-//    auto itr = m_sample_points_unvisited.find(current_node_index);
-//
-//    std::vector<GraphNode> nextWaypoints(5);
-//
-//    // figure out how to get graph node from unvisited map
-//
-//    int steps = 0;
-//    int val = maxPath(itr->second, nextWaypoints, steps);
-//
-//    // publish next waypoints
-//
-//    std::ostringstream output_stream;
-//
-//    output_stream << std::setprecision(15) << nextWpt(0) << "," << bextWpt(1) << ":";
-//    next_waypoint = output_stream.str();
-//}
-//
-////---------------------------------------------------------
-//// Procedure: maxPath()
-////            helper function to help find the largest sum path
-////            publish waypoints as they are selected
-//int GP_AUV::maxPath(GraphNode& loc, vector<GraphNode>& toPublish, int& steps)
-//{
-//    // need some sort of base case
-//    //base case: if 5 steps in, return loc and construct the path backwards
-//    if(steps == 5) {
-//        return loc->get_value();
-//    }
-//    else {
-//        steps++;
-//        GraphNode next = max(maxPath(loc->get_left_neighbour(), toPublish, steps),
-//                             maxPath(loc->get_right_neighbour(), toPublish, steps),
-//                             maxPath(loc->get_front_neighbour(), toPublish, steps)
-//        );
-//        toPublish[steps - 1] = next;
-//        return loc->get_value() + next.get_value();
-//    }
-//}
+// ---------------------------------------------------------
+// Procedure: dynamicWptSelection()
+//            Go through sample locations map of graph nodes
+//            Calculate value of path for a certain length
+//            Choose the path of the highest value
+void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
+{
+    // is this the point we want to start calculating from?
+    int current_node_index = getIndexForMap(m_lon, m_lat);
+    auto itr = m_sample_points_unvisited.find(current_node_index);
+
+    std::vector<GraphNode*> nextWaypoints(5);
+
+    // figure out how to get graph node from unvisited map
+
+    int steps = 0;
+    int val = maxPath(itr->second, nextWaypoints, steps);
+
+    // publish next waypoints
+
+    std::ostringstream output_stream;
+
+    output_stream << std::setprecision(15) << nextWpt(0) << "," << bextWpt(1) << ":";
+    next_waypoint = output_stream.str();
+
+    //publish
+}
+
+//---------------------------------------------------------
+// Procedure: maxPath()
+//            helper function to help find the largest sum path
+//            publish waypoints as they are selected
+int GP_AUV::maxPath(GraphNode* loc, vector<GraphNode*>& toPublish, int& steps)
+{
+    // need some sort of base case
+    //base case: if 5 steps in, return loc and construct the path backwards
+    if(steps == 5) {
+        return loc->get_value();
+    }
+    else {
+        steps++;
+        GraphNode* next = max(maxPath(loc->get_left_neighbour(), toPublish, steps),
+                             maxPath(loc->get_right_neighbour(), toPublish, steps),
+                             maxPath(loc->get_front_neighbour(), toPublish, steps)
+        );
+        toPublish[steps - 1] = next;
+        return loc->get_value() + next->get_value();
+    }
+}
 
 /* NOTE: When I did dynamic programming questions in CSCI270, there was always a bounds,
 * so I knew when to stop running the algorithm - not sure what to do in this case when there isn't necessarily
@@ -2016,9 +2018,9 @@ void GP_AUV::publishStates(std::string const calling_method)
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
 }
 
-//GraphNode GP_AUV::max(const GraphNode& a, const GraphNode& b, const GraphNode& c)
-//{
-//    if(a->get_value() >= b->get_value() && a->get_value() >= c->get_value()) return a;
-//    else if(b->get_value() >= a->get_value() && b->get_value() >= c->get_value()) return b;
-//    else if(c->get_value() >= a->get_value() && c->get_value() >= a->get_value()) return c;
-//}
+GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
+{
+    if(a->get_value() >= b->get_value() && a->get_value() >= c->get_value()) return a;
+    else if(b->get_value() >= a->get_value() && b->get_value() >= c->get_value()) return b;
+    else if(c->get_value() >= a->get_value() && c->get_value() >= a->get_value()) return c;
+}
