@@ -1036,7 +1036,7 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
     int current_node_index = getIndexForMap(m_lon, m_lat);
     auto itr = m_sample_points_unvisited.find(current_node_index);
 
-    std::vector<GraphNode*> nextWaypoints(5);
+    std::vector<const GraphNode *> nextWaypoints(5);
 
     // figure out how to get graph node from unvisited map
 
@@ -1047,8 +1047,8 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 
     std::ostringstream output_stream;
 
-    output_stream << std::setprecision(15) << nextWpt(0) << "," << bextWpt(1) << ":";
-    next_waypoint = output_stream.str();
+//    output_stream << std::setprecision(15) << nextWpt(0) << "," << nextWpt(1) << ":";
+//    next_waypoint = output_stream.str();
 
     //publish
 }
@@ -1057,7 +1057,7 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 // Procedure: maxPath()
 //            helper function to help find the largest sum path
 //            publish waypoints as they are selected
-int GP_AUV::maxPath(GraphNode* loc, vector<GraphNode*>& toPublish, int& steps)
+int GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int& steps)
 {
     // need some sort of base case
     //base case: if 5 steps in, return loc and construct the path backwards
@@ -1066,7 +1066,7 @@ int GP_AUV::maxPath(GraphNode* loc, vector<GraphNode*>& toPublish, int& steps)
     }
     else {
         steps++;
-        GraphNode* next = max(maxPath(loc->get_left_neighbour(), toPublish, steps),
+        const GraphNode* next = max(maxPath(loc->get_left_neighbour(), toPublish, steps),
                              maxPath(loc->get_right_neighbour(), toPublish, steps),
                              maxPath(loc->get_front_neighbour(), toPublish, steps)
         );
@@ -2018,7 +2018,8 @@ void GP_AUV::publishStates(std::string const calling_method)
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
 }
 
-GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
+//const GraphNode* GP_AUV::max(const GraphNode* a, const GraphNode* b, const GraphNode* c)
+const GraphNode* GP_AUV::max(const U a, const U b, const U c)
 {
     if(a->get_value() >= b->get_value() && a->get_value() >= c->get_value()) return a;
     else if(b->get_value() >= a->get_value() && b->get_value() >= c->get_value()) return b;
