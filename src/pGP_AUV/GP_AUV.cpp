@@ -1041,7 +1041,7 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
     // figure out how to get graph node from unvisited map
 
     int steps = 0;
-    int val = maxPath(itr->second, nextWaypoints, steps);
+    const GraphNode* val = maxPath(itr->second, nextWaypoints, steps);
 
     // publish next waypoints
 
@@ -1057,13 +1057,15 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 // Procedure: maxPath()
 //            helper function to help find the largest sum path
 //            publish waypoints as they are selected
-int GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int& steps)
+const GraphNode* GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int& steps)
 {
     // need some sort of base case
     //base case: if 5 steps in, return loc and construct the path backwards
     if(steps == 5) {
-        return loc->get_value();
+//        return loc->get_value();
+        return loc;
     }
+
     else {
         steps++;
         const GraphNode* next = max(maxPath(loc->get_left_neighbour(), toPublish, steps),
@@ -1071,8 +1073,10 @@ int GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPubl
                              maxPath(loc->get_front_neighbour(), toPublish, steps)
         );
         toPublish[steps - 1] = next;
-        return loc->get_value() + next->get_value();
+//        return loc->get_value() + next->get_value();
+        return next;
     }
+
 }
 
 /* NOTE: When I did dynamic programming questions in CSCI270, there was always a bounds,
@@ -1432,7 +1436,7 @@ void GP_AUV::publishNextWaypointLocations()
   }
   else if ( m_path_planning_method == "dynamic_programming" )
   {
-    // call Ying's method
+    dynamicWptSelection(next_wpts);
   }
   else if ( m_path_planning_method == "recursive_greedy" )
   {
@@ -2018,8 +2022,8 @@ void GP_AUV::publishStates(std::string const calling_method)
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
 }
 
-//const GraphNode* GP_AUV::max(const GraphNode* a, const GraphNode* b, const GraphNode* c)
-const GraphNode* GP_AUV::max(const U a, const U b, const U c)
+const GraphNode* GP_AUV::max(const GraphNode* a, const GraphNode* b, const GraphNode* c)
+//GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
 {
     if(a->get_value() >= b->get_value() && a->get_value() >= c->get_value()) return a;
     else if(b->get_value() >= a->get_value() && b->get_value() >= c->get_value()) return b;
