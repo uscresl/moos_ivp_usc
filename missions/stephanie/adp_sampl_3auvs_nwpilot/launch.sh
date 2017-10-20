@@ -60,6 +60,8 @@ done
 if [ ! -f 'test.csv' ] ; then 
 echo 'ERROR: No simulated data file presented. Please put a test.csv file in this folder'; exit 0;
 fi
+# most scenario files have 3D data in them
+DATA_NR_DIMENSIONS=3
 
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
@@ -341,7 +343,8 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
+   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
@@ -365,7 +368,8 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
+   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2                    \
@@ -390,7 +394,8 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_CORNELIS  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
+   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3                    \

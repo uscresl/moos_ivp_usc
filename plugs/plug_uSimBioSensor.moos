@@ -21,6 +21,7 @@ ProcessConfig = uSimBioSensor
   sensor_stddev = 1.5
 #endif
   output_var = SIM_DATA
-  
+#ifdef DATA_NUM_DIMENSIONS
   dimensions = $(DATA_NUM_DIMENSIONS)
+#endif
 }
