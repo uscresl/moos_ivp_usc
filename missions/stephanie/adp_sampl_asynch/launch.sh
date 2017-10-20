@@ -12,7 +12,6 @@ RUN_SIMULATION="yes"
 VORONOI_PARTITIONING="no"
 AREA="old"
 GUI="no"
-CG="yes"
 ADP_START="cross"
 BASE_PORT=9000
 
@@ -48,7 +47,6 @@ do
   n) NUM_VEHICLES=${OPTARG};;
   b) AREA=${OPTARG};;
   g) GUI="yes";;
-  r) CG="no";; # rprop
   s) ADP_START=${OPTARG};;
   h) printHelp;;
   w) TIME_WARP=${OPTARG};;
@@ -56,9 +54,22 @@ do
   esac
 done
 
+# check settings
+echo "ADAPTIVE: " ${ADAPTIVE}
+echo "TDS: " ${TDS}
+echo "ACOMMS: " ${ACOMMS}
+echo "VORONOI_PARTITIONING: " ${VORONOI_PARTITIONING}
+echo "NUM_VEHICLES: " ${NUM_VEHICLES}
+echo "AREA: " ${AREA}
+echo "GUI: " ${GUI}
+echo "ADP_START: " ${ADP_START}
+echo "WARP: " ${TIME_WARP}
+echo "BASE_PORT: " ${BASE_PORT}
+
 # check if sim data file present
 if [ ! -f 'test.csv' ] ; then 
-echo 'ERROR: No simulated data file presented. Please put a test.csv file in this folder'; exit 0;
+  cp ../../../data/fake_bio/two_depths.csv .
+  echo 'ERROR: No simulated data file presented. Copied two_depths.csv';
 fi
 # most scenario files have 3D data in them
 DATA_NR_DIMENSIONS=3
@@ -255,7 +266,21 @@ CORNELIS_VPORT=$(($BASE_PORT+3))
 CORNELIS_LISTEN=$(($BASE_PORT+13))
 CORNELIS_LISTEN_GP=$(($BASE_PORT+23))
 
-# percentage of messages to drop in uFldNodeComms
+SHUB_VPORT=$(($BASE_PORT+100))
+SHUB_LISTEN=$(($BASE_PORT+110))
+SHUB_LISTEN_GP=$(($BASE_PORT+120))
+
+
+if [ $NUM_VEHICLES -ge 2 ] ; then
+PSHARE_MISSIONFILE="./plugs/pShare_auv.moos"
+SHAREGP2=$BERNARD_LISTEN_GP
+fi
+if [ $NUM_VEHICLES -ge 3 ] ; then
+SHAREGP3=$CORNELIS_LISTEN_GP
+fi
+SHAREGP_HUB=$SHUB_LISTEN_GP
+
+# percentage of messages to drop in uFldNodeComms (acomms)
 DROP_PCT=25
 
 SERVERHOST="localhost" #"localhost"
@@ -312,7 +337,6 @@ WAYPOINTS2="455,980:455,965:430,965:430,980:455,980"
 MODEMID2="2"
 VTYPE2="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX2="${VNAME2}_predictions"
-PSHARE_BERNARD="./plugs/pShare_auv.moos"
 
 # The third vehicle community
 VNAME3="cornelis"
@@ -321,28 +345,33 @@ WAYPOINTS3="455,980:455,965:430,965:430,980:455,980"
 MODEMID3="3"
 VTYPE3="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX3="${VNAME3}_predictions"
-PSHARE_CORNELIS="./plugs/pShare_auv.moos"
 
-if [ $NUM_VEHICLES -ge 3 ] ; then
-SHAREGP3=$CORNELIS_LISTEN_GP
+# 4th vehicle community: surface hub
+SHUB="surface_hub"
+START_DEPTH_SHUB=0
+if [ ${AREA} = "bigger2" ] ; then
+START_POS_SHUB="1000,1000"
+WAYPOINTS_SHUB="1000,1000"
+else
+START_POS_SHUB="700,1100"
+WAYPOINTS_SHUB="700,1100"
 fi
-
-if [ $NUM_VEHICLES -ge 2 ] ; then
-PSHARE_ANNA="./plugs/pShare_auv.moos"
-SHAREGP2=$BERNARD_LISTEN_GP
-fi
+MODEMID_SHUB="4"
+VTYPE_SHUB="SHIP"
+PREDICTIONS_PREFIX_SHUB="${SHUB}_predictions"
 
 nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME1  START_POS=$START_POS1  START_HDG=$START_HEADING \
    VPORT=$ANNA_VPORT SHARE_LISTEN=$ANNA_LISTEN SHARE_LISTEN_GP=$ANNA_LISTEN_GP \
-   SHARE_GP2=$SHAREGP2  SHARE_GP3=$SHAREGP3 SERVER_LISTEN=$SHORE_LISTEN \
+   SHARE_GP2=$SHAREGP2  SHARE_GP3=$SHAREGP3  SHARE_GP_HUB=$SHAREGP_HUB  \
+   SERVER_LISTEN=$SHORE_LISTEN \
    VTYPE=$VTYPE1      MODEMID=$MODEMID1 \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
-   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
+   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
    ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
    DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
@@ -360,14 +389,15 @@ SHAREGP2=$ANNA_LISTEN_GP
 nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME2  START_POS=$START_POS2  START_HDG=$START_HEADING \
    VPORT=$BERNARD_VPORT SHARE_LISTEN=$BERNARD_LISTEN SHARE_LISTEN_GP=$BERNARD_LISTEN_GP \
-   SERVER_LISTEN=$SHORE_LISTEN    SHARE_GP2=$SHAREGP2   SHARE_GP3=$SHAREGP3 \
+   SHARE_GP2=$SHAREGP2   SHARE_GP3=$SHAREGP3   SHARE_GP_HUB=$SHAREGP_HUB  \
+   SERVER_LISTEN=$SHORE_LISTEN  \
    VTYPE=$VTYPE2      MODEMID=$MODEMID2 \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX2 \
-   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
+   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
    ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
    DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
@@ -386,14 +416,15 @@ SHAREGP3=$BERNARD_LISTEN_GP
 nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    VNAME=$VNAME3  START_POS=$START_POS3  START_HDG=$START_HEADING \
    VPORT=$CORNELIS_VPORT SHARE_LISTEN=$CORNELIS_LISTEN SHARE_LISTEN_GP=$CORNELIS_LISTEN_GP \
-   SERVER_LISTEN=$SHORE_LISTEN    SHARE_GP2=$SHAREGP2   SHARE_GP3=$SHAREGP3  \
+   SHARE_GP2=$SHAREGP2   SHARE_GP3=$SHAREGP3   SHARE_GP_HUB=$SHAREGP_HUB  \
+   SERVER_LISTEN=$SHORE_LISTEN  \
    VTYPE=$VTYPE3      MODEMID=$MODEMID3 \
    SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
    PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX3 \
-   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_CORNELIS  \
+   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
    ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
    DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
@@ -406,6 +437,26 @@ nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
 fi
 # TODO fix OTHER_VEHICLE
 
+# v4: surface hub
+nsplug meta_surface_hub.moos targ_surface_hub.moos -f WARP=$TIME_WARP  \
+   VNAME=$SHUB  START_POS=$START_POS_SHUB  START_HDG=$START_HEADING \
+   VPORT=$SHUB_VPORT SHARE_LISTEN=$SHUB_LISTEN SHARE_LISTEN_GP=$SHUB_LISTEN_GP \
+   SHARE_GP2=$SHAREGP2  SHARE_GP3=$SHAREGP3  SHARE_GP_HUB=$SHAREGP_HUB  \
+   SERVER_LISTEN=$SHORE_LISTEN \
+   VTYPE=$VTYPE_SHUB      MODEMID=$MODEMID_SHUB \
+   SERVER_HOST=$SERVERHOST  LOCATION=$EXP_LOCATION             \
+   PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR                          \
+   LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX_SHUB \
+   NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
+   ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
+   USE_GUI=$GUI  SURVEY_AREA=$AREA  DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
+nsplug meta_surface_hub.bhv targ_surface_hub.bhv -f VNAME=$SHUB      \
+    START_POS=$START_POS_SHUB WAYPOINTS=$WAYPOINTS_SHUB                \
+    START_DEPTH=$START_DEPTH_SHUB VTYPE=$VTYPE_SHUB                    \
+    HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
+    OTHER_VEHICLE=$VNAME2 OPREGION=$BHVOPREGION
+
+
 if [ ${JUST_MAKE} = "yes" ] ; then
     exit 0
 fi
@@ -413,9 +464,11 @@ fi
 #-------------------------------------------------------
 #  Part 3: Launch the processes
 #-------------------------------------------------------
+# shoreside (visualization, node comms)
 printf "Launching shoreside MOOS Community (WARP=%s) \n"  $TIME_WARP
 pAntler targ_shoreside.moos > log_shoreside.log &
 
+# vehicles
 printf "Launching $VNAME1 MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$VNAME1.moos > log_$VNAME1.log &
 sleep .25
@@ -432,10 +485,15 @@ pAntler targ_$VNAME3.moos > log_$VNAME3.log &
 sleep .25
 fi
 
+# surface hub
+printf "Launching $SHUB MOOS Community (WARP=%s) \n" $TIME_WARP
+pAntler targ_surface_hub.moos > log_surface_hub.log &
+sleep .25
+
 printf "Done \n"
 
 uMAC targ_shoreside.moos
 
 printf "Killing all processes ... \n"
-kill %1 %2 %3 %4
+kill %1 %2 %3 %4 %5
 printf "Done killing processes.   \n"
