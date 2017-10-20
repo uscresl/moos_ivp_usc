@@ -6,10 +6,14 @@ ProcessConfig = pLogger
   AppTick 	= 5
   CommsTick 	= 5
   
-  File		= LOG_%(VNAME)
-  PATH		= ./
-  SyncLog 	= true @ 0.2
-  AsyncLog 	= true
+  #ifdef VNAME
+  File  = LOG_%(VNAME)
+  #else
+  File  = LOG
+  #endif
+  PATH  = ./
+  SyncLog  = true @ 0.2
+  AsyncLog  = true
   FileTimeStamp = true
 
   // For variables that are published in a bundle on their first post,

@@ -1,0 +1,8 @@
+On zoomer:
+
+pAntler zoomer.moos |&tee zoomer.log
+
+On your pc:
+
+pAntler computer.moos |&tee sim.log
+

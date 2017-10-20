@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: SimBioSensor.cpp                                     */
-/*    DATE: Jan 25, 2016                                         */
+/*    DATE: Jan 25, 2016 - Aug 2017                              */
 /*                                                               */
 /*****************************************************************/
 
@@ -35,6 +35,7 @@
 // Constructor
 //
 SimBioSensor::SimBioSensor() :
+  m_debug(false),
   m_veh_lon(0.0),
   m_veh_lat(0.0),
   m_veh_depth(-1),
@@ -42,8 +43,9 @@ SimBioSensor::SimBioSensor() :
   m_new_lat(false),
   m_new_dep(false),
   m_filename(""),
-  m_variance(1.0),
+  m_stddev(1.0),
   m_output_var(""),
+  m_num_dim(3),
   m_file_read(false),
   m_nav_data_received(false),
   m_lon_step(0.0),
@@ -61,16 +63,30 @@ SimBioSensor::~SimBioSensor()
 {
   size_t lon_res = (size_t)d_boundaries_map.at("lon_res");
   size_t lat_res = (size_t)d_boundaries_map.at("lat_res");
-  // remove dynamically allocated array
-  for ( size_t idlo = 0; idlo < lon_res; idlo++ )
+
+  if ( m_num_dim == 3 )
   {
-    for ( size_t idla = 0; idla < lat_res; idla++ )
+    // remove dynamically allocated array
+    for ( size_t idlo = 0; idlo < lon_res; idlo++ )
     {
-      delete[] d_location_values[idlo][idla];
+      for ( size_t idla = 0; idla < lat_res; idla++ )
+      {
+        delete[] d_location_values[idlo][idla];
+      }
+      delete[] d_location_values[idlo];
     }
-    delete[] d_location_values[idlo];
+    delete[] d_location_values;
   }
-  delete[] d_location_values;
+  else
+  {
+    // remove dynamically allocated array
+    for ( size_t idlo = 0; idlo < lon_res; idlo++ )
+    {
+      delete[] d_location_values_2d[idlo];
+    }
+    delete[] d_location_values_2d;
+  }
+
 }
 
 //---------------------------------------------------------
@@ -117,12 +133,6 @@ bool SimBioSensor::OnNewMail(MOOSMSG_LIST &NewMail)
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
 
-//    if ( m_nav_data_received == false && !(m_veh_lon == 0 || m_veh_lat == 0 || m_veh_depth == -1) )
-//    {
-//      m_nav_data_received = true;
-//      std::cout << GetAppName() << " :: first nav data received (lon, lat, depth): "
-//                << m_veh_lon << ", " << m_veh_lat << ", " << m_veh_depth << std::endl;
-//    }
   }
 
    return(true);
@@ -157,10 +167,14 @@ bool SimBioSensor::Iterate()
     double dat = getDataPoint();
     if ( m_output_var != "" && dat > 0 )
     {
-      // add sensor noise
-      dat = addSensorNoise(dat);
-      // invert negative values
-      dat = (dat < 0 ? -1*dat : dat);
+      if ( m_stddev > 0.0 )
+      {
+        // add sensor noise
+        dat = addSensorNoise(dat);
+        // invert negative values
+        dat = (dat < 0 ? -1*dat : dat);
+      }
+
       // publish to MOOSDB
       if ( m_verbose )
         std::cout << GetAppName() << " :: publishing data: " << dat << std::endl;
@@ -201,9 +215,11 @@ bool SimBioSensor::OnStartUp()
       std::cout << GetAppName() << " :: Parameter filename: " << m_filename << std::endl;
       handled = true;
     }
-    else if ( param == "sensor_variance" )
+    else if ( param == "sensor_stddev" )
     {
-      m_variance = atof(value.c_str());
+      m_stddev = atof(value.c_str());
+      std::cout << GetAppName() << " :: Parameter sensor_stddev: " << m_stddev << std::endl;
+      handled = true;
     }
     else if ( param == "output_var" )
     {
@@ -214,6 +230,14 @@ bool SimBioSensor::OnStartUp()
     else if ( param == "verbose" )
     {
       m_verbose = (value == "true") ? true : false;
+      std::cout << GetAppName() << " :: Parameter verbose: " << m_verbose << std::endl;
+      handled = true;
+    }
+    else if ( param == "dimensions" )
+    {
+      m_num_dim = (size_t)atoi(value.c_str());
+      std::cout << GetAppName() << " :: Parameter dimensions: " << m_num_dim << std::endl;
+      handled = true;
     }
 
     if ( !handled )
@@ -257,6 +281,9 @@ void SimBioSensor::readBioDataFromFile()
 
   size_t cnt = 0;
 
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: start reading data from file." << std::endl;
+
   if ( input_filestream.is_open() )
   {
     std::string line_read;
@@ -266,7 +293,7 @@ void SimBioSensor::readBioDataFromFile()
     std::getline(input_filestream, hdr_line, '\n');
 
     // second header line: boundaries
-    // (lon_min lon_max lon_res lat_min lat_max lat_res depth_min depth_max depth_res)
+    // (lon_min lon_max lon_res lat_min lat_max lat_res [depth_min depth_max depth_res])
     std::getline(input_filestream, line_read, '\n');
 
     // extract the boundary values given header name and value
@@ -281,14 +308,20 @@ void SimBioSensor::readBioDataFromFile()
     }
 
     // check file format
-    if ( d_boundaries_map.size() < 9 )
+    if ( (m_num_dim == 3 && d_boundaries_map.size() < 9) ||
+         (m_num_dim == 2 && d_boundaries_map.size() < 6) )
     {
       std::cout << GetAppName() << " :: ERROR: wrong file format, exiting." << std::endl;
       RequestQuit();
     }
 
-    // printout for checking
-    std::cout << GetAppName() << " :: \nboundaries stored: " << std::endl;
+    if ( m_verbose )
+    {
+      // printout for checking
+      std::cout << GetAppName() << " :: boundaries stored: " << std::endl;
+      std::cout << GetAppName() << " :: d_boundaries_map.size: " << d_boundaries_map.size() << std::endl;
+    }
+
     std::map<std::string, double>::iterator itr;
     for ( itr = d_boundaries_map.begin(); itr != d_boundaries_map.end(); itr++ )
       std::cout << itr->first << ": " << std::setprecision(10) << itr->second << std::endl;
@@ -299,14 +332,35 @@ void SimBioSensor::readBioDataFromFile()
     // initialize the array to store values (dynamic allocation, requires destructor)
     size_t lon_res = (size_t)d_boundaries_map.at("lon_res");
     size_t lat_res = (size_t)d_boundaries_map.at("lat_res");
-    size_t depth_res = (size_t)d_boundaries_map.at("depth_res");
-    std::cout << GetAppName() << " :: resolutions: " << lon_res << "," << lat_res << "," << depth_res << std::endl;
-    d_location_values = new double ** [lon_res];
-    for ( size_t idlo = 0; idlo < lon_res; idlo++ )
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: resolutions: " << lon_res << "," << lat_res << std::endl;
+
+    size_t depth_res  = 0;
+    if ( m_num_dim == 3 )
     {
-      d_location_values[idlo] = new double*[lat_res];
-      for ( size_t idla = 0; idla < lat_res; idla++ )
-        d_location_values[idlo][idla] = new double[depth_res];
+      depth_res = (size_t)d_boundaries_map.at("depth_res");
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: depth resolution: " << depth_res <<  std::endl;
+
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: creating data structure." << std::endl;
+      d_location_values = new double ** [lon_res];
+      for ( size_t idlo = 0; idlo < lon_res; idlo++ )
+      {
+        d_location_values[idlo] = new double*[lat_res];
+        for ( size_t idla = 0; idla < lat_res; idla++ )
+          d_location_values[idlo][idla] = new double[depth_res];
+      }
+    }
+    else
+    {
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: creating data structure." << std::endl;
+      d_location_values_2d = new double * [lon_res];
+      for ( size_t idlo = 0; idlo < lon_res; idlo++ )
+      {
+        d_location_values_2d[idlo] = new double[lat_res];
+      }
     }
 
     // do calculations to figure out indices
@@ -316,7 +370,15 @@ void SimBioSensor::readBioDataFromFile()
     // because there is 1 less edge than there are vertices
     m_lon_step = std::abs(d_boundaries_map.at("lon_max") - d_boundaries_map.at("lon_min")) / (lon_res-1);
     m_lat_step = std::abs(d_boundaries_map.at("lat_max") - d_boundaries_map.at("lat_min")) / (lat_res-1);
-    m_depth_step = std::abs(d_boundaries_map.at("depth_max") - d_boundaries_map.at("depth_min")) / (depth_res-1);
+    if ( m_num_dim == 3 )
+      m_depth_step = std::abs(d_boundaries_map.at("depth_max") - d_boundaries_map.at("depth_min")) / (depth_res-1);
+
+    if ( m_verbose )
+    {
+      std::cout << GetAppName() << " :: lon_step, lat_step: " << m_lon_step << ", " << m_lat_step << std::endl;
+      if ( m_num_dim == 3 )
+        std::cout << GetAppName() << " :: dep_step: " << m_depth_step << std::endl;
+    }
 
     // read data
     std::string line;
@@ -328,25 +390,39 @@ void SimBioSensor::readBioDataFromFile()
       std::vector<std::string> line_items;
       std::stringstream ss(line);
       std::string item;
-      while ( std::getline(ss, item, ',') )
-          line_items.push_back(item);
-      // TODO, store by checking header lines for positions
-      lon = line_items[0];
-      lat = line_items[1];
-      depth = line_items[2];
-      data = line_items[3];
+      if ( line != "" )
+      {
+        while ( std::getline(ss, item, ',') )
+            line_items.push_back(item);
+        // TODO, store by checking header lines for positions
+        lon = line_items[0];
+        lat = line_items[1];
+        if ( m_num_dim == 3 )
+        {
+          depth = line_items[2];
+          data = line_items[3];
+        }
+        else
+          data = line_items[2];
 
-      cnt++;
+        cnt++;
 
-      size_t lon_idx, lat_idx, dep_idx;
-      double tmp_lon = (double)atof(lon.c_str());
-      double tmp_lat = (double)atof(lat.c_str());
-      double tmp_dep = (double)atof(depth.c_str());
-      lon_idx = round( ( tmp_lon - d_boundaries_map.at("lon_min")) / m_lon_step );
-      lat_idx = round( ( tmp_lat - d_boundaries_map.at("lat_min")) / m_lat_step );
-      dep_idx = round( ( tmp_dep - d_boundaries_map.at("depth_min")) / m_depth_step );
+        size_t lon_idx, lat_idx, dep_idx;
+        double tmp_lon = (double)atof(lon.c_str());
+        double tmp_lat = (double)atof(lat.c_str());
+        lon_idx = round( ( tmp_lon - d_boundaries_map.at("lon_min")) / m_lon_step );
+        lat_idx = round( ( tmp_lat - d_boundaries_map.at("lat_min")) / m_lat_step );
 
-      d_location_values[lon_idx][lat_idx][dep_idx] = (double)atof(data.c_str());
+        if ( m_num_dim == 3 )
+        {
+          double tmp_dep = (double)atof(depth.c_str());
+          dep_idx = round( ( tmp_dep - d_boundaries_map.at("depth_min")) / m_depth_step );
+          d_location_values[lon_idx][lat_idx][dep_idx] = (double)atof(data.c_str());
+        }
+        else
+          d_location_values_2d[lon_idx][lat_idx] = (double)atof(data.c_str());
+
+      }
     }
 
     // done with this file, close
@@ -360,6 +436,8 @@ void SimBioSensor::readBioDataFromFile()
     std::cout << GetAppName() << " :: Done reading files, objects: " << cnt << '\n';
     m_file_read = true;
   }
+  else
+    std::cout << GetAppName() << " :: Done reading files, nothing stored." << std::endl;
 }
 
 double SimBioSensor::getDataPoint()
@@ -369,33 +447,63 @@ double SimBioSensor::getDataPoint()
   double lon_max = d_boundaries_map.at("lon_max");
   double lat_min = d_boundaries_map.at("lat_min");
   double lat_max = d_boundaries_map.at("lat_max");
-  double dep_min = std::abs(d_boundaries_map.at("depth_min"));
-  double dep_max = std::abs(d_boundaries_map.at("depth_max"));
+  double dep_min, dep_max;
+  if ( m_num_dim == 3 )
+  {
+    dep_min = std::abs(d_boundaries_map.at("depth_min"));
+    dep_max = std::abs(d_boundaries_map.at("depth_max"));
+  }
 
   // boundary conditions; lat/lon buffer, buffer = res/3 (third of lane)
   double buffer_lon = std::abs(m_lon_step / 3.0);
   double buffer_lat = std::abs(m_lat_step / 3.0);
-  double buffer_depth = std::abs(m_depth_step / 3.0 );
+  double buffer_depth;
+  if ( m_num_dim == 3 )
+    buffer_depth = std::abs(m_depth_step / 3.0 );
 
   if ( m_veh_lon >= (lon_min-buffer_lon) && m_veh_lon <= (lon_max+buffer_lon) &&
-       m_veh_lat >= (lat_min-buffer_lat) && m_veh_lat <= (lat_max+buffer_lat) &&
-       m_veh_depth >= (dep_min-buffer_depth) && m_veh_depth <= (dep_max+buffer_depth) )
+       m_veh_lat >= (lat_min-buffer_lat) && m_veh_lat <= (lat_max+buffer_lat) )
   {
-    size_t nav_lon_idx, nav_lat_idx, nav_dep_idx;
-
-    if ( m_verbose )
-      std::cout << '\n' << GetAppName() << " :: vehicle lon/lat/dep: " << m_veh_lon
-                << "," << m_veh_lat << "," << m_veh_depth << std::endl;
-
+    size_t nav_lon_idx, nav_lat_idx;
     nav_lon_idx = round( (m_veh_lon - lon_min) / m_lon_step );
     nav_lat_idx = round( (m_veh_lat - lat_min) / m_lat_step );
-    nav_dep_idx = round( (m_veh_depth - dep_min) / m_depth_step );
 
     if ( m_verbose )
-      std::cout << GetAppName() << " :: calculated index: " << nav_lon_idx
-                << "," << nav_lat_idx << "," << nav_dep_idx << std::endl;
+      std::cout << '\n' << GetAppName() << " :: vehicle lon/lat: "
+                << m_veh_lon << "," << m_veh_lat << std::endl;
 
-    return d_location_values[nav_lon_idx][nav_lat_idx][nav_dep_idx];
+    if ( m_num_dim == 3 &&
+         m_veh_depth >= (dep_min-buffer_depth) && m_veh_depth <= (dep_max+buffer_depth) )
+    {
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: vehicle depth: " << m_veh_depth << std::endl;
+
+      size_t nav_dep_idx;
+      nav_dep_idx = round( (m_veh_depth - dep_min) / m_depth_step );
+
+      double data_val = d_location_values[nav_lon_idx][nav_lat_idx][nav_dep_idx];
+
+      if ( m_debug )
+      {
+        std::cout << GetAppName() << " :: calculated index: " << nav_lon_idx
+                  << "," << nav_lat_idx << "," << nav_dep_idx << std::endl;
+        std::cout << GetAppName() << " :: returning: " << data_val << std::endl;
+      }
+
+      return data_val;
+    }
+    else if ( m_num_dim == 2 )
+    {
+      double data_val = d_location_values_2d[nav_lon_idx][nav_lat_idx];
+      if ( m_debug )
+      {
+        std::cout << GetAppName() << " :: calculated index: "
+                  << nav_lon_idx << "," << nav_lat_idx << std::endl;
+        std::cout << GetAppName() << " :: returning: " << data_val << std::endl;
+      }
+
+      return data_val;
+    }
   }
   else
   {
@@ -412,7 +520,7 @@ double SimBioSensor::addSensorNoise(double value)
   // start a seeded random number generator
   std::default_random_engine generator(seed);
   // create normal distribution with mean 0.0 and std_dev 1.0
-  std::normal_distribution<double> distribution(0.0, m_variance);
+  std::normal_distribution<double> distribution(0.0, m_stddev);
   // grab a random number from the distribution
   double noise = distribution(generator);
 

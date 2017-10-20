@@ -7,10 +7,20 @@ ProcessConfig = uSimBioSensor
   CommsTick = 2
 
   // verbosity: true or false
-  verbose = false
+  verbose = true
 
   // process parameters
+#ifdef DATA_FILENAME
+  input_filename = $(DATA_FILENAME)
+#else
   input_filename = test.csv
-  variance = 1.5
+#endif
+#ifdef SENSOR_STD_DEV
+  sensor_stddev = $(SENSOR_STD_DEV)
+#else
+  sensor_stddev = 1.5
+#endif
   output_var = SIM_DATA
+  
+  dimensions = $(DATA_NUM_DIMENSIONS)
 }

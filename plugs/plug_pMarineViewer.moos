@@ -40,6 +40,7 @@ ProcessConfig = pMarineViewer
   set_pan_y = -845
   zoom      = 0.55
 #endif
+
   vehicles_shape_scale = 2.0
   vehicles_name_mode   = names+shortmode
   stale_vehicles_viewable = true

@@ -113,6 +113,7 @@ if ( LIBGP_FOUND AND MOOSGeodesy_FOUND AND Boost_FOUND AND EIGEN3_FOUND )
   link_directories(${MOOSGeodesy_LIBRARY_PATH})
   add_subdirectory(pGP)
   add_subdirectory(pGP_AUV)
+#  endif()
 endif()
 
 # Sept'16: add process that can publish a certain var/val set,

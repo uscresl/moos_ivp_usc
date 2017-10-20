@@ -1,0 +1,215 @@
+// MOOS community specs (doesn't matter for unit test)
+ServerHost = localhost
+ServerPort = 5000
+Community  = test
+
+// warp? (increase sim speed, ok as long as no process reads system time)
+MOOSTimeWarp = 1
+
+// Location (doesn't matter for unit test)
+LatOrigin  = 34.020026
+LongOrigin = -118.290083
+
+//****************************************************************************//
+// Base Processes
+//
+
+// Antler: list which processes to start
+ProcessConfig = ANTLER
+{
+  MSBetweenLaunches = 200
+
+  Run = MOOSDB        @ NewConsole = false
+  Run = pLogger       @ NewConsole = false
+
+  Run = pGP_AUV @ NewConsole = false
+
+  // add fake data to be read by pGP
+  Run = uTimerScript @ NewConsole = false ~ uTimerScript_startup
+  Run = uTimerScript @ NewConsole = false ~ uTimerScript_data
+  Run = uTimerScript @ NewConsole = false ~ uTimerScript_wpts
+}
+
+// Logging tool (MOOSEssentials)
+ProcessConfig = pLogger
+{
+  AppTick   = 8
+  CommsTick = 8
+
+  Path = ./
+  AsyncLog = true
+  FileTimeStamp = true
+
+  BridgeFrequency = 0
+  // For variables that are published in a bundle on their first post,
+  // explicitly declare their logging request
+  Log = IVPHELM_LIFE_EVENT @ 0 NOSYNC
+
+  // Log everything
+  LogAuxSrc = true
+  WildCardLogging = true
+  WildCardOmitPattern = DB_VARSUMMARY, DB_RWSUMMARY, APPCAST
+  WildCardExclusionLog = true
+}
+
+//****************************************************************************//
+// TESTING
+
+// pGP
+ProcessConfig = pGP_AUV
+{
+  AppTick   = 2
+  CommsTick = 2
+
+  // verbose: true or false
+  verbose = true
+
+  // GP or log GP?
+  use_log_gp = true
+
+  // define the names of input & output variables
+  input_var_data = SIM_DATA
+  input_var_sample_points = SAMPLE_POINTS
+  input_var_sample_points_specs = SAMPLE_POINTS_SPECS
+  input_var_adaptive_trigger = WPT_REACHED
+  input_var_share_data = INCOMING_DATA
+  output_var_predictions = GP_PREDICTIONS
+  output_var_share_data = SHARE_DATA
+
+  // define the filename for saving GP predictions
+  output_filename_prefix = predictions
+
+  // define the prediction interval (predict every X seconds)
+  prediction_interval = 300
+
+  // number of vehicles (data exchange?)
+  nr_vehicles = 1
+
+  // run in adaptive mode?
+  adaptive = true
+
+  // elementary coordination (implicit): share data at set intervals
+  timed_data_sharing = false
+  // interval between data sharing events (seconds)
+  data_sharing_interval = 600
+  // vars for data sharing
+  output_var_handshake_data_sharing = SEND_DATA_HANDSHAKE
+  input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
+
+  // data sharing through acomms
+  acomms_sharing = false
+
+  // use voronoi partitioning?
+  use_voronoi = false
+  // minimum timeout between voronoi calculations (sec)
+  voronoi_timeout = 300
+
+  // take one in X data points for HP optimization
+  downsample_factor = 4
+
+  // buffer region outside sample area for which
+  // vehicle is still counted as inside, for voronoi partitioning
+  area_buffer = 10.0
+
+  // specify method of hyperparameter optimization ('cg' vs 'rprop')
+  hp_optim_method = cg
+
+  // number of iterations for CG/RProp
+  hp_optim_iterations = 50
+}
+
+// add uTimerScript for taking care of variables that do not exist 
+// in a unit test
+ProcessConfig = uTimerScript_startup
+{
+  AppTick = 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose = false // or true
+  
+  event = var=SAMPLE_POINTS, val="117.809667078311,34.0874537159634;-117.809450363552,34.0879946269003;-117.809450363552,34.0880847787231;-117.809450363552,34.0885355378372;-117.809342006173,34.0880847787231;-117.809342006173,34.0881749305459;-117.809342006173,34.0888059933057;-117.809342006173,34.0888961451285;-117.809233648794,34.0879044750775;-117.809233648794,34.0879946269003;-117.809233648794,34.0881749305459;-117.809016934035,34.0879946269003;-117.809016934035,34.0880847787231;-117.808908576656,34.0880847787231;-117.808908576656,34.0881749305459;-117.808908576656,34.0882650823688;-117.808908576656,34.0888059933057;-117.808908576656,34.0888961451285;-117.808908576656,34.0889862969513;-117.808908576656,34.0890764487741;-117.808908576656,34.0892567524198;-117.808800219277,34.0874537159634;-117.808800219277,34.0885355378372;-117.808691861898,34.0874537159634;-117.808691861898,34.0875438677862;-117.808691861898,34.087634019609;-117.808691861898,34.0882650823688;-117.808691861898,34.0883552341916;-117.808691861898,34.08862568966;-117.808691861898,34.0887158414829;-117.80565785528,34.0879044750775;-117.80565785528,34.0879946269003;-117.80565785528,34.0880847787231;-117.80565785528,34.0881749305459;-117.80565785528,34.0882650823688;-117.80565785528,34.0883552341916;-117.80565785528,34.0888059933057;-117.805332783142,34.0892567524198;", time=1
+  event = var=SAMPLE_POINTS_SPECS, val="width=400,height=200,lane_width=10", time=1
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max = 0 // or in range [0,inf)
+  // A point when the script is reset
+  reset_time = inf // or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+//  reset_var = UTS_RESET // or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var = UTS_STATUS_SU // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp = 1
+}
+
+ProcessConfig = uTimerScript_data
+{
+  AppTick = 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose = false // or true
+
+  // Declaration of random var macro expanded in event values
+  randvar = varname=VAL1, min=0, max=40, key=at_post
+  randvar = varname=LAT, min=34.087544, max=34.087634, key=at_reset
+  randvar = varname=LON, min=-117.809667, max=-117.805332, key=at_reset
+  randvar = varname=DEP, min=4.9, max=5.1, key=at_reset
+
+  // Event(s) are the key components of the script
+//  event = var=SBR_RANGE_REQUEST, val="name=archie", time=25:35
+  event = var=NAV_LAT, val=$[LAT], time=1
+  event = var=NAV_LONG, val=$[LON], time=1
+  event = var=NAV_DEPTH, val=$[DEP], time=1
+  event = var=SIM_DATA, val=$[VAL1], time=1
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max = nolimit // or in range [0,inf)
+  // A point when the script is reset
+  reset_time = all-posted // or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+  reset_var = UTS_RESET // or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var = UTS_STATUS_DAT // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp = 1
+}
+
+ProcessConfig = uTimerScript_wpts
+{
+  AppTick = 4
+  CommsTick = 4
+
+  // If true progress is generated to the console
+  verbose = false // or true
+
+  // status mission
+  event = var=WPT_REACHED, val="true", time=20
+
+  // If true script is paused upon launch
+  paused = false
+
+  // Maximum number of resets allowed
+  reset_max = nolimit // or in range [0,inf)
+  // A point when the script is reset
+  reset_time = all-posted // or {all-posted} or range (0,inf)
+  // A MOOS variable for receiving reset cues
+  reset_var = UTS_RESET // or other MOOS variable
+
+  // A MOOS variable for posting the status summary
+  status_var = UTS_STATUS_WPTS // or other MOOS variable
+
+  // Rate at which time is accelerated in execuing the script
+  time_warp = 1
+}

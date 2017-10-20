@@ -1,0 +1,3 @@
+// set up input and output channels for sharing collected data.
+
+input = route=$(SERVER_HOST):$(SHARE_LISTEN_GP)
