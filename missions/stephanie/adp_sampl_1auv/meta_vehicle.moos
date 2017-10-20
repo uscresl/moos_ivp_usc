@@ -52,12 +52,12 @@ ProcessConfig = ANTLER
   Run = uSimBioSensor @ NewConsole = false
   //,XConfig=uSBSConfig
 
-  #ifdef USE_GUI true
-  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-  Run = pGP_AUV @ NewConsole = true,XConfig=pGPConfig
-  #else
+//  #ifdef USE_GUI true
+//  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
+//  Run = pGP_AUV @ NewConsole = true,XConfig=pGPConfig
+//  #else
   Run = pGP_AUV @ NewConsole = false
-  #endif
+//  #endif
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
@@ -108,7 +108,11 @@ ProcessConfig = pGP_AUV
   verbose = true
 
   // GP or log GP?
+#ifdef LOG_GP yes
   use_log_gp = true
+#else
+  use_log_gp = false
+#endif
 
   // define the names of input variables
   input_var_data = SIM_DATA
@@ -121,8 +125,15 @@ ProcessConfig = pGP_AUV
   // define the filename for saving GP predictions
   output_filename_prefix = $(PREDICTIONS_PREFIX)
 
+  // data sharing through acomms
+  acomms_sharing = false
+
   // define the prediction interval (predict every X seconds)
+#ifdef SURVEY_AREA bigger2
+  prediction_interval = 600
+#else
   prediction_interval = 300
+#endif
 
   // run in adaptive mode?
 #ifdef ADAPTIVE_WPTS yes
@@ -146,6 +157,16 @@ ProcessConfig = pGP_AUV
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 100
+  
+  // options for when using GP (not log-GP)
+#ifdef LOG_GP no
+  use_exploit_factor_gp = true
+  exploitation_factor = 0.25
+#endif
+
+  // choose method for path planning
+  // current options: global_max or random
+  path_planning_method = global_max
 }
 
 //--------------------------------------------------
@@ -200,10 +221,12 @@ ProcessConfig = pPublishAfterX
 
   // how many seconds after above var/val should we publish?
 
-// old area
-//  publish_after_secs = 8571:8660 //TODO update
-
-  publish_after_secs = 6400:6450 //TODO update
+#ifdef SURVEY_AREA bigger2
+  // publish_after_secs = 22250:22270 // full high res LM
+  publish_after_secs = 14833:14847 // 2/3rd of above
+#else
+  publish_after_secs = 6400:6450
+#endif
 
   // the var/val set to publish
   publish_var = MISSION_TIME

@@ -166,7 +166,7 @@ Behavior = BHV_Waypoint
   condition = MODE==ADAPTIVE_STATIC
   
   endflag   = ADP_PTS=adaptive
-  endflag   = ADAPTIVE_WPT_UPDATES=points=900,1000
+  endflag   = ADAPTIVE_WPT_UPDATES=points=$(CROSS_END_WPT)
   
   perpetual = false
 
@@ -178,7 +178,11 @@ Behavior = BHV_Waypoint
 
   // do lawnmower
   // note: x, y are middle of lawnmower area
+  #ifdef ADAPTIVE_WPTS yes
   points = $(PILOT_PTS)
+  #else
+  points = 0,0
+  #endif
   order  = normal
 
   repeat = 0 // # times to repeat waypoints list
@@ -329,6 +333,7 @@ Behavior = BHV_Waypoint
   pwt       = 100
   condition = MODE==LAWNMOWER_EW
   endflag   = STAGE=hpoptim
+  endflag   = MISSION_TIME=end
   updates   = WAYPOINT_UPDATES
   perpetual = false
 

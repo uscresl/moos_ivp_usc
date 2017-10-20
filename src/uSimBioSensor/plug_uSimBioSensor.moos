@@ -6,8 +6,16 @@ ProcessConfig = uSimBioSensor
   AppTick   = 2
   CommsTick = 2
 
+  // verbosity: true or false
+  verbose = true
+
   // process parameters
   input_filename = "test.csv"
-  sensor_variance = 1.5
   output_var = "SIM_DATA"
+  
+  // specify the standard deviation for sensor noise
+  sensor_stddev = 1.5
+  
+  // dimensions: 2 or 3 (for 2D or 3D data)
+  dimensions = 2
 }

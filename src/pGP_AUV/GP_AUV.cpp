@@ -44,7 +44,8 @@ GP_AUV::GP_AUV() :
   m_output_var_pred(""),
   m_output_filename_prefix(""),
   m_prediction_interval(-1),
-  m_debug(false),
+  m_path_planning_method("global_max"),
+  m_debug(true),
   m_veh_name(""),
   m_use_log_gp(true),
   m_lat(0),
@@ -78,7 +79,9 @@ GP_AUV::GP_AUV() :
   m_downsample_factor(4),
   m_first_surface(true),
   m_area_buffer(5.0),
-  m_bhv_state("")
+  m_bhv_state(""),
+  m_use_exploit_factor_gp(false),
+  m_exploitation_factor(1.0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -308,7 +311,8 @@ bool GP_AUV::Iterate()
 
     // **** MAIN STATE MACHINE *********************************************//
     if ( m_debug )
-      std::cout << GetAppName() << " :: Current state: " << m_mission_state << std::endl;
+      std::cout << GetAppName() << " :: Current state: " << m_mission_state
+                << ": " << currentMissionStateString() << std::endl;
     switch ( m_mission_state )
     {
       case STATE_SAMPLE :
@@ -416,6 +420,19 @@ bool GP_AUV::OnStartUp()
     {
       // default: rprop
       m_hp_optim_cg = ( value == "cg" ) ? true : false;
+    }
+    else if ( param == "use_exploit_factor_gp" )
+      m_use_exploit_factor_gp = (value == "true" ? true : false);
+    else if ( param == "exploitation_factor" )
+      m_exploitation_factor = (double)atof(value.c_str());
+    else if ( param == "path_planning_method" )
+    {
+      // 'random' or 'global_max'
+      m_path_planning_method = value.c_str();
+      if ( m_path_planning_method != "random" && m_path_planning_method != "global_max" )
+        std::cout << GetAppName() << " :: ERROR: unknown path planning method."
+                  << "Options are: random, global_max" << std::endl;
+      handled = false;
     }
     else
       handled = false;
@@ -555,7 +572,7 @@ void GP_AUV::handleMailData(double received_data)
 
     // we cannot handle negative numbers, given the log we are taking
     // skip those samples for now
-    if ( received_data > 0 )
+    if ( (m_use_log_gp && received_data > 0) || !m_use_log_gp )
     {
       // pass into data adding queue
       std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
@@ -692,6 +709,8 @@ void GP_AUV::dataAddingThread()
         updateVisitedSet(veh_lon, veh_lat, (size_t)index);
     }
   }
+  if ( m_debug )
+    std::cout << GetAppName() << " :: m_finished: " << m_finished << " exiting thread." << std::endl;
 }
 
 //---------------------------------------------------------
@@ -844,7 +863,7 @@ void GP_AUV::findNextSampleLocation()
   if ( m_verbose )
     std::cout << GetAppName() << " :: find nxt sample loc" << std::endl;
 
-  if ( checkGPHasData() )
+  if ( checkGPHasData() && m_path_planning_method != "random" )
   {
     // for each y (from unvisited set only, as in greedy algorithm Krause'08)
     // calculate the mutual information term
@@ -863,7 +882,12 @@ void GP_AUV::findNextSampleLocation()
   }
   else
   {
-    std::cout << GetAppName() << " :: GP is empty. Getting random location for initial sample location." << std::endl;
+    if ( !checkGPHasData() )
+      std::cout << GetAppName() << " :: GP is empty. Getting random location "
+                << "for initial sample location." << std::endl;
+    else if ( m_path_planning_method == "random" )
+      std::cout << GetAppName() << " :: chosen path planning method is 'random', "
+                << "getting a random location for next wpt." << std::endl;
     getRandomStartLocation();
   }
 }
@@ -934,7 +958,7 @@ void GP_AUV::greedyWptSelection(Eigen::Vector2d & best_location)
   }
   else
   {
-    if ( m_debug )
+    if ( m_verbose )
       std::cout << GetAppName() << " :: invalid index: " << best_so_far_idx << ", not publishing." << std::endl;
     best_location(0) = 0;
     best_location(1) = 0;
@@ -1004,7 +1028,7 @@ size_t GP_AUV::calcMECriterion()
   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
 
-  if ( m_debug )
+  if ( m_verbose )
     std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
 
   // for each unvisited location
@@ -1013,15 +1037,15 @@ size_t GP_AUV::calcMECriterion()
     // get unvisited location
     Eigen::Vector2d y = y_itr.second;
     double y_loc[2] = {y(0), y(1)};
-    if ( m_debug )
-      std::cout << GetAppName() << " :: checking location: " << y(0) << ", " << y(1) << std::endl;
+//    if ( m_debug )
+//      std::cout << GetAppName() << " :: checking location: " << y(0) << ", " << y(1) << std::endl;
 
     // calculate its posterior entropy
     double pred_mean;
     double pred_cov;
     gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
-    if ( m_debug )
-      std::cout << GetAppName() << " :: values from gp_copy: " << pred_mean << ", " << pred_cov << std::endl;
+//    if ( m_debug )
+//      std::cout << GetAppName() << " :: values from gp_copy: " << pred_mean << ", " << pred_cov << std::endl;
 
     // normal distribution
     //  1/2 ln ( 2*pi*e*sigma^2 )
@@ -1035,9 +1059,29 @@ size_t GP_AUV::calcMECriterion()
       post_entropy = var_part + pred_mean;
     }
 
+    if ( !m_use_log_gp && m_use_exploit_factor_gp )
+    {
+      // this is for balancing the exploration-exploitation trade-off
+      // without incorporating the mean, it is pure exploration
+      // or rather, it optimizes for model uncertainty.
+      // the log-GP incorporates the mean, and we want an option
+      // to do the same whilst using GP and not log-GP
+
+      // to balance between the two, we want to set some parameters
+      // we can scale both, but effectively, that is the same as scaling
+      // one of them
+      if ( m_verbose )
+      {
+        std::cout << GetAppName() << " :: post_entr: " << post_entropy
+                  << ", expl_factor: " << m_exploitation_factor << ", pred_mean: "
+                  << pred_mean << std::endl;
+      }
+      post_entropy = post_entropy + m_exploitation_factor * pred_mean;
+    }
+
     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
-    if ( m_debug )
-      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
+//    if ( m_debug )
+//      std::cout << GetAppName() << " :: Inserting: " << y_itr.first << ": " << post_entropy << std::endl;
   }
 
   std::clock_t end = std::clock();
@@ -1225,7 +1269,7 @@ void GP_AUV::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr
   filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
   downsampled_gp.write(filenm.str().c_str());
   end = std::clock();
-  if ( m_debug )
+  if ( m_verbose )
     std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   // downsampled gp should be destroyed

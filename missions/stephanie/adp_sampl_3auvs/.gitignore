@@ -1,3 +1,5 @@
-test.csv*
+*.csv
 full_test*
-runs*
+run*
+gp*.txt
+*.sh

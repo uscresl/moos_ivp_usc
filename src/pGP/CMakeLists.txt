@@ -6,11 +6,13 @@
 #--------------------------------------------------------
 
 SET(SRC
-  GP.cpp
+  PGP.cpp
   main.cpp
 )
 
 ADD_EXECUTABLE(pGP ${SRC})
+
+target_compile_definitions(pGP PRIVATE BUILD_VORONOI=${BUILD_VORONOI})
 
 TARGET_LINK_LIBRARIES(pGP
    ${MOOS_LIBRARIES}

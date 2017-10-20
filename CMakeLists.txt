@@ -59,6 +59,7 @@ LINK_DIRECTORIES(${IVP_LIBRARY_DIRS})
 #=============================================================================
 # Specify Compiler Flags
 #=============================================================================
+
 IF( ${WIN32} )
    #---------------------------------------------
    # Windows Compiler Flags
@@ -82,6 +83,7 @@ ELSE( ${WIN32} )
    # Note sure why: -fPIC should only be needed for shared objects, and
    # AFAIK, CMake gets that right when building shared objects. -CJC
    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -g -O3 -w")
+   message(STATUS "Compiler GNUCXX? ${CMAKE_COMPILER_IS_GNUCXX}")
    IF(CMAKE_COMPILER_IS_GNUCXX)
       # Flags for the GNU C++ Compiler
       SET( WALL_ON OFF CACHE BOOL 
@@ -108,8 +110,27 @@ ELSE( ${WIN32} )
     
    ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
+   IF( ${APPLE} )
+     # to be able to find boost and eigen libraries, explicitly include
+     # /usr/local/include on OS X
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I /usr/local/include")
+     
+     # add C++11 to compiler flags
+     include(CheckCXXCompilerFlag)
+     CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+     CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+     if(COMPILER_SUPPORTS_CXX11)
+       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+     elseif(COMPILER_SUPPORTS_CXX0X)
+       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+     else()
+       message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+     endif()
+   ENDIF( ${APPLE} )
+
 ENDIF( ${WIN32} )
 
+message(STATUS "Compiler flags: ${CMAKE_CXX_FLAGS}" )
 
 #=============================================================================
 # Add Subdirectories

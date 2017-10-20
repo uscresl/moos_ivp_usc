@@ -13,6 +13,7 @@
 
 // lib GP
 #include "gp.h"
+
 // use unordered map rather than map, improve efficiency
 #include <unordered_map>
 // use unordered set for fast retrieval of keys in list
@@ -28,13 +29,16 @@
 // geodesy for conversion x/y to lon/lat
 #include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
 
-#if BUILD_VORONOI
+#ifdef BUILD_VORONOI
 // boost geometry libraries for multipoint and convex hull
 // requires boost 1.56 for multi_point
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 #include <boost/geometry/geometries/multi_point.hpp>
 #endif
+
+// include Eigen for OS X
+#include <Eigen/Dense>
 
 class GP : public CMOOSApp
 {
@@ -84,7 +88,7 @@ class GP : public CMOOSApp
    void publishNextBestPosition();
 
    // timed saving of GP
-   void makeAndStorePredictions();
+   void makeAndStorePredictions(bool finished);
 
    // data sending surface
    void storeDataForSending(double vlon, double vlat, double data);
@@ -95,7 +99,7 @@ class GP : public CMOOSApp
    // data sending acomms
    void handleMailDataAcomms(std::string css);
 
-#if BUILD_VORONOI
+#ifdef BUILD_VORONOI
    // calculate Voronoi regions
    void calcVoronoi( double own_lon, double own_lat, std::map< std::string, std::pair<double,double> > other_centers );
    void voronoiConvexHull();
@@ -117,7 +121,7 @@ class GP : public CMOOSApp
    bool convUTMToLonLat (double lx, double ly, double & lon, double & lat );
    bool inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const;
 
-   void tdsResetStateVars();
+   void clearTDSStateVars();
    void clearHandshakeVars();
    void tdsHandshake();
    void tdsReceiveData();
@@ -148,6 +152,7 @@ class GP : public CMOOSApp
    std::string m_output_var_share_data;
 
    size_t m_prediction_interval;
+   size_t m_max_wait_for_other_vehicles;
 
    // State variables
    bool m_debug;
@@ -243,6 +248,9 @@ class GP : public CMOOSApp
    std::vector<std::string> m_incoming_data_to_be_added;
    double m_loiter_dist_to_poly;
 
+   // check if data received
+   bool m_data_received;
+
    // timed data sharing
    bool m_timed_data_sharing;
    size_t m_data_sharing_interval;
@@ -253,6 +261,10 @@ class GP : public CMOOSApp
    std::string m_output_var_handshake_data_sharing;
    size_t m_last_ready_sent;
    std::unordered_set<std::string> m_rec_ready_veh;
+   size_t m_handshake_timer_counter;
+   size_t m_tx_timer_counter;
+   size_t m_req_surf_timer_counter;
+   double m_last_tds_surface;
 
    // acomms data sharing
    bool m_acomms_sharing;
@@ -266,7 +278,8 @@ class GP : public CMOOSApp
    std::map<std::string,std::vector<size_t>> m_voronoi_subset_other_vehicles;
 
    bool m_use_voronoi;
-#if BUILD_VORONOI
+   bool m_running_voronoi_routine;
+#ifdef BUILD_VORONOI
    typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> boost_pt;
    typedef boost::geometry::model::multi_point< boost_pt > boost_multi_pt;
    boost_multi_pt m_voronoi_pts;
@@ -297,12 +310,14 @@ class GP : public CMOOSApp
    // to publish only once a second
    double m_last_published_req_surf;
    double m_last_published_req_surf_ack;
+   size_t m_nr_ack_sent;
 
    // buffer around area for which vehicle is counted to be inside the area
    double m_area_buffer;
 
    // keep track of bhv state
    std::string m_bhv_state;
+   std::string m_adp_state;
 
    // debugging
    double m_db_uptime;

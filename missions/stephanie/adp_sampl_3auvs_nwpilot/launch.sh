@@ -4,69 +4,60 @@
 #-------------------------------------------------------
 TIME_WARP=1
 JUST_MAKE="no"
-ADAPTIVE="no"
+ADAPTIVE="yes"
 TDS="no"
 ACOMMS="no"
 NUM_VEHICLES=1
 RUN_SIMULATION="yes"
 VORONOI_PARTITIONING="no"
 AREA="old"
-GUI="true"
-CG="false"
-ADP_START="random"
+GUI="no"
+CG="yes"
+ADP_START="cross"
+BASE_PORT=9000
 
-for ARGI; do
-    if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
-        printf "%s [SWITCHES] [time_warp]   \n" $0
-        printf "  Switches:          \n"
-        printf "  --just_make, -j    \n" 
-        printf "  --adaptive, -a     \n"
-        printf "  --tds, -t          \n"
-        printf "  --acomms, -c       \n"
-        printf "  --voronoi, -v      \n"
-        printf "  --2auvs            \n"
-        printf "  --3auvs            \n"
-        printf "  --bigger1, -b1     \n"
-        printf "  --bigger2, -b2     \n"
-        printf "  --nogui, -ng       \n"
-        printf "  --cg, -cg          \n"
-        printf "  --cross_pilot, -cp \n"
-        printf "  --help, -h         \n" 
-        exit 0;
-    elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
-        TIME_WARP=$ARGI
-    elif [ "${ARGI}" = "--just_build" -o "${ARGI}" = "-j" ] ; then
-        JUST_MAKE="yes"
-    elif [ "${ARGI}" = "--adaptive" -o "${ARGI}" = "-a" ] ; then
-        ADAPTIVE="yes"
-    elif [ "${ARGI}" = "--tds" -o "${ARGI}" = "-t" ] ; then
-        TDS="yes"
-    elif [ "${ARGI}" = "--acomms" -o "${ARGI}" = "-c" ] ; then
-        ACOMMS="yes"
-    elif [ "${ARGI}" = "--voronoi" -o "${ARGI}" = "-v" ]; then
-        VORONOI_PARTITIONING="yes"
-    elif [ "${ARGI}" = "--2auvs" ] ; then
-        NUM_VEHICLES=2
-    elif [ "${ARGI}" = "--3auvs" ] ; then
-        NUM_VEHICLES=3
-    elif [ "$ARGI" = "--bigger1" -o "${ARGI}" = "-b1" ]; then
-        AREA="bigger1"
-    elif [ "$ARGI" = "--bigger2" -o "${ARGI}" = "-b2" ]; then
-        AREA="bigger2"
-    elif [ "$ARGI" = "--nogui" -o "${ARGI}" = "-ng" ]; then
-        GUI="no"
-    elif [ "$ARGI" = "--cg" -o "${ARGI}" = "-cg" ]; then
-        CG="yes"
-    elif [ "$ARGI" = "--cross_pilot" -o "${ARGI}" = "-cp"]; then
-        ADP_START="cross"
-    else 
-        printf "Bad Argument: %s \n" $ARGI
-        exit 0
-    fi
+function printHelp()
+{
+printf "%s [OPTIONS]  \n" $0
+      printf "  Options:  \n"
+      printf "  -j: just make (not running)    \n" 
+      printf "  -l: lawnmower (not adaptive)   \n"
+      printf "  -t: timed data sharing         \n"
+      printf "  -c: acomms data sharing        \n"
+      printf "  -v: use voronoi partitioning   \n"
+      printf "  -n: '1', '2' or '3' (nr of auvs)  \n"
+      printf "  -b: 'bigger1' or 'bigger2' areas  \n"
+      printf "  -g: use GUI                    \n"
+      printf "  -r: use rprop (default: conj. gradient)  \n"
+      printf "  -s: 'cross' or 'random' (adaptive start) \n"
+      printf "  -w: time warp (int)            \n"
+      printf "  -p: base port (default: 9000)  \n"
+      printf "  --help, -h         \n" 
+      exit 0;
+}
+
+while getopts jltcvn:b:gr:s:hw:p: option
+do
+  case "${option}"
+  in
+  j) JUST_MAKE="yes";;
+  l) ADAPTIVE="no";; # lawnmower
+  t) TDS="yes";;
+  c) ACOMMS="yes";;
+  v) VORONOI_PARTITIONING="yes";;
+  n) NUM_VEHICLES=${OPTARG};;
+  b) AREA=${OPTARG};;
+  g) GUI="yes";;
+  r) CG="no";; # rprop
+  s) ADP_START=${OPTARG};;
+  h) printHelp;;
+  w) TIME_WARP=${OPTARG};;
+  p) BASE_PORT=${OPTARG};;
+  esac
 done
 
 # check if sim data file present
-if [ ! -f 'test.csv' ]; then 
+if [ ! -f 'test.csv' ] ; then 
 echo 'ERROR: No simulated data file presented. Please put a test.csv file in this folder'; exit 0;
 fi
 
@@ -79,11 +70,11 @@ PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="${MOOSIVP_USC_HOME}/proto"
 
 # paint survey area on pMarineViewer
-if [ ${AREA} = "bigger1" ]; then
+if [ ${AREA} = "bigger1" ] ; then
 # bigger 1
 PAINTSEGLIST="pts={600,900:600,1300:1200,1300:1200,900:600,900},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3"
 BHVOPREGION="label,OpRegion:375,875:375,1050:600,1320:1250,1320:1250,875"
-elif [ ${AREA} = "bigger2" ]; then
+elif [ ${AREA} = "bigger2" ] ; then
 # bigger 2
 PAINTSEGLIST="pts={700,700:700,1300:1200,1300:1200,700:700,700},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3"
 BHVOPREGION="label,OpRegion:375,875:375,1050:600,1320:1250,1320:1250,650:600,650"
@@ -93,23 +84,14 @@ PAINTSEGLIST="pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_ar
 BHVOPREGION="label,OpRegion:400,920:400,1045:480,1215:600,1300:1000,1300:1000,920"
 fi
 
-# loiter for during hyperparameter optimization
-HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
-if [ $NUM_VEHICLES -ge 2 ] ; then
-HP_LOITER_CONFIG2="format=radial,x=470,y=990,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
-fi
-if [ $NUM_VEHICLES -ge 3 ] ; then
-HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_optimization_loiter"
-fi
-
 # config for lawnmower for actual GP model building
-if [ ${AREA} = "bigger1" ]; then
+if [ ${AREA} = "bigger1" ] ; then
 # bigger1
 LX=900
 LY=1100
 LW=600
 LH=400
-elif [ ${AREA} = "bigger2" ]; then
+elif [ ${AREA} = "bigger2" ] ; then
 # bigger2
 LX=950
 LY=1000
@@ -133,10 +115,16 @@ LAWNMOWER2="format=lawnmower,x=${LX2},y=${LY},width=${LW2v},height=${LH},lane_wi
 elif [ $NUM_VEHICLES -ge 3 ] ; then
 LW3v=$[LW/3]
 LX1=$[LX-LW/3]
-LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
-LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
 LX3=$[LX+LW/3]
-LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+  if [ ${AREA} = "bigger2" ] ; then
+    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
+  else
+    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+  fi
 else
 LAWNMOWER1=$LAWNMOWER
 fi
@@ -157,18 +145,66 @@ fi
 
 ##### specify for adaptive whether to use integrated cross or random pilot #####
 if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "cross" ] ; then
-  # 1auv cross
-  PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
-  if [ $NUM_VEHICLES -ge 2 ] ; then
-  # 2auv cross
-  PILOT_PTS1=500,1000:700,1200:500,1200:700,1000
-  PILOT_PTS2=700,1000:900,1200:700,1200:900,1000
-  fi
-  if [ $NUM_VEHICLES -ge 3 ] ; then
-  # 3auv cross
-  PILOT_PTS1=500,1000:633,1200:500,1200:633,1000
-  PILOT_PTS2=634,1000:767,1200:634,1200:767,1000
-  PILOT_PTS3=768,1000:900,1200:768,1200:900,1000  
+  if [ ${AREA} = "bigger1" ] ; then
+    # 1auv cross
+    PILOT_PTS1=600,900:1200,1300:600,1300:1200,900
+    CROSS_END1=1200,900 # last wpt
+    if [ $NUM_VEHICLES -ge 2 ] ; then
+      # 2auv cross
+      PILOT_PTS1=600,900:900,1300:600,1300:900,900
+      CROSS_END1=900,900
+      PILOT_PTS2=900,900:1200,1300:900,1300:1200,900
+      CROSS_END2=1200,900
+    fi
+    if [ $NUM_VEHICLES -ge 3 ] ; then
+      # 3auv cross
+      PILOT_PTS1=600,900:800,1300:600,1300:800,900
+      CROSS_END1=800,900
+      PILOT_PTS2=800,900:1000,1300:800,1300:1000,900
+      CROSS_END2=1000,900
+      PILOT_PTS3=1000,900:1200,1300:1000,1300:1200,900  
+      CROSS_END3=1200,900
+    fi
+  elif [ ${AREA} = "bigger2" ] ; then
+    # 1auv cross
+    PILOT_PTS1=700,700:1200,1300:700,1300:1200,700
+    CROSS_END1=1200,700 # last wpt
+    if [ $NUM_VEHICLES -ge 2 ] ; then
+      # 2auv cross
+      PILOT_PTS1=700,700:1200,1000:700,1000:1200,700
+      CROSS_END1=1200,700
+      PILOT_PTS2=700,1000:1200,1300:700,1300:1200,1000
+      CROSS_END2=1200,1000
+    fi
+    if [ $NUM_VEHICLES -ge 3 ] ; then
+      # 3auv cross
+      PILOT_PTS1=700,700:1200,900:700,900:1200,700
+      CROSS_END1=1200,700
+      PILOT_PTS2=700,900:1200,1100:700,1100:1200,900
+      CROSS_END2=1200,900
+      PILOT_PTS3=700,1100:1200,1300:700,1300:1200,1100  
+      CROSS_END3=1200,1100
+    fi
+  else
+    # 1auv cross
+    PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+    CROSS_END1=900,1000
+    if [ $NUM_VEHICLES -ge 2 ] ; then
+      # 2auv cross
+      PILOT_PTS1=500,1000:700,1200:500,1200:700,1000
+      CROSS_END1=700,1000
+      PILOT_PTS2=700,1000:900,1200:700,1200:900,1000
+      CROSS_END2=900,1000
+    fi
+    if [ $NUM_VEHICLES -ge 3 ] ; then
+      # 3auv cross
+      PILOT_PTS1=500,1000:633,1200:500,1200:633,1000
+      CROSS_END1=633,1000
+      PILOT_PTS2=634,1000:767,1200:634,1200:767,1000
+      CROSS_END2=767,1000
+      PILOT_PTS3=768,1000:900,1200:768,1200:900,1000  
+      CROSS_END3=900,1000
+    fi
   fi
 fi
 
@@ -202,20 +238,23 @@ fi
 #####
 
 # ports
-SHORE_LISTEN="9300"
-SHORE_VPORT="9000"
-ANNA_LISTEN="9301"
-ANNA_LISTEN_GP="9401"
-ANNA_VPORT="9001"
-BERNARD_LISTEN="9302"
-BERNARD_LISTEN_GP="9402"
-BERNARD_VPORT="9002"
-CORNELIS_LISTEN="9303"
-CORNELIS_LISTEN_GP="9403"
-CORNELIS_VPORT="9003"
+SHORE_VPORT=$(($BASE_PORT))
+SHORE_LISTEN=$(($BASE_PORT+300))
+
+ANNA_VPORT=$(($BASE_PORT+1))
+ANNA_LISTEN=$(($BASE_PORT+11))
+ANNA_LISTEN_GP=$(($BASE_PORT+21))
+
+BERNARD_VPORT=$(($BASE_PORT+2))
+BERNARD_LISTEN=$(($BASE_PORT+12))
+BERNARD_LISTEN_GP=$(($BASE_PORT+22))
+
+CORNELIS_VPORT=$(($BASE_PORT+3))
+CORNELIS_LISTEN=$(($BASE_PORT+13))
+CORNELIS_LISTEN_GP=$(($BASE_PORT+23))
 
 # percentage of messages to drop in uFldNodeComms
-DROP_PCT=0
+DROP_PCT=25
 
 SERVERHOST="localhost" #"localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
@@ -228,10 +267,37 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
 
+if [ ${AREA} = "bigger2" ] ; then
+  START_POS1="635,790"
+  START_POS2="635,770"
+  START_POS3="635,750"
+  HP_LOITER_CONFIG="format=radial,x=655,y=720,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  if [ $NUM_VEHICLES -ge 2 ] ; then
+  HP_LOITER_CONFIG2="format=radial,x=655,y=750,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  fi
+  if [ $NUM_VEHICLES -ge 3 ] ; then
+  HP_LOITER_CONFIG3="format=radial,x=655,y=780,radius=10,pts=4,snap=1,label=hp_optimloiter"
+  fi
+
+else
+  START_POS1="430,950"
+  START_POS2="450,950"
+  START_POS3="410,950"
+
+  # loiter for during hyperparameter optimization
+  HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  if [ $NUM_VEHICLES -ge 2 ] ; then
+  HP_LOITER_CONFIG2="format=radial,x=470,y=990,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  fi
+  if [ $NUM_VEHICLES -ge 3 ] ; then
+  HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_optimloiter"
+  fi
+
+fi
+
 # The first vehicle community
 VNAME1="anna"
 START_DEPTH1="5"
-START_POS1="430,950"
 WAYPOINTS1="455,980:455,965:430,965:430,980:455,980"
 MODEMID1="1"
 VTYPE1="UUV" # UUV, SHIP
@@ -240,7 +306,6 @@ PREDICTIONS_PREFIX1="${VNAME1}_predictions"
 # The second vehicle community
 VNAME2="bernard"
 START_DEPTH2="5"
-START_POS2="450,950"
 WAYPOINTS2="455,980:455,965:430,965:430,980:455,980"
 MODEMID2="2"
 VTYPE2="UUV" # UUV, SHIP
@@ -250,7 +315,6 @@ PSHARE_BERNARD="./plugs/pShare_auv.moos"
 # The third vehicle community
 VNAME3="cornelis"
 START_DEPTH3="5"
-START_POS3="410,950"
 WAYPOINTS3="455,980:455,965:430,965:430,980:455,980"
 MODEMID3="3"
 VTYPE3="UUV" # UUV, SHIP
@@ -276,14 +340,15 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX1 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_ANNA  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
     LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
     OTHER_VEHICLE=$VNAME2 OPREGION=$BHVOPREGION                \
-    PILOT_PTS=$PILOT_PTS1
+    PILOT_PTS=$PILOT_PTS1  CROSS_END_WPT=$CROSS_END1
 # TODO fix OTHER_VEHICLE
 
 if [ $NUM_VEHICLES -ge 2 ] ; then
@@ -299,14 +364,15 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX2 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_BERNARD  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2                    \
     LAWNMOWER_NS=$LAWNMOWERNS2 LAWNMOWER_EW=$LAWNMOWEREW2        \
     HP_LOITER=$HP_LOITER_CONFIG2  ADAPTIVE_WPTS=$ADAPTIVE        \
     OTHER_VEHICLE=$VNAME1 OPREGION=$BHVOPREGION                \
-    PILOT_PTS=$PILOT_PTS2
+    PILOT_PTS=$PILOT_PTS2  CROSS_END_WPT=$CROSS_END2
 fi
 # TODO fix OTHER_VEHICLE
 
@@ -323,14 +389,15 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX3 \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_CORNELIS  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG
+   USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  USE_CG=$CG \
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3                    \
     LAWNMOWER_NS=$LAWNMOWERNS3 LAWNMOWER_EW=$LAWNMOWEREW3        \
     HP_LOITER=$HP_LOITER_CONFIG3  ADAPTIVE_WPTS=$ADAPTIVE        \
     OTHER_VEHICLE=$VNAME2 OPREGION=$BHVOPREGION                \
-    PILOT_PTS=$PILOT_PTS3
+    PILOT_PTS=$PILOT_PTS3  CROSS_END_WPT=$CROSS_END3
 fi
 # TODO fix OTHER_VEHICLE
 

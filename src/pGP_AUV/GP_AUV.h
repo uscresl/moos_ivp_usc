@@ -1,7 +1,7 @@
 /*****************************************************************/
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
-/*    FILE: GP_AUV.h                                                 */
+/*    FILE: GP_AUV.h                                             */
 /*    DATE: 2015 - 2016                                          */
 /*                                                               */
 /*****************************************************************/
@@ -13,6 +13,7 @@
 
 // lib GP
 #include "gp.h"
+
 // use unordered map rather than map, improve efficiency
 #include <unordered_map>
 // use unordered set for fast retrieval of keys in list
@@ -29,6 +30,9 @@
 #include "MOOS/libMOOSGeodesy/MOOSGeodesy.h"
 
 #include <Eigen/StdVector>
+
+// include Eigen for OS X
+#include <Eigen/Dense>
 
 class GP_AUV : public CMOOSApp
 {
@@ -116,6 +120,7 @@ class GP_AUV : public CMOOSApp
    std::string m_output_filename_prefix;
 
    size_t m_prediction_interval;
+   std::string m_path_planning_method;
 
    // State variables
    bool m_debug;
@@ -209,6 +214,10 @@ class GP_AUV : public CMOOSApp
 
    // debugging
    double m_db_uptime;
+
+   // exploration-exploitation for GP (not log-GP)
+   bool m_use_exploit_factor_gp;
+   double m_exploitation_factor;
 };
 
 #endif
