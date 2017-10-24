@@ -30,7 +30,8 @@ ProcessConfig = ANTLER
 
   // shoreside visualization
   #ifdef USE_GUI true
-  Run = pMarineViewer    @ NewConsole = true ~ pMarineViewer_shorebroker
+  Run = pMarineViewer    @ NewConsole = true
+  ///~ pMarineViewer_shorebroker
   #endif
 
   // paint extra polygons etc

@@ -1045,7 +1045,21 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 
     // publish next waypoints
 
+//    std::ostringstream output_stream;
+    // make a string from the single lon/lat location
     std::ostringstream output_stream;
+//    for(int i = 0; i < nextWaypoints.size(); i++) {
+//        Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
+//        output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+//        if(i < (nextWaypoints.size() - 1)) output_stream << ",";
+//    }
+    Eigen::Vector2d nodeLoc = nextWaypoints[0]->get_location();
+    output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+    std::cout << output_stream.str() << std::endl;
+
+//    output_stream << std::setprecision(15) << nextWaypoints[0]->get_location()(0) << "," << nextWaypoints[1] << "," <<
+//                  nextWaypoints[2] << "," << nextWaypoints[3] << "," << nextWaypoints[4];
+    next_waypoint = output_stream.str();
 
 //    output_stream << std::setprecision(15) << nextWpt(0) << "," << nextWpt(1) << ":";
 //    next_waypoint = output_stream.str();
@@ -1076,6 +1090,9 @@ const GraphNode* GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNo
 //        return loc->get_value() + next->get_value();
         return next;
     }
+
+
+
 
 }
 

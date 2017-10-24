@@ -193,15 +193,15 @@ fi
 #-------------------------------------------------------
 printf "Launching shoreside MOOS Community (WARP=%s) \n"  $TIME_WARP
 pAntler targ_shoreside.moos > log_shoreside.log &
-sleep 1
+sleep 2
 
 printf "Launching $VNAME1 MOOS Community (WARP=%s) \n" $TIME_WARP
-pAntler targ_$VNAME1.moos > log_$VNAME1.log &
-sleep 1
+pAntler targ_$VNAME1.moos > log_$VNAME1.log
+sleep 2
 
 printf "Done \n"
 
-uMAC targ_shoreside.moos
+#uMAC targ_shoreside.moos
 
 printf "Killing all processes ... \n"
 kill %1 %2 %3
