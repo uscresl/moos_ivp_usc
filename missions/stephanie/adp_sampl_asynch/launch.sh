@@ -68,7 +68,7 @@ echo "BASE_PORT: " ${BASE_PORT}
 
 # check if sim data file present
 if [ ! -f 'test.csv' ] ; then 
-  cp ../../../data/fake_bio/two_depths.csv .
+  cp ../../../data/fake_bio/two_depths.csv test.csv
   echo 'ERROR: No simulated data file presented. Copied two_depths.csv';
 fi
 # most scenario files have 3D data in them
