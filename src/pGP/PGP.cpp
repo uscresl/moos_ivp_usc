@@ -304,6 +304,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             m_mission_state = STATE_HANDSHAKE;
             publishStates("OnNewMail m_input_var_handshake_data_sharing");
           }
+          else if ( m_veh_name == "surfacehub" &&
+                    m_rec_ready_veh.size() == m_num_vehicles )
+          {
+            if ( !m_received_ready )
+              m_received_ready = true;
+          }
         }
         else
         {
@@ -1279,7 +1285,9 @@ void GP::handleMailNodeReports(const std::string &input_string)
   {
     // store the vehicle info
     if ( m_other_vehicles.find(veh_nm) == m_other_vehicles.end() )
-      m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
+      // only store if not surface hub
+      if ( veh_nm != "surfacehub" )
+        m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
     else
       m_other_vehicles[veh_nm] = std::pair<double,double>(veh_lon,veh_lat);
   }
@@ -2501,7 +2509,8 @@ void GP::tdsHandshake()
     {
       // other vehicle already ready to exchange data
       // send that we are ready, when we are at the surface
-      sendReady();
+      if ( m_veh_name != "surfacehub" )
+        sendReady();
 
       // send the data
       m_last_ready_sent = moos_t;
@@ -2509,7 +2518,8 @@ void GP::tdsHandshake()
       m_mission_state = STATE_TX_DATA;
       publishStates("tdsHandhake_received_ready");
 
-      sendData();
+      if ( m_veh_name != "surfacehub" )
+        sendData();
 
       // reset for next time
       m_received_ready = false;
@@ -2522,7 +2532,8 @@ void GP::tdsHandshake()
       // keep sending that we are ready:
       // every 2 seconds, notify that we are ready for data exchange
       if ( moos_t % 2 == 0 &&
-           moos_t - m_last_ready_sent > 1 )
+           moos_t - m_last_ready_sent > 1 &&
+           m_veh_name != "surfacehub" )
       {
         sendReady();
         m_last_ready_sent = moos_t;
