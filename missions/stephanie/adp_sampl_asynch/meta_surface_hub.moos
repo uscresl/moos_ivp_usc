@@ -41,9 +41,6 @@ ProcessConfig = ANTLER
   // generate 'node reports'
   Run = pNodeReporter      @ NewConsole = false
 
-  // collision avoidance
-  Run = pBasicContactMgr   @ NewConsole = false
-
   // surface communications
   Run = pHostInfo @ NewConsole = false
   Run = uFldNodeBroker @ NewConsole = false
@@ -72,10 +69,7 @@ ProcessConfig = ANTLER
 
 // generate 'node reports'
 #include $(PLUG_DIR)/plug_pNodeReporter.moos
-
-// collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside
-#include $(PLUG_DIR)/plug_pBasicContactMgr.moos
 
 // simulate acoustic communications
 #include $(PLUG_DIR)/plug_pHostInfo.moos

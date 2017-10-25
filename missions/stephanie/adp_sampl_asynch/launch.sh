@@ -298,6 +298,9 @@ if [ ${AREA} = "bigger2" ] ; then
   START_POS1="635,790"
   START_POS2="635,770"
   START_POS3="635,750"
+  START_POS_SHUB="1000,1000"
+  WAYPOINTS_SHUB="1000,1000"
+
   HP_LOITER_CONFIG="format=radial,x=655,y=720,radius=10,pts=4,snap=1,label=hp_optim_loiter"
   if [ $NUM_VEHICLES -ge 2 ] ; then
   HP_LOITER_CONFIG2="format=radial,x=655,y=750,radius=10,pts=4,snap=1,label=hp_optim_loiter"
@@ -305,11 +308,13 @@ if [ ${AREA} = "bigger2" ] ; then
   if [ $NUM_VEHICLES -ge 3 ] ; then
   HP_LOITER_CONFIG3="format=radial,x=655,y=780,radius=10,pts=4,snap=1,label=hp_optimloiter"
   fi
-
+  HP_LOITER_CONFIG_SHUB="format=radial,x=1000,y=1000,radius=10,pts=4,snap=1,label=hp_optim_loiter"
 else
   START_POS1="430,950"
   START_POS2="450,950"
   START_POS3="410,950"
+  START_POS_SHUB="430,1010"
+  WAYPOINTS_SHUB="700,1100"
 
   # loiter for during hyperparameter optimization
   HP_LOITER_CONFIG="format=radial,x=440,y=970,radius=10,pts=4,snap=1,label=hp_optim_loiter"
@@ -319,7 +324,7 @@ else
   if [ $NUM_VEHICLES -ge 3 ] ; then
   HP_LOITER_CONFIG3="format=radial,x=410,y=970,radius=10,pts=4,snap=1,label=hp_optimloiter"
   fi
-
+  HP_LOITER_CONFIG_SHUB="format=radial,x=430,y=1010,radius=10,pts=4,snap=1,label=hp_optim_loiter"
 fi
 
 # The first vehicle community
@@ -347,16 +352,9 @@ VTYPE3="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX3="${VNAME3}_predictions"
 
 # 4th vehicle community: surface hub
-SHUB="surface_hub"
+SHUB="surfacehub"
 START_DEPTH_SHUB=0
-if [ ${AREA} = "bigger2" ] ; then
-START_POS_SHUB="1000,1000"
-WAYPOINTS_SHUB="1000,1000"
-else
-START_POS_SHUB="700,1100"
-WAYPOINTS_SHUB="700,1100"
-fi
-MODEMID_SHUB="4"
+MODEMID_SHUB="15"
 VTYPE_SHUB="SHIP"
 PREDICTIONS_PREFIX_SHUB="${SHUB}_predictions"
 
@@ -378,7 +376,7 @@ nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
     LAWNMOWER_NS=$LAWNMOWERNS LAWNMOWER_EW=$LAWNMOWEREW        \
-    HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
+    HP_LOITER=$HP_LOITER_CONFIG_SHUB  ADAPTIVE_WPTS=$ADAPTIVE       \
     OTHER_VEHICLE=$VNAME2 OPREGION=$BHVOPREGION                \
     PILOT_PTS=$PILOT_PTS1  CROSS_END_WPT=$CROSS_END1
 # TODO fix OTHER_VEHICLE
@@ -450,7 +448,7 @@ nsplug meta_surface_hub.moos targ_surface_hub.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_GUI=$GUI  SURVEY_AREA=$AREA  DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
-nsplug meta_surface_hub.bhv targ_surface_hub.bhv -f VNAME=$SHUB      \
+nsplug meta_surface_hub.bhv targ_surfacehub.bhv -f VNAME=$SHUB      \
     START_POS=$START_POS_SHUB WAYPOINTS=$WAYPOINTS_SHUB                \
     START_DEPTH=$START_DEPTH_SHUB VTYPE=$VTYPE_SHUB                    \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
