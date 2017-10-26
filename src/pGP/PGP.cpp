@@ -309,6 +309,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           {
             if ( !m_received_ready )
               m_received_ready = true;
+            if ( m_mission_state == STATE_SAMPLE )
+            {
+              m_mission_state = STATE_RX_DATA;
+              publishStates("Incoming_handshake_all_received_surface_hub");
+            }
           }
         }
         else
@@ -1055,6 +1060,9 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
   // 1. split all data points into a vector
   std::vector<std::string> sample_points = parseString(incoming_data, ';');
   size_t pts_added = sample_points.size();
+
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: adding " << pts_added << " data points." << std::endl;
 
   // 2. for each, add to GP
   for ( std::string & data_pt_str : sample_points )
@@ -1807,7 +1815,7 @@ size_t GP::processReceivedData()
 {
   size_t pts_added = 0;
   if ( m_debug )
-    std::cout << GetAppName() << " :: going to add " << m_incoming_data_to_be_added.size() << " data points." << std::endl;
+    std::cout << GetAppName() << " :: going to add " << m_incoming_data_to_be_added.size() << " sets of data points." << std::endl;
 
   while ( !m_incoming_data_to_be_added.empty() )
   {
