@@ -659,6 +659,8 @@ bool GP::Iterate()
               }
               m_calc_prevoronoi = false;
             }
+            // reset var
+            m_data_received = false;
           }
         }
         break;
@@ -1052,8 +1054,11 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   while ( !gp_lock.try_lock() )
   {
-    std::cout << GetAppName() << " :: obtaining lock, handleMailReceivedDataPts" << std::endl;
+    if ( m_debug )
+      std::cout << GetAppName() << " :: obtaining lock, handleMailReceivedDataPts" << std::endl;
   }
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock owner: handleMailReceivedDataPts" << std::endl;
 
   // parse string
 
@@ -1092,6 +1097,8 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 
   // release lock
   gp_lock.unlock();
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock released by: handleMailReceivedDataPts" << std::endl;
 
   return pts_added;
 }
@@ -1361,12 +1368,21 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
 
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
   // obtain lock
-  while ( !ap_lock.try_lock() ) {}
+  while ( !ap_lock.try_lock() )
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: obtaining lock, addPatternToGP" << std::endl;
+  }
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock owner, addPatternToGP" << std::endl;
+
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
   m_gp->add_pattern(location, save_val);
   // release mutex
   ap_lock.unlock();
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock released by addPatternToGP" << std::endl;
 }
 
 
@@ -1713,12 +1729,20 @@ size_t GP::calcMECriterion()
   // lock for access to m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
-  while ( !gp_lock.try_lock() ) {}
+  while ( !gp_lock.try_lock() )
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: obtaining lock, calcMECriterion" << std::endl;
+  }
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock owner: calcMECriterion" << std::endl;
   if ( m_debug )
     std::cout << GetAppName() << " :: make copy GP" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   // release lock
   gp_lock.unlock();
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock released by: calcMECriterion" << std::endl;
 
   // stop calculations if we are surfacing suddenly
   if ( m_mission_state == STATE_SURFACING )
@@ -1814,13 +1838,16 @@ bool GP::checkGPHasData()
 size_t GP::processReceivedData()
 {
   size_t pts_added = 0;
-  if ( m_debug )
-    std::cout << GetAppName() << " :: going to add " << m_incoming_data_to_be_added.size() << " sets of data points." << std::endl;
-
-  while ( !m_incoming_data_to_be_added.empty() )
+  while ( m_incoming_data_to_be_added.empty() )
   {
     if ( m_debug )
-      std::cout << GetAppName() << " :: adding received data, remaining: " << m_incoming_data_to_be_added.size() << std::endl;
+      std::cout << GetAppName() << " :: waiting to receive data .. " << std::endl;
+  }
+
+  if ( m_debug )
+    std::cout << GetAppName() << " :: going to add " << m_incoming_data_to_be_added.size() << " sets of data points." << std::endl;
+  while ( !m_incoming_data_to_be_added.empty() )
+  {
     std::string data = m_incoming_data_to_be_added.back();
     m_incoming_data_to_be_added.pop_back();
     pts_added += handleMailReceivedDataPts(data);
@@ -1941,10 +1968,18 @@ bool GP::runHPOptimization(size_t nr_iterations)
   Eigen::VectorXd hparams(lh_gp);
 
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
-  while ( !hp_lock.try_lock() ){}
+  while ( !hp_lock.try_lock() )
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: obtaining lock, runHPOptimization" << std::endl;
+  }
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock owner: runHPOptimization" << std::endl;
   m_gp->covf().set_loghyper(hparams);
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock released by: runHPOptimization" << std::endl;
 
   if ( m_verbose )
     std::cout << GetAppName() << " :: new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
@@ -2099,11 +2134,19 @@ void GP::makeAndStorePredictions(bool finished)
   std::clock_t begin = std::clock();
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-  while ( !gp_lock.try_lock() ) {}
+  while ( !gp_lock.try_lock() ) {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: obtaining lock, makeAndStorePredictions" << std::endl;
+  }
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock owner: makeAndStorePredictions" << std::endl;
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   gp_lock.unlock();
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock released by: makeAndStorePredictions" << std::endl;
+
   std::clock_t end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions], at MOOSTime: "
