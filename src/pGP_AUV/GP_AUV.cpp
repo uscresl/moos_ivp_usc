@@ -1033,55 +1033,74 @@ void GP_AUV::dynamicProgrammingWptSelection(Eigen::Vector2d & best_location) {
 void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 {
     // is this the point we want to start calculating from?
+    std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
     int current_node_index = getIndexForMap(m_lon, m_lat);
-    auto itr = m_sample_points_unvisited.find(current_node_index);
+    std::cout << GetAppName() << " :: " << "current index: " << current_node_index << std::endl;
+    auto itr = m_sample_points_visited.find(current_node_index);
+    if(itr != m_sample_points_visited.end()) {
 
-    std::vector<const GraphNode *> nextWaypoints(5);
 
-    // figure out how to get graph node from unvisited map
+        std::vector<const GraphNode *> nextWaypoints(5);
 
-    int steps = 0;
-    const GraphNode* val = maxPath(itr->second, nextWaypoints, steps);
+        // figure out how to get graph node from unvisited map
 
-    // publish next waypoints
+        int steps = 0;
+        std::cout << GetAppName() << " :: " << "itr index: " << itr->first << std::endl;
+        const GraphNode* val = maxPath(itr->second, nextWaypoints, steps);
+        std::cout << GetAppName() << " :: " << (val->get_location())(0) << "," << (val->get_location())(1) << std::endl;
+
+        // publish next waypoints
 
 //    std::ostringstream output_stream;
-    // make a string from the single lon/lat location
-    std::ostringstream output_stream;
-//    for(int i = 0; i < nextWaypoints.size(); i++) {
-//        Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
-//        output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
-//        if(i < (nextWaypoints.size() - 1)) output_stream << ",";
-//    }
-    Eigen::Vector2d nodeLoc = nextWaypoints[0]->get_location();
-    output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
-    std::cout << output_stream.str() << std::endl;
+        // make a string from the single lon/lat location
+        std::ostringstream output_stream;
+        for(int i = 0; i < nextWaypoints.size(); i++) {
+            Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
+            output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+            if(i < (nextWaypoints.size() - 1)) output_stream << ":";
+        }
+        Eigen::Vector2d nodeLoc = nextWaypoints[0]->get_location();
+//    output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+        std::cout << GetAppName() << " :: " << "next waypoint: " << output_stream.str() << std::endl;
 
 //    output_stream << std::setprecision(15) << nextWaypoints[0]->get_location()(0) << "," << nextWaypoints[1] << "," <<
 //                  nextWaypoints[2] << "," << nextWaypoints[3] << "," << nextWaypoints[4];
-    next_waypoint = output_stream.str();
+        next_waypoint = output_stream.str();
 
 //    output_stream << std::setprecision(15) << nextWpt(0) << "," << nextWpt(1) << ":";
 //    next_waypoint = output_stream.str();
 
-    //publish
+        //publish
+    }
+    else {
+        std::cout << GetAppName() << " :: " << "unvisited node not found" << std::endl;
+    }
+
 }
 
 //---------------------------------------------------------
 // Procedure: maxPath()
 //            helper function to help find the largest sum path
 //            publish waypoints as they are selected
-const GraphNode* GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int& steps)
+const GraphNode* GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int steps)
 {
     // need some sort of base case
     //base case: if 5 steps in, return loc and construct the path backwards
+    std::cout << GetAppName() << " :: " << "entered maxpath" << std::endl;
+//    if(loc == nullptr) {
+//
+//    }
     if(steps == 5) {
 //        return loc->get_value();
+        std::cout << GetAppName() << " :: " << "steps = 5" << std::endl;
         return loc;
     }
 
     else {
         steps++;
+        std::cout << GetAppName() << " :: " << "inc steps" << std::endl;
+        std::cout << GetAppName() << " :: " << "call max function" << std::endl;
+
         const GraphNode* next = max(maxPath(loc->get_left_neighbour(), toPublish, steps),
                              maxPath(loc->get_right_neighbour(), toPublish, steps),
                              maxPath(loc->get_front_neighbour(), toPublish, steps)
@@ -2042,6 +2061,13 @@ void GP_AUV::publishStates(std::string const calling_method)
 const GraphNode* GP_AUV::max(const GraphNode* a, const GraphNode* b, const GraphNode* c)
 //GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
 {
+    int aVal = a->get_value();
+    int bVal = b->get_value();
+    int cVal = c->get_value();
+    std::cout << GetAppName() << " :: a:" << a->get_value() << std::endl;
+    std::cout << GetAppName() << " :: b:" << b->get_value() << std::endl;
+    std::cout << GetAppName() << " :: c:" << c->get_value() << std::endl;
+
     if(a->get_value() >= b->get_value() && a->get_value() >= c->get_value()) return a;
     else if(b->get_value() >= a->get_value() && b->get_value() >= c->get_value()) return b;
     else if(c->get_value() >= a->get_value() && c->get_value() >= a->get_value()) return c;

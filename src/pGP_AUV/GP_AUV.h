@@ -86,7 +86,7 @@ class GP_AUV : public CMOOSApp
    void publishNextWaypointLocations();
 
    // helper methods for path planning using GRG algorithm
-   const GraphNode* maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int& steps);
+   const GraphNode* maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int steps);
    size_t getX(size_t id_pt);
    size_t getY(size_t id_pt);
    double manhattanDistance(size_t start_node_index, size_t end_node_index);

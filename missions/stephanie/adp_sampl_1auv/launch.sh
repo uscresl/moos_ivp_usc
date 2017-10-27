@@ -114,8 +114,10 @@ if [ "${ADAPTIVE}" = "true" ] && [ "${ADP_START}" = "cross" ] ; then
     CROSS_END1=1200,700 # last wpt
   elif [ ${AREA} = "orig" ]; then
     # 1auv cross
-    PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
-    CROSS_END1=900,1000 # last wpt
+    # PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+    PILOT_PTS1=500,1000:550,1030:500,1030:550,1000
+    # CROSS_END1=900,1000 # last wpt
+    CROSS_END1=550,1000 # last wpt
   fi
 fi
 
