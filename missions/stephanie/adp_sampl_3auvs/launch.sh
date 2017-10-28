@@ -58,7 +58,8 @@ done
 
 # check if sim data file present
 if [ ! -f 'test.csv' ] ; then 
-echo 'ERROR: No simulated data file presented. Please put a test.csv file in this folder'; exit 0;
+  cp ../../../data/fake_bio/two_depths.csv test.csv
+  echo 'ERROR: No simulated data file presented. Copied two_depths.csv';
 fi
 # most scenario files have 3D data in them
 DATA_NR_DIMENSIONS=3
