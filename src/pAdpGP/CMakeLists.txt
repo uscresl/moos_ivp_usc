@@ -1,20 +1,20 @@
 #--------------------------------------------------------
-# The CMakeLists.txt for:                           pGP
+# The CMakeLists.txt for:                          pAdpGP
 # Author(s): Stephanie Kemna, USC
 # Note: this is a template dir, so you can copy to start
 #       making your MOOSApp
 #--------------------------------------------------------
 
 SET(SRC
-  PGP.cpp
+  AdpGP.cpp
   main.cpp
 )
 
-ADD_EXECUTABLE(pGP ${SRC})
+ADD_EXECUTABLE(pAdpGP ${SRC})
 
-target_compile_definitions(pGP PRIVATE BUILD_VORONOI=${BUILD_VORONOI})
+target_compile_definitions(pAdpGP PRIVATE BUILD_VORONOI=${BUILD_VORONOI})
 
-TARGET_LINK_LIBRARIES(pGP
+TARGET_LINK_LIBRARIES(pAdpGP
    ${MOOS_LIBRARIES}
    ${MOOSGeodesy_LIBRARIES}
    geometry

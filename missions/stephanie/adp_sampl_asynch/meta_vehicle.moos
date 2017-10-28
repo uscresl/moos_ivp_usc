@@ -63,7 +63,7 @@ ProcessConfig = ANTLER
   // add other processes here
   Run = uSimBioSensor @ NewConsole = false
 
-  Run = pGP @ NewConsole = false
+  Run = pAdpGP @ NewConsole = false
 
   Run = pSamplePoints @ NewConsole = false
 
@@ -120,9 +120,9 @@ ProcessConfig = ANTLER
 #include $(PLUG_DIR)/plug_uSimBioSensor.moos
 
 //--------------------------------------------------
-// pGP configuration block
+// pAdpGP configuration block
 //
-ProcessConfig = pGP
+ProcessConfig = pAdpGP
 {
   AppTick   = 2
   CommsTick = 2

@@ -1,12 +1,12 @@
 /*****************************************************************/
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
-/*    FILE: GP.cpp                                               */
-/*    DATE: 2015 - 2016                                          */
+/*    FILE: AdpGP.cpp                                            */
+/*    DATE: 2015 - 2017                                          */
 /*                                                               */
 /*****************************************************************/
 
-#include "PGP.h"
+#include "AdpGP.h"
 
 #include <iterator>
 #include "MBUtils.h"
@@ -35,7 +35,7 @@
 //---------------------------------------------------------
 // Constructor
 //
-GP::GP() :
+AdpGP::AdpGP() :
   m_verbose(true),
   m_input_var_data(""),
   m_input_var_sample_points(""),
@@ -152,7 +152,7 @@ GP::GP() :
 #endif
 }
 
-GP::~GP()
+AdpGP::~AdpGP()
 {
   if ( m_ofstream_pm_lGP.is_open() )
     m_ofstream_pm_lGP.close();
@@ -173,7 +173,7 @@ GP::~GP()
 // there is 'new mail', check to see if
 // there is anything for this process.
 //
-bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
+bool AdpGP::OnNewMail(MOOSMSG_LIST &NewMail)
 {
   MOOSMSG_LIST::iterator p;
   for(p=NewMail.begin(); p!=NewMail.end(); p++)
@@ -500,7 +500,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 //---------------------------------------------------------
 // Procedure: OnConnectToServer
 //
-bool GP::OnConnectToServer()
+bool AdpGP::OnConnectToServer()
 {
 //  registerVariables();
   return(true);
@@ -510,7 +510,7 @@ bool GP::OnConnectToServer()
 // Procedure: Iterate()
 //            happens AppTick times per second
 //
-bool GP::Iterate()
+bool AdpGP::Iterate()
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
     return true;
@@ -530,7 +530,7 @@ bool GP::Iterate()
           std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
                     << std::floor(MOOSTime()-m_start_time)  << "(" << std::floor(MOOSTime()-m_start_time) << ")" << std::endl;
         }
-        std::thread pred_store(&GP::makeAndStorePredictions, this, false);
+        std::thread pred_store(&AdpGP::makeAndStorePredictions, this, false);
         pred_store.detach();
         m_last_pred_save = MOOSTime();
       }
@@ -763,7 +763,7 @@ bool GP::Iterate()
 //---------------------------------------------------------
 // Procedure: OnStartUp()
 //            happens before connection is open
-bool GP::OnStartUp()
+bool AdpGP::OnStartUp()
 {
   CMOOSApp::OnStartUp();
 
@@ -896,7 +896,7 @@ bool GP::OnStartUp()
 
   registerVariables();
 
-  std::thread data_thread(&GP::dataAddingThread, this);
+  std::thread data_thread(&AdpGP::dataAddingThread, this);
   data_thread.detach();
 
   // init last calculations times to start of process
@@ -921,7 +921,7 @@ bool GP::OnStartUp()
 // Procedure: initGeodesy
 //            initialize MOOS Geodesy for lat/lon conversions
 //
-void GP::initGeodesy()
+void AdpGP::initGeodesy()
 {
   // get lat/lon origin from MOOS file
   bool failed = false;
@@ -959,7 +959,7 @@ void GP::initGeodesy()
 //            at startup, let the MOOSDB know what you want
 //            to receive
 //
-void GP::registerVariables()
+void AdpGP::registerVariables()
 {
   // get vehicle location
   m_Comms.Register("NAV_LAT", 0);
@@ -1019,7 +1019,7 @@ void GP::registerVariables()
 // Procedure: handleMailData
 //            handle the incoming message
 //
-void GP::handleMailData(double received_data)
+void AdpGP::handleMailData(double received_data)
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
     std::cout << GetAppName() << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
@@ -1048,7 +1048,7 @@ void GP::handleMailData(double received_data)
 // Procedure: handleMailReceivedDataPts
 //            taken the received data, and add them to the GP
 //
-size_t GP::handleMailReceivedDataPts(std::string incoming_data)
+size_t AdpGP::handleMailReceivedDataPts(std::string incoming_data)
 {
   // take ownership of m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
@@ -1107,7 +1107,7 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 // Procedure: handleMailSamplePoints
 //            parse the string, store the sample locations
 //
-void GP::handleMailSamplePoints(std::string input_string)
+void AdpGP::handleMailSamplePoints(std::string input_string)
 {
   // input: semicolon separated string of comma separated locations
   // separate by semicolon
@@ -1166,7 +1166,7 @@ void GP::handleMailSamplePoints(std::string input_string)
 // Procedure: storeSamplePointsSpecs
 //            parse the string, store specs for sample locations
 //
-void GP::handleMailSamplePointsSpecs(std::string input_string)
+void AdpGP::handleMailSamplePointsSpecs(std::string input_string)
 {
   // input: comma-separated list of param=value pairs
   // separate by comma
@@ -1198,7 +1198,7 @@ void GP::handleMailSamplePointsSpecs(std::string input_string)
 //            take incoming comma-separated string (css)
 //            parse, and if not from self, add data to GP
 //
-void GP::handleMailDataAcomms(std::string css)
+void AdpGP::handleMailDataAcomms(std::string css)
 {
   std::vector<std::string> incoming_str = parseString(css,',');
   std::string name = incoming_str[0].substr(5,incoming_str[0].length()-1);
@@ -1263,7 +1263,7 @@ void GP::handleMailDataAcomms(std::string css)
 //            take incoming comma-separated string (css)
 //            parse, and if not from self, store vehicle location
 //
-void GP::handleMailNodeReports(const std::string &input_string)
+void AdpGP::handleMailNodeReports(const std::string &input_string)
 {
   // eg. NAME=anna,LAT=0,LON=10
   std::vector<std::string> str_tok = parseString(input_string, ',');
@@ -1315,7 +1315,7 @@ void GP::handleMailNodeReports(const std::string &input_string)
 //            if points need to be added to the GP, if so
 //            then call func to add points to GP
 //
-void GP::dataAddingThread()
+void AdpGP::dataAddingThread()
 {
   while ( !m_finished )
   {
@@ -1349,7 +1349,7 @@ void GP::dataAddingThread()
 //            function to add points to GP, using mutex so as
 //            to not disturb when other processes are reading from GP
 //
-void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
+void AdpGP::addPatternToGP(double veh_lon, double veh_lat, double value)
 {
   // limit scope mutex, protect when adding data
   // because this is now happening in a detached thread
@@ -1391,7 +1391,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
 //            for interval-based data sharing, push back data points that have
 //            not been shared yet
 //
-void GP::storeDataForSending(double vlon, double vlat, double data)
+void AdpGP::storeDataForSending(double vlon, double vlat, double data)
 {
   // save the data point in a vector that we will send
   std::ostringstream data_str_stream;
@@ -1415,7 +1415,7 @@ void GP::storeDataForSending(double vlon, double vlat, double data)
 // Procedure: needToUpdateMaps
 //            check if location's grid index is in unvisited map
 //
-bool GP::needToUpdateMaps(size_t grid_index)
+bool AdpGP::needToUpdateMaps(size_t grid_index)
 {
     // add mutex for changing of global maps
     std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
@@ -1430,7 +1430,7 @@ bool GP::needToUpdateMaps(size_t grid_index)
 // Procedure: getIndexForMap
 //            calculate the grid index for the vehicle location
 //
-int GP::getIndexForMap(double veh_lon, double veh_lat)
+int AdpGP::getIndexForMap(double veh_lon, double veh_lat)
 {
   if ( inSampleRectangle(veh_lon, veh_lat, true) )
   {
@@ -1457,7 +1457,7 @@ int GP::getIndexForMap(double veh_lon, double veh_lat)
 //            given current vehicle location, move locations
 //            from unvisited to visited set
 //
-void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
+void AdpGP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 {
   // add mutex for changing of global maps
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
@@ -1513,7 +1513,7 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 //            we check if, after conversion, the distance
 //            of sampled point to vehicle location is reasonable
 //
-bool GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt)
+bool AdpGP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt)
 {
   double dist_lon = std::abs(move_pt(0) - veh_lon);
   double dist_lat = std::abs(move_pt(1) - veh_lat);
@@ -1533,7 +1533,7 @@ bool GP::checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vect
 // Procedure: findNextSampleLocation
 //            find next sample location, using mutual information
 //
-void GP::findNextSampleLocation()
+void AdpGP::findNextSampleLocation()
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: find nxt sample loc" << std::endl;
@@ -1548,7 +1548,7 @@ void GP::findNextSampleLocation()
       {
         // use threading because this is a costly operation that would otherwise
         // interfere with the MOOS app rate
-        m_future_next_pt = std::async(std::launch::async, &GP::calcMECriterion, this);
+        m_future_next_pt = std::async(std::launch::async, &AdpGP::calcMECriterion, this);
         m_finding_nxt = true;
       }
     }
@@ -1583,7 +1583,7 @@ void GP::findNextSampleLocation()
 //            before there is data in the GP,
 //            grab a random location to start from
 //
-void GP::getRandomStartLocation()
+void AdpGP::getRandomStartLocation()
 {
   int random_idx = (int)(rand() % (m_sample_locations.size()));
   std::pair<double, double> rand_loc = m_sample_locations.at(random_idx);
@@ -1603,7 +1603,7 @@ void GP::getRandomStartLocation()
 // Procedure: greedyWptSelection()
 //            check over all predictions to find best (greedy)
 //
-void GP::greedyWptSelection(Eigen::Vector2d & best_location)
+void AdpGP::greedyWptSelection(Eigen::Vector2d & best_location)
 {
 // get next position, for now, greedy pick
   double best_so_far = -1*std::numeric_limits<double>::max();
@@ -1685,7 +1685,7 @@ void GP::greedyWptSelection(Eigen::Vector2d & best_location)
 // Procedure: publishNextBestPosition
 //            call Notify & publish location
 //
-void GP::publishNextBestPosition()
+void AdpGP::publishNextBestPosition()
 {
   // procedures for finding the next waypoint(s)
   Eigen::Vector2d next_wpt;
@@ -1713,7 +1713,7 @@ void GP::publishNextBestPosition()
 //            for every unvisited location,
 //            and pick best (greedy)
 //
-size_t GP::calcMECriterion()
+size_t AdpGP::calcMECriterion()
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: max entropy start" << std::endl;
@@ -1824,7 +1824,7 @@ size_t GP::calcMECriterion()
 // Procedure: checkGPHasData
 //            check that the GP has been filled, else quit
 //
-bool GP::checkGPHasData()
+bool AdpGP::checkGPHasData()
 {
   return ( m_gp->get_sampleset_size() > 0 );
 }
@@ -1835,7 +1835,7 @@ bool GP::checkGPHasData()
 //            pass on received data points to be added to GP
 //            via handleMailReceivedDataPts
 //
-size_t GP::processReceivedData()
+size_t AdpGP::processReceivedData()
 {
   size_t pts_added = 0;
   while ( m_incoming_data_to_be_added.empty() )
@@ -1863,7 +1863,7 @@ size_t GP::processReceivedData()
 //            if done, (a) continue sampling, or
 //                     (b) end the mission
 //
-void GP::startAndCheckHPOptim()
+void AdpGP::startAndCheckHPOptim()
 {
   // start HP optimization, if not running already
   if ( !m_hp_optim_running )
@@ -1871,7 +1871,7 @@ void GP::startAndCheckHPOptim()
     // start thread for hyperparameter optimization,
     // because this will take a while..
     // TODO parameterize nr iterations
-    m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100);
+    m_future_hp_optim = std::async(std::launch::async, &AdpGP::runHPOptimization, this, 100);
     if ( m_verbose )
       std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp->get_sampleset_size() << std::endl;
     m_hp_optim_running = true;
@@ -1897,7 +1897,7 @@ void GP::startAndCheckHPOptim()
           if ( m_use_voronoi )
           {
             // after points received, need to run a round of predictions (unvisited set has changed!)
-            m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+            m_future_calc_prevoronoi = std::async(std::launch::async, &AdpGP::calcMECriterion, this);
             m_calc_prevoronoi = true;
           }
           else
@@ -1923,7 +1923,7 @@ void GP::startAndCheckHPOptim()
 // Procedure: endMission()
 //            set variables to end mission, initiate last save
 //
-void GP::endMission()
+void AdpGP::endMission()
 {
   m_mission_state = STATE_DONE;
   publishStates("endMission");
@@ -1938,7 +1938,7 @@ void GP::endMission()
     std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
               << std::floor(MOOSTime()-m_start_time)  << "(" << std::floor(MOOSTime()-m_start_time)  << ")" << std::endl;
   }
-  std::thread pred_store(&GP::makeAndStorePredictions, this, true);
+  std::thread pred_store(&AdpGP::makeAndStorePredictions, this, true);
   pred_store.detach();
 }
 
@@ -1947,7 +1947,7 @@ void GP::endMission()
 // Procedure: runHPOptimization(nr_iterations)
 //            run in thread, call GP's hyperparam optimization
 //
-bool GP::runHPOptimization(size_t nr_iterations)
+bool AdpGP::runHPOptimization(size_t nr_iterations)
 {
   bool data_processed = false;
   size_t pts_added = 0;
@@ -1987,7 +1987,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
   return true;
 }
 
-void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations)
+void AdpGP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations)
 {
   //// downsample data for HP optimization /////////////////////////////////////
   std::clock_t begin = std::clock();
@@ -2059,7 +2059,7 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
 //            notify other vehicles that this one is ready
 //            for data exchange
 //
-void GP::sendReady()
+void AdpGP::sendReady()
 {
   std::cout << GetAppName() << " :: send READY (" << m_output_var_handshake_data_sharing
             << ":" << m_veh_name << ")" << std::endl;
@@ -2070,7 +2070,7 @@ void GP::sendReady()
 // Procedure: sendData()
 //            send data in chunks (via pShare)
 //
-void GP::sendData()
+void AdpGP::sendData()
 {
   // we need to chunk the data because pShare has a limit of 64K per message
   // 2000 points should be ca. 53K, so let's try that first
@@ -2118,7 +2118,7 @@ void GP::sendData()
 // Procedure: getLogGPPredMeanVarFromGPMeanVar
 //            convert pred mean/var from GP to pred mean/var for log GP
 //
-void GP::getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov )
+void AdpGP::getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov )
 {
   // convert GP mean to log GP mean (lognormal mean)
   lgp_mean = exp(gp_mean + gp_cov/2.0);
@@ -2129,7 +2129,7 @@ void GP::getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double 
 // Procedure: makeAndStorePredictions
 //            file writing
 //
-void GP::makeAndStorePredictions(bool finished)
+void AdpGP::makeAndStorePredictions(bool finished)
 {
   std::clock_t begin = std::clock();
   // make a copy of the GP and use that below, to limit lock time
@@ -2268,7 +2268,7 @@ void GP::makeAndStorePredictions(bool finished)
 //            separate out these calculations
 //            such that we only do them once
 //
-void GP::calcLonLatSpacing()
+void AdpGP::calcLonLatSpacing()
 {
   // convert lane widths in meters to lon/lat
   m_lon_spacing = m_pts_grid_spacing/m_lon_deg_to_m;
@@ -2284,7 +2284,7 @@ void GP::calcLonLatSpacing()
 // Procedure: convLonLatToUTM
 //            use MOOS Geodesy to convert lon/lat to x/y
 //
-bool GP::convLonLatToUTM (double lon, double lat, double & lx, double & ly )
+bool AdpGP::convLonLatToUTM (double lon, double lat, double & lx, double & ly )
 {
   bool successful = m_geodesy.LatLong2LocalUTM(lat, lon, ly, lx);
 
@@ -2298,7 +2298,7 @@ bool GP::convLonLatToUTM (double lon, double lat, double & lx, double & ly )
 // Procedure: convUTMToLonLat
 //            use MOOS Geodesy to convert x/y to lon/lat
 //
-bool GP::convUTMToLonLat (double lx, double ly, double & lon, double & lat )
+bool AdpGP::convUTMToLonLat (double lx, double ly, double & lon, double & lat )
 {
   bool successful = m_geodesy.UTM2LatLong(lx, ly, lat, lon);
 
@@ -2315,7 +2315,7 @@ bool GP::convUTMToLonLat (double lx, double ly, double & lon, double & lat )
 //            find the points within voronoi region,
 //            over the unvisited set
 //
-void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std::pair<double,double> > other_centers )
+void AdpGP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std::pair<double,double> > other_centers )
 {
   // clear out previous sets
   m_voronoi_subset.clear();
@@ -2421,7 +2421,7 @@ void GP::calcVoronoi(double own_lon, double own_lat, std::map< std::string, std:
 //            see if the current vehicle position is inside the
 //            prespecified sampling area (rectangle)
 //
-bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const
+bool AdpGP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) const
 {
   // if just outside data grid, but close enough,
   // should be able to map to border points
@@ -2441,7 +2441,7 @@ bool GP::inSampleRectangle(double veh_lon, double veh_lat, bool use_buffer) cons
 // Procedure: voronoiConvexHull()
 //            get the convex hull of the Voronoi region
 //
-void GP::voronoiConvexHull()
+void AdpGP::voronoiConvexHull()
 {
   // collect points inside voronoi region in boost geometry multi_point
   boost::geometry::clear(m_voronoi_pts);
@@ -2467,7 +2467,7 @@ void GP::voronoiConvexHull()
 // Procedure: inVoronoi(double lon, double lat) const
 //            check if given location is inside convex hull of Voronoi region
 //
-bool GP::inVoronoi(double lon, double lat) const
+bool AdpGP::inVoronoi(double lon, double lat) const
 {
   boost_pt pt_to_check(lon, lat);
   return boost::geometry::intersects(pt_to_check, m_voronoi_conv_hull);
@@ -2477,7 +2477,7 @@ bool GP::inVoronoi(double lon, double lat) const
 // Procedure: distToVoronoi(double lon, double lat) const
 //            calculate distance vehicle location to boundaries voronoi convex hull
 //
-double GP::distToVoronoi(double lon, double lat) const
+double AdpGP::distToVoronoi(double lon, double lat) const
 {
   boost_pt pt_to_check(lon, lat);
 
@@ -2513,7 +2513,7 @@ double GP::distToVoronoi(double lon, double lat) const
 // Procedure: printVoronoiConvexHull()
 //            print voronoi convex hull vertices to cout and MOOS
 //
-void GP::printVoronoi()
+void AdpGP::printVoronoi()
 {
   auto bst_ext_ring = boost::geometry::exterior_ring(m_voronoi_conv_hull);
   std::ostringstream voronoi_str;
@@ -2541,7 +2541,7 @@ void GP::printVoronoi()
 //            and share data when received 'ready' from other vehicle
 //            assumes only 2 vehicles
 //
-void GP::tdsHandshake()
+void AdpGP::tdsHandshake()
 {
   size_t moos_t = (size_t)std::floor(MOOSTime());
 
@@ -2609,13 +2609,13 @@ void GP::tdsHandshake()
 //            are process, then switch state to continue with
 //            the survey mission
 //
-void GP::tdsReceiveData()
+void AdpGP::tdsReceiveData()
 {
   if ( !m_waiting )
   {
     // data received, need to add
     // TODO make sure we only kick this off once
-    m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
+    m_future_received_data_processed = std::async(std::launch::async, &AdpGP::processReceivedData, this);
     if ( m_debug )
       std::cout << GetAppName() << " :: kicking off processReceivedData" << std::endl;
     m_waiting = true;
@@ -2649,7 +2649,7 @@ void GP::tdsReceiveData()
           publishStates("tdsReceiveData_not_first_or_final");
 
 //          // after points received, need to run a round of predictions (unvisited set has changed!)
-//          m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+//          m_future_calc_prevoronoi = std::async(std::launch::async, &AdpGP::calcMECriterion, this);
 //          m_calc_prevoronoi = true;
 //          std::cout << GetAppName() << " :: started m_future_calc_prevoronoi";
 //
@@ -2673,7 +2673,7 @@ void GP::tdsReceiveData()
 // Procedure: clearTDSStateVars
 //            reset state vars for TDS control
 //
-void GP::clearTDSStateVars()
+void AdpGP::clearTDSStateVars()
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: reset state vars" << std::endl;
@@ -2710,7 +2710,7 @@ void GP::clearTDSStateVars()
 // Procedure: clearHandshakeVars
 //            clear handshake counters
 //
-void GP::clearHandshakeVars()
+void AdpGP::clearHandshakeVars()
 {
   // reset surfacing/handshake other vehicles sets
   m_rec_ready_veh.clear();
@@ -2725,7 +2725,7 @@ void GP::clearHandshakeVars()
 //            calculate the next sample location,
 //            and publish to MOOSDB when found
 //
-void GP::findAndPublishNextWpt()
+void AdpGP::findAndPublishNextWpt()
 {
   // only run calculation of predictions if we did not already do
   // this during the voronoi calculation
@@ -2790,7 +2790,7 @@ void GP::findAndPublishNextWpt()
 //            see if we need to recalculate the voronoi region
 //            for now, when we are close to voronoi border
 //
-bool GP::needToRecalculateVoronoi()
+bool AdpGP::needToRecalculateVoronoi()
 {
   // recalculate if within ca. half lat/lon spacing removed fromborder
   // of the voronoi region
@@ -2807,7 +2807,7 @@ bool GP::needToRecalculateVoronoi()
 // Procedure: ownMessage(std::string input)
 //            check if this message is from own vehicle
 //
-bool GP::ownMessage(std::string input)
+bool AdpGP::ownMessage(std::string input)
 {
   size_t index = input.find(m_veh_name);
   return ( index != std::string::npos );
@@ -2817,7 +2817,7 @@ bool GP::ownMessage(std::string input)
 // Procedure: finalSurface(std::string input)
 //            check if message contains word 'final'
 //
-bool GP::finalSurface(std::string input)
+bool AdpGP::finalSurface(std::string input)
 {
   // note; we give value 'final', but surface request is a bool
   // given message size, so it would be converted to 'false'
@@ -2831,7 +2831,7 @@ bool GP::finalSurface(std::string input)
 //            after calculation predictions, calculate
 //            and recalculate voronoi regions
 //
-void GP::runVoronoiRoutine()
+void AdpGP::runVoronoiRoutine()
 {
   if ( m_debug )
     std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (1)." << std::endl;
@@ -2912,7 +2912,7 @@ void GP::runVoronoiRoutine()
 }
 
 
-bool GP::centroidConvergence ( double old_lon, double old_lat, std::map<std::string, std::pair<double, double> > old_centr,
+bool AdpGP::centroidConvergence ( double old_lon, double old_lat, std::map<std::string, std::pair<double, double> > old_centr,
                                double new_lon, double new_lat, std::map<std::string, std::pair<double, double> > new_centr )
 {
   // degrees = meters / {lat,long}_deg_to_m
@@ -2952,7 +2952,7 @@ bool GP::centroidConvergence ( double old_lon, double old_lat, std::map<std::str
 //            calculate the centroids of each voronoi
 //            partition, given the density function
 //
-void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_lat, std::map< std::string, std::pair<double,double> > & other_vehicle_centroids )
+void AdpGP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_lat, std::map< std::string, std::pair<double,double> > & other_vehicle_centroids )
 {
   // voronoi partitions are in: m_voronoi_subset (vector) and
   //    m_voronoi_subset_other_vehicles (map)
@@ -3015,7 +3015,7 @@ void GP::calcVoronoiCentroids(double & own_centroid_lon, double & own_centroid_l
 // Procedure: calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat )
 //            calculate weighted centroid of voronoi partition
 //
-void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat )
+void AdpGP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, double & centroid_lon, double & centroid_lat )
 {
   // grab the metric values for each point
   double sum_wt = 0.0;
@@ -3071,7 +3071,7 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
   centroid_lat = (sum_wt > 0 ? (sum_val_lat / sum_wt) : -1.0);
 }
 
-void GP::printVoronoiPartitions()
+void AdpGP::printVoronoiPartitions()
 {
   std::cout << GetAppName() << " :: own partition has: " << m_voronoi_subset.size() << " points\n";
   for ( auto veh : m_voronoi_subset_other_vehicles )
@@ -3081,7 +3081,7 @@ void GP::printVoronoiPartitions()
 }
 #endif
 
-void GP::publishStates(std::string const calling_method)
+void AdpGP::publishStates(std::string const calling_method)
 {
   if ( m_verbose )
     std::cout << GetAppName() << " :: ** " << m_db_uptime << " switch to: " << currentMissionStateString() << " from " << calling_method << " **\n";

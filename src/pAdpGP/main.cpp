@@ -10,7 +10,7 @@
 #include "MBUtils.h"
 #include "ColorParse.h"
 
-#include "PGP.h"
+#include "AdpGP.h"
 
 using namespace std;
 
@@ -31,10 +31,10 @@ int main(int argc, char *argv[])
       run_command = argi;
   }
   cout << termColor("green");
-  cout << "pGP launching as " << run_command << endl;
+  cout << "pAdpGP launching as " << run_command << endl;
   cout << termColor() << endl;
 
-  GP temp1;
+  AdpGP temp1;
   temp1.Run(run_command.c_str(), mission_file.c_str());
   
   return(0);

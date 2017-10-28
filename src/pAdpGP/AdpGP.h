@@ -1,13 +1,13 @@
 /*****************************************************************/
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
-/*    FILE: GP.h                                                 */
-/*    DATE: 2015 - 2016                                          */
+/*    FILE: AdpGP.h                                              */
+/*    DATE: 2015 - 2017                                          */
 /*                                                               */
 /*****************************************************************/
 
-#ifndef PGP_HEADER
-#define PGP_HEADER
+#ifndef ADP_GP_HEADER
+#define ADP_GP_HEADER
 
 #include "MOOS/libMOOS/MOOSLib.h"
 
@@ -40,11 +40,11 @@
 // include Eigen for OS X
 #include <Eigen/Dense>
 
-class GP : public CMOOSApp
+class AdpGP : public CMOOSApp
 {
  public:
-   GP();
-   ~GP();
+   AdpGP();
+   ~AdpGP();
 
   protected:
    // Standard MOOSApp functions to overload

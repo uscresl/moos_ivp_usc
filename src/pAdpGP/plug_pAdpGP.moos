@@ -1,7 +1,7 @@
 //--------------------------------------------------
-// pGP configuration block
+// pAdpGP configuration block
 //
-ProcessConfig = pGP
+ProcessConfig = pAdpGP
 {
   AppTick   = 2
   CommsTick = 2

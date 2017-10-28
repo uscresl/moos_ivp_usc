@@ -48,7 +48,7 @@ ProcessConfig = ANTLER
   Run = pShare @ NewConsole = false
 
   // add other processes here
-  Run = pGP @ NewConsole = false
+  Run = pAdpGP @ NewConsole = false
   Run = pSamplePoints @ NewConsole = false
 
   // end the mission
@@ -80,9 +80,9 @@ ProcessConfig = ANTLER
 // add other processes here
 
 //--------------------------------------------------
-// pGP configuration block
+// pAdpGP configuration block
 //
-ProcessConfig = pGP
+ProcessConfig = pAdpGP
 {
   AppTick   = 2
   CommsTick = 2

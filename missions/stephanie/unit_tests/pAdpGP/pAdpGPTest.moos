@@ -20,11 +20,11 @@ ProcessConfig = ANTLER
   MSBetweenLaunches = 200
 
   Run = MOOSDB        @ NewConsole = false
-  Run = pLogger       @ NewConsole = false
+  Run = pLogger       @ NewConsole = true
 
-  Run = pGP @ NewConsole = false
+  Run = pAdpGP @ NewConsole = true
 
-  // add fake data to be read by pGP
+  // add fake data to be read by pAdpGP
   Run = uTimerScript @ NewConsole = false ~ uTimerScript_startup
   Run = uTimerScript @ NewConsole = false ~ uTimerScript_data
   Run = uTimerScript @ NewConsole = false ~ uTimerScript_wpts
@@ -55,8 +55,8 @@ ProcessConfig = pLogger
 //****************************************************************************//
 // TESTING
 
-// pGP
-ProcessConfig = pGP
+// pAdpGP
+ProcessConfig = pAdpGP
 {
   AppTick   = 2
   CommsTick = 2

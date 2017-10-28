@@ -67,9 +67,9 @@ ProcessConfig = ANTLER
 
 //  #ifdef USE_GUI true
 //  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-//  Run = pGP @ NewConsole = true,XConfig=pGPConfig
+//  Run = pAdpGP @ NewConsole = true,XConfig=pGPConfig
 //  #else
-  Run = pGP @ NewConsole = false
+  Run = pAdpGP @ NewConsole = false
 //  #endif
 
   //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
@@ -129,9 +129,9 @@ ProcessConfig = ANTLER
 #include $(PLUG_DIR)/plug_uSimBioSensor.moos
 
 //--------------------------------------------------
-// pGP configuration block
+// pAdpGP configuration block
 //
-ProcessConfig = pGP
+ProcessConfig = pAdpGP
 {
   AppTick   = 2
   CommsTick = 2
