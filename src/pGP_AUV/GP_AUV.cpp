@@ -1090,7 +1090,10 @@ const GraphNode* GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNo
 //    if(loc == nullptr) {
 //
 //    }
-    if(steps == 5) {
+    if(loc == nullptr) {
+        return nullptr;
+    }
+    else if(steps == 5) {
 //        return loc->get_value();
         std::cout << GetAppName() << " :: " << "steps = 5" << std::endl;
         return loc;
@@ -2061,14 +2064,14 @@ void GP_AUV::publishStates(std::string const calling_method)
 const GraphNode* GP_AUV::max(const GraphNode* a, const GraphNode* b, const GraphNode* c)
 //GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
 {
-    int aVal = a->get_value();
-    int bVal = b->get_value();
-    int cVal = c->get_value();
-    std::cout << GetAppName() << " :: a:" << a->get_value() << std::endl;
-    std::cout << GetAppName() << " :: b:" << b->get_value() << std::endl;
-    std::cout << GetAppName() << " :: c:" << c->get_value() << std::endl;
+    double aVal = (a == nullptr ? -1 : a->get_value());
+    double bVal = (b == nullptr ? -1 : b->get_value());
+    double cVal = (c == nullptr ? -1 : c->get_value());
+    std::cout << GetAppName() << " :: a:" << aVal << std::endl;
+    std::cout << GetAppName() << " :: b:" << bVal << std::endl;
+    std::cout << GetAppName() << " :: c:" << cVal << std::endl;
 
-    if(a->get_value() >= b->get_value() && a->get_value() >= c->get_value()) return a;
-    else if(b->get_value() >= a->get_value() && b->get_value() >= c->get_value()) return b;
-    else if(c->get_value() >= a->get_value() && c->get_value() >= a->get_value()) return c;
+    if(aVal >= bVal && aVal >= cVal) return a;
+    else if(bVal >= aVal && bVal >= cVal) return b;
+    else if(cVal >= aVal && cVal >= aVal) return c;
 }
