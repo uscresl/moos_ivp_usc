@@ -6,7 +6,7 @@
 # parameters default values
 TIME_WARP=1
 JUST_MAKE="false"
-ADAPTIVE="false"
+ADAPTIVE="true"
 AREA="orig"
 GUI="true"
 CG="true"
@@ -17,7 +17,7 @@ for ARGI; do
     printf "%s [SWITCHES] [time_warp]   \n" $0
     printf "  Switches:          \n"
     printf "  --just_make, -j    \n"
-    printf "  --adaptive, -a     \n"
+    printf "  --lawnmower, -l     \n"
     printf "  --bigger1, -b1     \n"
     printf "  --bigger2, -b2     \n"
     printf "  --nogui, -ng       \n"
@@ -29,8 +29,8 @@ for ARGI; do
     TIME_WARP=$ARGI
   elif [ "${ARGI}" = "--just_build" -o "${ARGI}" = "-j" ] ; then
     JUST_MAKE="true"
-  elif [ "${ARGI}" = "--adaptive" -o "${ARGI}" = "-a" ] ; then
-    ADAPTIVE="true"
+  elif [ "${ARGI}" = "--lawnmower" -o "${ARGI}" = "-l" ] ; then
+    ADAPTIVE="false"
   elif [ "$ARGI" = "--bigger1" -o "${ARGI}" = "-b1" ]; then
     AREA="bigger1"
   elif [ "$ARGI" = "--bigger2" -o "${ARGI}" = "-b2" ]; then
