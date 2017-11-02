@@ -109,15 +109,13 @@ GP_AUV::GP_AUV() :
   Eigen::VectorXd params(m_gp->covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these will be optimized using cg or rprop
-  // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
-  //               0.002^2=0.000004, ln() = -12.4292
+  // length scale: avg lat/lon_deg_to_m is 100000, 10m range = 0.0001
+  //               50m = 0.0005, ln(0.0005) = -7.6
   // signal: from 0 to ca 30/40, log scale <0 to 1.5/1.6
-  //         stdev 1.5, ln() = 0.4055, ln() = -0.9
+  //         stdev 1.5, ln() = 0.4055
   // noise: let's set 10x smaller than signal
-  //        stdev 0.15, ln() = -1.8971, ln() = 0.64+3.141592654i
-  params << -12.4292, 0.4055, -1.8971;
-  //params << -12.4292, -0.9, 0.64;
-  //params << -8.927865292, 0.02335186099, -0.9098776951;
+  //        stdev 0.15, ln() = -1.8971
+  params << -7.6, 0.5, -1.8971;
   m_gp->covf().set_loghyper(params);
 
   // use a unique seed to initialize srand,
