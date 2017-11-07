@@ -1034,9 +1034,9 @@ void GP_AUV::dynamicProgrammingWptSelection(Eigen::Vector2d & best_location) {
 void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 {
   // is this the point we want to start calculating from?
-  std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
+//  std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
   int current_node_index = getIndexForMap(m_lon, m_lat);
-  std::cout << GetAppName() << " :: " << "current index: " << current_node_index << std::endl;
+//  std::cout << GetAppName() << " :: " << "current index: " << current_node_index << std::endl;
   auto itr = m_sample_points_visited.find(current_node_index);
   if ( itr != m_sample_points_visited.end() )
   {
@@ -1044,7 +1044,7 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 
     // figure out how to get graph node from unvisited map
     int steps = 0;
-    std::cout << GetAppName() << " :: " << "itr index: " << itr->first << std::endl;
+//    std::cout << GetAppName() << " :: " << "itr index: " << itr->first << std::endl;
     const GraphNode* val = maxPath(itr->second, nextWaypoints, steps);
     std::cout << GetAppName() << " :: " << (val->get_location())(0) << "," << (val->get_location())(1) << std::endl;
 
@@ -1078,7 +1078,7 @@ const GraphNode* GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNo
 {
     // need some sort of base case
     // base case: if 5 steps in, return loc and construct the path backwards
-    std::cout << GetAppName() << " :: " << "entered maxpath" << std::endl;
+//    std::cout << GetAppName() << " :: " << "entered maxpath" << std::endl;
     if ( loc == nullptr )
     {
         return nullptr;
@@ -1092,8 +1092,8 @@ const GraphNode* GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNo
 
     else {
         steps++;
-        std::cout << GetAppName() << " :: " << "inc steps" << std::endl;
-        std::cout << GetAppName() << " :: " << "call max function" << std::endl;
+//        std::cout << GetAppName() << " :: " << "inc steps" << std::endl;
+//        std::cout << GetAppName() << " :: " << "call max function" << std::endl;
 
         const GraphNode* next = max(maxPath(loc->get_left_neighbour(), toPublish, steps),
                              maxPath(loc->get_right_neighbour(), toPublish, steps),
@@ -2053,14 +2053,21 @@ void GP_AUV::publishStates(std::string const calling_method)
 const GraphNode* GP_AUV::max(const GraphNode* a, const GraphNode* b, const GraphNode* c)
 //GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
 {
-    double aVal = (a == nullptr ? -1 : a->get_value());
-    double bVal = (b == nullptr ? -1 : b->get_value());
-    double cVal = (c == nullptr ? -1 : c->get_value());
-    std::cout << GetAppName() << " :: a:" << aVal << std::endl;
-    std::cout << GetAppName() << " :: b:" << bVal << std::endl;
-    std::cout << GetAppName() << " :: c:" << cVal << std::endl;
+    double aVal = (a == nullptr ? INT16_MIN : a->get_value());
+    double bVal = (b == nullptr ? INT16_MIN : b->get_value());
+    double cVal = (c == nullptr ? INT16_MIN : c->get_value());
+    std::cout << GetAppName() << " :: a:" << aVal << " :: b:" << bVal << " :: c:" << cVal << std::endl;
 
-    if(aVal >= bVal && aVal >= cVal) return a;
-    else if(bVal >= aVal && bVal >= cVal) return b;
-    else if(cVal >= aVal && cVal >= aVal) return c;
+    if(aVal >= bVal && aVal >= cVal) {
+        std::cout << GetAppName() << " :: selected a" << std::endl;
+        return a;
+    }
+    else if(bVal >= aVal && bVal >= cVal) {
+        std::cout << GetAppName() << " :: selected b" << std::endl;
+        return b;
+    }
+    else if(cVal >= aVal && cVal >= aVal) {
+        std::cout << GetAppName() << " :: selected c" << std::endl;
+        return c;
+    }
 }
