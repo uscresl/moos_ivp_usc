@@ -41,56 +41,56 @@
 // Constructor
 //
 GP_AUV::GP_AUV() :
-  m_verbose(true),
-  m_input_var_data(""),
-  m_input_var_sample_points(""),
-  m_input_var_sample_points_specs(""),
-  m_input_var_adaptive_trigger(""),
-  m_output_var_pred(""),
-  m_output_filename_prefix(""),
-  m_prediction_interval(-1),
-  m_path_planning_method("greedy"),
-  m_debug(false),
-  m_veh_name(""),
-  m_use_log_gp(true),
-  m_lat(0),
-  m_lon(0),
-  m_dep(0),
-  m_surf_cnt(0),
-  m_on_surface(false),
-  m_adaptive(false),
-  m_last_published(std::numeric_limits<double>::max()),
-  m_last_pred_save(std::numeric_limits<double>::max()),
-  m_min_lon(0.0),
-  m_min_lat(0.0),
-  m_max_lon(0.0),
-  m_max_lat(0.0),
-  m_pts_grid_width(0.0),
-  m_pts_grid_height(0.0),
-  m_pts_grid_spacing(0.0),
-  m_lon_spacing(0.0),
-  m_lat_spacing(0.0),
-  m_y_resolution(0.0),
-  m_lon_deg_to_m(0.0),
-  m_lat_deg_to_m(0.0),
-  m_start_time(0.0),
-  m_finding_nxt(false),
-  m_mission_state(STATE_IDLE),
-  m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
-  m_hp_optim_running(false),
-  m_final_hp_optim(false),
-  m_hp_optim_iterations(50),
-  m_hp_optim_cg(false),
-  m_last_hp_optim_done(0),
-  m_data_mail_counter(1),
-  m_finished(false),
-  m_downsample_factor(4),
-  m_first_surface(true),
-  m_area_buffer(5.0),
-  m_bhv_state(""),
-  m_recursive_greedy_budget(5),
-  m_total_path_selection_time(0),
-  m_total_paths_selected(0)
+        m_verbose(true),
+        m_input_var_data(""),
+        m_input_var_sample_points(""),
+        m_input_var_sample_points_specs(""),
+        m_input_var_adaptive_trigger(""),
+        m_output_var_pred(""),
+        m_output_filename_prefix(""),
+        m_prediction_interval(-1),
+        m_path_planning_method("greedy"),
+        m_debug(false),
+        m_veh_name(""),
+        m_use_log_gp(true),
+        m_lat(0),
+        m_lon(0),
+        m_dep(0),
+        m_surf_cnt(0),
+        m_on_surface(false),
+        m_adaptive(false),
+        m_last_published(std::numeric_limits<double>::max()),
+        m_last_pred_save(std::numeric_limits<double>::max()),
+        m_min_lon(0.0),
+        m_min_lat(0.0),
+        m_max_lon(0.0),
+        m_max_lat(0.0),
+        m_pts_grid_width(0.0),
+        m_pts_grid_height(0.0),
+        m_pts_grid_spacing(0.0),
+        m_lon_spacing(0.0),
+        m_lat_spacing(0.0),
+        m_y_resolution(0.0),
+        m_lon_deg_to_m(0.0),
+        m_lat_deg_to_m(0.0),
+        m_start_time(0.0),
+        m_finding_nxt(false),
+        m_mission_state(STATE_IDLE),
+        m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
+        m_hp_optim_running(false),
+        m_final_hp_optim(false),
+        m_hp_optim_iterations(50),
+        m_hp_optim_cg(false),
+        m_last_hp_optim_done(0),
+        m_data_mail_counter(1),
+        m_finished(false),
+        m_downsample_factor(4),
+        m_first_surface(true),
+        m_area_buffer(5.0),
+        m_bhv_state(""),
+        m_recursive_greedy_budget(5),
+        m_total_path_selection_time(0),
+        m_total_paths_selected(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -179,7 +179,7 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
       m_data_mail_counter++;
 
       if ( (m_data_mail_counter % 2 == 0) &&
-            m_mission_state == STATE_SAMPLE )
+           m_mission_state == STATE_SAMPLE )
         handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -460,8 +460,8 @@ bool GP_AUV::OnStartUp()
   // store vehicle name
   if ( !m_MissionReader.GetValue("Community",m_veh_name) )
   {
-     m_veh_name = "error";
-     std::cout << GetAppName() << " :: Unable to retrieve vehicle name! What is 'Community' set to?" << std::endl;
+    m_veh_name = "error";
+    std::cout << GetAppName() << " :: Unable to retrieve vehicle name! What is 'Community' set to?" << std::endl;
   }
 
   registerVariables();
@@ -691,7 +691,7 @@ void GP_AUV::handleMailSamplePointsSpecs(std::string input_string)
   }
   if ( m_verbose )
     std::cout << GetAppName() << " :: width, height, spacing: " << m_pts_grid_width << ", " <<
-                 m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
+              m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
 }
 
 //---------------------------------------------------------
@@ -768,13 +768,13 @@ void GP_AUV::addPatternToGP(double veh_lon, double veh_lat, double value)
 //
 bool GP_AUV::needToUpdateMaps(size_t grid_index)
 {
-    // add mutex for changing of global maps
-    std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-    while ( !map_lock.try_lock() ){}
-    std::unordered_map<size_t, GraphNode*>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
-    map_lock.unlock();
+  // add mutex for changing of global maps
+  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+  while ( !map_lock.try_lock() ){}
+  std::unordered_map<size_t, GraphNode*>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
+  map_lock.unlock();
 
-    return ( curr_loc_itr != m_sample_points_unvisited.end() );
+  return ( curr_loc_itr != m_sample_points_unvisited.end() );
 }
 
 //---------------------------------------------------------
@@ -1037,26 +1037,26 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 //  std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
   int current_node_index = getIndexForMap(m_lon, m_lat);
 //  std::cout << GetAppName() << " :: " << "current index: " << current_node_index << std::endl;
-  auto itr = m_sample_points_visited.find(current_node_index);
+  auto itr = m_sample_points_visited.find(current_node_index); //is it automatically moving points to the visited section
   if ( itr != m_sample_points_visited.end() )
   {
-    std::vector<const GraphNode *> nextWaypoints(5);
+    std::vector<const GraphNode *> nextWaypoints, tempPath;
 
     // figure out how to get graph node from unvisited map
     int steps = 0;
 //    std::cout << GetAppName() << " :: " << "itr index: " << itr->first << std::endl;
-    const GraphNode* val = maxPath(itr->second, nextWaypoints, steps);
-    std::cout << GetAppName() << " :: " << (val->get_location())(0) << "," << (val->get_location())(1) << std::endl;
+    tempPath = maxPath(itr->second, tempPath, nextWaypoints, steps);
+//    std::cout << GetAppName() << " :: " << (val->get_location())(0) << "," << (val->get_location())(1) << std::endl;
 
     // publish next waypoints
     // make a string from the single lon/lat locations
     std::ostringstream output_stream;
     for (int i = 0; i < nextWaypoints.size(); i++)
     {
-        Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
-        output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
-        if ( i < (nextWaypoints.size() - 1) )
-          output_stream << ":";
+      Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
+      output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+      if ( i < (nextWaypoints.size() - 1) )
+        output_stream << ":";
     }
     //Eigen::Vector2d nodeLoc = nextWaypoints[0]->get_location();
 
@@ -1065,7 +1065,7 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
   }
   else
   {
-      std::cout << GetAppName() << " :: unvisited node not found" << std::endl;
+    std::cout << GetAppName() << " :: unvisited node not found" << std::endl;
   }
 
 }
@@ -1074,35 +1074,43 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 // Procedure: maxPath()
 //            helper function to help find the largest sum path
 //            publish waypoints as they are selected
-const GraphNode* GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int steps)
+std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes, std::vector<const GraphNode *>& toPublish, int steps)
 {
-    // need some sort of base case
-    // base case: if 5 steps in, return loc and construct the path backwards
+  // need some sort of base case
+  // base case: if 5 steps in, return loc and construct the path backwards
 //    std::cout << GetAppName() << " :: " << "entered maxpath" << std::endl;
-    if ( loc == nullptr )
-    {
-        return nullptr;
-    }
-    else if ( steps == 5 )
-    {
+  if ( loc == nullptr )
+  {
+    return std::vector<const GraphNode *>();
+  }
+  else if ( steps == 6 )
+  {
 //        return loc->get_value();
-        std::cout << GetAppName() << " :: " << "steps = 5" << std::endl;
-        return loc;
+    std::cout << GetAppName() << " :: " << "steps = 5" << std::endl;
+    //set maxpath vector
+    size_t sumNodes = pathSum(nodes), sumToPublish = pathSum(toPublish);
+//    std::for_each(nodes.begin(), nodes.end(), [&sumNodes](const GraphNode* &i) {
+//        sumNodes += i->get_value();
+//    });
+//    std::for_each(toPublish.begin(), toPublish.end(), [&sumToPublish](const GraphNode* &i) {
+//        sumToPublish += i->get_value();
+//    });
+    if(sumNodes > sumToPublish)
+    {
+      toPublish = nodes;
     }
+    return nodes;
+  }
 
-    else {
-        steps++;
-//        std::cout << GetAppName() << " :: " << "inc steps" << std::endl;
-//        std::cout << GetAppName() << " :: " << "call max function" << std::endl;
+  else {
 
-        const GraphNode* next = max(maxPath(loc->get_left_neighbour(), toPublish, steps),
-                             maxPath(loc->get_right_neighbour(), toPublish, steps),
-                             maxPath(loc->get_front_neighbour(), toPublish, steps)
-        );
-        toPublish[steps - 1] = next;
-//        return loc->get_value() + next->get_value();
-        return next;
-    }
+    nodes.push_back(loc);
+
+    return max(maxPath(loc->get_left_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_right_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_front_neighbour(), nodes, toPublish, steps+1)
+    );
+  }
 
 }
 
@@ -1316,7 +1324,7 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
               std::set< size_t > new_ground_set(ground_set.begin(), ground_set.end());
               new_ground_set.insert(first_half_path.begin(), first_half_path.end());
               std::vector< size_t > second_half_path = generalizedRecursiveGreedy(middle_node_index, end_node_index, new_ground_set,
-                budget - first_half_path.size() + 1);
+                                                                                  budget - first_half_path.size() + 1);
               if ( !second_half_path.empty() )
               {
                 // concatenate two paths to get path from start to end node
@@ -1615,30 +1623,30 @@ void GP_AUV::startAndCheckHPOptim()
     // if running, check if done
     if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
-        bool hp_optim_done = m_future_hp_optim.get(); // should be true
-        if ( !hp_optim_done )
-        {
-          std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
-          return;
-        }
-        else
-        {
-          m_last_hp_optim_done = (size_t)std::floor(MOOSTime());
-          if ( m_verbose )
-            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
-
-          std::cout << GetAppName() << " :: tdsResetStateVars via hpoptimdone" << std::endl;
-          tdsResetStateVars();
-
-          // after final HP optim
-          if ( m_final_hp_optim )
-            endMission();
-
-          m_hp_optim_running = false;
-        }
+      bool hp_optim_done = m_future_hp_optim.get(); // should be true
+      if ( !hp_optim_done )
+      {
+        std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+        return;
       }
       else
-        std::cout << GetAppName() << " :: waiting for hp optim" << std::endl;
+      {
+        m_last_hp_optim_done = (size_t)std::floor(MOOSTime());
+        if ( m_verbose )
+          std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
+
+        std::cout << GetAppName() << " :: tdsResetStateVars via hpoptimdone" << std::endl;
+        tdsResetStateVars();
+
+        // after final HP optim
+        if ( m_final_hp_optim )
+          endMission();
+
+        m_hp_optim_running = false;
+      }
+    }
+    else
+      std::cout << GetAppName() << " :: waiting for hp optim" << std::endl;
   }
 
 }
@@ -2050,24 +2058,43 @@ void GP_AUV::publishStates(std::string const calling_method)
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
 }
 
-const GraphNode* GP_AUV::max(const GraphNode* a, const GraphNode* b, const GraphNode* c)
+std::vector<const GraphNode*> GP_AUV::max(std::vector<const GraphNode*> a, std::vector<const GraphNode*> b, std::vector<const GraphNode*> c)
 //GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
 {
-    double aVal = (a == nullptr ? INT16_MIN : a->get_value());
-    double bVal = (b == nullptr ? INT16_MIN : b->get_value());
-    double cVal = (c == nullptr ? INT16_MIN : c->get_value());
-    std::cout << GetAppName() << " :: a:" << aVal << " :: b:" << bVal << " :: c:" << cVal << std::endl;
+  double aSum = pathSum(a), bSum = pathSum(b), cSum = pathSum(c);
 
-    if(aVal >= bVal && aVal >= cVal) {
-        std::cout << GetAppName() << " :: selected a" << std::endl;
-        return a;
-    }
-    else if(bVal >= aVal && bVal >= cVal) {
-        std::cout << GetAppName() << " :: selected b" << std::endl;
-        return b;
-    }
-    else if(cVal >= aVal && cVal >= aVal) {
-        std::cout << GetAppName() << " :: selected c" << std::endl;
-        return c;
-    }
+  if(aSum >= bSum && aSum >= cSum) {
+    std::cout << GetAppName() << " :: selected a" << std::endl;
+    return a;
+  }
+  else if(bSum >= aSum && bSum >= cSum) {
+    std::cout << GetAppName() << " :: selected b" << std::endl;
+    return b;
+  }
+  else if(cSum >= aSum && cSum >= aSum) {
+    std::cout << GetAppName() << " :: selected c" << std::endl;
+    return c;
+  }
+
+  //prioritize unvisited nodes? but if we get stuck, select a visited node
+}
+
+const GraphNode* GP_AUV::checkVisited(const GraphNode* node)
+{
+  int current_node_index = getIndexForMap(m_lon, m_lat);
+  auto itr = m_sample_points_visited.find(current_node_index);
+  if(itr != m_sample_points_visited.end())
+  {
+    return itr->second;
+  }
+  return nullptr;
+}
+
+double GP_AUV::pathSum(std::vector<const GraphNode *> nodes)
+{
+  double sum = 0.0;
+  std::for_each(nodes.begin(), nodes.end(), [&sum](const GraphNode* &i) {
+      sum += i->get_value();
+  });
+  return sum;
 }

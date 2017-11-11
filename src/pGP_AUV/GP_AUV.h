@@ -92,8 +92,10 @@ class GP_AUV : public CMOOSApp
    void publishNextWaypointLocations();
 
    // helper methods for path planning using Dynamic Programming
-   const GraphNode* maxPath(const GraphNode* loc, std::vector<const GraphNode *>& toPublish, int steps);
-   const GraphNode* max(const GraphNode* a, const GraphNode* b, const GraphNode* c);
+   std::vector<const GraphNode *> maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes, std::vector<const GraphNode *>& toPublish, int steps);
+   std::vector<const GraphNode *> max(std::vector<const GraphNode *> a, std::vector<const GraphNode *> b, std::vector<const GraphNode *> c);
+   double pathSum(std::vector<const GraphNode *> nodes);
+   const GraphNode* checkVisited(const GraphNode* node);
 
    // helper methods for path planning using GRG algorithm
    size_t getX(size_t id_pt);
