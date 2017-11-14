@@ -21,14 +21,11 @@ int main() {
     std::vector<int> path;
     nodes = maxPath(grid[0][0], nodes, path, 0);
 
-
     for(auto i : path)
     {
         std::cout << i << " ";
     }
     std::cout << std::endl;
-
-
 
     return 0;
 }

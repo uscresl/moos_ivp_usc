@@ -1051,12 +1051,17 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
     // publish next waypoints
     // make a string from the single lon/lat locations
     std::ostringstream output_stream;
-    for (int i = 0; i < nextWaypoints.size(); i++)
+    for (int i = 1; i < nextWaypoints.size(); i++)
     {
       Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
       output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
       if ( i < (nextWaypoints.size() - 1) )
         output_stream << ":";
+      int current_index = getIndexForMap(nodeLoc(0), nodeLoc(1));
+      if(current_index >= 0 && needToUpdateMaps((size_t) current_index))
+      {
+        updateVisitedSet(nodeLoc(0), nodeLoc(1), current_index);
+      }
     }
     //Eigen::Vector2d nodeLoc = nextWaypoints[0]->get_location();
 
@@ -1076,25 +1081,26 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 //            publish waypoints as they are selected
 std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes, std::vector<const GraphNode *>& toPublish, int steps)
 {
-  // need some sort of base case
-  // base case: if 5 steps in, return loc and construct the path backwards
-//    std::cout << GetAppName() << " :: " << "entered maxpath" << std::endl;
-  if ( loc == nullptr )
+  int repeat = std::count(nodes.begin(), nodes.end(), loc);
+//  int current_index = getIndexForMap(loc->get_location()(0), loc->get_location()(1));
+//  auto itr = m_sample_points_visited.find(current_index);
+  if(repeat > 0)
+  {
+    return std::vector<const GraphNode *>();
+  }
+//  else if (itr != m_sample_points_visited.end())
+//  {
+//    return std::vector<const GraphNode*>();
+//  }
+  else if ( loc == nullptr )
   {
     return std::vector<const GraphNode *>();
   }
   else if ( steps == 6 )
   {
 //        return loc->get_value();
-    std::cout << GetAppName() << " :: " << "steps = 5" << std::endl;
     //set maxpath vector
     size_t sumNodes = pathSum(nodes), sumToPublish = pathSum(toPublish);
-//    std::for_each(nodes.begin(), nodes.end(), [&sumNodes](const GraphNode* &i) {
-//        sumNodes += i->get_value();
-//    });
-//    std::for_each(toPublish.begin(), toPublish.end(), [&sumToPublish](const GraphNode* &i) {
-//        sumToPublish += i->get_value();
-//    });
     if(sumNodes > sumToPublish)
     {
       toPublish = nodes;
