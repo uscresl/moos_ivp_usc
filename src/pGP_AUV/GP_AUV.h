@@ -103,11 +103,6 @@ class GP_AUV : public CMOOSApp
    double manhattanDistance(size_t start_node_index, size_t end_node_index);
    double informativeValue(std::vector< size_t > cur_path);
 
-   // dynamic programming method
-   /*void dynamicProgrammingWptSelection(Eigen::Vector2d & best_location);*/
-   /*int calcMaxME(std::vector<double> post_entropy_values, std::map<int, GraphNode> sampling_locations, int index);*/
-   /*int findIndexOfNode(const GraphNode * node);*/
-
   // timed saving of GP  /////////////////////////////////////////////////////
    void makeAndStorePredictions();
 

@@ -995,37 +995,6 @@ size_t GP_AUV::getX(size_t id_pt)
   return id_pt / (m_lanes_y + 1);
 }
 
-/*
-// Procedure: dynamicProgrammingWptSelection()
-//            check over all predictions to find best (dynamic programming method)
-//
-void GP_AUV::dynamicProgrammingWptSelection(Eigen::Vector2d & best_location) {
-  // needs:
-  // 1. how to calculate upper and lower bounds
-  // 2. how to determine user-defined value a
-
-  // continue algorithm if difference between upper and lower bounds is greater than user-specified bounds
-  double upper_bounds;
-  double lower_bounds;
-  double user_specified_bounds;
-  std::vector<double> posterior_entropy_values;
-
-  if (upper_bounds - lower_bounds > user_specified_bounds)
-  {
-    // create vector of posterior entropy values to use for dynamic programming
-    //TODO use posterior entropy values from map, do not calculate again
-  }
-
-  // find best possible path and the neighbor that leads to it
-  //calcMaxME(posterior_entropy_values, sampling_locations, ); // figure out index to pass in
-
-  // backtrack and update upper and lower bounds
-  upper_bounds = 0;// max entropy calculation
-  lower_bounds = 0;// min entropy calculation
-}
-*/
-
-
 // ---------------------------------------------------------
 // Procedure: dynamicWptSelection()
 //            Go through sample locations map of graph nodes
@@ -1034,44 +1003,62 @@ void GP_AUV::dynamicProgrammingWptSelection(Eigen::Vector2d & best_location) {
 void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 {
   // is this the point we want to start calculating from?
-//  std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
+  std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
+
+  // get index for current location
   int current_node_index = getIndexForMap(m_lon, m_lat);
 //  std::cout << GetAppName() << " :: " << "current index: " << current_node_index << std::endl;
-  auto itr = m_sample_points_visited.find(current_node_index); //is it automatically moving points to the visited section
-  if ( itr != m_sample_points_visited.end() )
+
+  // retrieve GraphNode
+  // note that we cannot be 100% sure whether this is in the visited or unvisited set..
+  // It should be in visited, but if there is a backlog of adding data somehow,
+  // it may be in the unvisited set.  So let's check both..
+  // we also want to always do path planning when this method is called, whether
+  // the current node is visited or not
+  std::unordered_map< size_t, GraphNode* >::iterator current_node_itr;
+  current_node_itr = m_sample_points_visited.find(current_node_index);
+  if ( current_node_itr == m_sample_points_visited.end() )
   {
-    std::vector<const GraphNode *> nextWaypoints, tempPath;
+    current_node_itr = m_sample_points_unvisited.find(current_node_index);
+    if ( current_node_itr == m_sample_points_unvisited.end() )
+      std::cout << GetAppName() << " :: ERROR: node not found!" << std::endl;
+      // this should be impossible..
+  }
+//    std::cout << GetAppName() << " :: " << "current node itr index: " << current_node_itr->first << std::endl;
 
-    // figure out how to get graph node from unvisited map
-    int steps = 0;
-//    std::cout << GetAppName() << " :: " << "itr index: " << itr->first << std::endl;
-    tempPath = maxPath(itr->second, tempPath, nextWaypoints, steps);
-//    std::cout << GetAppName() << " :: " << (val->get_location())(0) << "," << (val->get_location())(1) << std::endl;
+  // initialize params for recursion
+  std::vector<const GraphNode *> nextWaypoints, tempPath;
+  int steps = 0;
 
-    // publish next waypoints
-    // make a string from the single lon/lat locations
-    std::ostringstream output_stream;
-    for (int i = 1; i < nextWaypoints.size(); i++)
+  // call recursion to find max value path, max length = 6 //TODO make parameter
+  tempPath = maxPath(current_node_itr->second, tempPath, nextWaypoints, steps);
+
+  // publish next waypoints
+  // make a string from the single lon/lat locations
+  std::ostringstream output_stream;
+  for (int i = 1; i < nextWaypoints.size(); i++)
+  {
+    Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
+    output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+    if ( i < (nextWaypoints.size() - 1) )
+      output_stream << ":";
+
+    // pre-emptively add the new waypoints to the visited set
+    // note; this seems pointless? we do not consider this in maxPath..
+    //       and I just changed the part above here to check both maps
+    // not sure we need to do this, let's think about & discuss what we are
+    // trying to do and how best to achieve that
+/*
+    int current_index = getIndexForMap(nodeLoc(0), nodeLoc(1));
+    if(current_index >= 0 && needToUpdateMaps((size_t) current_index))
     {
-      Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
-      output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
-      if ( i < (nextWaypoints.size() - 1) )
-        output_stream << ":";
-      int current_index = getIndexForMap(nodeLoc(0), nodeLoc(1));
-      if(current_index >= 0 && needToUpdateMaps((size_t) current_index))
-      {
-        updateVisitedSet(nodeLoc(0), nodeLoc(1), current_index);
-      }
+      updateVisitedSet(nodeLoc(0), nodeLoc(1), current_index);
     }
-    //Eigen::Vector2d nodeLoc = nextWaypoints[0]->get_location();
+*/
+  }
 
-    std::cout << GetAppName() << " :: next waypoints: " << output_stream.str() << std::endl;
-    next_waypoint = output_stream.str();
-  }
-  else
-  {
-    std::cout << GetAppName() << " :: unvisited node not found" << std::endl;
-  }
+  std::cout << GetAppName() << " :: next waypoints: " << output_stream.str() << std::endl;
+  next_waypoint = output_stream.str();
 
 }
 
@@ -1081,25 +1068,19 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 //            publish waypoints as they are selected
 std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes, std::vector<const GraphNode *>& toPublish, int steps)
 {
+  // do not visit same location within single path
   int repeat = std::count(nodes.begin(), nodes.end(), loc);
-//  int current_index = getIndexForMap(loc->get_location()(0), loc->get_location()(1));
-//  auto itr = m_sample_points_visited.find(current_index);
   if(repeat > 0)
   {
     return std::vector<const GraphNode *>();
   }
-//  else if (itr != m_sample_points_visited.end())
-//  {
-//    return std::vector<const GraphNode*>();
-//  }
   else if ( loc == nullptr )
   {
     return std::vector<const GraphNode *>();
   }
   else if ( steps == 6 )
   {
-//        return loc->get_value();
-    //set maxpath vector
+    // set toPublish vector to the found path
     size_t sumNodes = pathSum(nodes), sumToPublish = pathSum(toPublish);
     if(sumNodes > sumToPublish)
     {
@@ -1107,9 +1088,7 @@ std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector
     }
     return nodes;
   }
-
   else {
-
     nodes.push_back(loc);
 
     return max(maxPath(loc->get_left_neighbour(), nodes, toPublish, steps+1),
@@ -1117,128 +1096,7 @@ std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector
                maxPath(loc->get_front_neighbour(), nodes, toPublish, steps+1)
     );
   }
-
 }
-
-/*
-//---------------------------------------------------------
-// Procedure: calcMaxME
-//            dynamic programming method to calculate max entropy
-//
-int GP_AUV::calcMaxME(std::vector<double> post_entropy_values, std::map<int, GraphNode> sampling_locations, int index) {
-  if (index == 0) {
-    return post_entropy_values[index];
-  }
-  else {
-    return -1;
-    //TODO std::max can only take 2 arguments
-//    return post_entropy_values[index]
-//          + std::max(calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_left_neighbour())),
-//                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_right_neighbour())),
-//                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_front_neighbour())) );
-
-  }
-}
-*/
-/*
-//---------------------------------------------------------
-// Procedure: findIndexOfNode()
-//
-//
-int GP_AUV::findIndexOfNode(const GraphNode * node) {
-  std::map<int, GraphNode>::iterator it;
-//  for (it = sampling_locations.begin(); it != sampling_locations.end(); ++it) {
-    //TODO implement operator== for graph nodes?
-//    if (it->second == *node) {
-//      return it->first;
-//    }
-//  }
-
-}
-*/
-
-/*
-// this function should be replaced by the new calculate maximum entropy function
-
-//---------------------------------------------------------
-// Procedure: calcME
-//            for each unvisited neighbor
-//            calculate the max ME for a path
-//            starting at that neighbor
-//            return the neighbor that would produce path with max ME
-//
-// void GP_AUV::calcME() {
-//   if ( m_verbose )
-//     std::cout << GetAppName() << " :: max entropy start" << std::endl;
-//   m_unvisited_pred_metric.clear();
-//
-//   std::clock_t begin = std::clock();
-//   if ( m_debug )
-//     std::cout << GetAppName() << " :: try for lock gp" << std::endl;
-//   // lock for access to m_gp
-//   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-//   // use unique_lock here, such that we can release mutex after m_gp operation
-//   while ( !gp_lock.try_lock() ) {}
-//   if ( m_debug )
-//     std::cout << GetAppName() << " :: make copy GP" << std::endl;
-//   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
-//   // release lock
-//   gp_lock.unlock();
-//
-//   if ( m_debug )
-//     std::cout << GetAppName() << " :: try for lock map" << std::endl;
-//   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-//   while ( !map_lock.try_lock() ){}
-//   // make copy of map to use instead of map,
-//   // such that we do not have to lock it for long
-//   std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > unvisited_map_copy;
-//   // calculate for all, because we need it for density voronoi calc for other vehicles
-//   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
-//   map_lock.unlock();
-//
-//   if ( m_debug )
-//     std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
-//
-//   // create vector of posterior entropy values to use for dynamic programming
-//   std::vector<double> posterior_entropy_values;
-//
-//   // for each unvisited location
-//   for ( auto y_itr : unvisited_map_copy )
-//   {
-//     // get unvisited location
-//     Eigen::Vector2d y = y_itr.second;
-//     double y_loc[2] = {y(0), y(1)};
-//
-//     // calculate its posterior entropy
-//     double pred_mean;
-//     double pred_cov;
-//     gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
-//
-//     // normal distribution
-//     //  1/2 ln ( 2*pi*e*sigma^2 )
-//     double post_entropy;
-//     if ( !m_use_log_gp )
-//       post_entropy = log( 2 * M_PI * exp(1) * pred_cov);
-//     else
-//     {
-//       // lognormal distribution
-//       double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
-//       post_entropy = var_part + pred_mean;
-//     }
-//
-//     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
-//     posterior_entropy_values.push_back(post_entropy);
-//   }
-//
-//   std::clock_t end = std::clock();
-//   if ( m_verbose )
-//     std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-//
-//   // copy of GP and unvisited_map get destroyed when this function exits
-//   delete gp_copy;
-//   return 0;
-// }
-*/
 
 //---------------------------------------------------------
 // Procedure: getY
