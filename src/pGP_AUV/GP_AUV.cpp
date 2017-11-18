@@ -89,6 +89,7 @@ GP_AUV::GP_AUV() :
         m_area_buffer(5.0),
         m_bhv_state(""),
         m_recursive_greedy_budget(5),
+        m_dynamic_programming_length(10),
         m_total_path_selection_time(0),
         m_total_paths_selected(0)
 {
@@ -438,6 +439,10 @@ bool GP_AUV::OnStartUp()
     else if ( param == "recursive_greedy_budget" )
     {
       m_recursive_greedy_budget = (size_t)atoi(value.c_str());
+    }
+    else if ( param == "dynamic_programming_length")
+    {
+        m_dynamic_programming_length = (size_t)atoi(value.c_str());
     }
     else
       handled = false;
@@ -1078,7 +1083,7 @@ std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector
   {
     return std::vector<const GraphNode *>();
   }
-  else if ( steps == 6 )
+  else if ( steps == m_dynamic_programming_length )
   {
     // set toPublish vector to the found path
     size_t sumNodes = pathSum(nodes), sumToPublish = pathSum(toPublish);

@@ -145,6 +145,7 @@ ProcessConfig = pGP_AUV
   // options: greedy, recursive_greedy
   path_planning_method = dynamic_programming
   recursive_greedy_budget = 4
+  m_dynamic_programming_length = 10
 }
 
 //--------------------------------------------------

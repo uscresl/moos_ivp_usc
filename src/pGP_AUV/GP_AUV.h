@@ -203,7 +203,7 @@ class GP_AUV : public CMOOSApp
    std::vector< GraphNode > m_sample_graph_nodes;
 
    size_t m_recursive_greedy_budget;
-
+   size_t m_dynamic_programming_length;
 
   // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess * m_gp;
