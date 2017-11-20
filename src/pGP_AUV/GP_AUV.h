@@ -13,6 +13,7 @@
 
 // lib GP
 #include "gp.h"
+
 // use unordered map rather than map, improve efficiency
 #include <unordered_map>
 // use unordered set for fast retrieval of keys in list
@@ -31,6 +32,9 @@
 #include <Eigen/StdVector>
 
 #include "GraphNode.h"
+
+// include Eigen for OS X
+#include <Eigen/Dense>
 
 class GP_AUV : public CMOOSApp
 {
@@ -76,23 +80,28 @@ class GP_AUV : public CMOOSApp
    // maximum entropy calculations
    size_t calcMECriterion();
    void getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double & lgp_mean, double & lgp_cov);
-   // path planning & passing on to behavior
+
+   // path planning - global greedy wpt selection
    void greedyWptSelection(std::string & next_waypoint);
+   // path planning using generalized recursive greedy algorithm and passing on to behavior
+   std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, std::set<size_t> ground_set, size_t budget);
+   void recursiveGreedyWptSelection(std::string & next_waypoint);
+   // dynamic programming
+   void dynamicWptSelection(std::string & next_waypoint);
+   // passing on to behavior
    void publishNextWaypointLocations();
+
+   // helper methods for path planning using Dynamic Programming
+   std::vector<const GraphNode *> maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes, std::vector<const GraphNode *>& toPublish, int steps);
+   std::vector<const GraphNode *> max(std::vector<const GraphNode *> a, std::vector<const GraphNode *> b, std::vector<const GraphNode *> c);
+   double pathSum(std::vector<const GraphNode *> nodes);
+   const GraphNode* checkVisited(const GraphNode* node);
 
    // helper methods for path planning using GRG algorithm
    size_t getX(size_t id_pt);
    size_t getY(size_t id_pt);
    double manhattanDistance(size_t start_node_index, size_t end_node_index);
    double informativeValue(std::vector< size_t > cur_path);
-   // path planning using generalized recursive greedy algorithm and passing on to behavior
-   std::vector< size_t > generalizedRecursiveGreedy(size_t start_node_index, size_t end_node_index, std::set<size_t> ground_set, size_t budget);
-   void recursiveGreedyWptSelection(std::string & next_waypoint);
-
-   // dynamic programming method
-   void dynamicProgrammingWptSelection(Eigen::Vector2d & best_location);
-   int calcMaxME(std::vector<double> post_entropy_values, std::map<int, GraphNode> sampling_locations, int index);
-   int findIndexOfNode(const GraphNode * node);
 
   // timed saving of GP  /////////////////////////////////////////////////////
    void makeAndStorePredictions();
@@ -194,7 +203,7 @@ class GP_AUV : public CMOOSApp
    std::vector< GraphNode > m_sample_graph_nodes;
 
    size_t m_recursive_greedy_budget;
-
+   size_t m_dynamic_programming_length;
 
   // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess * m_gp;

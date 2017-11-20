@@ -41,56 +41,57 @@
 // Constructor
 //
 GP_AUV::GP_AUV() :
-  m_verbose(true),
-  m_input_var_data(""),
-  m_input_var_sample_points(""),
-  m_input_var_sample_points_specs(""),
-  m_input_var_adaptive_trigger(""),
-  m_output_var_pred(""),
-  m_output_filename_prefix(""),
-  m_prediction_interval(-1),
-  m_path_planning_method("greedy"),
-  m_debug(true),
-  m_veh_name(""),
-  m_use_log_gp(true),
-  m_lat(0),
-  m_lon(0),
-  m_dep(0),
-  m_surf_cnt(0),
-  m_on_surface(false),
-  m_adaptive(false),
-  m_last_published(std::numeric_limits<double>::max()),
-  m_last_pred_save(std::numeric_limits<double>::max()),
-  m_min_lon(0.0),
-  m_min_lat(0.0),
-  m_max_lon(0.0),
-  m_max_lat(0.0),
-  m_pts_grid_width(0.0),
-  m_pts_grid_height(0.0),
-  m_pts_grid_spacing(0.0),
-  m_lon_spacing(0.0),
-  m_lat_spacing(0.0),
-  m_y_resolution(0.0),
-  m_lon_deg_to_m(0.0),
-  m_lat_deg_to_m(0.0),
-  m_start_time(0.0),
-  m_finding_nxt(false),
-  m_mission_state(STATE_IDLE),
-  m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
-  m_hp_optim_running(false),
-  m_final_hp_optim(false),
-  m_hp_optim_iterations(50),
-  m_hp_optim_cg(false),
-  m_last_hp_optim_done(0),
-  m_data_mail_counter(1),
-  m_finished(false),
-  m_downsample_factor(4),
-  m_first_surface(true),
-  m_area_buffer(5.0),
-  m_bhv_state(""),
-  m_recursive_greedy_budget(5),
-  m_total_path_selection_time(0),
-  m_total_paths_selected(0)
+        m_verbose(true),
+        m_input_var_data(""),
+        m_input_var_sample_points(""),
+        m_input_var_sample_points_specs(""),
+        m_input_var_adaptive_trigger(""),
+        m_output_var_pred(""),
+        m_output_filename_prefix(""),
+        m_prediction_interval(-1),
+        m_path_planning_method("greedy"),
+        m_debug(false),
+        m_veh_name(""),
+        m_use_log_gp(true),
+        m_lat(0),
+        m_lon(0),
+        m_dep(0),
+        m_surf_cnt(0),
+        m_on_surface(false),
+        m_adaptive(false),
+        m_last_published(std::numeric_limits<double>::max()),
+        m_last_pred_save(std::numeric_limits<double>::max()),
+        m_min_lon(0.0),
+        m_min_lat(0.0),
+        m_max_lon(0.0),
+        m_max_lat(0.0),
+        m_pts_grid_width(0.0),
+        m_pts_grid_height(0.0),
+        m_pts_grid_spacing(0.0),
+        m_lon_spacing(0.0),
+        m_lat_spacing(0.0),
+        m_y_resolution(0.0),
+        m_lon_deg_to_m(0.0),
+        m_lat_deg_to_m(0.0),
+        m_start_time(0.0),
+        m_finding_nxt(false),
+        m_mission_state(STATE_IDLE),
+        m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
+        m_hp_optim_running(false),
+        m_final_hp_optim(false),
+        m_hp_optim_iterations(50),
+        m_hp_optim_cg(false),
+        m_last_hp_optim_done(0),
+        m_data_mail_counter(1),
+        m_finished(false),
+        m_downsample_factor(4),
+        m_first_surface(true),
+        m_area_buffer(5.0),
+        m_bhv_state(""),
+        m_recursive_greedy_budget(5),
+        m_dynamic_programming_length(10),
+        m_total_path_selection_time(0),
+        m_total_paths_selected(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -109,15 +110,13 @@ GP_AUV::GP_AUV() :
   Eigen::VectorXd params(m_gp->covf().get_param_dim());
   // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
   // note, these will be optimized using cg or rprop
-  // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
-  //               0.002^2=0.000004, ln() = -12.4292
+  // length scale: avg lat/lon_deg_to_m is 100000, 10m range = 0.0001
+  //               50m = 0.0005, ln(0.0005) = -7.6
   // signal: from 0 to ca 30/40, log scale <0 to 1.5/1.6
-  //         stdev 1.5, ln() = 0.4055, ln() = -0.9
+  //         stdev 1.5, ln() = 0.4055
   // noise: let's set 10x smaller than signal
-  //        stdev 0.15, ln() = -1.8971, ln() = 0.64+3.141592654i
-  params << -12.4292, 0.4055, -1.8971;
-  //params << -12.4292, -0.9, 0.64;
-  //params << -8.927865292, 0.02335186099, -0.9098776951;
+  //        stdev 0.15, ln() = -1.8971
+  params << -7.6, 0.5, -1.8971;
   m_gp->covf().set_loghyper(params);
 
   // use a unique seed to initialize srand,
@@ -181,7 +180,7 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
       m_data_mail_counter++;
 
       if ( (m_data_mail_counter % 2 == 0) &&
-            m_mission_state == STATE_SAMPLE )
+           m_mission_state == STATE_SAMPLE )
         handleMailData(dval);
     }
     else if ( key == "NAV_LAT" )
@@ -441,6 +440,10 @@ bool GP_AUV::OnStartUp()
     {
       m_recursive_greedy_budget = (size_t)atoi(value.c_str());
     }
+    else if ( param == "dynamic_programming_length")
+    {
+        m_dynamic_programming_length = (size_t)atoi(value.c_str());
+    }
     else
       handled = false;
 
@@ -462,8 +465,8 @@ bool GP_AUV::OnStartUp()
   // store vehicle name
   if ( !m_MissionReader.GetValue("Community",m_veh_name) )
   {
-     m_veh_name = "error";
-     std::cout << GetAppName() << " :: Unable to retrieve vehicle name! What is 'Community' set to?" << std::endl;
+    m_veh_name = "error";
+    std::cout << GetAppName() << " :: Unable to retrieve vehicle name! What is 'Community' set to?" << std::endl;
   }
 
   registerVariables();
@@ -693,7 +696,7 @@ void GP_AUV::handleMailSamplePointsSpecs(std::string input_string)
   }
   if ( m_verbose )
     std::cout << GetAppName() << " :: width, height, spacing: " << m_pts_grid_width << ", " <<
-                 m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
+              m_pts_grid_height << ", " << m_pts_grid_spacing << std::endl;
 }
 
 //---------------------------------------------------------
@@ -770,13 +773,13 @@ void GP_AUV::addPatternToGP(double veh_lon, double veh_lat, double value)
 //
 bool GP_AUV::needToUpdateMaps(size_t grid_index)
 {
-    // add mutex for changing of global maps
-    std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-    while ( !map_lock.try_lock() ){}
-    std::unordered_map<size_t, GraphNode*>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
-    map_lock.unlock();
+  // add mutex for changing of global maps
+  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+  while ( !map_lock.try_lock() ){}
+  std::unordered_map<size_t, GraphNode*>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
+  map_lock.unlock();
 
-    return ( curr_loc_itr != m_sample_points_unvisited.end() );
+  return ( curr_loc_itr != m_sample_points_unvisited.end() );
 }
 
 //---------------------------------------------------------
@@ -997,153 +1000,108 @@ size_t GP_AUV::getX(size_t id_pt)
   return id_pt / (m_lanes_y + 1);
 }
 
-// Procedure: dynamicProgrammingWptSelection()
-//            check over all predictions to find best (dynamic programming method)
-//
-void GP_AUV::dynamicProgrammingWptSelection(Eigen::Vector2d & best_location) {
-  // needs:
-  // 1. how to calculate upper and lower bounds
-  // 2. how to determine user-defined value a
+// ---------------------------------------------------------
+// Procedure: dynamicWptSelection()
+//            Go through sample locations map of graph nodes
+//            Calculate value of path for a certain length
+//            Choose the path of the highest value
+void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
+{
+  // is this the point we want to start calculating from?
+  std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
 
-  // continue algorithm if difference between upper and lower bounds is greater than user-specified bounds
-  double upper_bounds;
-  double lower_bounds;
-  double user_specified_bounds;
-  std::vector<double> posterior_entropy_values;
+  // get index for current location
+  int current_node_index = getIndexForMap(m_lon, m_lat);
+//  std::cout << GetAppName() << " :: " << "current index: " << current_node_index << std::endl;
 
-  if (upper_bounds - lower_bounds > user_specified_bounds) {
-    // create vector of posterior entropy values to use for dynamic programming
-    //TODO use posterior entropy values from map, do not calculate again
+  // retrieve GraphNode
+  // note that we cannot be 100% sure whether this is in the visited or unvisited set..
+  // It should be in visited, but if there is a backlog of adding data somehow,
+  // it may be in the unvisited set.  So let's check both..
+  // we also want to always do path planning when this method is called, whether
+  // the current node is visited or not
+  std::unordered_map< size_t, GraphNode* >::iterator current_node_itr;
+  current_node_itr = m_sample_points_visited.find(current_node_index);
+  if ( current_node_itr == m_sample_points_visited.end() )
+  {
+    current_node_itr = m_sample_points_unvisited.find(current_node_index);
+    if ( current_node_itr == m_sample_points_unvisited.end() )
+      std::cout << GetAppName() << " :: ERROR: node not found!" << std::endl;
+      // this should be impossible..
+  }
+//    std::cout << GetAppName() << " :: " << "current node itr index: " << current_node_itr->first << std::endl;
+
+  // initialize params for recursion
+  std::vector<const GraphNode *> nextWaypoints, tempPath;
+  int steps = 0;
+
+  // call recursion to find max value path, max length = 6 //TODO make parameter
+  tempPath = maxPath(current_node_itr->second, tempPath, nextWaypoints, steps);
+
+  // publish next waypoints
+  // make a string from the single lon/lat locations
+  std::ostringstream output_stream;
+  for (int i = 1; i < nextWaypoints.size(); i++)
+  {
+    Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
+    output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+    if ( i < (nextWaypoints.size() - 1) )
+      output_stream << ":";
+
+    // pre-emptively add the new waypoints to the visited set
+    // note; this seems pointless? we do not consider this in maxPath..
+    //       and I just changed the part above here to check both maps
+    // not sure we need to do this, let's think about & discuss what we are
+    // trying to do and how best to achieve that
+/*
+    int current_index = getIndexForMap(nodeLoc(0), nodeLoc(1));
+    if(current_index >= 0 && needToUpdateMaps((size_t) current_index))
+    {
+      updateVisitedSet(nodeLoc(0), nodeLoc(1), current_index);
+    }
+*/
   }
 
-  // find best possible path and the neighbor that leads to it
-  //calcMaxME(posterior_entropy_values, sampling_locations, ); // figure out index to pass in
-
-  // backtrack and update upper and lower bounds
-  upper_bounds = 0;// max entropy calculation
-  lower_bounds = 0;// min entropy calculation
+  std::cout << GetAppName() << " :: next waypoints: " << output_stream.str() << std::endl;
+  next_waypoint = output_stream.str();
 
 }
 
-/* NOTE: When I did dynamic programming questions in CSCI270, there was always a bounds,
-* so I knew when to stop running the algorithm - not sure what to do in this case when there isn't necessarily
-* a desired end location. May need suggestions for how to approach this.
-*/
-
 //---------------------------------------------------------
-// Procedure: calcMaxME
-//            dynamic programming method to calculate max entropy
-//
-int GP_AUV::calcMaxME(std::vector<double> post_entropy_values, std::map<int, GraphNode> sampling_locations, int index) {
-  if (index == 0) {
-    return post_entropy_values[index];
+// Procedure: maxPath()
+//            helper function to help find the largest sum path
+//            publish waypoints as they are selected
+std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes, std::vector<const GraphNode *>& toPublish, int steps)
+{
+  // do not visit same location within single path
+  int repeat = std::count(nodes.begin(), nodes.end(), loc);
+  if(repeat > 0)
+  {
+    return std::vector<const GraphNode *>();
+  }
+  else if ( loc == nullptr )
+  {
+    return std::vector<const GraphNode *>();
+  }
+  else if ( steps == m_dynamic_programming_length )
+  {
+    // set toPublish vector to the found path
+    size_t sumNodes = pathSum(nodes), sumToPublish = pathSum(toPublish);
+    if(sumNodes > sumToPublish)
+    {
+      toPublish = nodes;
+    }
+    return nodes;
   }
   else {
-    return -1;
-    //TODO std::max can only take 2 arguments
-//    return post_entropy_values[index]
-//          + std::max(calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_left_neighbour())),
-//                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_right_neighbour())),
-//                calcMaxME(post_entropy_values, sampling_locations, findIndexOfNode(sampling_locations[index].get_front_neighbour())) );
+    nodes.push_back(loc);
 
+    return max(maxPath(loc->get_left_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_right_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_front_neighbour(), nodes, toPublish, steps+1)
+    );
   }
 }
-
-//---------------------------------------------------------
-// Procedure: findIndexOfNode()
-//
-//
-int GP_AUV::findIndexOfNode(const GraphNode * node) {
-  std::map<int, GraphNode>::iterator it;
-//  for (it = sampling_locations.begin(); it != sampling_locations.end(); ++it) {
-    //TODO implement operator== for graph nodes?
-//    if (it->second == *node) {
-//      return it->first;
-//    }
-//  }
-
-}
-
-// this function should be replaced by the new calculate maximum entropy function
-
-//---------------------------------------------------------
-// Procedure: calcME
-//            for each unvisited neighbor
-//            calculate the max ME for a path
-//            starting at that neighbor
-//            return the neighbor that would produce path with max ME
-//
-// void GP_AUV::calcME() {
-//   if ( m_verbose )
-//     std::cout << GetAppName() << " :: max entropy start" << std::endl;
-//   m_unvisited_pred_metric.clear();
-//
-//   std::clock_t begin = std::clock();
-//   if ( m_debug )
-//     std::cout << GetAppName() << " :: try for lock gp" << std::endl;
-//   // lock for access to m_gp
-//   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-//   // use unique_lock here, such that we can release mutex after m_gp operation
-//   while ( !gp_lock.try_lock() ) {}
-//   if ( m_debug )
-//     std::cout << GetAppName() << " :: make copy GP" << std::endl;
-//   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
-//   // release lock
-//   gp_lock.unlock();
-//
-//   if ( m_debug )
-//     std::cout << GetAppName() << " :: try for lock map" << std::endl;
-//   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-//   while ( !map_lock.try_lock() ){}
-//   // make copy of map to use instead of map,
-//   // such that we do not have to lock it for long
-//   std::unordered_map<size_t, Eigen::Vector2d, std::hash<size_t>, std::equal_to<size_t>, Eigen::aligned_allocator<std::pair<size_t, Eigen::Vector2d> > > unvisited_map_copy;
-//   // calculate for all, because we need it for density voronoi calc for other vehicles
-//   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
-//   map_lock.unlock();
-//
-//   if ( m_debug )
-//     std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
-//
-//   // create vector of posterior entropy values to use for dynamic programming
-//   std::vector<double> posterior_entropy_values;
-//
-//   // for each unvisited location
-//   for ( auto y_itr : unvisited_map_copy )
-//   {
-//     // get unvisited location
-//     Eigen::Vector2d y = y_itr.second;
-//     double y_loc[2] = {y(0), y(1)};
-//
-//     // calculate its posterior entropy
-//     double pred_mean;
-//     double pred_cov;
-//     gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
-//
-//     // normal distribution
-//     //  1/2 ln ( 2*pi*e*sigma^2 )
-//     double post_entropy;
-//     if ( !m_use_log_gp )
-//       post_entropy = log( 2 * M_PI * exp(1) * pred_cov);
-//     else
-//     {
-//       // lognormal distribution
-//       double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
-//       post_entropy = var_part + pred_mean;
-//     }
-//
-//     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
-//     posterior_entropy_values.push_back(post_entropy);
-//   }
-//
-//   std::clock_t end = std::clock();
-//   if ( m_verbose )
-//     std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-//
-//   // copy of GP and unvisited_map get destroyed when this function exits
-//   delete gp_copy;
-//   return 0;
-// }
 
 //---------------------------------------------------------
 // Procedure: getY
@@ -1235,7 +1193,7 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
               std::set< size_t > new_ground_set(ground_set.begin(), ground_set.end());
               new_ground_set.insert(first_half_path.begin(), first_half_path.end());
               std::vector< size_t > second_half_path = generalizedRecursiveGreedy(middle_node_index, end_node_index, new_ground_set,
-                budget - first_half_path.size() + 1);
+                                                                                  budget - first_half_path.size() + 1);
               if ( !second_half_path.empty() )
               {
                 // concatenate two paths to get path from start to end node
@@ -1266,7 +1224,7 @@ std::vector< size_t > GP_AUV::generalizedRecursiveGreedy(size_t start_node_index
 void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
 {
   std::clock_t begin = std::clock();
-  if(m_debug)
+  if ( m_debug )
     std::cout << GetAppName() << " :: Recursive Greedy Waypoint Selection" << std::endl;
   // get next position, greedy pick from the paths returned by GRG algorithm
   double best_so_far = -1 * std::numeric_limits< double >::max();
@@ -1294,7 +1252,7 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
         {
           double cur_path_value = informativeValue(cur_path);
           // change best path if current calculated path is more informative
-          if(m_debug)
+          if ( m_debug )
             std::cout << GetAppName() << " :: Curr Value: " << cur_path_value << std::endl;
           if ( cur_path_value > best_so_far )
           {
@@ -1359,7 +1317,8 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
   double path_selection_time = double(end-begin)/CLOCKS_PER_SEC;
   m_total_paths_selected++;
   m_total_path_selection_time += path_selection_time;
-  if(m_debug){
+  if ( m_debug )
+  {
     std::cout << GetAppName() << ":: Path selected in " << path_selection_time << std::endl;
     std::cout << GetAppName() << ":: Total paths selected: " << m_total_paths_selected << std::endl;
     std::cout << GetAppName() << ":: Total path selection time: " << m_total_path_selection_time << std::endl;
@@ -1382,7 +1341,7 @@ void GP_AUV::publishNextWaypointLocations()
   }
   else if ( m_path_planning_method == "dynamic_programming" )
   {
-    // call Ying's method
+    dynamicWptSelection(next_wpts);
   }
   else if ( m_path_planning_method == "recursive_greedy" )
   {
@@ -1481,7 +1440,7 @@ size_t GP_AUV::calcMECriterion()
   {
     GraphNode* item = &m_sample_graph_nodes[idx];
     double val = new_values.back();
-    if ( m_debug )
+    if ( m_verbose )
       std::cout << GetAppName() << " :: setting value to: " << val << std::endl;
     item->set_value(val);
     new_values.pop_back();
@@ -1533,30 +1492,30 @@ void GP_AUV::startAndCheckHPOptim()
     // if running, check if done
     if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
     {
-        bool hp_optim_done = m_future_hp_optim.get(); // should be true
-        if ( !hp_optim_done )
-        {
-          std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
-          return;
-        }
-        else
-        {
-          m_last_hp_optim_done = (size_t)std::floor(MOOSTime());
-          if ( m_verbose )
-            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
-
-          std::cout << GetAppName() << " :: tdsResetStateVars via hpoptimdone" << std::endl;
-          tdsResetStateVars();
-
-          // after final HP optim
-          if ( m_final_hp_optim )
-            endMission();
-
-          m_hp_optim_running = false;
-        }
+      bool hp_optim_done = m_future_hp_optim.get(); // should be true
+      if ( !hp_optim_done )
+      {
+        std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+        return;
       }
       else
-        std::cout << GetAppName() << " :: waiting for hp optim" << std::endl;
+      {
+        m_last_hp_optim_done = (size_t)std::floor(MOOSTime());
+        if ( m_verbose )
+          std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
+
+        std::cout << GetAppName() << " :: tdsResetStateVars via hpoptimdone" << std::endl;
+        tdsResetStateVars();
+
+        // after final HP optim
+        if ( m_final_hp_optim )
+          endMission();
+
+        m_hp_optim_running = false;
+      }
+    }
+    else
+      std::cout << GetAppName() << " :: waiting for hp optim" << std::endl;
   }
 
 }
@@ -1966,4 +1925,45 @@ void GP_AUV::publishStates(std::string const calling_method)
     std::cout << GetAppName() << " :: ** " << m_db_uptime << " switch to: " << currentMissionStateString() << " from " << calling_method << " **\n";
 
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
+}
+
+std::vector<const GraphNode*> GP_AUV::max(std::vector<const GraphNode*> a, std::vector<const GraphNode*> b, std::vector<const GraphNode*> c)
+//GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
+{
+  double aSum = pathSum(a), bSum = pathSum(b), cSum = pathSum(c);
+
+  if(aSum >= bSum && aSum >= cSum) {
+    std::cout << GetAppName() << " :: selected a" << std::endl;
+    return a;
+  }
+  else if(bSum >= aSum && bSum >= cSum) {
+    std::cout << GetAppName() << " :: selected b" << std::endl;
+    return b;
+  }
+  else if(cSum >= aSum && cSum >= aSum) {
+    std::cout << GetAppName() << " :: selected c" << std::endl;
+    return c;
+  }
+
+  //prioritize unvisited nodes? but if we get stuck, select a visited node
+}
+
+const GraphNode* GP_AUV::checkVisited(const GraphNode* node)
+{
+  int current_node_index = getIndexForMap(m_lon, m_lat);
+  auto itr = m_sample_points_visited.find(current_node_index);
+  if(itr != m_sample_points_visited.end())
+  {
+    return itr->second;
+  }
+  return nullptr;
+}
+
+double GP_AUV::pathSum(std::vector<const GraphNode *> nodes)
+{
+  double sum = 0.0;
+  std::for_each(nodes.begin(), nodes.end(), [&sum](const GraphNode* &i) {
+      sum += i->get_value();
+  });
+  return sum;
 }

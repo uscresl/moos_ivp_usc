@@ -47,7 +47,7 @@ INCLUDE_DIRECTORIES(${IVP_INCLUDE_DIRS})
 #ADD_BHV(BHV_OpRegionBounce)
 ADD_LIBRARY(BHV_OpRegionBounce SHARED BHV_OpRegionBounce.cpp)
 TARGET_LINK_LIBRARIES(BHV_OpRegionBounce
-  behaviors ivpbuild logic ivpcore bhvutil mbutil geometry)
+  behaviors ivpbuild logic ivpcore bhvutil mbutil helmivp geometry)
 
 #-------------------------------------------------------------
 
@@ -57,5 +57,5 @@ TARGET_LINK_LIBRARIES(BHV_OpRegionBounce
 #ADD_BHV(BHV_OpRegionBounceDepth)
 ADD_LIBRARY(BHV_OpRegionBounceDepth SHARED BHV_OpRegionBounceDepth.cpp)
 TARGET_LINK_LIBRARIES(BHV_OpRegionBounceDepth
-  behaviors ivpbuild logic ivpcore bhvutil mbutil geometry)
+  behaviors ivpbuild logic ivpcore bhvutil mbutil helmivp geometry)
 #-------------------------------------------------------------

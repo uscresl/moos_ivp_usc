@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #-------------------------------------------------------
 #  Part 1: Check for and handle command-line arguments
 #-------------------------------------------------------
@@ -6,7 +6,7 @@
 # parameters default values
 TIME_WARP=1
 JUST_MAKE="false"
-ADAPTIVE="false"
+ADAPTIVE="true"
 AREA="orig"
 GUI="true"
 CG="true"
@@ -16,8 +16,8 @@ for ARGI; do
   if [ "${ARGI}" = "--help" -o "${ARGI}" = "-h" ] ; then
     printf "%s [SWITCHES] [time_warp]   \n" $0
     printf "  Switches:          \n"
-    printf "  --just_make, -j    \n" 
-    printf "  --adaptive, -a     \n"
+    printf "  --just_make, -j    \n"
+    printf "  --lawnmower, -l     \n"
     printf "  --bigger1, -b1     \n"
     printf "  --bigger2, -b2     \n"
     printf "  --nogui, -ng       \n"
@@ -25,12 +25,12 @@ for ARGI; do
     printf "  --pilot_random     \n"
     printf "  --help, -h         \n"
     exit 0;
-  elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then 
+  elif [ "${ARGI//[^0-9]/}" = "$ARGI" -a "$TIME_WARP" = 1 ]; then
     TIME_WARP=$ARGI
   elif [ "${ARGI}" = "--just_build" -o "${ARGI}" = "-j" ] ; then
     JUST_MAKE="true"
-  elif [ "${ARGI}" = "--adaptive" -o "${ARGI}" = "-a" ] ; then
-    ADAPTIVE="true"
+  elif [ "${ARGI}" = "--lawnmower" -o "${ARGI}" = "-l" ] ; then
+    ADAPTIVE="false"
   elif [ "$ARGI" = "--bigger1" -o "${ARGI}" = "-b1" ]; then
     AREA="bigger1"
   elif [ "$ARGI" = "--bigger2" -o "${ARGI}" = "-b2" ]; then
@@ -41,20 +41,20 @@ for ARGI; do
     CG="false"
   elif [ "$ARGI" = "--pilot_random" ]; then
     ADP_START="random"
-  else 
+  else
     printf "Bad Argument: %s \n" $ARGI
     exit 0
   fi
 done
 
 # check if sim data file present
-if [ ! -f 'test.csv' ]; then 
+if [ ! -f 'test.csv' ]; then
   echo 'ERROR: No simulated data file presented. Copying two_depths.csv';
   cp ../../../data/fake_bio/two_depths.csv test.csv
 fi
 
 #-------------------------------------------------------
-#  Part 2: Create the .moos and .bhv files. 
+#  Part 2: Create the .moos and .bhv files.
 #-------------------------------------------------------
 # simulation set-up
 EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
@@ -115,7 +115,9 @@ if [ "${ADAPTIVE}" = "true" ] && [ "${ADP_START}" = "cross" ] ; then
   elif [ ${AREA} = "orig" ]; then
     # 1auv cross
     PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
+    #PILOT_PTS1=500,1000:550,1030:500,1030:550,1000
     CROSS_END1=900,1000 # last wpt
+    #CROSS_END1=550,1000 # last wpt
   fi
 fi
 
@@ -193,14 +195,15 @@ fi
 #-------------------------------------------------------
 printf "Launching shoreside MOOS Community (WARP=%s) \n"  $TIME_WARP
 pAntler targ_shoreside.moos > log_shoreside.log &
+sleep 2
 
 printf "Launching $VNAME1 MOOS Community (WARP=%s) \n" $TIME_WARP
-pAntler targ_$VNAME1.moos > log_$VNAME1.log &
-sleep .25
+pAntler targ_$VNAME1.moos > log_$VNAME1.log
+sleep 2
 
 printf "Done \n"
 
-uMAC targ_shoreside.moos
+#uMAC targ_shoreside.moos
 
 printf "Killing all processes ... \n"
 kill %1 %2 %3

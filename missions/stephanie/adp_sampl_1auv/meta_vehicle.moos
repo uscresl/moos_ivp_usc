@@ -9,11 +9,6 @@ ServerPort = $(VPORT)
 // Community name IS the vehicle name
 Community  = $(VNAME)
 
-Simulator  = true
-
-modem_id_lookup_path = modemidlookup.txt
-modem_id = $(MODEMID)
-
 // warp the simulation?
 #include $(PLUG_DIR)/plug_origin_warp.moos
 
@@ -41,27 +36,17 @@ ProcessConfig = ANTLER
   // generate 'node reports'
   Run = pNodeReporter      @ NewConsole = false
 
-  // pShare to shoreside
   Run = pHostInfo @ NewConsole = false ~ pHostInfo
   Run = uFldNodeBroker @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
+
   Run = pShare @ NewConsole = false
 
-  // add other processes here
-  //uSBSConfig = -geometry,80x20+2000+0,-bg,lightgreen,-fg,black
   Run = uSimBioSensor @ NewConsole = false
-  //,XConfig=uSBSConfig
 
-//  #ifdef USE_GUI true
-//  pGPConfig = -geometry,80x20+2000+400,-bg,lightblue,-fg,black
-//  Run = pGP_AUV @ NewConsole = true,XConfig=pGPConfig
-//  #else
   Run = pGP_AUV @ NewConsole = false
-//  #endif
 
-  //pSPConfig = -geometry,80x20+2000+800,-bg,lightyellow,-fg,black
   Run = pSamplePoints @ NewConsole = false
-  //,XConfig=pSPConfig
 
   Run = pLonLatToWptUpdate @ NewConsole = false
 
@@ -69,7 +54,6 @@ ProcessConfig = ANTLER
   Run = uTimerScript @ NewConsole = false
   Run = pPublishAfterX @ NewConsole = false
   #endif
-
 }
 //------------------------------------------------------------
 
@@ -96,6 +80,7 @@ ProcessConfig = ANTLER
 // add other processes here
 #include $(PLUG_DIR)/plug_uSimBioSensor.moos
 
+
 //--------------------------------------------------
 // pGP_AUV configuration block
 //
@@ -114,7 +99,7 @@ ProcessConfig = pGP_AUV
   input_var_data = SIM_DATA
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
-  input_var_adaptive_trigger = WPT_REACHED
+  input_var_adaptive_trigger = WPT_CYCLE_FINISHED
 
   output_var_predictions = GP_PREDICTIONS
 
@@ -155,11 +140,12 @@ ProcessConfig = pGP_AUV
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 50
-  
+
   // choice of path planning method, and their parameters
   // options: greedy, recursive_greedy
-  path_planning_method = recursive_greedy
+  path_planning_method = dynamic_programming
   recursive_greedy_budget = 4
+  m_dynamic_programming_length = 10
 }
 
 //--------------------------------------------------
@@ -198,7 +184,6 @@ ProcessConfig = pLonLatToWptUpdate
   output_var_wpt_update = ADAPTIVE_WPT_UPDATES
 }
 
-
 #ifdef ADAPTIVE_WPTS true
 //--------------------------------------------------
 // pPublishAfterX configuration block
@@ -226,14 +211,12 @@ ProcessConfig = pPublishAfterX
   // the var/val set to publish
   publish_var = MISSION_TIME
   publish_val = end
-  
+
   // skip first message?
   skip_first = false
 }
 #endif
 
-
-// stop the random waypoints in the static state
 #ifdef ADP_START_PILOT random
 ProcessConfig = uTimerScript
 {
@@ -251,3 +234,4 @@ ProcessConfig = uTimerScript
 
   status_var = UTS_STATUS
 }
+#endif

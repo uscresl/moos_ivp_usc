@@ -71,49 +71,49 @@ Set MODE = ADAPTIVE_STATIC {
 // Behaviors
 //
 
-//---------   Safety behaviors   -------------
-// Run always when running behaviors
+////---------   Safety behaviors   -------------
+//// Run always when running behaviors
+////
+//Behavior = BHV_OpRegionBounce
+//{
+//  // not really used, just some big square, because we want to
+//  // simulate sensing the environment rather than forcing constraints
+//  name = bhv_opregion_bounce
+//  pwt = 200
+//  duration = no-time-limit
+//  condition = MODE==MISSION
 //
-Behavior = BHV_OpRegionBounce
-{
-  // not really used, just some big square, because we want to
-  // simulate sensing the environment rather than forcing constraints
-  name = bhv_opregion_bounce
-  pwt = 200
-  duration = no-time-limit
-  condition = MODE==MISSION
-
-  polygon = $(OPREGION)
-  max_depth = 20 // match with BHV_OpRegionBounceDepth
-  min_altitude = 10
-  max_time = 25200
-
-  trigger_entry_time = 1.0
-  trigger_exit_time = 1.0
-  visual_hints = edge_size=2.0,vertex_size=2.0
-
-  // bounce additions
-  bounce_buffer = 20 // meters, when to start bouncing
-  bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
-  no_zone_factor = .2
-}
-#ifdef VTYPE UUV
-Behavior = BHV_OpRegionBounceDepth
-{
-  name = bhv_opregion_depth_bounce
-  pwt = 200
-  duration = no-time-limit
-  condition = MODE==MISSION
-
-  max_depth = 20  // set to the max depth of the lake?
-  min_altitude = 10
-  // if buffer is not set, it is set to 0, which is in fact inactive
-  // bounce_buffer_depth: size of the buffer for depth bouncing
-  bounce_buffer_depth = 5
-  // no_zone_factor: used for: no_zone = buffer * no_zone_factor
-  no_zone_factor = .2
-}
-#endif
+//  polygon = $(OPREGION)
+//  max_depth = 20 // match with BHV_OpRegionBounceDepth
+//  min_altitude = 10
+//  max_time = 25200
+//
+//  trigger_entry_time = 1.0
+//  trigger_exit_time = 1.0
+//  visual_hints = edge_size=2.0,vertex_size=2.0
+//
+//  // bounce additions
+//  bounce_buffer = 20 // meters, when to start bouncing
+//  bounce_buffer_depth = 5 // meters, match with BHV_OpRegionBounceDepth
+//  no_zone_factor = .2
+//}
+//#ifdef VTYPE UUV
+//Behavior = BHV_OpRegionBounceDepth
+//{
+//  name = bhv_opregion_depth_bounce
+//  pwt = 200
+//  duration = no-time-limit
+//  condition = MODE==MISSION
+//
+//  max_depth = 20  // set to the max depth of the lake?
+//  min_altitude = 10
+//  // if buffer is not set, it is set to 0, which is in fact inactive
+//  // bounce_buffer_depth: size of the buffer for depth bouncing
+//  bounce_buffer_depth = 5
+//  // no_zone_factor: used for: no_zone = buffer * no_zone_factor
+//  no_zone_factor = .2
+//}
+//#endif
 
 //---------   Control behaviors   -------------
 // Separate high level control bhvs for separate parts of mission
