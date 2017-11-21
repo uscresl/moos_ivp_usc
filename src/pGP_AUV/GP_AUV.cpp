@@ -217,7 +217,7 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
       // check when adaptive waypoint reached
       // these are flags set by the adaptive wpt behavior
       if ( std::abs(m_last_published - MOOSTime()) > 1.0 &&
-           (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_IDLE ) )
+           (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_IDLE || m_mission_state == STATE_HPOPTIM) )
       {
         // if we get WPT_CYCLE_FINISHED, it must mean a wpt/cycle was done
         // if we get WPT_INDEX, we should check the index versus total number of waypoints
@@ -1017,6 +1017,7 @@ size_t GP_AUV::getX(size_t id_pt)
 //            Choose the path of the highest value
 void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 {
+    std::clock_t begin = std::clock();
   // is this the point we want to start calculating from?
   std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
 
@@ -1072,6 +1073,10 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 */
   }
   next_waypoint = output_stream.str();
+
+  std::clock_t end = std::clock();
+  double path_selection_time = double(end-begin)/CLOCKS_PER_SEC;
+  std::cout << GetAppName() << " :: Path selected in " << path_selection_time << std::endl;
 }
 
 //---------------------------------------------------------
@@ -1926,15 +1931,12 @@ std::vector<const GraphNode*> GP_AUV::max(std::vector<const GraphNode*> a, std::
   double aSum = pathSum(a), bSum = pathSum(b), cSum = pathSum(c);
 
   if(aSum >= bSum && aSum >= cSum) {
-    std::cout << GetAppName() << " :: selected a" << std::endl;
     return a;
   }
   else if(bSum >= aSum && bSum >= cSum) {
-    std::cout << GetAppName() << " :: selected b" << std::endl;
     return b;
   }
   else if(cSum >= aSum && cSum >= aSum) {
-    std::cout << GetAppName() << " :: selected c" << std::endl;
     return c;
   }
 
