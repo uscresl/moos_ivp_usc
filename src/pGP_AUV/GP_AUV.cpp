@@ -230,8 +230,9 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
             m_wpt_trigger_counter++;
         }
 
+        // wpts are zero indexed, want to get to final - one = horizon - 2
         if ( (m_input_var_adaptive_trigger == "WPT_INDEX" &&
-              (current_wpt == (m_pp_horizon - 1) || m_wpt_trigger_counter == 1)) ||
+              (current_wpt == (m_pp_horizon - 2) || m_wpt_trigger_counter == 1)) ||
              (m_input_var_adaptive_trigger == "WPT_CYCLE_FINISHED") )
         {
           // we are at the one to last waypoint, trigger calculations
