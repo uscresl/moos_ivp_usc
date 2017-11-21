@@ -75,6 +75,7 @@ GP_AUV::GP_AUV() :
         m_lat_deg_to_m(0.0),
         m_start_time(0.0),
         m_finding_nxt(false),
+        m_adp_state(""),
         m_mission_state(STATE_IDLE),
         m_gp( new libgp::GaussianProcess(2, "CovSum(CovSEiso, CovNoise)") ),
         m_hp_optim_running(false),
@@ -88,10 +89,10 @@ GP_AUV::GP_AUV() :
         m_first_surface(true),
         m_area_buffer(5.0),
         m_bhv_state(""),
-        m_recursive_greedy_budget(5),
-        m_dynamic_programming_length(10),
+        m_pp_horizon(5),
         m_total_path_selection_time(0),
-        m_total_paths_selected(0)
+        m_total_paths_selected(0),
+        m_wpt_trigger_counter(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -215,17 +216,37 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
     {
       // check when adaptive waypoint reached
       // these are flags set by the adaptive wpt behavior
-      // if we get it, it must mean a wpt/cycle was done
       if ( std::abs(m_last_published - MOOSTime()) > 1.0 &&
            (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_IDLE ) )
       {
-        std::cout << GetAppName() << " :: STATE_CALCWPT via m_input_var_adaptive_trigger" << std::endl;
-        m_mission_state = STATE_CALCWPT;
-        publishStates("OnNewMail_wpt_trigger");
+        // if we get WPT_CYCLE_FINISHED, it must mean a wpt/cycle was done
+        // if we get WPT_INDEX, we should check the index versus total number of waypoints
+        size_t current_wpt;
+        if ( m_input_var_adaptive_trigger == "WPT_INDEX" )
+        {
+          current_wpt = (size_t)std::round(dval);
+          std::cout << GetAppName() << " :: current wpt: " << current_wpt << std::endl;
+          if ( m_adp_state == "adaptive" )
+            m_wpt_trigger_counter++;
+        }
+
+        if ( (m_input_var_adaptive_trigger == "WPT_INDEX" &&
+              (current_wpt == (m_pp_horizon - 1) || m_wpt_trigger_counter == 1)) ||
+             (m_input_var_adaptive_trigger == "WPT_CYCLE_FINISHED") )
+        {
+          // we are at the one to last waypoint, trigger calculations
+          std::cout << GetAppName() << " :: STATE_CALCWPT via m_input_var_adaptive_trigger" << std::endl;
+          m_mission_state = STATE_CALCWPT;
+          publishStates("OnNewMail_wpt_trigger");
+        }
+        else
+        {
+          std::cout << GetAppName() << " :: m_input_var_adaptive_trigger, criteria not met." << std::endl;
+          std::cout << GetAppName() << " :: m_wpt_trigger_counter: " << m_wpt_trigger_counter << ", current_wpt: " << current_wpt << std::endl;
+        }
+
       }
     }
-    else if ( key == "LOITER_DIST_TO_POLY" )
-      m_loiter_dist_to_poly = dval;
     else if ( key == "STAGE" )
       m_bhv_state = sval;
     else if ( key == "MISSION_TIME" )
@@ -249,9 +270,9 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
       }
     }
     else if ( key == "DB_UPTIME" )
-    {
       m_db_uptime = dval;
-    }
+    else if ( key == "ADP_PTS" )
+      m_adp_state = sval;
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
 
@@ -425,9 +446,8 @@ bool GP_AUV::OnStartUp()
       if ( value == "greedy" || value == "dynamic_programming" || value == "recursive_greedy")
       {
         m_path_planning_method = value;
-        if(m_verbose){
-          std::cout << GetAppName() << " :: Path planning method: " << value << std::endl;
-        }
+        if ( m_verbose )
+          std::cout << GetAppName() << " :: Path planning method: " << m_path_planning_method << std::endl;
       }
       else
       {
@@ -436,13 +456,11 @@ bool GP_AUV::OnStartUp()
         handled = false;
       }
     }
-    else if ( param == "recursive_greedy_budget" )
+    else if ( param == "path_planning_horizon" )
     {
-      m_recursive_greedy_budget = (size_t)atoi(value.c_str());
-    }
-    else if ( param == "dynamic_programming_length")
-    {
-        m_dynamic_programming_length = (size_t)atoi(value.c_str());
+      m_pp_horizon = (size_t)atoi(value.c_str());
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: Path planning horizon: " << m_pp_horizon << std::endl;
     }
     else
       handled = false;
@@ -546,8 +564,8 @@ void GP_AUV::registerVariables()
   // (when to run adaptive predictions in adaptive state)
   m_Comms.Register(m_input_var_adaptive_trigger, 0);
 
-  // data sharing
-  m_Comms.Register("LOITER_DIST_TO_POLY", 0);
+  // check state of mission
+  m_Comms.Register("ADP_PTS", 0);
 
   // db uptime for debugging
   m_Comms.Register("DB_UPTIME", 0);
@@ -965,16 +983,7 @@ void GP_AUV::greedyWptSelection(std::string & next_waypoint)
     if ( best_itr == m_sample_points_unvisited.end() )
       std::cout << GetAppName() << " :: Error: best is not in unsampled locations" << std::endl;
     else
-    {
       best_location = best_itr->second->get_location();
-
-      // app feedback
-      if ( m_verbose )
-      {
-        std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
-        std::cout << GetAppName() << " :: current best next y: " << std::setprecision(15) << best_location(0) << ", " << best_location(1) << '\n';
-      }
-    }
   }
   else
   {
@@ -1061,10 +1070,7 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
     }
 */
   }
-
-  std::cout << GetAppName() << " :: next waypoints: " << output_stream.str() << std::endl;
   next_waypoint = output_stream.str();
-
 }
 
 //---------------------------------------------------------
@@ -1075,25 +1081,20 @@ std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector
 {
   // do not visit same location within single path
   int repeat = std::count(nodes.begin(), nodes.end(), loc);
-  if(repeat > 0)
-  {
+  if ( repeat > 0 )
     return std::vector<const GraphNode *>();
-  }
   else if ( loc == nullptr )
-  {
     return std::vector<const GraphNode *>();
-  }
-  else if ( steps == m_dynamic_programming_length )
+  else if ( steps == m_pp_horizon )
   {
     // set toPublish vector to the found path
     size_t sumNodes = pathSum(nodes), sumToPublish = pathSum(toPublish);
-    if(sumNodes > sumToPublish)
-    {
+    if ( sumNodes > sumToPublish )
       toPublish = nodes;
-    }
     return nodes;
   }
-  else {
+  else
+  {
     nodes.push_back(loc);
 
     return max(maxPath(loc->get_left_neighbour(), nodes, toPublish, steps+1),
@@ -1244,10 +1245,10 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
     // calculate path from current node to all nodes within budget
     for ( size_t i = 0; i < m_sample_graph_nodes.size(); i++ )
     {
-      if ( manhattanDistance(current_node_index, i) >= m_recursive_greedy_budget )
+      if ( manhattanDistance(current_node_index, i) >= m_pp_horizon )
       {
         std::set< size_t > ground_set;
-        std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, ground_set, m_recursive_greedy_budget);
+        std::vector< size_t > cur_path = generalizedRecursiveGreedy(current_node_index, i, ground_set, m_pp_horizon);
         if ( !cur_path.empty() )
         {
           double cur_path_value = informativeValue(cur_path);
@@ -1277,10 +1278,10 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
 
     // create string of nodes in the best path
     std::ostringstream output_stream;
-    for ( size_t i = 0; i < best_path_so_far.size(); i++ )
+    for ( size_t cnt = 0; cnt < best_path_so_far.size(); cnt++ )
     {
       Eigen::Vector2d node_loc;
-      size_t node_idx = best_path_so_far[i];
+      size_t node_idx = best_path_so_far[cnt];
       if ( node_idx >= 0 )
       {
         if ( node_idx >= m_sample_graph_nodes.size() )
@@ -1289,16 +1290,7 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
           break;
         }
         else
-        {
           node_loc = m_sample_graph_nodes[node_idx].get_location();
-
-          // app feedback
-          if ( m_verbose )
-          {
-            std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
-            std::cout << GetAppName() << " :: current path location y: " << std::setprecision(15) << node_loc(0) << ", " << node_loc(1) << '\n';
-          }
-        }
       }
       else
       {
@@ -1308,7 +1300,7 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
         node_loc(1) = 0;
         break;
       }
-      if ( i ) output_stream << ":";
+      if ( cnt ) output_stream << ":";
       output_stream << std::setprecision(15) << node_loc(0) << "," << node_loc(1);
     }
     next_waypoint = output_stream.str();
@@ -1336,16 +1328,16 @@ void GP_AUV::publishNextWaypointLocations()
   std::cout << GetAppName() << " :: Path planning method: " << m_path_planning_method << std::endl;
   std::string next_wpts("");
   if ( m_path_planning_method == "greedy" )
-  {
     greedyWptSelection(next_wpts);
-  }
   else if ( m_path_planning_method == "dynamic_programming" )
-  {
     dynamicWptSelection(next_wpts);
-  }
   else if ( m_path_planning_method == "recursive_greedy" )
-  {
     recursiveGreedyWptSelection(next_wpts);
+
+  if ( m_verbose )
+  {
+    std::cout << GetAppName() << " :: publishing " << m_output_var_pred << '\n';
+    std::cout << GetAppName() << " :: current path location y: " << next_wpts << std::endl;
   }
 
   if ( next_wpts == "" )

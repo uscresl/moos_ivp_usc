@@ -63,7 +63,7 @@ ProcessConfig = pGP
   hp_optim_iterations = 50
 
   // choice of path planning method, and their parameters
-  // options: greedy, recursive_greedy
+  // options: greedy, recursive_greedy, dynamic_programming
   path_planning_method = recursive_greedy
-  recursive_greedy_budget = 6
+  path_planning_horizon = 6
 }

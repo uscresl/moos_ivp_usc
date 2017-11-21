@@ -186,6 +186,7 @@ class GP_AUV : public CMOOSApp
    // mission status
    double m_start_time;
    bool m_finding_nxt;
+   std::string m_adp_state;
 
    // states through enums
    enum MissionState{ STATE_IDLE, STATE_CALCWPT, STATE_SAMPLE,
@@ -202,8 +203,8 @@ class GP_AUV : public CMOOSApp
    // vector for storing all sampling graph nodes
    std::vector< GraphNode > m_sample_graph_nodes;
 
-   size_t m_recursive_greedy_budget;
-   size_t m_dynamic_programming_length;
+   size_t m_pp_horizon;
+   size_t m_wpt_trigger_counter;
 
   // GP, and create mutex for protection of parts of code accessing m_gp
    libgp::GaussianProcess * m_gp;
