@@ -1423,7 +1423,7 @@ size_t GP_AUV::calcMECriterion()
   if ( m_verbose )
     std::cout << GetAppName() << " :: max entropy start" << std::endl;
 
-  std::clock_t begin = std::clock();
+  std::clock_t begin_time = std::clock();
   if ( m_debug )
     std::cout << GetAppName() << " :: try for lock gp" << std::endl;
   // lock for access to m_gp
@@ -1479,29 +1479,35 @@ size_t GP_AUV::calcMECriterion()
     if ( m_debug )
       std::cout << GetAppName() << " :: calculated entropy: " << post_entropy << " for: " << new_values.size() << std::endl;
     new_values.push_back(post_entropy);
-    if ( m_debug )
-      std::cout << GetAppName() << " :: new value: " << new_values.back() << std::endl;
   }
+  // free up memory
+  delete gp_copy;
+
+  std::clock_t end_time = std::clock();
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end_time-begin_time) / CLOCKS_PER_SEC) ) << std::endl;
+  begin_time = std::clock();
 
   while ( !map_lock.try_lock() ){}
   // update map entropies from calculated values in copy
-  for ( size_t idx = m_sample_graph_nodes.size(); idx > 0 ; --idx )
+  for ( size_t idx = m_sample_graph_nodes.size(); idx > 0; --idx )
   {
-    GraphNode* item = &m_sample_graph_nodes[idx];
+    if ( m_debug )
+      std::cout << GetAppName() << " :: setting value for: " << (idx-1) << std::endl;
+    GraphNode* item = &m_sample_graph_nodes[idx-1]; // subtract one for zero indexing
     double val = new_values.back();
     if ( m_debug )
-      std::cout << GetAppName() << " :: setting value for: " << idx << " to: " << val << std::endl;
+      std::cout << GetAppName() << " ::  to: " << val << std::endl;
     item->set_value(val);
     new_values.pop_back();
   }
   map_lock.unlock();
 
-  std::clock_t end = std::clock();
+  end_time = std::clock();
   if ( m_verbose )
-    std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+    std::cout << GetAppName() << " :: Max Entropy update value time: " << ( (double(end_time-begin_time) / CLOCKS_PER_SEC) ) << std::endl;
 
-  // copy of GP and unvisited_map get destroyed when this function exits
-  delete gp_copy;
+  // return value for future, no meaning
   return 0;
 }
 
