@@ -1468,9 +1468,11 @@ size_t GP_AUV::calcMECriterion()
     //  1/2 ln ( 2*pi*e*sigma^2 )
     double post_entropy;
     if ( !m_use_log_gp )
-      post_entropy = log( 2 * M_PI * exp(1) * pred_cov);
+      post_entropy = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
     else
     {
+      if ( m_debug )
+        std::cout << GetAppName() << " :: pred_cov: " << pred_cov << ", pred_mean: " << pred_mean << std::endl;
       // lognormal distribution
       double var_part = (1/2.0) * log( 2 * M_PI * exp(1) * pred_cov);
       post_entropy = var_part + pred_mean;
