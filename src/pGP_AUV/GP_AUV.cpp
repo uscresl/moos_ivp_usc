@@ -41,16 +41,17 @@
 // Constructor
 //
 GP_AUV::GP_AUV() :
+        m_debug(true),
         m_verbose(true),
         m_input_var_data(""),
         m_input_var_sample_points(""),
         m_input_var_sample_points_specs(""),
+        m_input_var_sample_points_predict(""),
         m_input_var_adaptive_trigger(""),
         m_output_var_pred(""),
         m_output_filename_prefix(""),
         m_prediction_interval(-1),
         m_path_planning_method("greedy"),
-        m_debug(false),
         m_veh_name(""),
         m_use_log_gp(true),
         m_lat(0),
@@ -212,6 +213,11 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
       // (done once)
       handleMailSamplePointsSpecs(sval);
     }
+    else if ( key == m_input_var_sample_points_predict )
+    {
+      // store list of locations for prediction (save to file)
+      handleMailSamplePointsPredict(sval);
+    }
     else if ( key == m_input_var_adaptive_trigger )
     {
       // check when adaptive waypoint reached
@@ -225,7 +231,6 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( m_input_var_adaptive_trigger == "WPT_INDEX" )
         {
           current_wpt = (size_t)std::round(dval);
-          std::cout << GetAppName() << " :: current wpt: " << current_wpt << std::endl;
           if ( m_adp_state == "adaptive" )
             m_wpt_trigger_counter++;
         }
@@ -245,7 +250,6 @@ bool GP_AUV::OnNewMail(MOOSMSG_LIST &NewMail)
           std::cout << GetAppName() << " :: m_input_var_adaptive_trigger, criteria not met." << std::endl;
           std::cout << GetAppName() << " :: m_wpt_trigger_counter: " << m_wpt_trigger_counter << ", current_wpt: " << current_wpt << std::endl;
         }
-
       }
     }
     else if ( key == "STAGE" )
@@ -395,6 +399,8 @@ bool GP_AUV::OnStartUp()
       m_input_var_sample_points_specs = toupper(value);
     else if ( param == "input_var_adaptive_trigger" )
       m_input_var_adaptive_trigger = toupper(value);
+    else if ( param == "input_var_predict_points" )
+      m_input_var_sample_points_predict = toupper(value);
     else if ( param == "output_var_predictions" )
       m_output_var_pred = toupper(value);
     else if ( param == "prediction_interval" )
@@ -554,6 +560,7 @@ void GP_AUV::registerVariables()
   // get sample points for GP
   m_Comms.Register(m_input_var_sample_points, 0);
   m_Comms.Register(m_input_var_sample_points_specs, 0);
+  m_Comms.Register(m_input_var_sample_points_predict, 0);
 
   // get current bhv state
   m_Comms.Register("STAGE", 0);
@@ -619,7 +626,7 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
   m_sample_graph_nodes.reserve(sample_points.size());
 
   std::ofstream ofstream_loc;
-  std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
+  std::string m_file_loc = (m_output_filename_prefix + "_locations_plan.csv");
   ofstream_loc.open(m_file_loc, std::ios::out);
 
   m_lanes_x = std::floor(m_pts_grid_width / m_pts_grid_spacing);
@@ -649,14 +656,10 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     GraphNode* back_neighbour = back_neighbour_index < 0 || id_pt % (m_lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[back_neighbour_index];
     graph_node->set_left_neighbour(left_neighbour);
     if ( left_neighbour )
-    {
       left_neighbour->set_right_neighbour(graph_node);
-    }
     graph_node->set_back_neighbour(back_neighbour);
     if ( back_neighbour )
-    {
       back_neighbour->set_front_neighbour(graph_node);
-    }
 
     // Alternative would be to have objects in maps or allocating them dynamically.
     m_sample_points_unvisited.insert( std::pair<size_t, GraphNode*>(id_pt, graph_node) );
@@ -685,6 +688,46 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
   // check / communicate what we did
   if ( m_debug )
     std::cout << GetAppName() << " :: stored " << m_sample_points_unvisited.size() << " sample locations" << std::endl;
+}
+
+//---------------------------------------------------------
+// Procedure: handleMailSamplePointsPredict
+//            parse the string, store specs for prediction locations
+//
+void GP_AUV::handleMailSamplePointsPredict(std::string input_string)
+{
+  // input: semicolon separated string of comma separated locations
+  // separate by semicolon
+  std::vector<std::string> sample_points = parseString(input_string, ';');
+
+  // pre-allocate vector of appropriate size
+  m_predict_locations.reserve(sample_points.size());
+
+  std::ofstream ofstream_loc;
+  std::string m_file_loc = (m_output_filename_prefix + "_locations.csv");
+  ofstream_loc.open(m_file_loc, std::ios::out);
+
+  for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
+  {
+    std::string location = sample_points.at(id_pt);
+    size_t comma_pos = location.find(',');
+    double lon = (double)atof(location.substr(0,comma_pos).c_str());
+    double lat = (double)atof(location.substr(comma_pos+1,location.length()).c_str());
+    /*Eigen::Vector2d loc_vec;
+    loc_vec(0) = lon;
+    loc_vec(1) = lat;*/
+
+    // insert into vector
+    m_predict_locations.push_back(std::pair<double, double>(lon, lat));
+
+    // also save to file
+    ofstream_loc << std::setprecision(15) << lon << ", " << lat << '\n';
+  }
+  ofstream_loc.close();
+
+  // check / communicate what we did
+  if ( m_debug )
+    std::cout << GetAppName() << " :: stored " << m_predict_locations.size() << " predict locations" << std::endl;
 }
 
 //---------------------------------------------------------
@@ -1084,7 +1127,11 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 
     std::clock_t end = std::clock();
     double path_selection_time = double(end-begin)/CLOCKS_PER_SEC;
-    std::cout << GetAppName() << " :: Path selected in " << path_selection_time << std::endl;
+    if ( m_verbose )
+    {
+      std::cout << GetAppName() << " :: Path selected: " << next_waypoint << std::endl;
+      std::cout << GetAppName() << " :: Path selected in " << path_selection_time << std::endl;
+    }
   }
 }
 
@@ -1151,9 +1198,8 @@ double GP_AUV::informativeValue(std::vector< size_t > cur_path)
 {
   double path_informative_value = 0.0;
   for ( size_t node_index : cur_path )
-  {
     path_informative_value += m_sample_graph_nodes[node_index].get_value();
-  }
+
   return path_informative_value;
 }
 
@@ -1678,23 +1724,27 @@ void GP_AUV::makeAndStorePredictions()
 
   std::clock_t begin = std::clock();
 
-  std::vector< GraphNode >::iterator loc_itr;
   // get the predictive mean and var values for all sample locations
   std::vector<double> all_pred_means_lGP;
   std::vector<double> all_pred_vars_lGP;
   std::vector<double> all_pred_mu_GP;
   std::vector<double> all_pred_sigma2_GP;
+
   // pre-alloc vectors
-  size_t nr_sample_locations = m_sample_graph_nodes.size();
+  size_t nr_sample_locations = m_predict_locations.size();
   all_pred_means_lGP.reserve(nr_sample_locations);
   all_pred_vars_lGP.reserve(nr_sample_locations);
   all_pred_mu_GP.reserve(nr_sample_locations);
   all_pred_sigma2_GP.reserve(nr_sample_locations);
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: making predictions for " << nr_sample_locations << " locations." << std::endl;
 
+  std::vector< std::pair<double,double> >::iterator loc_itr;
   // make predictions for all sample locations
-  for ( loc_itr = m_sample_graph_nodes.begin(); loc_itr < m_sample_graph_nodes.end(); loc_itr++ )
+  for ( loc_itr = m_predict_locations.begin(); loc_itr < m_predict_locations.end(); loc_itr++ )
   {
-    double loc[2] {loc_itr->get_location()[0], loc_itr->get_location()[1]};
+    double loc[2] {loc_itr->first, loc_itr->second};
+//    double loc[2] {loc_itr->get_location()[0], loc_itr->get_location()[1]};
     double pred_mean_GP;
     double pred_var_GP;
     gp_copy->f_and_var(loc, pred_mean_GP, pred_var_GP);

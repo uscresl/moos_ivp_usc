@@ -61,6 +61,7 @@ class GP_AUV : public CMOOSApp
    void handleMailData(double received_data);
    void handleMailSamplePoints(std::string input_string);
    void handleMailSamplePointsSpecs(std::string input_string);
+   void handleMailSamplePointsPredict(std::string input_string);
 
    //// methods for handling sampled data /////////////////////////////////////
    void updateVisitedSet(double veh_lon, double veh_lat, size_t index );
@@ -128,6 +129,9 @@ class GP_AUV : public CMOOSApp
 
    void printCoutPrefix();
 
+   // print debug output
+   bool m_debug;
+
    // Configuration variables /////////////////////////////////////////////////
    bool m_verbose;
 
@@ -136,6 +140,7 @@ class GP_AUV : public CMOOSApp
    std::string m_input_var_data;
    std::string m_input_var_sample_points;
    std::string m_input_var_sample_points_specs;
+   std::string m_input_var_sample_points_predict;
    std::string m_input_var_adaptive_trigger;
 
    std::string m_output_var_pred;
@@ -145,8 +150,6 @@ class GP_AUV : public CMOOSApp
    std::string m_path_planning_method;
 
    // State variables /////////////////////////////////////////////////////////
-   bool m_debug;
-
    std::string m_veh_name;
 
    // use log gp or normal gp?
@@ -201,6 +204,9 @@ class GP_AUV : public CMOOSApp
    std::unordered_map< size_t, GraphNode* > m_sample_points_visited;
    // vector for storing all sampling graph nodes
    std::vector< GraphNode > m_sample_graph_nodes;
+   // vector for storing all locations for which we will make predictions that are saved to file
+   // this can be the same locations as used for path planning, or they can be different
+   std::vector< std::pair<double,double> > m_predict_locations;
 
    size_t m_pp_horizon;
    size_t m_wpt_trigger_counter;
