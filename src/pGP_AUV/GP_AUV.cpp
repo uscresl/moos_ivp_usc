@@ -817,13 +817,14 @@ int GP_AUV::getIndexForMap(double veh_lon, double veh_lat)
     // calculate index into map (stored from SW, y first, then x)
     int index = m_y_resolution*x_cell_rnd + y_cell_rnd;
 
+    if ( m_debug )
+      std::cout << GetAppName() << " :: calculated index: " << index << " for lon, lat: " << veh_lon << ", " << veh_lat << std::endl;
+
     return index;
   }
-  else
-  {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: Location not in sample rectangle." << std::endl;
-  }
+
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: Error at getIndexForMap: location " << veh_lon << ", " << veh_lat << " not in sample rectangle." << std::endl;
   return -1;
 }
 
@@ -1019,64 +1020,72 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 {
     std::clock_t begin = std::clock();
   // is this the point we want to start calculating from?
-  std::cout << GetAppName() << " :: " << "calling dynWptSelection" << std::endl;
+  std::cout << GetAppName() << " :: calling dynWptSelection" << std::endl;
 
   // get index for current location
   int current_node_index = getIndexForMap(m_lon, m_lat);
-//  std::cout << GetAppName() << " :: " << "current index: " << current_node_index << std::endl;
 
-  // retrieve GraphNode
-  // note that we cannot be 100% sure whether this is in the visited or unvisited set..
-  // It should be in visited, but if there is a backlog of adding data somehow,
-  // it may be in the unvisited set.  So let's check both..
-  // we also want to always do path planning when this method is called, whether
-  // the current node is visited or not
-  std::unordered_map< size_t, GraphNode* >::iterator current_node_itr;
-  current_node_itr = m_sample_points_visited.find(current_node_index);
-  if ( current_node_itr == m_sample_points_visited.end() )
+  if ( current_node_index < 0 )
+    std::cout << GetAppName() << " :: Error: current vehicle location outside sampling region." << std::endl;
+  else
   {
-    current_node_itr = m_sample_points_unvisited.find(current_node_index);
-    if ( current_node_itr == m_sample_points_unvisited.end() )
-      std::cout << GetAppName() << " :: ERROR: node not found!" << std::endl;
-      // this should be impossible..
-  }
-//    std::cout << GetAppName() << " :: " << "current node itr index: " << current_node_itr->first << std::endl;
-
-  // initialize params for recursion
-  std::vector<const GraphNode *> nextWaypoints, tempPath;
-  int steps = 0;
-
-  // call recursion to find max value path, max length = 6 //TODO make parameter
-  tempPath = maxPath(current_node_itr->second, tempPath, nextWaypoints, steps);
-
-  // publish next waypoints
-  // make a string from the single lon/lat locations
-  std::ostringstream output_stream;
-  for (int i = 1; i < nextWaypoints.size(); i++)
-  {
-    Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
-    output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
-    if ( i < (nextWaypoints.size() - 1) )
-      output_stream << ":";
-
-    // pre-emptively add the new waypoints to the visited set
-    // note; this seems pointless? we do not consider this in maxPath..
-    //       and I just changed the part above here to check both maps
-    // not sure we need to do this, let's think about & discuss what we are
-    // trying to do and how best to achieve that
-/*
-    int current_index = getIndexForMap(nodeLoc(0), nodeLoc(1));
-    if(current_index >= 0 && needToUpdateMaps((size_t) current_index))
+    // retrieve GraphNode
+    // note that we cannot be 100% sure whether this is in the visited or unvisited set..
+    // It should be in visited, but if there is a backlog of adding data somehow,
+    // it may be in the unvisited set.  So let's check both..
+    // we also want to always do path planning when this method is called, whether
+    // the current node is visited or not
+    std::unordered_map< size_t, GraphNode* >::iterator current_node_itr;
+    current_node_itr = m_sample_points_visited.find(current_node_index);
+    if ( current_node_itr == m_sample_points_visited.end() )
     {
-      updateVisitedSet(nodeLoc(0), nodeLoc(1), current_index);
+      current_node_itr = m_sample_points_unvisited.find(current_node_index);
+      if ( current_node_itr == m_sample_points_unvisited.end() )
+      {
+        std::cout << GetAppName() << " :: ERROR: node not found: " << current_node_index << std::endl;
+        std::cout << GetAppName() << " :: m_sample_points_visited.size: " << m_sample_points_visited.size() << std::endl;
+        std::cout << GetAppName() << " :: m_sample_points_unvisited.size: " << m_sample_points_unvisited.size() << std::endl;
+      }
+        // this should be impossible..
     }
-*/
-  }
-  next_waypoint = output_stream.str();
+  //    std::cout << GetAppName() << " :: " << "current node itr index: " << current_node_itr->first << std::endl;
 
-  std::clock_t end = std::clock();
-  double path_selection_time = double(end-begin)/CLOCKS_PER_SEC;
-  std::cout << GetAppName() << " :: Path selected in " << path_selection_time << std::endl;
+    // initialize params for recursion
+    std::vector<const GraphNode *> nextWaypoints, tempPath;
+    int steps = 0;
+
+    // call recursion to find max value path, max length = 6 //TODO make parameter
+    tempPath = maxPath(current_node_itr->second, tempPath, nextWaypoints, steps);
+
+    // publish next waypoints
+    // make a string from the single lon/lat locations
+    std::ostringstream output_stream;
+    for (int i = 1; i < nextWaypoints.size(); i++)
+    {
+      Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
+      output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+      if ( i < (nextWaypoints.size() - 1) )
+        output_stream << ":";
+
+      // pre-emptively add the new waypoints to the visited set
+      // note; this seems pointless? we do not consider this in maxPath..
+      //       and I just changed the part above here to check both maps
+      // not sure we need to do this, let's think about & discuss what we are
+      // trying to do and how best to achieve that
+  /*
+      int current_index = getIndexForMap(nodeLoc(0), nodeLoc(1));
+      if(current_index >= 0 && needToUpdateMaps((size_t) current_index))
+      {
+        updateVisitedSet(nodeLoc(0), nodeLoc(1), current_index);
+      }
+  */
+    }
+    next_waypoint = output_stream.str();
+
+    std::clock_t end = std::clock();
+    double path_selection_time = double(end-begin)/CLOCKS_PER_SEC;
+    std::cout << GetAppName() << " :: Path selected in " << path_selection_time << std::endl;
+  }
 }
 
 //---------------------------------------------------------
@@ -1239,13 +1248,9 @@ void GP_AUV::recursiveGreedyWptSelection(std::string & next_waypoint)
   // Get current vehicle location's index on map
   int current_node_index = getIndexForMap(m_lon, m_lat);
   if ( current_node_index < 0 )
-  {
     std::cout << GetAppName() << " :: Error: vehicle location is not in sample rectangle" << std::endl;
-  }
   else if ( current_node_index >= m_sample_graph_nodes.size() )
-  {
     std::cout << GetAppName() << " :: Error: vehicle index is not in sample graph nodes" << std::endl;
-  }
   else
   {
     // calculate path from current node to all nodes within budget
@@ -1426,7 +1431,7 @@ size_t GP_AUV::calcMECriterion()
     }
 
     if ( m_debug )
-      std::cout << GetAppName() << " :: calculated entropy: " << post_entropy << std::endl;
+      std::cout << GetAppName() << " :: calculated entropy: " << post_entropy << " for: " << new_values.size() << std::endl;
     new_values.push_back(post_entropy);
     if ( m_debug )
       std::cout << GetAppName() << " :: new value: " << new_values.back() << std::endl;
@@ -1438,8 +1443,8 @@ size_t GP_AUV::calcMECriterion()
   {
     GraphNode* item = &m_sample_graph_nodes[idx];
     double val = new_values.back();
-    if ( m_verbose )
-      std::cout << GetAppName() << " :: setting value to: " << val << std::endl;
+    if ( m_debug )
+      std::cout << GetAppName() << " :: setting value for: " << idx << " to: " << val << std::endl;
     item->set_value(val);
     new_values.pop_back();
   }
@@ -1499,8 +1504,12 @@ void GP_AUV::startAndCheckHPOptim()
       else
       {
         m_last_hp_optim_done = (size_t)std::floor(MOOSTime());
+        Eigen::VectorXd new_hps = m_gp->covf().get_loghyper();
+        double hp1 = new_hps[0];
+        double hp2 = new_hps[1];
+        double hp3 = new_hps[2];
         if ( m_verbose )
-          std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
+          std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << hp1 << ", " << hp2 << ", " << hp3 << std::endl;
 
         std::cout << GetAppName() << " :: tdsResetStateVars via hpoptimdone" << std::endl;
         tdsResetStateVars();
@@ -1564,8 +1573,13 @@ bool GP_AUV::runHPOptimization(size_t nr_iterations)
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
 
+
+  Eigen::VectorXd new_hps = m_gp->covf().get_loghyper();
+  double hp1 = new_hps[0];
+  double hp2 = new_hps[1];
+  double hp3 = new_hps[2];
   if ( m_verbose )
-    std::cout << GetAppName() << " :: new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
+    std::cout << GetAppName() << " :: new m_GP hyper params: " << hp1 << ", " << hp2 << ", " << hp3 << std::endl;
 
   return true;
 }
@@ -1926,7 +1940,6 @@ void GP_AUV::publishStates(std::string const calling_method)
 }
 
 std::vector<const GraphNode*> GP_AUV::max(std::vector<const GraphNode*> a, std::vector<const GraphNode*> b, std::vector<const GraphNode*> c)
-//GraphNode* GP_AUV::max(GraphNode* a, GraphNode* b, GraphNode* c)
 {
   double aSum = pathSum(a), bSum = pathSum(b), cSum = pathSum(c);
 
@@ -1939,25 +1952,12 @@ std::vector<const GraphNode*> GP_AUV::max(std::vector<const GraphNode*> a, std::
   else if(cSum >= aSum && cSum >= aSum) {
     return c;
   }
-
-  //prioritize unvisited nodes? but if we get stuck, select a visited node
-}
-
-const GraphNode* GP_AUV::checkVisited(const GraphNode* node)
-{
-  int current_node_index = getIndexForMap(m_lon, m_lat);
-  auto itr = m_sample_points_visited.find(current_node_index);
-  if(itr != m_sample_points_visited.end())
-  {
-    return itr->second;
-  }
-  return nullptr;
 }
 
 double GP_AUV::pathSum(std::vector<const GraphNode *> nodes)
 {
   double sum = 0.0;
-  std::for_each(nodes.begin(), nodes.end(), [&sum](const GraphNode* &i) {
+  std::for_each(nodes.begin(), nodes.end(), [&sum](const GraphNode* &i){
       sum += i->get_value();
   });
   return sum;
