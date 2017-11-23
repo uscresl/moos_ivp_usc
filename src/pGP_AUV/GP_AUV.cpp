@@ -41,7 +41,7 @@
 // Constructor
 //
 GP_AUV::GP_AUV() :
-        m_debug(true),
+        m_debug(false),
         m_verbose(true),
         m_input_var_data(""),
         m_input_var_sample_points(""),
