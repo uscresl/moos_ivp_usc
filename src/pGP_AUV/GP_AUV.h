@@ -94,7 +94,7 @@ class GP_AUV : public CMOOSApp
 
    // helper methods for path planning using Dynamic Programming
    std::vector<const GraphNode *> maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes, std::vector<const GraphNode *>& toPublish, int steps);
-   std::vector<const GraphNode *> max(std::vector<const GraphNode *> a, std::vector<const GraphNode *> b, std::vector<const GraphNode *> c);
+   std::vector<const GraphNode*> max(std::vector<const GraphNode*> a, std::vector<const GraphNode*> b, std::vector<const GraphNode*> c, std::vector<const GraphNode*> d);
    double pathSum(std::vector<const GraphNode *> nodes);
 
    // helper methods for path planning using GRG algorithm
