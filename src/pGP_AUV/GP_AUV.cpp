@@ -1161,7 +1161,8 @@ std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector
 
     return max(maxPath(loc->get_left_neighbour(), nodes, toPublish, steps+1),
                maxPath(loc->get_right_neighbour(), nodes, toPublish, steps+1),
-               maxPath(loc->get_front_neighbour(), nodes, toPublish, steps+1)
+               maxPath(loc->get_front_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_back_neighbour(), nodes, toPublish, steps+1)
     );
   }
 }
@@ -1997,18 +1998,21 @@ void GP_AUV::publishStates(std::string const calling_method)
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
 }
 
-std::vector<const GraphNode*> GP_AUV::max(std::vector<const GraphNode*> a, std::vector<const GraphNode*> b, std::vector<const GraphNode*> c)
+std::vector<const GraphNode*> GP_AUV::max(std::vector<const GraphNode*> a, std::vector<const GraphNode*> b, std::vector<const GraphNode*> c, std::vector<const GraphNode*> d)
 {
-  double aSum = pathSum(a), bSum = pathSum(b), cSum = pathSum(c);
+  double aSum = pathSum(a), bSum = pathSum(b), cSum = pathSum(c), dSum = pathSum(d);
 
-  if(aSum >= bSum && aSum >= cSum) {
+  if(aSum >= bSum && aSum >= cSum && aSum >= dSum) {
     return a;
   }
-  else if(bSum >= aSum && bSum >= cSum) {
+  else if(bSum >= aSum && bSum >= cSum && bSum >= dSum) {
     return b;
   }
-  else if(cSum >= aSum && cSum >= aSum) {
+  else if(cSum >= aSum && cSum >= aSum && cSum >= dSum) {
     return c;
+  }
+  else if(dSum >= aSum && dSum >= bSum && dSum >= cSum) {
+      return d;
   }
 }
 
