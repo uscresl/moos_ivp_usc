@@ -304,7 +304,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                         << "Switch to handshake." << std::endl;
             m_received_ready = true;
             m_mission_state = STATE_HANDSHAKE;
-            publishStates("OnNewMail m_input_var_handshake_data_sharing");
+            publishStates("OnNewMail_m_input_var_handshake_data_sharing");
           }
           else if ( m_veh_name == "surfacehub" &&
                     m_rec_ready_veh.size() == m_num_vehicles )
@@ -878,6 +878,8 @@ bool GP::OnStartUp()
       // default: rprop
       m_hp_optim_cg = ( value == "cg" ) ? true : false;
     }
+    else if ( param == "max_wait_for_other_vehicles" )
+      m_max_wait_for_other_vehicles = (size_t)atoi(value.c_str());
     else
       handled = false;
 
@@ -2081,15 +2083,6 @@ void GP::sendReady()
 //
 void GP::sendData()
 {
-  // we need to chunk the data because pShare has a limit of 64K per message
-  // 2000 points should be ca. 53K, so let's try that first
-  // (should be ca. the amount to send at first HP optimization point)
-  // note; 2000 seemed to stretch it, some complaint of 48kB,
-  // let's do 1500, should be conservative enough
-  size_t msg_cnt = 0;
-  // limit to message size
-  size_t nr_points_per_msg = 1500;
-
   if ( m_verbose && m_veh_name != "surface_hub" )
     std::cout << GetAppName() << " :: **sending " << m_data_pt_counter << " points!" << std::endl;
 
@@ -2097,29 +2090,33 @@ void GP::sendData()
   size_t index_start, index_end, index_last_sent;
 
   size_t nr_stored_data_pts = m_data_to_send.size();
+  index_end = nr_stored_data_pts;
   if ( m_veh_name == "surface_hub" )
   {
     // for the surface hub, we need to know who is ready, to know what data to send
     if ( m_verbose )
       std::cout << GetAppName() << " :: m_received_ready_from: " << m_received_ready_from << std::endl;
 
+    // check what we last sent to this vehicle, index into data vector
     std::map<std::string, size_t>::iterator veh_itr = m_map_vehicle_idx_data_last_sent.find(m_received_ready_from);
-    if ( veh_itr == m_map_vehicle_idx_data_last_sent.end() )
-    {
-      m_map_vehicle_idx_data_last_sent.insert(std::pair<std::string, double>(m_received_ready_from, nr_stored_data_pts));
+    if ( veh_itr == m_map_vehicle_idx_data_last_sent.end() ) // nothing sent yet
       index_last_sent = 0;
-    }
     else
       index_last_sent = veh_itr->second;
-    index_end = nr_stored_data_pts;
-    // if no new data available yet, don't send anything
+
+    // check how much data to send
+    // if no new data is available yet, don't send anything
     // note; we assume we did not first receive data from the vehicle
     if ( index_end <= index_last_sent )
       nr_stored_data_pts = 0; // force empty message
     else
-      m_data_pt_counter = index_end - index_last_sent; // calculate how much to send this time
-    // update the map to currently stored amount for index what was last sent.
-    veh_itr->second = nr_stored_data_pts;
+      m_data_pt_counter = index_end - index_last_sent;
+
+    // update the map item so 'last sent' refers to currently available nr data pts
+    if ( veh_itr == m_map_vehicle_idx_data_last_sent.end() )
+      m_map_vehicle_idx_data_last_sent.insert(std::pair<std::string, double>(m_received_ready_from, nr_stored_data_pts));
+    else
+      veh_itr->second = nr_stored_data_pts;
   }
 
   if ( m_data_pt_counter == 0 || nr_stored_data_pts == 0 )
@@ -2130,35 +2127,54 @@ void GP::sendData()
     if ( m_verbose )
       std::cout << GetAppName() << " :: **sending 0 points!" << std::endl;
   }
-  while ( m_data_pt_counter != 0 )
+  else
   {
-    if ( m_data_pt_counter < 1500 )
-      nr_points_per_msg = m_data_pt_counter;
+    // we need to chunk the data because pShare has a limit of 64K per message
+    // 2000 points should be ca. 53K, so let's try that first
+    // (should be ca. the amount to send at first HP optimization point)
+    // note; 2000 seemed to stretch it, some complaint of 48kB,
+    // let's do 1500, should be conservative enough
+    size_t msg_cnt = 0;
+    // limit to message size
+    size_t nr_points_per_msg = 1500;
 
-    // get data chunk
-    std::ostringstream data_string_stream;
+    while ( m_data_pt_counter != 0 )
+    {
+      // if less than 1500 pts remain, add all of those
+      if ( m_data_pt_counter < 1500 )
+        nr_points_per_msg = m_data_pt_counter;
 
-    // add vehicle name, because broadcast is also received by sending vehicle
-    data_string_stream << m_veh_name << ":";
+      std::ostringstream data_string_stream;
+      // add vehicle name (broadcast is also received by self)
+      data_string_stream << m_veh_name << ":";
 
-    // send data in batches, using msg_cnt to figure out indices
-    // and checking if all has been sent via m_data_pt_counter
-    index_start = msg_cnt*1500;
-    if ( m_veh_name == "surface_hub" )
-      index_start = index_last_sent + index_start;
-    index_end = index_start + nr_points_per_msg;
+      // send data in batches,
+      // use msg_cnt to figure out indices (starts at 0)
+      // and check if all has been sent via m_data_pt_counter
+      index_start = msg_cnt*1500;
 
-    // copy data into data_string_stream, semicolon separated
-    std::copy(m_data_to_send.begin()+index_start, m_data_to_send.begin()+index_end, std::ostream_iterator<std::string>(data_string_stream,";"));
+      // for the surface hub, start where we last left off
+      if ( m_veh_name == "surface_hub" )
+        index_start = index_last_sent + index_start;
 
-    // send msg
-    m_Comms.Notify(m_output_var_share_data,data_string_stream.str());
+      index_end = index_start + nr_points_per_msg;
 
-    // increase nr messages sent, reduce nr data points that still need to be send
-    msg_cnt++;
-    m_data_pt_counter -= nr_points_per_msg;
+      // copy data into data_string_stream, semicolon separated
+      std::copy(m_data_to_send.begin()+index_start, m_data_to_send.begin()+index_end, std::ostream_iterator<std::string>(data_string_stream,";"));
+
+      // send MOOS message
+      m_Comms.Notify(m_output_var_share_data,data_string_stream.str());
+
+      // increase the nr messages sent (msg_cnt),
+      // and reduce the nr of data points that still need to be send (m_data_pt_counter)
+      msg_cnt++;
+      m_data_pt_counter -= nr_points_per_msg;
+    }
   }
+
   // remove data if this is not the surface hub
+  // for surface hub, never clear/empty the m_data_to_send vector,
+  //     because we keep indexing into this
   if ( m_veh_name != "surface_hub" )
   {
     // remove data from vector
@@ -2166,7 +2182,7 @@ void GP::sendData()
     // reset counter
     m_data_pt_counter = 0;
   }
-  // for surface hub, never clear the m_data_to_send
+
 }
 
 //---------------------------------------------------------

@@ -63,5 +63,5 @@ ProcessConfig = pGP
   hp_optim_iterations = 50
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
-  m_max_wait_for_other_vehicles = 180
+  max_wait_for_other_vehicles = 180
 }
