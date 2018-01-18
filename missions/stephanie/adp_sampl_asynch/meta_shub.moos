@@ -136,11 +136,7 @@ ProcessConfig = pGP
   input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
 
   // data sharing through acomms
-#ifdef USE_ACOMMS yes
-  acomms_sharing = true
-#else
   acomms_sharing = false
-#endif
 
   use_voronoi = false
   
@@ -157,11 +153,10 @@ ProcessConfig = pGP
   hp_optim_iterations = 100
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
-#ifdef ADAPTIVE_WPTS yes
-  m_max_wait_for_other_vehicles = 180
-#else
-  m_max_wait_for_other_vehicles = 240
-#endif
+  // use default -- shouldn't matter for surface hub
+  
+  // work with surface hub? (true, false)
+  surface_hub = true
 }
 
 //--------------------------------------------------

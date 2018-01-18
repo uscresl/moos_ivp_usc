@@ -64,4 +64,7 @@ ProcessConfig = pGP
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
   max_wait_for_other_vehicles = 180
+  
+  // work with surface hub? (true, false)
+  surface_hub = false
 }

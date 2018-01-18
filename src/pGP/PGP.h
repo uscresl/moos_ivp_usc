@@ -163,6 +163,7 @@ class GP : public CMOOSApp
    double m_lon;
    double m_dep;
    size_t m_surf_cnt;
+   size_t m_at_depth_cnt;
    bool m_on_surface;
 
    bool m_adaptive;
@@ -325,6 +326,9 @@ class GP : public CMOOSApp
 
    // debugging
    double m_db_uptime;
+
+   // surface hub addition: use a surface hub? (true, false)
+   bool m_use_surface_hub;
 };
 
 #endif

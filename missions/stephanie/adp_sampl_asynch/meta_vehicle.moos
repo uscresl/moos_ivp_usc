@@ -174,7 +174,11 @@ ProcessConfig = pGP
 #ifdef USE_TDS yes
   timed_data_sharing = true
   // interval between data sharing events (seconds)
-  data_sharing_interval = 600
+  #ifdef VNAME anna
+    data_sharing_interval = 550
+  #else
+    data_sharing_interval = 600
+  #endif
 #else
   timed_data_sharing = false
 #endif
@@ -214,10 +218,13 @@ ProcessConfig = pGP
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
 #ifdef ADAPTIVE_WPTS yes
-  m_max_wait_for_other_vehicles = 180
+  max_wait_for_other_vehicles = 180
 #else
-  m_max_wait_for_other_vehicles = 240
+  max_wait_for_other_vehicles = 240
 #endif
+
+  // work with surface hub? (true, false)
+  surface_hub = true
 }
 
 //--------------------------------------------------

@@ -352,7 +352,7 @@ VTYPE3="UUV" # UUV, SHIP
 PREDICTIONS_PREFIX3="${VNAME3}_predictions"
 
 # 4th vehicle community: surface hub
-SHUB="surfacehub"
+SHUB="shub"
 START_DEPTH_SHUB=0
 MODEMID_SHUB="15"
 VTYPE_SHUB="SHIP"
@@ -436,7 +436,7 @@ fi
 # TODO fix OTHER_VEHICLE
 
 # v4: surface hub
-nsplug meta_surface_hub.moos targ_surface_hub.moos -f WARP=$TIME_WARP  \
+nsplug meta_shub.moos targ_$SHUB.moos -f WARP=$TIME_WARP  \
    VNAME=$SHUB  START_POS=$START_POS_SHUB  START_HDG=$START_HEADING \
    VPORT=$SHUB_VPORT SHARE_LISTEN=$SHUB_LISTEN SHARE_LISTEN_GP=$SHUB_LISTEN_GP \
    SHARE_GP2=$SHAREGP2  SHARE_GP3=$SHAREGP3  SHARE_GP_HUB=$SHAREGP_HUB  \
@@ -448,7 +448,7 @@ nsplug meta_surface_hub.moos targ_surface_hub.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_GUI=$GUI  SURVEY_AREA=$AREA  DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
-nsplug meta_surface_hub.bhv targ_surfacehub.bhv -f VNAME=$SHUB      \
+nsplug meta_shub.bhv targ_shub.bhv -f VNAME=$SHUB      \
     START_POS=$START_POS_SHUB WAYPOINTS=$WAYPOINTS_SHUB                \
     START_DEPTH=$START_DEPTH_SHUB VTYPE=$VTYPE_SHUB                    \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
@@ -456,7 +456,8 @@ nsplug meta_surface_hub.bhv targ_surfacehub.bhv -f VNAME=$SHUB      \
 
 
 if [ ${JUST_MAKE} = "yes" ] ; then
-    exit 0
+  echo "Using option JUST_MAKE (-j), exiting."
+  exit 0
 fi
 
 #-------------------------------------------------------
@@ -485,7 +486,7 @@ fi
 
 # surface hub
 printf "Launching $SHUB MOOS Community (WARP=%s) \n" $TIME_WARP
-pAntler targ_surface_hub.moos > log_surface_hub.log &
+pAntler targ_$SHUB.moos > log_$SHUB.log &
 sleep .25
 
 printf "Done \n"

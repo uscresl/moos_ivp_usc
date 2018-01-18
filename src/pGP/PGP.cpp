@@ -54,6 +54,7 @@ GP::GP() :
   m_lon(0),
   m_dep(0),
   m_surf_cnt(0),
+  m_at_depth_cnt(0),
   m_on_surface(false),
   m_adaptive(false),
   m_last_published(std::numeric_limits<double>::max()),
@@ -109,7 +110,8 @@ GP::GP() :
   m_nr_ack_sent(0),
   m_area_buffer(5.0),
   m_bhv_state(""),
-  m_adp_state("")
+  m_adp_state(""),
+  m_use_surface_hub(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -215,12 +217,20 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       m_dep = dval;
 
       if ( std::abs(m_dep) < 0.2 )
+      {
         m_surf_cnt++;
+        m_at_depth_cnt = 0;
+      }
       else
+      {
         m_surf_cnt = 0;
+        m_at_depth_cnt++;
+      }
 
       if ( m_surf_cnt > 10 )
         m_on_surface = true;
+      else if ( m_at_depth_cnt > 5 )
+        m_on_surface = false;
     }
     else if ( key == m_input_var_sample_points )
     {
@@ -275,7 +285,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       std::string veh_that_is_ready = sval;
       if ( veh_that_is_ready != m_veh_name )
       {
-        if ( m_on_surface ) // simulate that we only received on surface
+        if ( m_on_surface ) // simulate that we only receive on surface
         {
           if ( m_verbose )
             std::cout << GetAppName() << " :: received READY at: " << m_db_uptime << " from: " << sval << std::endl;
@@ -306,22 +316,31 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             m_mission_state = STATE_HANDSHAKE;
             publishStates("OnNewMail_m_input_var_handshake_data_sharing");
           }
-          else if ( m_veh_name == "surfacehub" &&
-                    m_rec_ready_veh.size() == m_num_vehicles )
+          else if ( m_use_surface_hub &&
+                    m_rec_ready_veh.size() > 0 )
           {
-            // surface hub case: share data that it got since vehicle previously surfaced,
-            // and receive data from that vehicle, we can skip the handshake though
+            // surface hub case:
+            // both shub and vehicle don't need to wait for all vehicles to be ready
+            // just the other in the exchange should be ready
             if ( !m_received_ready )
             {
-              // store who we received data from
-              m_received_ready = true;
-              m_received_ready_from = veh_that_is_ready;
-            }
-            if ( m_mission_state == STATE_SAMPLE )
-            {
-              // get ready to receive data
-              m_mission_state = STATE_RX_DATA;
-              publishStates("Incoming_handshake_all_received_surface_hub");
+              // for the vehicle, want to make sure that surface hub is ready
+              if ( (m_veh_name != "shub" && veh_that_is_ready == "shub") ||
+                    m_veh_name == "shub" )
+              {
+                // set var to continue with handshake
+                m_received_ready = true;
+                // store who we received data from
+                m_received_ready_from = veh_that_is_ready;
+                // this assumes only one vehicle surfaced
+
+                if ( m_mission_state == STATE_SAMPLE )
+                {
+                  // get ready to receive and send data: go to handshake mode
+                  m_mission_state = STATE_SURFACING;
+                  publishStates("Incoming_handshake_all_received_surface_hub");
+                }
+              }
             }
           }
         }
@@ -730,13 +749,16 @@ bool GP::Iterate()
         tdsHandshake();
         break;
       case STATE_TX_DATA :
+        // data already sent in tdsHandshake()
         if ( m_received_shared_data && !m_calc_prevoronoi )
         {
+          // continue to receive data
           m_mission_state  = STATE_RX_DATA;
           publishStates("Iterate_STATE_TX_DATA_received_data");
         }
         else if ( !m_calc_prevoronoi )
         {
+          // wait for calculations to be done
           // run timer to avoid being stuck waiting for data
           m_tx_timer_counter++;
           // if waited for X min, continue
@@ -749,6 +771,7 @@ bool GP::Iterate()
         }
         else
         {
+          // shouldn't happen, printout for debug
           if ( m_debug )
             std::cout << GetAppName() << " :: stuck in TX_DATA, m_calc_prevoronoi:" << m_calc_prevoronoi << ", m_received_shared_data: " << m_received_shared_data << std::endl;
         }
@@ -880,6 +903,8 @@ bool GP::OnStartUp()
     }
     else if ( param == "max_wait_for_other_vehicles" )
       m_max_wait_for_other_vehicles = (size_t)atoi(value.c_str());
+    else if ( param == "surface_hub" )
+      m_use_surface_hub = true;
     else
       handled = false;
 
@@ -904,6 +929,8 @@ bool GP::OnStartUp()
      m_veh_name = "error";
      std::cout << GetAppName() << " :: Unable to retrieve vehicle name! What is 'Community' set to?" << std::endl;
   }
+  else
+    std::cout << GetAppName() << " :: vehicle name: " << m_veh_name << std::endl;
 
   registerVariables();
 
@@ -1063,16 +1090,14 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 {
   // take ownership of m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-  while ( !gp_lock.try_lock() )
-  {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: obtaining lock, handleMailReceivedDataPts" << std::endl;
-  }
+  // try and get lock, report time it took
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock owner: handleMailReceivedDataPts" << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, handleMailReceivedDataPts, at " << MOOSTime()-m_start_time << std::endl;
+  while ( !gp_lock.try_lock() ){}
+  if ( m_debug )
+    std::cout << GetAppName() << " :: obtained lock, owner: handleMailReceivedDataPts, at " << MOOSTime() - m_start_time << std::endl;
 
   // parse string
-
   // 1. split all data points into a vector
   std::vector<std::string> sample_points = parseString(incoming_data, ';');
   size_t pts_added = sample_points.size();
@@ -1312,7 +1337,7 @@ void GP::handleMailNodeReports(const std::string &input_string)
     // store the vehicle info
     if ( m_other_vehicles.find(veh_nm) == m_other_vehicles.end() )
       // only store if not surface hub
-      if ( veh_nm != "surfacehub" )
+      if ( veh_nm != "shub" )
         m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
     else
       m_other_vehicles[veh_nm] = std::pair<double,double>(veh_lon,veh_lat);
@@ -1377,15 +1402,13 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
     m_data_for_hp_optim.push(nw_data_pt);
   }
 
+  // get the lock for GP
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
-  // obtain lock
-  while ( !ap_lock.try_lock() )
-  {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: obtaining lock, addPatternToGP" << std::endl;
-  }
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock owner, addPatternToGP" << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, addPatternToGP, at " << MOOSTime() - m_start_time << std::endl;
+  while ( !ap_lock.try_lock() ){}
+  if ( m_debug )
+    std::cout << GetAppName() << " :: obtained lock, owner: addPatternToGP, at " << MOOSTime() - m_start_time << std::endl;
 
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
@@ -1740,13 +1763,11 @@ size_t GP::calcMECriterion()
   // lock for access to m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
-  while ( !gp_lock.try_lock() )
-  {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: obtaining lock, calcMECriterion" << std::endl;
-  }
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock owner: calcMECriterion" << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, calcMECriterion, at: " << MOOSTime() - m_start_time << std::endl;
+  while ( !gp_lock.try_lock() ){}
+  if ( m_debug )
+    std::cout << GetAppName() << " :: obtained lock, owner: calcMECriterion, at: " << MOOSTime() - m_start_time << std::endl;
   if ( m_debug )
     std::cout << GetAppName() << " :: make copy GP" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
@@ -1979,13 +2000,11 @@ bool GP::runHPOptimization(size_t nr_iterations)
   Eigen::VectorXd hparams(lh_gp);
 
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
-  while ( !hp_lock.try_lock() )
-  {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: obtaining lock, runHPOptimization" << std::endl;
-  }
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock owner: runHPOptimization" << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, runHPOptimization, at " << MOOSTime() - m_start_time << std::endl;
+  while ( !hp_lock.try_lock() ){}
+  if ( m_debug )
+    std::cout << GetAppName() << " :: obtained lock, owner: runHPOptimization, at " << MOOSTime() - m_start_time << std::endl;
   m_gp->covf().set_loghyper(hparams);
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
@@ -2089,6 +2108,7 @@ void GP::sendData()
   // know what data to send, index into vector
   size_t index_start, index_end, index_last_sent;
 
+  // surface hub case, prepare then appropriate data
   size_t nr_stored_data_pts = m_data_to_send.size();
   index_end = nr_stored_data_pts;
   if ( m_veh_name == "surface_hub" )
@@ -2107,6 +2127,7 @@ void GP::sendData()
     // check how much data to send
     // if no new data is available yet, don't send anything
     // note; we assume we did not first receive data from the vehicle
+    //       which, as per the state machine, should be an ok assumption
     if ( index_end <= index_last_sent )
       nr_stored_data_pts = 0; // force empty message
     else
@@ -2205,12 +2226,12 @@ void GP::makeAndStorePredictions(bool finished)
   std::clock_t begin = std::clock();
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-  while ( !gp_lock.try_lock() ) {
-    if ( m_debug )
-      std::cout << GetAppName() << " :: obtaining lock, makeAndStorePredictions" << std::endl;
-  }
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock owner: makeAndStorePredictions" << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, makeAndStorePredictions, at " << MOOSTime() - m_start_time << std::endl;
+  while ( !gp_lock.try_lock() ){}
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock obtained, owner: makeAndStorePredictions, at " << MOOSTime() - m_start_time << std::endl;
+
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
@@ -2222,7 +2243,6 @@ void GP::makeAndStorePredictions(bool finished)
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions], at MOOSTime: "
               << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(MOOSTime()-m_start_time) << std::endl;
-
 
   begin = std::clock();
   std::vector< std::pair<double, double> >::iterator loc_itr;
@@ -2631,7 +2651,6 @@ void GP::tdsHandshake()
     {
       // other vehicle already ready to exchange data
       // send that we are ready, when we are at the surface
-      if ( m_veh_name != "surfacehub" )
         sendReady();
 
       // send the data
@@ -2640,7 +2659,6 @@ void GP::tdsHandshake()
       m_mission_state = STATE_TX_DATA;
       publishStates("tdsHandhake_received_ready");
 
-      //if ( m_veh_name != "surfacehub" )
       sendData();
 
       // reset for next time
@@ -2654,8 +2672,7 @@ void GP::tdsHandshake()
       // keep sending that we are ready:
       // every 2 seconds, notify that we are ready for data exchange
       if ( moos_t % 2 == 0 &&
-           moos_t - m_last_ready_sent > 1 &&
-           m_veh_name != "surfacehub" )
+           moos_t - m_last_ready_sent > 1 )
       {
         sendReady();
         m_last_ready_sent = moos_t;
@@ -2664,7 +2681,8 @@ void GP::tdsHandshake()
       // update timer for timeout
       m_handshake_timer_counter++;
       // if we have not received all ready messages within X minutes, proceed
-      if ( m_handshake_timer_counter > (m_max_wait_for_other_vehicles * GetAppFreq()) )
+      if ( m_handshake_timer_counter > (m_max_wait_for_other_vehicles * GetAppFreq())
+          && m_veh_name != "shub" )
       {
         m_received_ready = true;
         std::cout << GetAppName() << " :: m_handshake_timer_counter timeout" << std::endl;
@@ -2759,7 +2777,7 @@ void GP::clearTDSStateVars()
   else
   {
     m_mission_state = STATE_SAMPLE;
-    publishStates("clearTDSStateVards_else");
+    publishStates("clearTDSStateVars_else");
   }
 
   if ( m_bhv_state != "survey" )
