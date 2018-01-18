@@ -16,6 +16,20 @@ output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SH
 output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_GP3)
 #endif
 
-// surface hub
-output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_GP_HUB)
-output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_GP_HUB)
+#ifdef VNAME shub
+  // share with other AUV
+  #ifdef NR_VEHICLES 2
+  output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_GP3)
+  output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_GP3)
+  #endif
+  #ifdef NR_VEHICLES 3
+  output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_GP3)
+  output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_GP3)
+  output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_GP4)
+  output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_GP4)
+  #endif
+#else
+  // share with surface hub
+  output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_GP_HUB)
+  output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_GP_HUB)
+#endif
