@@ -295,8 +295,15 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             m_rec_ready_veh.insert(sval);
 
           // if we have received 'ready' from as many vehicles as exist, then flip bool
-          std::cout << GetAppName() << " :: m_rec_ready_veh.size(), m_other_vehicles.size(): "
-                    << m_rec_ready_veh.size() << ", " << m_other_vehicles.size() << std::endl;
+          if ( m_debug )
+          {
+            std::cout << GetAppName() << " :: m_rec_ready_veh.size(), m_other_vehicles.size(): "
+                      << m_rec_ready_veh.size() << ", " << m_other_vehicles.size() << std::endl;
+
+
+            std::cout << GetAppName() << " :: m_use_surface_hub, m_rec_ready_veh.size() > 0? "
+                      << m_use_surface_hub << ", " << (m_rec_ready_veh.size() > 0) << std::endl;
+          }
           if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
                (m_mission_state == STATE_HANDSHAKE || m_mission_state == STATE_HPOPTIM) )
           {
@@ -324,7 +331,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             // just the other in the exchange should be ready
             if ( !m_received_ready )
             {
-              // for the vehicle, want to make sure that surface hub is ready
+              // for the AUVs, want to make sure that surface hub is ready
               if ( (m_veh_name != "shub" && veh_that_is_ready == "shub") ||
                     m_veh_name == "shub" )
               {
@@ -904,7 +911,7 @@ bool GP::OnStartUp()
     else if ( param == "max_wait_for_other_vehicles" )
       m_max_wait_for_other_vehicles = (size_t)atoi(value.c_str());
     else if ( param == "surface_hub" )
-      m_use_surface_hub = true;
+      m_use_surface_hub = (value == "true" ? true : false);
     else
       handled = false;
 
@@ -2854,7 +2861,7 @@ void GP::findAndPublishNextWpt()
       }
       else
       {
-        if ( m_timed_data_sharing && !m_use_voronoi )
+        if ( m_timed_data_sharing && !m_use_voronoi && m_veh_name != "shub" )
         {
           // for TDS, we need to make sure we initiate surfacing,
           // even if we were finding a new waypoint,
