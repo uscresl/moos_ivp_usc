@@ -1127,11 +1127,15 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
   // take ownership of m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // try and get lock, report time it took
+  double lock_time1 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, handleMailReceivedDataPts, at " << MOOSTime()-m_start_time << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, handleMailReceivedDataPts, at " << lock_time1 << std::endl;
   while ( !gp_lock.try_lock() ){}
+  double lock_time2 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: obtained lock, owner: handleMailReceivedDataPts, at " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: obtained lock, owner: handleMailReceivedDataPts, at " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
   // parse string
   // 1. split all data points into a vector
@@ -1165,6 +1169,11 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     int index = getIndexForMap(veh_lon, veh_lat);
     if ( index >= 0 && needToUpdateMaps((size_t)index) )
       updateVisitedSet(veh_lon, veh_lat, (size_t)index);
+
+    // if this is the surface hub, we want to store received data points for
+    // exchange to other vehicles
+    if ( m_veh_name == "shub" )
+      storeDataForSending(veh_lon, veh_lat, data);
   }
 
   // release lock
@@ -1440,11 +1449,15 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
 
   // get the lock for GP
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
+  double lock_time1 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, addPatternToGP, at " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, addPatternToGP, at " << lock_time1 << std::endl;
   while ( !ap_lock.try_lock() ){}
+  double lock_time2 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: obtained lock, owner: addPatternToGP, at " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: obtained lock, owner: addPatternToGP, at " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
@@ -1487,13 +1500,25 @@ void GP::storeDataForSending(double vlon, double vlat, double data)
 //
 bool GP::needToUpdateMaps(size_t grid_index)
 {
-    // add mutex for changing of global maps
-    std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-    while ( !map_lock.try_lock() ){}
-    std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
-    map_lock.unlock();
+  // add mutex for changing of global maps
+  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
 
-    return ( curr_loc_itr != m_sample_points_unvisited.end() );
+  double lock_time1 = MOOSTime() - m_start_time;
+  if ( m_debug )
+    std::cout << GetAppName() << " :: trying to obtain map lock, needToUpdateMaps, at " << lock_time1 << std::endl;
+  while ( !map_lock.try_lock() ){}
+  double lock_time2 = MOOSTime() - m_start_time;
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock obtained, owner: needToUpdateMaps, at " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+
+  std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
+
+  // release lock
+  map_lock.unlock();
+
+  return ( curr_loc_itr != m_sample_points_unvisited.end() );
 }
 
 //---------------------------------------------------------
@@ -1531,7 +1556,15 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 {
   // add mutex for changing of global maps
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+  double lock_time1 = MOOSTime() - m_start_time;
+  if ( m_debug )
+    std::cout << GetAppName() << " :: trying to obtain map lock, updateVisitedSet, at " << lock_time1 << std::endl;
   while ( !map_lock.try_lock() ){}
+  double lock_time2 = MOOSTime() - m_start_time;
+  if ( m_debug )
+    std::cout << GetAppName() << " :: lock obtained, owner: updateVisitedSet, at " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
   std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
   if ( curr_loc_itr != m_sample_points_unvisited.end() )
@@ -1799,11 +1832,16 @@ size_t GP::calcMECriterion()
   // lock for access to m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
+  double lock_time1 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, calcMECriterion, at: " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, calcMECriterion, at: " << lock_time1 << std::endl;
   while ( !gp_lock.try_lock() ){}
+  double lock_time2 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: obtained lock, owner: calcMECriterion, at: " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: obtained lock, owner: calcMECriterion, at: " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+
   if ( m_debug )
     std::cout << GetAppName() << " :: make copy GP" << std::endl;
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
@@ -1822,7 +1860,15 @@ size_t GP::calcMECriterion()
   if ( m_debug )
     std::cout << GetAppName() << " :: try for lock map" << std::endl;
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+  lock_time1 = MOOSTime() - m_start_time;
+  if ( m_debug )
+    std::cout << GetAppName() << " :: trying to obtain map lock, calcMECriterion, at: " << lock_time1 << std::endl;
   while ( !map_lock.try_lock() ){}
+  lock_time2 = MOOSTime() - m_start_time;
+  if ( m_debug )
+    std::cout << GetAppName() << " :: obtained map lock, owner: calcMECriterion, at: " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
   std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
@@ -2036,11 +2082,16 @@ bool GP::runHPOptimization(size_t nr_iterations)
   Eigen::VectorXd hparams(lh_gp);
 
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
+  double lock_time1 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, runHPOptimization, at " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, runHPOptimization, at " << lock_time1 << std::endl;
   while ( !hp_lock.try_lock() ){}
+  double lock_time2 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: obtained lock, owner: runHPOptimization, at " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: obtained lock, owner: runHPOptimization, at " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+
   m_gp->covf().set_loghyper(hparams);
   // just update hyperparams. Call for f and var should init re-compute.
   hp_lock.unlock();
@@ -2138,16 +2189,16 @@ void GP::sendReady()
 //
 void GP::sendData()
 {
-  if ( m_verbose && m_veh_name != "surface_hub" )
-    std::cout << GetAppName() << " :: **sending " << m_data_pt_counter << " points!" << std::endl;
-
   // know what data to send, index into vector
   size_t index_start, index_end, index_last_sent;
 
   // surface hub case, prepare then appropriate data
   size_t nr_stored_data_pts = m_data_to_send.size();
   index_end = nr_stored_data_pts;
-  if ( m_veh_name == "surface_hub" )
+  if ( m_debug )
+    std::cout << GetAppName() << " :: nr_stored_data_pts: " << nr_stored_data_pts << std::endl;
+
+  if ( m_veh_name == "shub" )
   {
     // for the surface hub, we need to know who is ready, to know what data to send
     if ( m_verbose )
@@ -2182,7 +2233,9 @@ void GP::sendData()
     std::string empty_msg = m_veh_name + ':';
     m_Comms.Notify(m_output_var_share_data, empty_msg);
     if ( m_verbose )
-      std::cout << GetAppName() << " :: **sending 0 points!" << std::endl;
+      std::cout << GetAppName() << " :: **no data stored, sending 0 points! "
+                << " (m_data_pt_counter, nr_stored_data_pts)" << m_data_pt_counter
+                << ", " << nr_stored_data_pts << std::endl;
   }
   else
   {
@@ -2194,6 +2247,9 @@ void GP::sendData()
     size_t msg_cnt = 0;
     // limit to message size
     size_t nr_points_per_msg = 1500;
+
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: **sending " << m_data_pt_counter << " points!" << std::endl;
 
     while ( m_data_pt_counter != 0 )
     {
@@ -2211,7 +2267,7 @@ void GP::sendData()
       index_start = msg_cnt*1500;
 
       // for the surface hub, start where we last left off
-      if ( m_veh_name == "surface_hub" )
+      if ( m_veh_name == "shub" )
         index_start = index_last_sent + index_start;
 
       index_end = index_start + nr_points_per_msg;
@@ -2232,7 +2288,7 @@ void GP::sendData()
   // remove data if this is not the surface hub
   // for surface hub, never clear/empty the m_data_to_send vector,
   //     because we keep indexing into this
-  if ( m_veh_name != "surface_hub" )
+  if ( m_veh_name != "shub" )
   {
     // remove data from vector
     m_data_to_send.clear();
@@ -2262,11 +2318,15 @@ void GP::makeAndStorePredictions(bool finished)
   std::clock_t begin = std::clock();
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
+  double lock_time1 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, makeAndStorePredictions, at " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: trying to obtain lock, makeAndStorePredictions, at " << lock_time1 << std::endl;
   while ( !gp_lock.try_lock() ){}
+  double lock_time2 = MOOSTime() - m_start_time;
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock obtained, owner: makeAndStorePredictions, at " << MOOSTime() - m_start_time << std::endl;
+    std::cout << GetAppName() << " :: lock obtained, owner: makeAndStorePredictions, at " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
@@ -2335,7 +2395,16 @@ void GP::makeAndStorePredictions(bool finished)
   begin = std::clock();
   // grab file writing mutex
   std::unique_lock<std::mutex> file_write_lock(m_file_writing_mutex, std::defer_lock);
+  lock_time1 = MOOSTime() - m_start_time;
+  if ( m_debug )
+    std::cout << GetAppName() << " :: trying to obtain file writing lock, makeAndStorePredictions, at " << lock_time1 << std::endl;
   while ( !file_write_lock.try_lock() ){}
+  lock_time2 = MOOSTime() - m_start_time;
+  if ( m_debug )
+    std::cout << GetAppName() << " :: file writing lock obtained, owner: makeAndStorePredictions, at " << lock_time2 << std::endl;
+  if ( lock_time2 - lock_time1 > 120.0 )
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+
   // write to file
   for ( size_t vector_idx = 0; vector_idx < nr_sample_locations; ++vector_idx )
   {
