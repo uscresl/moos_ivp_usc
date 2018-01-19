@@ -263,20 +263,29 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       std::string incoming_data_string = sval;
       size_t index_colon = incoming_data_string.find_first_of(':');
       std::string veh_nm = incoming_data_string.substr(0, index_colon);
-      if ( veh_nm != m_veh_name )
+      if ( veh_nm == m_veh_name )
+        std::cout << GetAppName() << " :: skipping my own data" << std::endl;
+      else
       {
         m_received_shared_data = true;
         if ( m_verbose )
           std::cout << GetAppName() << " :: received data from " << veh_nm << std::endl;
 
-        // extract actual data
-        std::string incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
+        if ( m_use_surface_hub && m_veh_name != "shub" && veh_nm != "shub" )
+        {
+          // if the simulation works with a surface hub, we explicitly ignore
+          // surface-based communications coming from others
+          std::cout << GetAppName() << " :: using surface hub, skip data from others" << std::endl;
+        }
+        else
+        {
+          // extract actual data
+          std::string incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
 
-        m_incoming_data_to_be_added.push_back(incoming_data);
-        m_data_received = true;
+          m_incoming_data_to_be_added.push_back(incoming_data);
+          m_data_received = true;
+        }
       }
-      else
-        std::cout << GetAppName() << " :: skipping my own data" << std::endl;
     }
     else if ( key == "LOITER_DIST_TO_POLY" )
       m_loiter_dist_to_poly = dval;
@@ -305,7 +314,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                       << m_use_surface_hub << ", " << (m_rec_ready_veh.size() > 0) << std::endl;
           }
           if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
-               (m_mission_state == STATE_HANDSHAKE || m_mission_state == STATE_HPOPTIM) )
+               (m_mission_state == STATE_HANDSHAKE || m_mission_state == STATE_HPOPTIM) &&
+               !m_use_surface_hub )
           {
             for ( auto veh : m_rec_ready_veh )
               std::cout << GetAppName() << " :: received ready from: " << veh << std::endl;
@@ -313,7 +323,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
               m_received_ready = true;
           }
           else if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
-                    m_mission_state == STATE_REQ_SURF )
+                    m_mission_state == STATE_REQ_SURF &&
+                    !m_use_surface_hub )
           {
             if ( m_debug )
               std::cout << GetAppName() << " :: received READY from both vehicles "
@@ -348,6 +359,19 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                   publishStates("Incoming_handshake_all_received_surface_hub");
                 }
               }
+              else
+              {
+                if ( m_debug )
+                  std::cout << GetAppName() << " :: received ready from: " << veh_that_is_ready << ", skipping." << std::endl;
+              }
+            }
+            else
+            {
+              if ( m_debug )
+              {
+                std::cout << GetAppName() << " :: received ready from: " << veh_that_is_ready
+                          << ", but m_received_ready, skipping message." << std::endl;
+              }
             }
           }
         }
@@ -356,6 +380,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           if ( m_debug )
             std::cout << GetAppName() << " :: received ready but not at surface yet, skipping" << std::endl;
         }
+      }
+      else
+      {
+        if ( m_debug )
+          std::cout << GetAppName() << " :: received ready from self, skipping" << std::endl;
       }
     }
     else if ( key == "INCOMING_DATA_ACOMMS" )
@@ -618,14 +647,14 @@ bool GP::Iterate()
     switch ( m_mission_state )
     {
       case STATE_SAMPLE :
-        if ( m_timed_data_sharing && !m_use_voronoi && m_adp_state != "static" )
+        if ( m_timed_data_sharing && !m_use_voronoi && m_adp_state != "static" &&
+             m_veh_name != "shub" && m_num_vehicles > 1 )
         {
           // TDS
           // let's time this based on MOOSTime(), and assume that clocks are
           // synchronised (to be verified in field tests)
           // note; add 60s buffer to block out x seconds at beginning
-          if ( m_num_vehicles > 1 &&
-               ( (size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval ) == 0 &&
+          if ( ((size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval) == 0 &&
                (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
           {
             // switch to data sharing mode, to switch bhv to surface
@@ -2861,6 +2890,11 @@ void GP::findAndPublishNextWpt()
       }
       else
       {
+        if ( m_debug )
+        {
+          std::cout << GetAppName() << " :: m_timed_data_sharing, !m_use_voronoi, m_veh_name: "
+                    << m_timed_data_sharing << ", " << m_use_voronoi << ", " << m_veh_name << std::endl;
+        }
         if ( m_timed_data_sharing && !m_use_voronoi && m_veh_name != "shub" )
         {
           // for TDS, we need to make sure we initiate surfacing,
