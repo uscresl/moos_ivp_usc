@@ -175,9 +175,9 @@ ProcessConfig = pGP
   timed_data_sharing = true
   // interval between data sharing events (seconds)
   #ifdef VNAME anna
-    data_sharing_interval = 550
+    data_sharing_interval = 500
   #else
-    data_sharing_interval = 600
+    data_sharing_interval = 650
   #endif
 #else
   timed_data_sharing = false
