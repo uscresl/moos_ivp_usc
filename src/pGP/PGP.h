@@ -329,6 +329,7 @@ class GP : public CMOOSApp
 
    // surface hub addition: use a surface hub? (true, false)
    bool m_use_surface_hub;
+   size_t m_final_received_nr;
 };
 
 #endif

@@ -111,7 +111,8 @@ GP::GP() :
   m_area_buffer(5.0),
   m_bhv_state(""),
   m_adp_state(""),
-  m_use_surface_hub(false)
+  m_use_surface_hub(false),
+  m_final_received_nr(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -284,6 +285,9 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
           m_incoming_data_to_be_added.push_back(incoming_data);
           m_data_received = true;
+
+          if ( m_final_hp_optim )
+            m_final_received_nr++;
         }
       }
     }
@@ -2021,8 +2025,12 @@ void GP::startAndCheckHPOptim()
           }
 
           // after final HP optim
-          if ( m_final_hp_optim )
-            endMission();
+          // for shub, wait to end until we have received data from all vehicles
+          if ( m_final_hp_optim &&
+              (m_veh_name != "shub" || (m_final_received_nr == m_num_vehicles)) )
+              endMission();
+          else if ( m_final_hp_optim )
+            std::cout << GetAppName() << " :: m_final_received_nr = " << m_final_received_nr << std::endl;
 
           m_hp_optim_running = false;
         }
@@ -2825,7 +2833,7 @@ void GP::tdsReceiveData()
       if ( m_verbose )
         std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
 
-      // add in a HP optimization, if this is the first time.
+      // add in a HP optimization, if this is the first time, or last time
       if ( m_first_surface || m_final_hp_optim )
       {
         m_first_surface = false;
