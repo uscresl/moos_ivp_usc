@@ -271,18 +271,30 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         m_received_shared_data = true;
         if ( m_verbose )
           std::cout << GetAppName() << " :: received data from " << veh_nm << std::endl;
+        if ( !m_on_surface && m_verbose )
+          std::cout << GetAppName() << " :: not on surface, skipping data." << std::endl;
 
-        if ( m_use_surface_hub && m_veh_name != "shub" && veh_nm != "shub" )
+        if ( m_use_surface_hub && m_veh_name != "shub" && veh_nm != "shub" && m_on_surface )
         {
           // if the simulation works with a surface hub, we explicitly ignore
-          // surface-based communications coming from others
+          // surface-based communications coming from other AUVs
           std::cout << GetAppName() << " :: using surface hub, skip data from others" << std::endl;
         }
-        else
+        else if ( m_on_surface ) // avoid adding data meant for other vehicles while underwater
         {
-          // extract actual data
-          std::string incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
+          // TODO? if we are on the surface and shub sends data for other vehicle, we still receive it
+          // we should look at directed communications
 
+          // extract actual data
+          // if we are working with the surface hub, pass on the name as well
+          std::string incoming_data;
+          if ( m_use_surface_hub && m_veh_name == "shub" )
+            incoming_data = incoming_data_string;
+          else
+            incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
+
+          if ( m_debug )
+            std::cout << GetAppName() << " :: adding data from: " << veh_nm << std::endl;
           m_incoming_data_to_be_added.push_back(incoming_data);
           m_data_received = true;
 
@@ -1128,6 +1140,46 @@ void GP::handleMailData(double received_data)
 //
 size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 {
+  // if this is the surface hub, we want to check who we got this data from
+  // such that we can increment the index of data last sent, such that we
+  // do not send the vehicle its own data back.
+  std::string veh_nm;
+  if ( m_use_surface_hub && m_veh_name == "shub" )
+  {
+    size_t index_colon = incoming_data.find_first_of(':');
+    veh_nm = incoming_data.substr(0, index_colon);
+    // extract actual data
+    incoming_data = incoming_data.substr(index_colon+1, incoming_data.length());
+  }
+
+  // parse string
+  // 1. split all data points into a vector
+  std::vector<std::string> sample_points = parseString(incoming_data, ';');
+  size_t pts_added = sample_points.size();
+
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: adding " << pts_added << " data points." << std::endl;
+  if ( m_use_surface_hub && m_veh_name == "shub")
+  {
+    // increase the index counter by the current number of pts_added
+    std::map<std::string, size_t>::iterator veh_itr = m_map_vehicle_idx_data_last_sent.find(veh_nm);
+    if ( veh_itr == m_map_vehicle_idx_data_last_sent.end() ) // nothing sent yet
+    {
+      // no index yet, create
+      m_map_vehicle_idx_data_last_sent.insert(std::pair<std::string, size_t>(veh_nm, pts_added));
+    }
+    else
+    {
+      if ( m_debug )
+        std::cout << GetAppName() << " :: Current index for " << veh_nm << " is: " << veh_itr->second << std::endl;
+      // update the index - this assumes data is processed immediately and no data from another vehicle comes in between
+      // the TX and RX state
+      veh_itr->second = veh_itr->second + pts_added;
+    }
+    if ( m_debug )
+      std::cout << GetAppName() << " :: New index for " << veh_nm << " is: " << veh_itr->second << std::endl;
+  }
+
   // take ownership of m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // try and get lock, report time it took
@@ -1140,14 +1192,6 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     std::cout << GetAppName() << " :: obtained lock, owner: handleMailReceivedDataPts, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
-
-  // parse string
-  // 1. split all data points into a vector
-  std::vector<std::string> sample_points = parseString(incoming_data, ';');
-  size_t pts_added = sample_points.size();
-
-  if ( m_verbose )
-    std::cout << GetAppName() << " :: adding " << pts_added << " data points." << std::endl;
 
   // 2. for each, add to GP
   for ( std::string & data_pt_str : sample_points )
@@ -2231,8 +2275,8 @@ void GP::sendData()
     // update the map item so 'last sent' refers to currently available nr data pts
     if ( veh_itr == m_map_vehicle_idx_data_last_sent.end() )
       m_map_vehicle_idx_data_last_sent.insert(std::pair<std::string, double>(m_received_ready_from, nr_stored_data_pts));
-    else
-      veh_itr->second = nr_stored_data_pts;
+    else if ( index_end > index_last_sent )
+      veh_itr->second = nr_stored_data_pts; // update only if changed since prev.
   }
 
   if ( m_data_pt_counter == 0 || nr_stored_data_pts == 0 )
