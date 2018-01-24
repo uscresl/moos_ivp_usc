@@ -112,7 +112,8 @@ GP::GP() :
   m_bhv_state(""),
   m_adp_state(""),
   m_use_surface_hub(false),
-  m_final_received_nr(0)
+  m_final_received_nr(0),
+  m_veh_is_shub(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -274,7 +275,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( !m_on_surface && m_verbose )
           std::cout << GetAppName() << " :: not on surface, skipping data." << std::endl;
 
-        if ( m_use_surface_hub && m_veh_name != "shub" && veh_nm != "shub" && m_on_surface )
+        if ( m_use_surface_hub && !m_veh_is_shub && veh_nm != "shub" && m_on_surface )
         {
           // if the simulation works with a surface hub, we explicitly ignore
           // surface-based communications coming from other AUVs
@@ -288,7 +289,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           // extract actual data
           // if we are working with the surface hub, pass on the name as well
           std::string incoming_data;
-          if ( m_use_surface_hub && m_veh_name == "shub" )
+          if ( m_use_surface_hub && m_veh_is_shub )
             incoming_data = incoming_data_string;
           else
             incoming_data = incoming_data_string.substr(index_colon+1, incoming_data_string.length());
@@ -359,8 +360,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             if ( !m_received_ready )
             {
               // for the AUVs, want to make sure that surface hub is ready
-              if ( (m_veh_name != "shub" && veh_that_is_ready == "shub") ||
-                    m_veh_name == "shub" )
+              if ( (!m_veh_is_shub && veh_that_is_ready == "shub") ||
+                    m_veh_is_shub )
               {
                 // set var to continue with handshake
                 m_received_ready = true;
@@ -664,7 +665,7 @@ bool GP::Iterate()
     {
       case STATE_SAMPLE :
         if ( m_timed_data_sharing && !m_use_voronoi && m_adp_state != "static" &&
-             m_veh_name != "shub" && m_num_vehicles > 1 )
+             !m_veh_is_shub && m_num_vehicles > 1 )
         {
           // TDS
           // let's time this based on MOOSTime(), and assume that clocks are
@@ -982,7 +983,11 @@ bool GP::OnStartUp()
      std::cout << GetAppName() << " :: Unable to retrieve vehicle name! What is 'Community' set to?" << std::endl;
   }
   else
+  {
     std::cout << GetAppName() << " :: vehicle name: " << m_veh_name << std::endl;
+    m_veh_is_shub = true;
+  }
+
 
   registerVariables();
 
@@ -1144,7 +1149,7 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
   // such that we can increment the index of data last sent, such that we
   // do not send the vehicle its own data back.
   std::string veh_nm;
-  if ( m_use_surface_hub && m_veh_name == "shub" )
+  if ( m_use_surface_hub && m_veh_is_shub )
   {
     size_t index_colon = incoming_data.find_first_of(':');
     veh_nm = incoming_data.substr(0, index_colon);
@@ -1159,7 +1164,7 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 
   if ( m_verbose )
     std::cout << GetAppName() << " :: adding " << pts_added << " data points." << std::endl;
-  if ( m_use_surface_hub && m_veh_name == "shub")
+  if ( m_use_surface_hub && m_veh_is_shub)
   {
     // increase the index counter by the current number of pts_added
     std::map<std::string, size_t>::iterator veh_itr = m_map_vehicle_idx_data_last_sent.find(veh_nm);
@@ -1220,7 +1225,7 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 
     // if this is the surface hub, we want to store received data points for
     // exchange to other vehicles
-    if ( m_veh_name == "shub" )
+    if ( m_veh_is_shub )
       storeDataForSending(veh_lon, veh_lat, data);
   }
 
@@ -2071,7 +2076,7 @@ void GP::startAndCheckHPOptim()
           // after final HP optim
           // for shub, wait to end until we have received data from all vehicles
           if ( m_final_hp_optim &&
-              (m_veh_name != "shub" || (m_final_received_nr == m_num_vehicles)) )
+              (!m_veh_is_shub || (m_final_received_nr == m_num_vehicles)) )
               endMission();
           else if ( m_final_hp_optim )
             std::cout << GetAppName() << " :: m_final_received_nr = " << m_final_received_nr << std::endl;
@@ -2250,7 +2255,7 @@ void GP::sendData()
   if ( m_debug )
     std::cout << GetAppName() << " :: nr_stored_data_pts: " << nr_stored_data_pts << std::endl;
 
-  if ( m_veh_name == "shub" )
+  if ( m_veh_is_shub )
   {
     // for the surface hub, we need to know who is ready, to know what data to send
     if ( m_verbose )
@@ -2319,7 +2324,7 @@ void GP::sendData()
       index_start = msg_cnt*1500;
 
       // for the surface hub, start where we last left off
-      if ( m_veh_name == "shub" )
+      if ( m_veh_is_shub )
         index_start = index_last_sent + index_start;
 
       index_end = index_start + nr_points_per_msg;
@@ -2340,7 +2345,7 @@ void GP::sendData()
   // remove data if this is not the surface hub
   // for surface hub, never clear/empty the m_data_to_send vector,
   //     because we keep indexing into this
-  if ( m_veh_name != "shub" )
+  if ( !m_veh_is_shub )
   {
     // remove data from vector
     m_data_to_send.clear();
@@ -2839,7 +2844,7 @@ void GP::tdsHandshake()
       m_handshake_timer_counter++;
       // if we have not received all ready messages within X minutes, proceed
       if ( m_handshake_timer_counter > (m_max_wait_for_other_vehicles * GetAppFreq())
-          && m_veh_name != "shub" )
+          && !m_veh_is_shub )
       {
         m_received_ready = true;
         std::cout << GetAppName() << " :: m_handshake_timer_counter timeout" << std::endl;
@@ -3016,7 +3021,7 @@ void GP::findAndPublishNextWpt()
           std::cout << GetAppName() << " :: m_timed_data_sharing, !m_use_voronoi, m_veh_name: "
                     << m_timed_data_sharing << ", " << m_use_voronoi << ", " << m_veh_name << std::endl;
         }
-        if ( m_timed_data_sharing && !m_use_voronoi && m_veh_name != "shub" )
+        if ( m_timed_data_sharing && !m_use_voronoi && !m_veh_is_shub )
         {
           // for TDS, we need to make sure we initiate surfacing,
           // even if we were finding a new waypoint,
