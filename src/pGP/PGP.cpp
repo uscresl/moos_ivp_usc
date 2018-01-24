@@ -112,7 +112,7 @@ GP::GP() :
   m_bhv_state(""),
   m_adp_state(""),
   m_use_surface_hub(false),
-  m_final_received_nr(0),
+  m_final_received_cnt(0),
   m_veh_is_shub(false)
 {
   // class variable instantiations can go here
@@ -300,7 +300,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           m_data_received = true;
 
           if ( m_final_hp_optim )
-            m_final_received_nr++;
+            m_final_received_cnt++;
         }
       }
     }
@@ -2076,10 +2076,10 @@ void GP::startAndCheckHPOptim()
           // after final HP optim
           // for shub, wait to end until we have received data from all vehicles
           if ( m_final_hp_optim &&
-              (!m_veh_is_shub || (m_final_received_nr == m_num_vehicles)) )
+              (!m_veh_is_shub || (m_final_received_cnt == m_num_vehicles)) )
               endMission();
           else if ( m_final_hp_optim )
-            std::cout << GetAppName() << " :: m_final_received_nr = " << m_final_received_nr << std::endl;
+            std::cout << GetAppName() << " :: m_final_received_nr = " << m_final_received_cnt << std::endl;
 
           m_hp_optim_running = false;
         }
