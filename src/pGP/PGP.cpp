@@ -703,7 +703,7 @@ bool GP::Iterate()
         break;
       case STATE_SURFACING :
         if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
-          Notify("STAGE","data_sharing");
+          m_Comms.Notify("STAGE","data_sharing");
 
         if ( m_on_surface && m_num_vehicles > 1 )
         //(m_timed_data_sharing || m_use_voronoi) )
@@ -985,7 +985,8 @@ bool GP::OnStartUp()
   else
   {
     std::cout << GetAppName() << " :: vehicle name: " << m_veh_name << std::endl;
-    m_veh_is_shub = true;
+    if ( m_veh_name == "shub" )
+      m_veh_is_shub = true;
   }
 
 
@@ -2079,7 +2080,7 @@ void GP::startAndCheckHPOptim()
               (!m_veh_is_shub || (m_final_received_cnt == m_num_vehicles)) )
               endMission();
           else if ( m_final_hp_optim )
-            std::cout << GetAppName() << " :: m_final_received_nr = " << m_final_received_cnt << std::endl;
+            std::cout << GetAppName() << " :: m_final_received_cnt = " << m_final_received_cnt << std::endl;
 
           m_hp_optim_running = false;
         }
@@ -2877,43 +2878,23 @@ void GP::tdsReceiveData()
       std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
     if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
     {
-      size_t pts_added = m_future_received_data_processed.get(); //TODO TODO TODO
+      size_t pts_added = m_future_received_data_processed.get();
 
       if ( m_verbose )
         std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
 
-      // add in a HP optimization, if this is the first time, or last time
-      if ( m_first_surface || m_final_hp_optim )
-      {
+      // run HP optimization
+      if ( m_first_surface )
         m_first_surface = false;
-
-        m_mission_state = STATE_HPOPTIM;
-        publishStates("tdsReceiveData_first_surface_or_final_hp_optim");
+      if ( m_final_hp_optim && m_final_received_cnt < m_num_vehicles )
+      {
+        // for the final case, we know that we are expecting data from all vehicles
+        // so we want to wait for that, before we run HPOPTIM again.
+        m_mission_state = STATE_SAMPLE;
       }
       else
-      {
-//        if ( m_use_voronoi )
-//        {
-          // change 20161125, run HPOPTIM always
-          // let the rest be handled by that state
-          m_mission_state = STATE_HPOPTIM;
-          publishStates("tdsReceiveData_not_first_or_final");
-
-//          // after points received, need to run a round of predictions (unvisited set has changed!)
-//          m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
-//          m_calc_prevoronoi = true;
-//          std::cout << GetAppName() << " :: started m_future_calc_prevoronoi";
-//
-//          // need to switch state - future is being checked in STATE_HPOPTIM;
-//          m_mission_state = STATE_HPOPTIM;
-//          publishStates("tdsReceiveData_use_voronoi");
-//        }
-//        else
-//        {
-//          std::cout << GetAppName() << " :: clearTDSStateVars via tdsReceiveData - not m_use_voronoi" << std::endl;
-//          clearTDSStateVars();
-//        }
-      }
+        m_mission_state = STATE_HPOPTIM;
+      publishStates("tdsReceiveData");
     }
     // else, continue waiting
   }
@@ -2942,8 +2923,8 @@ void GP::clearTDSStateVars()
     publishStates("clearTDSStateVars_else");
   }
 
-  if ( m_bhv_state != "survey" )
-    Notify("STAGE","survey");
+  if ( m_bhv_state != "survey" && (m_veh_is_shub && !m_final_hp_optim) )
+    m_Comms.Notify("STAGE","survey");
 
   // reset surfacing/handshake vars
   m_waiting = false;
