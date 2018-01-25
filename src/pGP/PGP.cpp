@@ -299,7 +299,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           m_incoming_data_to_be_added.push_back(incoming_data);
           m_data_received = true;
 
-          if ( m_final_hp_optim )
+          if ( m_final_hp_optim && m_veh_is_shub )
             m_final_received_cnt++;
         }
       }
@@ -603,13 +603,13 @@ bool GP::Iterate()
       // periodically (every X s), store all GP predictions
       // if we did not do so in the last second (apptick)
       if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_start_time) % m_prediction_interval == 10) &&
+           ((size_t)std::floor(currentMOOSTime()) % m_prediction_interval == 10) &&
            !m_final_hp_optim )
       {
         if ( m_verbose )
         {
           std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
-                    << std::floor(MOOSTime()-m_start_time)  << "(" << std::floor(MOOSTime()-m_start_time) << ")" << std::endl;
+                    << currentMOOSTime() << std::endl;
         }
         std::thread pred_store(&GP::makeAndStorePredictions, this, false);
         pred_store.detach();
@@ -636,7 +636,7 @@ bool GP::Iterate()
     {
       // run hpoptim every .. 500 seconds ..
       if ( (std::abs(m_last_hp_optim_done - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(MOOSTime()-m_start_time) % 500 == 10) )
+           ((size_t)std::floor(currentMOOSTime()) % 500 == 10) )
       {
         if ( m_mission_state != STATE_DONE )
         {
@@ -648,7 +648,7 @@ bool GP::Iterate()
     else
     {
       // start with a hyperparameter optimization
-      if ( std::abs(MOOSTime() - m_start_time) < 1.0 )
+      if ( currentMOOSTime() < 1.0 )
       {
         if ( m_mission_state == STATE_IDLE )
         {
@@ -671,8 +671,8 @@ bool GP::Iterate()
           // let's time this based on MOOSTime(), and assume that clocks are
           // synchronised (to be verified in field tests)
           // note; add 60s buffer to block out x seconds at beginning
-          if ( ((size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval) == 0 &&
-               (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
+          if ( ((size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval) == 0 &&
+               (size_t)std::floor(currentMOOSTime()) > 60 )
           {
             // switch to data sharing mode, to switch bhv to surface
             m_mission_state = STATE_SURFACING;
@@ -728,8 +728,9 @@ bool GP::Iterate()
               endMission();
             else
             {
-              if ( std::abs(MOOSTime() - m_start_time) < 10.0 )
+              if ( currentMOOSTime() < 10.0 )
               {
+                std::cout << GetAppName() << " :: currentMOOSTime()" << currentMOOSTime() << std::endl;
                 m_mission_state = STATE_CALCWPT;
                 publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
               }
@@ -1189,11 +1190,11 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
   // take ownership of m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // try and get lock, report time it took
-  double lock_time1 = MOOSTime() - m_start_time;
+  double lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain lock, handleMailReceivedDataPts, at " << lock_time1 << std::endl;
   while ( !gp_lock.try_lock() ){}
-  double lock_time2 = MOOSTime() - m_start_time;
+  double lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: obtained lock, owner: handleMailReceivedDataPts, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -1219,14 +1220,16 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
 
     m_gp->add_pattern(loc, save_val);
 
-    // update visited set if needed
-    int index = getIndexForMap(veh_lon, veh_lat);
-    if ( index >= 0 && needToUpdateMaps((size_t)index) )
-      updateVisitedSet(veh_lon, veh_lat, (size_t)index);
-
+    // update visited set, if needed (never a need to do this on shub)
+    if ( !m_veh_is_shub )
+    {
+      int index = getIndexForMap(veh_lon, veh_lat);
+      if ( index >= 0 && needToUpdateMaps((size_t)index) )
+        updateVisitedSet(veh_lon, veh_lat, (size_t)index);
+    }
     // if this is the surface hub, we want to store received data points for
     // exchange to other vehicles
-    if ( m_veh_is_shub )
+    else
       storeDataForSending(veh_lon, veh_lat, data);
   }
 
@@ -1472,9 +1475,12 @@ void GP::dataAddingThread()
                   << "," << veh_lat << ":" << data_pt[2] << std::endl;
 
       // update visited set if needed
-      int index = getIndexForMap(veh_lon, veh_lat);
-      if ( index >= 0 && needToUpdateMaps((size_t)index) )
-        updateVisitedSet(veh_lon, veh_lat, (size_t)index);
+      if ( !m_veh_is_shub )
+      {
+        int index = getIndexForMap(veh_lon, veh_lat);
+        if ( index >= 0 && needToUpdateMaps((size_t)index) )
+          updateVisitedSet(veh_lon, veh_lat, (size_t)index);
+      }
     }
   }
 }
@@ -1503,11 +1509,11 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
 
   // get the lock for GP
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
-  double lock_time1 = MOOSTime() - m_start_time;
+  double lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain lock, addPatternToGP, at " << lock_time1 << std::endl;
   while ( !ap_lock.try_lock() ){}
-  double lock_time2 = MOOSTime() - m_start_time;
+  double lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: obtained lock, owner: addPatternToGP, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -1557,11 +1563,11 @@ bool GP::needToUpdateMaps(size_t grid_index)
   // add mutex for changing of global maps
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
 
-  double lock_time1 = MOOSTime() - m_start_time;
+  double lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain map lock, needToUpdateMaps, at " << lock_time1 << std::endl;
   while ( !map_lock.try_lock() ){}
-  double lock_time2 = MOOSTime() - m_start_time;
+  double lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: lock obtained, owner: needToUpdateMaps, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -1610,11 +1616,11 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 {
   // add mutex for changing of global maps
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-  double lock_time1 = MOOSTime() - m_start_time;
+  double lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain map lock, updateVisitedSet, at " << lock_time1 << std::endl;
   while ( !map_lock.try_lock() ){}
-  double lock_time2 = MOOSTime() - m_start_time;
+  double lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: lock obtained, owner: updateVisitedSet, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -1886,11 +1892,11 @@ size_t GP::calcMECriterion()
   // lock for access to m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
-  double lock_time1 = MOOSTime() - m_start_time;
+  double lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain lock, calcMECriterion, at: " << lock_time1 << std::endl;
   while ( !gp_lock.try_lock() ){}
-  double lock_time2 = MOOSTime() - m_start_time;
+  double lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: obtained lock, owner: calcMECriterion, at: " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -1914,11 +1920,11 @@ size_t GP::calcMECriterion()
   if ( m_debug )
     std::cout << GetAppName() << " :: try for lock map" << std::endl;
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-  lock_time1 = MOOSTime() - m_start_time;
+  lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain map lock, calcMECriterion, at: " << lock_time1 << std::endl;
   while ( !map_lock.try_lock() ){}
-  lock_time2 = MOOSTime() - m_start_time;
+  lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: obtained map lock, owner: calcMECriterion, at: " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -2108,7 +2114,7 @@ void GP::endMission()
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
-              << std::floor(MOOSTime()-m_start_time)  << "(" << std::floor(MOOSTime()-m_start_time)  << ")" << std::endl;
+              << std::floor(currentMOOSTime())  << "(" << std::floor(currentMOOSTime())  << ")" << std::endl;
   }
   std::thread pred_store(&GP::makeAndStorePredictions, this, true);
   pred_store.detach();
@@ -2140,11 +2146,11 @@ bool GP::runHPOptimization(size_t nr_iterations)
   Eigen::VectorXd hparams(lh_gp);
 
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
-  double lock_time1 = MOOSTime() - m_start_time;
+  double lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain lock, runHPOptimization, at " << lock_time1 << std::endl;
   while ( !hp_lock.try_lock() ){}
-  double lock_time2 = MOOSTime() - m_start_time;
+  double lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: obtained lock, owner: runHPOptimization, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -2376,11 +2382,11 @@ void GP::makeAndStorePredictions(bool finished)
   std::clock_t begin = std::clock();
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-  double lock_time1 = MOOSTime() - m_start_time;
+  double lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain lock, makeAndStorePredictions, at " << lock_time1 << std::endl;
   while ( !gp_lock.try_lock() ){}
-  double lock_time2 = MOOSTime() - m_start_time;
+  double lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: lock obtained, owner: makeAndStorePredictions, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -2396,7 +2402,7 @@ void GP::makeAndStorePredictions(bool finished)
   std::clock_t end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(MOOSTime()-m_start_time) << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::clock();
   std::vector< std::pair<double, double> >::iterator loc_itr;
@@ -2448,16 +2454,16 @@ void GP::makeAndStorePredictions(bool finished)
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(MOOSTime()-m_start_time) << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::clock();
   // grab file writing mutex
   std::unique_lock<std::mutex> file_write_lock(m_file_writing_mutex, std::defer_lock);
-  lock_time1 = MOOSTime() - m_start_time;
+  lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain file writing lock, makeAndStorePredictions, at " << lock_time1 << std::endl;
   while ( !file_write_lock.try_lock() ){}
-  lock_time2 = MOOSTime() - m_start_time;
+  lock_time2 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: file writing lock obtained, owner: makeAndStorePredictions, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
@@ -2510,7 +2516,7 @@ void GP::makeAndStorePredictions(bool finished)
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: runtime save to file [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(MOOSTime()-m_start_time)  << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime())  << std::endl;
   }
 
   // copy of GP gets destroyed when this function exits
@@ -2874,7 +2880,7 @@ void GP::tdsReceiveData()
   }
   else if ( m_waiting && !m_calc_prevoronoi )
   {
-    if ( m_debug && (size_t)std::floor(MOOSTime()-m_start_time) % 2 == 0 )
+    if ( m_debug && (size_t)std::floor(currentMOOSTime()) % 2 == 0 )
       std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
     if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
     {
@@ -2886,9 +2892,10 @@ void GP::tdsReceiveData()
       // run HP optimization
       if ( m_first_surface )
         m_first_surface = false;
-      if ( m_final_hp_optim && m_final_received_cnt < m_num_vehicles )
+      if ( m_final_hp_optim && m_veh_is_shub && m_final_received_cnt < m_num_vehicles )
       {
-        // for the final case, we know that we are expecting data from all vehicles
+        // for the final case, for shub,
+        // we know that we are expecting data from all vehicles
         // so we want to wait for that, before we run HPOPTIM again.
         m_mission_state = STATE_SAMPLE;
       }
@@ -3008,8 +3015,8 @@ void GP::findAndPublishNextWpt()
           // even if we were finding a new waypoint,
           // such that we keep all vehicles synched
           if ( m_num_vehicles > 1 &&
-               ( (size_t)std::floor(MOOSTime()-m_start_time) % m_data_sharing_interval ) == 0 &&
-               (size_t)std::floor(MOOSTime()-m_start_time) > 60 )
+               ( (size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval ) == 0 &&
+               (size_t)std::floor(currentMOOSTime()) > 60 )
           {
             // switch to data sharing mode, to switch bhv to surface
             m_mission_state = STATE_SURFACING;
@@ -3324,4 +3331,9 @@ void GP::publishStates(std::string const calling_method)
     std::cout << GetAppName() << " :: ** " << m_db_uptime << " switch to: " << currentMissionStateString() << " from " << calling_method << " **\n";
 
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
+}
+
+double GP::currentMOOSTime() const
+{
+  return MOOSTime() - m_start_time;
 }
