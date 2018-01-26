@@ -330,6 +330,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             std::cout << GetAppName() << " :: m_use_surface_hub, m_rec_ready_veh.size() > 0? "
                       << m_use_surface_hub << ", " << (m_rec_ready_veh.size() > 0) << std::endl;
           }
+
           if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
                (m_mission_state == STATE_HANDSHAKE || m_mission_state == STATE_HPOPTIM) &&
                !m_use_surface_hub )
@@ -389,6 +390,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                 std::cout << GetAppName() << " :: received ready from: " << veh_that_is_ready
                           << ", but m_received_ready, skipping message." << std::endl;
               }
+              // TODO? if shub, always send at least one 'READY' ?
             }
           }
         }
@@ -2853,6 +2855,7 @@ void GP::tdsHandshake()
       if ( m_handshake_timer_counter > (m_max_wait_for_other_vehicles * GetAppFreq())
           && !m_veh_is_shub )
       {
+        if ( (m_use_surface_hub && !m_final_hp_optim) || !m_use_surface_hub )
         m_received_ready = true;
         std::cout << GetAppName() << " :: m_handshake_timer_counter timeout" << std::endl;
         m_handshake_timer_counter = 0;
@@ -2897,7 +2900,7 @@ void GP::tdsReceiveData()
         // for the final case, for shub,
         // we know that we are expecting data from all vehicles
         // so we want to wait for that, before we run HPOPTIM again.
-        m_mission_state = STATE_SAMPLE;
+        m_mission_state = STATE_HANDSHAKE;
       }
       else
         m_mission_state = STATE_HPOPTIM;
