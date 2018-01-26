@@ -101,7 +101,6 @@ ProcessConfig = pGP_AUV
   input_var_sample_points = SAMPLE_POINTS
   input_var_sample_points_specs = SAMPLE_POINTS_SPECS
   input_var_predict_points = SAMPLE_POINTS_PREDICT
-  input_var_adaptive_trigger = WPT_INDEX
 
   output_var_predictions = GP_PREDICTIONS
 
@@ -145,8 +144,12 @@ ProcessConfig = pGP_AUV
 
   // choice of path planning method, and their parameters
   // options: greedy, recursive_greedy, dynamic_programming
-  path_planning_method = dynamic_programming
+  path_planning_method = greedy
   path_planning_horizon = 10
+  
+  // use WPT_INDEX for recursive_greedy/dynamic_programming
+  // use WPT_CYCLE_FINISHED for greedy
+  input_var_adaptive_trigger = WPT_CYCLE_FINISHED
 }
 
 //--------------------------------------------------
