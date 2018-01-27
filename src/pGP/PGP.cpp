@@ -1189,56 +1189,19 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
       std::cout << GetAppName() << " :: New index for " << veh_nm << " is: " << veh_itr->second << std::endl;
   }
 
-  // take ownership of m_gp
-  std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-  // try and get lock, report time it took
-  double lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, handleMailReceivedDataPts, at " << lock_time1 << std::endl;
-  while ( !gp_lock.try_lock() ){}
-  double lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: obtained lock, owner: handleMailReceivedDataPts, at " << lock_time2 << std::endl;
-  if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
-
-  // 2. for each, add to GP
+  // 2. for each, add to GP, use data adding thread, to reduce need for mutexes
   for ( std::string & data_pt_str : sample_points )
   {
     std::vector<std::string> data_pt_components = parseString(data_pt_str, ',');
     double veh_lon = atof(data_pt_components[0].c_str());
     double veh_lat = atof(data_pt_components[1].c_str());
-
-    double loc [2] = {veh_lon, veh_lat};
-
     double data = atof(data_pt_components[2].c_str());
-    double save_val = m_use_log_gp ? log(data) : data;
 
-    if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
-    {
-      std::vector<double> nw_data_pt{veh_lon, veh_lat, save_val};
-      m_data_for_hp_optim.push(nw_data_pt);
-    }
-
-    m_gp->add_pattern(loc, save_val);
-
-    // update visited set, if needed (never a need to do this on shub)
-    if ( !m_veh_is_shub )
-    {
-      int index = getIndexForMap(veh_lon, veh_lat);
-      if ( index >= 0 )
-        updateVisitedSet(veh_lon, veh_lat, (size_t)index);
-    }
-    // if this is the surface hub, we want to store received data points for
-    // exchange to other vehicles
-    else
-      storeDataForSending(veh_lon, veh_lat, data);
+    // pass into data adding queue
+    std::vector<double> nw_data_pt{veh_lon, veh_lat, data};
+    m_queue_data_points_for_gp.push(nw_data_pt);
+    // rest is handled by data adding thread
   }
-
-  // release lock
-  gp_lock.unlock();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by: handleMailReceivedDataPts" << std::endl;
 
   return pts_added;
 }
@@ -1475,14 +1438,6 @@ void GP::dataAddingThread()
       if ( m_debug )
         std::cout << GetAppName() << " :: adding data point: " << veh_lon
                   << "," << veh_lat << ":" << data_pt[2] << std::endl;
-
-      // update visited set if needed
-      if ( !m_veh_is_shub )
-      {
-        int index = getIndexForMap(veh_lon, veh_lat);
-        if ( index >= 0 )
-          updateVisitedSet(veh_lon, veh_lat, (size_t)index);
-      }
     }
   }
 }
@@ -1492,7 +1447,7 @@ void GP::dataAddingThread()
 //            function to add points to GP, using mutex so as
 //            to not disturb when other processes are reading from GP
 //
-void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
+void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
 {
   // limit scope mutex, protect when adding data
   // because this is now happening in a detached thread
@@ -1500,7 +1455,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
 
   // GP: pass in value
   // log GP: take log (ln) of measurement
-  double save_val = m_use_log_gp ? log(value) : value;
+  double save_val = m_use_log_gp ? log(data_value) : data_value;
 
   // downsampled data for hyperparam optimization
   if ( m_gp->get_sampleset_size() % m_downsample_factor == 0 )
@@ -1512,12 +1467,12 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   // get the lock for GP
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
   double lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, addPatternToGP, at " << lock_time1 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: trying to obtain lock, addPatternToGP, at " << lock_time1 << std::endl;
   while ( !ap_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: obtained lock, owner: addPatternToGP, at " << lock_time2 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: obtained lock, owner: addPatternToGP, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
@@ -1528,6 +1483,18 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double value)
   ap_lock.unlock();
   if ( m_debug )
     std::cout << GetAppName() << " :: lock released by addPatternToGP" << std::endl;
+
+  // update visited set if needed
+  if ( !m_veh_is_shub )
+  {
+    int index = getIndexForMap(veh_lon, veh_lat);
+    if ( index >= 0 )
+      updateVisitedSet(veh_lon, veh_lat, (size_t)index);
+  }
+  // if this is the surface hub, we want to store received data points for
+  // exchange to other vehicles
+  else
+    storeDataForSending(veh_lon, veh_lat, data_value);
 }
 
 
@@ -1594,12 +1561,12 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
 
   double lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain map lock, updateVisitedSet, at " << lock_time1 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: trying to obtain map lock, updateVisitedSet, at " << lock_time1 << std::endl;
   while ( !map_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: lock obtained, owner: updateVisitedSet, at " << lock_time2 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: lock obtained, owner: updateVisitedSet, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
@@ -1881,12 +1848,12 @@ size_t GP::calcMECriterion()
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
   double lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, calcMECriterion, at: " << lock_time1 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: trying to obtain lock, calcMECriterion, at: " << lock_time1 << std::endl;
   while ( !gp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: obtained lock, owner: calcMECriterion, at: " << lock_time2 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: obtained lock, owner: calcMECriterion, at: " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
@@ -1909,12 +1876,12 @@ size_t GP::calcMECriterion()
     std::cout << GetAppName() << " :: try for lock map" << std::endl;
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
   lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain map lock, calcMECriterion, at: " << lock_time1 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: trying to obtain map lock, calcMECriterion, at: " << lock_time1 << std::endl;
   while ( !map_lock.try_lock() ){}
   lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: obtained map lock, owner: calcMECriterion, at: " << lock_time2 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: obtained map lock, owner: calcMECriterion, at: " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
   // make copy of map to use instead of map,
@@ -2082,7 +2049,6 @@ void GP::startAndCheckHPOptim()
       else
         std::cout << GetAppName() << " :: waiting for hp optim" << std::endl;
   }
-
 }
 
 //---------------------------------------------------------
@@ -2116,11 +2082,22 @@ void GP::endMission()
 bool GP::runHPOptimization(size_t nr_iterations)
 {
   bool data_processed = false;
-  size_t pts_added = 0;
+
+  // wait until most data has been added
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: current size queue data points: "
+              << m_queue_data_points_for_gp.size() << std::endl;
+
+  if ( m_debug )
+    std::cout << GetAppName() << " :: start wait for data adding thread at: "
+              << currentMOOSTime() << std::endl;
+  while ( m_queue_data_points_for_gp.size() > 10 ){}
+    // wait
+  if ( m_debug )
+    std::cout << GetAppName() << " :: waited for data adding until: "
+              << currentMOOSTime() << std::endl;
 
   // run hyperparameter optimization
-
-  // protect GP access with mutex
   if ( m_verbose)
   {
     std::cout << GetAppName() << " :: continuing HP optimization" << std::endl; //obtained lock,
@@ -2133,16 +2110,20 @@ bool GP::runHPOptimization(size_t nr_iterations)
   // pass on params to GP
   Eigen::VectorXd hparams(lh_gp);
 
+  // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   double lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, runHPOptimization, at " << lock_time1 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: trying to obtain lock, runHPOptimization, at "
+//              << lock_time1 << std::endl;
   while ( !hp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: obtained lock, owner: runHPOptimization, at " << lock_time2 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: obtained lock, owner: runHPOptimization, at "
+//              << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: "
+              << (lock_time2 - lock_time1) << std::endl;
 
   m_gp->covf().set_loghyper(hparams);
   // just update hyperparams. Call for f and var should init re-compute.
@@ -2371,12 +2352,12 @@ void GP::makeAndStorePredictions(bool finished)
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   double lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain lock, makeAndStorePredictions, at " << lock_time1 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: trying to obtain lock, makeAndStorePredictions, at " << lock_time1 << std::endl;
   while ( !gp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: lock obtained, owner: makeAndStorePredictions, at " << lock_time2 << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: lock obtained, owner: makeAndStorePredictions, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
@@ -2445,17 +2426,6 @@ void GP::makeAndStorePredictions(bool finished)
               << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::clock();
-  // grab file writing mutex
-  std::unique_lock<std::mutex> file_write_lock(m_file_writing_mutex, std::defer_lock);
-  lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain file writing lock, makeAndStorePredictions, at " << lock_time1 << std::endl;
-  while ( !file_write_lock.try_lock() ){}
-  lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: file writing lock obtained, owner: makeAndStorePredictions, at " << lock_time2 << std::endl;
-  if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
   // write to file
   for ( size_t vector_idx = 0; vector_idx < nr_sample_locations; ++vector_idx )
@@ -2499,7 +2469,7 @@ void GP::makeAndStorePredictions(bool finished)
       m_ofstream_psigma2_GP.close();
     }
   }
-  file_write_lock.unlock();
+
   end = std::clock();
   if ( m_verbose )
   {
@@ -2871,6 +2841,7 @@ void GP::tdsReceiveData()
   {
     if ( m_debug && (size_t)std::floor(currentMOOSTime()) % 2 == 0 )
       std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
+
     if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
     {
       size_t pts_added = m_future_received_data_processed.get();

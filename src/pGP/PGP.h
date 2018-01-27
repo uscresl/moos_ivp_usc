@@ -210,7 +210,6 @@ class GP : public CMOOSApp
    libgp::GaussianProcess * m_gp;
    std::mutex m_gp_mutex;
    std::mutex m_sample_maps_mutex;
-   std::mutex m_file_writing_mutex;
 
    // create queue for adding of points to GP
    std::queue< std::vector<double> > m_queue_data_points_for_gp;
