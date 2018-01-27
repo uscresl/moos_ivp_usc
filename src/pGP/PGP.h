@@ -112,7 +112,6 @@ class GP : public CMOOSApp
 #endif
 
    // helper/test functions
-   bool needToUpdateMaps(size_t grid_index);
    int getIndexForMap(double veh_lon, double veh_lat);
    bool checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt);
    bool checkGPHasData();

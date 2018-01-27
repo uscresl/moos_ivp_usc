@@ -1226,7 +1226,7 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     if ( !m_veh_is_shub )
     {
       int index = getIndexForMap(veh_lon, veh_lat);
-      if ( index >= 0 && needToUpdateMaps((size_t)index) )
+      if ( index >= 0 )
         updateVisitedSet(veh_lon, veh_lat, (size_t)index);
     }
     // if this is the surface hub, we want to store received data points for
@@ -1480,7 +1480,7 @@ void GP::dataAddingThread()
       if ( !m_veh_is_shub )
       {
         int index = getIndexForMap(veh_lon, veh_lat);
-        if ( index >= 0 && needToUpdateMaps((size_t)index) )
+        if ( index >= 0 )
           updateVisitedSet(veh_lon, veh_lat, (size_t)index);
       }
     }
@@ -1555,34 +1555,6 @@ void GP::storeDataForSending(double vlon, double vlat, double data)
   m_data_pt_counter++;
 }
 
-
-//---------------------------------------------------------
-// Procedure: needToUpdateMaps
-//            check if location's grid index is in unvisited map
-//
-bool GP::needToUpdateMaps(size_t grid_index)
-{
-  // add mutex for changing of global maps
-  std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-
-  double lock_time1 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: trying to obtain map lock, needToUpdateMaps, at " << lock_time1 << std::endl;
-  while ( !map_lock.try_lock() ){}
-  double lock_time2 = currentMOOSTime();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: lock obtained, owner: needToUpdateMaps, at " << lock_time2 << std::endl;
-  if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
-
-  std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(grid_index);
-
-  // release lock
-  map_lock.unlock();
-
-  return ( curr_loc_itr != m_sample_points_unvisited.end() );
-}
-
 //---------------------------------------------------------
 // Procedure: getIndexForMap
 //            calculate the grid index for the vehicle location
@@ -1616,8 +1588,11 @@ int GP::getIndexForMap(double veh_lon, double veh_lat)
 //
 void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 {
+  bool need_to_update_maps = false;
+
   // add mutex for changing of global maps
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
+
   double lock_time1 = currentMOOSTime();
   if ( m_debug )
     std::cout << GetAppName() << " :: trying to obtain map lock, updateVisitedSet, at " << lock_time1 << std::endl;
@@ -1630,46 +1605,57 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
 
   std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
   if ( curr_loc_itr != m_sample_points_unvisited.end() )
+    need_to_update_maps = true;
+
+  if ( !need_to_update_maps )
   {
-    // remove point from unvisited set
-    Eigen::Vector2d move_pt = curr_loc_itr->second;
-
-    // check if the sampled point was nearby, if not, there's something wrong
-    bool pt_nearby = checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
-    if ( !pt_nearby && m_mission_state == STATE_SAMPLE )
+    map_lock.unlock();
+    return;
+  }
+  else
+  {
+    std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
+    if ( curr_loc_itr != m_sample_points_unvisited.end() )
     {
-      std::cout << GetAppName() << " :: ERROR? distance to sampled point is bigger than the grid spacing\n";
-    }
+      // remove point from unvisited set
+      Eigen::Vector2d move_pt = curr_loc_itr->second;
 
-    // add the point to the visited set
-    m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
-
-    // and remove it from the unvisited set
-    m_sample_points_unvisited.erase(curr_loc_itr);
-    // if using voronoi region, remove from that set, if it is in there
-    if ( m_use_voronoi )
-    {
-      if ( m_voronoi_subset.size() > 0 )
-        m_voronoi_subset.erase( std::remove(m_voronoi_subset.begin(), m_voronoi_subset.end(), index), m_voronoi_subset.end() );
-      if ( m_voronoi_subset_other_vehicles.size() > 0 )
+      // check if the sampled point was nearby, if not, there's something wrong
+      bool pt_nearby = checkDistanceToSampledPoint(veh_lon, veh_lat, move_pt);
+      if ( !pt_nearby && m_mission_state == STATE_SAMPLE )
       {
-        for ( auto veh : m_voronoi_subset_other_vehicles )
+        std::cout << GetAppName() << " :: ERROR? distance to sampled point is bigger than the grid spacing\n";
+      }
+
+      // add the point to the visited set
+      m_sample_points_visited.insert(std::pair<size_t, Eigen::Vector2d>(index, move_pt));
+
+      // and remove it from the unvisited set
+      m_sample_points_unvisited.erase(curr_loc_itr);
+      // if using voronoi region, remove from that set, if it is in there
+      if ( m_use_voronoi )
+      {
+        if ( m_voronoi_subset.size() > 0 )
+          m_voronoi_subset.erase( std::remove(m_voronoi_subset.begin(), m_voronoi_subset.end(), index), m_voronoi_subset.end() );
+        if ( m_voronoi_subset_other_vehicles.size() > 0 )
         {
-          (veh.second).erase( std::remove((veh.second).begin(), (veh.second).end(), index), (veh.second).end() );
+          for ( auto veh : m_voronoi_subset_other_vehicles )
+          {
+            (veh.second).erase( std::remove((veh.second).begin(), (veh.second).end(), index), (veh.second).end() );
+          }
         }
       }
-    }
 
-    // report
-    if ( m_verbose )
-    {
-      std::cout << '\n' << GetAppName() << " :: moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
-      std::cout << " from unvisited to visited.\n";
-      std::cout << GetAppName() << " :: Unvisited size: " << m_sample_points_unvisited.size() << '\n';
-      std::cout << GetAppName() << " :: Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
+      // report
+      if ( m_verbose )
+      {
+        std::cout << '\n' << GetAppName() << " :: moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
+        std::cout << " from unvisited to visited.\n";
+        std::cout << GetAppName() << " :: Unvisited size: " << m_sample_points_unvisited.size() << '\n';
+        std::cout << GetAppName() << " :: Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
+      }
     }
   }
-
   map_lock.unlock();
 }
 
