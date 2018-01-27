@@ -61,7 +61,7 @@ class GP : public CMOOSApp
    // Own functions
    void initGeodesy();
 
-   void handleMailData(double received_data);
+   void handleMailDataFromSensor(double received_data);
    void handleMailSamplePoints(std::string input_string);
    void handleMailSamplePointsSpecs(std::string input_string);
    void handleMailNodeReports(std::string const & input_string);

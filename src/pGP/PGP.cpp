@@ -208,7 +208,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
       if ( (m_data_mail_counter % 2 == 0) &&
             m_mission_state == STATE_SAMPLE )
-        handleMailData(dval);
+        handleMailDataFromSensor(dval);
     }
     else if ( key == "NAV_LAT" )
       m_lat = dval;
@@ -1115,10 +1115,10 @@ void GP::registerVariables()
 }
 
 //---------------------------------------------------------
-// Procedure: handleMailData
+// Procedure: handleMailDataFromSensor
 //            handle the incoming message
 //
-void GP::handleMailData(double received_data)
+void GP::handleMailDataFromSensor(double received_data)
 {
   if ( m_lon == 0 && m_lat == 0 && m_dep == 0 )
     std::cout << GetAppName() << "No NAV_LAT/LON/DEPTH received, not processing data." << std::endl;
