@@ -720,31 +720,38 @@ bool GP::Iterate()
           startAndCheckHPOptim();
         else
         {
-          // check if future ready. If so, then redirect to sample
-          if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-          {
-            // check if this was supposed to be final hpoptim (received var/msg during calculations)
-            // if so, then end now
-            // if not, then continue
-            if ( m_final_hp_optim )
-              endMission();
-            else
+          try {
+            // check if future ready. If so, then redirect to sample
+            if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
             {
-              if ( currentMOOSTime() < 10.0 )
-              {
-                std::cout << GetAppName() << " :: currentMOOSTime()" << currentMOOSTime() << std::endl;
-                m_mission_state = STATE_CALCWPT;
-                publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
-              }
+              // check if this was supposed to be final hpoptim (received var/msg during calculations)
+              // if so, then end now
+              // if not, then continue
+              if ( m_final_hp_optim )
+                endMission();
               else
               {
-                m_mission_state = STATE_CALCVOR;
-                publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+                if ( currentMOOSTime() < 10.0 )
+                {
+                  std::cout << GetAppName() << " :: currentMOOSTime()" << currentMOOSTime() << std::endl;
+                  m_mission_state = STATE_CALCWPT;
+                  publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+                }
+                else
+                {
+                  m_mission_state = STATE_CALCVOR;
+                  publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
+                }
+                m_calc_prevoronoi = false;
               }
-              m_calc_prevoronoi = false;
+              // reset var
+              m_data_received = false;
             }
-            // reset var
-            m_data_received = false;
+          }
+          catch (const std::future_error& ex)
+          {
+            std::cout << GetAppName() << " :: Caught a future_error with code: " << ex.code()
+                      << " and message: " << ex.what() << "in STATE_HPOPTIM checking m_future_calc_prevoronoi." << std::endl;
           }
         }
         break;
@@ -2007,9 +2014,10 @@ void GP::startAndCheckHPOptim()
   }
   else
   {
-    // if running, check if done
-    if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-    {
+    try {
+      // if running, check if done
+      if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+      {
         bool hp_optim_done = m_future_hp_optim.get(); // should be true
         if ( !hp_optim_done )
         {
@@ -2048,6 +2056,12 @@ void GP::startAndCheckHPOptim()
       }
       else
         std::cout << GetAppName() << " :: waiting for hp optim" << std::endl;
+    }
+    catch (const std::future_error& ex)
+    {
+            std::cout << GetAppName() << " :: Caught a future_error with code: " << ex.code()
+                      << " and message: " << ex.what() << "in startAndCheckHPOptim() checking m_future_hp_optim." << std::endl;
+    }
   }
 }
 
@@ -2842,28 +2856,35 @@ void GP::tdsReceiveData()
     if ( m_debug && (size_t)std::floor(currentMOOSTime()) % 2 == 0 )
       std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
 
-    if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
-    {
-      size_t pts_added = m_future_received_data_processed.get();
-
-      if ( m_verbose )
-        std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
-
-      // run HP optimization
-      if ( m_first_surface )
-        m_first_surface = false;
-      if ( m_final_hp_optim && m_veh_is_shub && m_final_received_cnt < m_num_vehicles )
+    try {
+      if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
       {
-        // for the final case, for shub,
-        // we know that we are expecting data from all vehicles
-        // so we want to wait for that, before we run HPOPTIM again.
-        m_mission_state = STATE_HANDSHAKE;
+        size_t pts_added = m_future_received_data_processed.get();
+
+        if ( m_verbose )
+          std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
+
+        // run HP optimization
+        if ( m_first_surface )
+          m_first_surface = false;
+        if ( m_final_hp_optim && m_veh_is_shub && m_final_received_cnt < m_num_vehicles )
+        {
+          // for the final case, for shub,
+          // we know that we are expecting data from all vehicles
+          // so we want to wait for that, before we run HPOPTIM again.
+          m_mission_state = STATE_HANDSHAKE;
+        }
+        else
+          m_mission_state = STATE_HPOPTIM;
+        publishStates("tdsReceiveData");
       }
-      else
-        m_mission_state = STATE_HPOPTIM;
-      publishStates("tdsReceiveData");
+      // else, continue waiting
     }
-    // else, continue waiting
+    catch (const std::future_error& ex)
+    {
+      std::cout << GetAppName() << " :: Caught a future_error with code: " << ex.code()
+                << " and message: " << ex.what() << "in tdsReceiveData() checking m_future_received_data_processed." << std::endl;
+    }
   }
 }
 
@@ -2947,43 +2968,50 @@ void GP::findAndPublishNextWpt()
     }
     else
     {
-      // see if we can get result from future
-      std::cout << GetAppName() << " :: checking future m_future_next_pt" << std::endl;
-      if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
-      {
-        m_finding_nxt = false;
-
-        // publish greedy best
-        publishNextBestPosition();
-
-        // continue survey
-        if ( m_bhv_state != "survey" )
-          m_Comms.Notify("STAGE","survey");
-        m_mission_state = STATE_SAMPLE;
-        publishStates("findAndPublishWpt");
-      }
-      else
-      {
-        if ( m_debug )
+      try {
+        // see if we can get result from future
+        std::cout << GetAppName() << " :: checking future m_future_next_pt" << std::endl;
+        if ( m_future_next_pt.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
         {
-          std::cout << GetAppName() << " :: m_timed_data_sharing, !m_use_voronoi, m_veh_name: "
-                    << m_timed_data_sharing << ", " << m_use_voronoi << ", " << m_veh_name << std::endl;
+          m_finding_nxt = false;
+
+          // publish greedy best
+          publishNextBestPosition();
+
+          // continue survey
+          if ( m_bhv_state != "survey" )
+            m_Comms.Notify("STAGE","survey");
+          m_mission_state = STATE_SAMPLE;
+          publishStates("findAndPublishWpt");
         }
-        if ( m_timed_data_sharing && !m_use_voronoi && !m_veh_is_shub )
+        else
         {
-          // for TDS, we need to make sure we initiate surfacing,
-          // even if we were finding a new waypoint,
-          // such that we keep all vehicles synched
-          if ( m_num_vehicles > 1 &&
-               ( (size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval ) == 0 &&
-               (size_t)std::floor(currentMOOSTime()) > 60 )
+          if ( m_debug )
           {
-            // switch to data sharing mode, to switch bhv to surface
-            m_mission_state = STATE_SURFACING;
-            publishStates("Iterate_STATE_SAMPLE_TDS");
+            std::cout << GetAppName() << " :: m_timed_data_sharing, !m_use_voronoi, m_veh_name: "
+                      << m_timed_data_sharing << ", " << m_use_voronoi << ", " << m_veh_name << std::endl;
           }
-        }
-      } // else future check
+          if ( m_timed_data_sharing && !m_use_voronoi && !m_veh_is_shub )
+          {
+            // for TDS, we need to make sure we initiate surfacing,
+            // even if we were finding a new waypoint,
+            // such that we keep all vehicles synched
+            if ( m_num_vehicles > 1 &&
+                 ( (size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval ) == 0 &&
+                 (size_t)std::floor(currentMOOSTime()) > 60 )
+            {
+              // switch to data sharing mode, to switch bhv to surface
+              m_mission_state = STATE_SURFACING;
+              publishStates("Iterate_STATE_SAMPLE_TDS");
+            }
+          }
+        } // else future check
+      }
+      catch ( const std::future_error& ex )
+      {
+        std::cout << GetAppName() << " :: Caught a future_error with code: " << ex.code()
+                  << " and message: " << ex.what() << "in findAndPublishNextWpt() checking m_future_next_pt." << std::endl;
+      }
     } // else !m_finding_nxt
   } // else m_precalc_pred_voronoi_done
 }
