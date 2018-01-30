@@ -113,7 +113,8 @@ GP::GP() :
   m_adp_state(""),
   m_use_surface_hub(false),
   m_final_received_cnt(0),
-  m_veh_is_shub(false)
+  m_veh_is_shub(false),
+  m_cancel_hpo(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -300,7 +301,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           m_data_received = true;
 
           if ( m_final_hp_optim && m_veh_is_shub )
+          {
             m_final_received_cnt++;
+            std::cout << GetAppName() << " :: m_final_received_cnt = " << m_final_received_cnt << std::endl;
+            std::cout << GetAppName() << " :: increased by data from: " << veh_nm << " at: " << currentMOOSTime() << std::endl;
+          }
         }
       }
     }
@@ -545,7 +550,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           // note:
           // if already in HPOPTIM state, we want to discard this optimization,
           // surface for data sharing, and then re-run hp optimization
-          m_hp_optim_running = false;
+          // stop any active HPOPTIM thread
+          if ( m_mission_state == STATE_HPOPTIM )
+          {
+            m_cancel_hpo = true;
+            m_hp_optim_running = false;
+          }
 
           if ( m_use_voronoi )
             m_mission_state = STATE_REQ_SURF;
@@ -557,6 +567,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           clearHandshakeVars();
           m_waiting = false;
           m_calc_prevoronoi = false;
+
         }
         else if ( m_mission_state != STATE_IDLE || m_mission_state != STATE_DONE )
         {
@@ -2022,6 +2033,7 @@ void GP::startAndCheckHPOptim()
         if ( !hp_optim_done )
         {
           std::cout << GetAppName() << " :: ERROR: should be done with HP optimization, but get() returns false!" << std::endl;
+          std::cout << GetAppName() << " :: was there a premature kill of HPO due to mission end?" << std::endl;
           return;
         }
         else
@@ -2105,10 +2117,16 @@ bool GP::runHPOptimization(size_t nr_iterations)
   if ( m_debug )
     std::cout << GetAppName() << " :: start wait for data adding thread at: "
               << currentMOOSTime() << std::endl;
+  unsigned int iter = 0;
   while ( m_queue_data_points_for_gp.size() > 10 )
   { // wait
-//    std::cout << GetAppName() << " :: m_queue_data_points_for_gp.size(): "
-//              << m_queue_data_points_for_gp.size() << std::endl;
+    iter++;
+    if ( m_debug && iter % 10000 == 0)
+    {
+      std::cout << GetAppName() << " :: m_queue_data_points_for_gp.size(): "
+              << m_queue_data_points_for_gp.size() << std::endl;
+      std::cout << GetAppName() << " :: iter: " << iter << std::endl;
+    }
   }
   if ( m_debug )
     std::cout << GetAppName() << " :: waited for data adding until: "
@@ -2121,8 +2139,25 @@ bool GP::runHPOptimization(size_t nr_iterations)
     std::cout << GetAppName() << " :: current size GP: " << m_gp->get_sampleset_size() << std::endl;
   }
 
+  if ( m_cancel_hpo )
+  {
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-optim" << std::endl;
+    m_cancel_hpo = false;
+    return false;
+  }
+
+
   Eigen::VectorXd lh_gp(m_gp->covf().get_loghyper()); // via param function
   runHPoptimizationOnDownsampledGP(lh_gp, nr_iterations);
+
+  if ( m_cancel_hpo )
+  {
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, post-optim pre-set" << std::endl;
+    m_cancel_hpo = false;
+    return false;
+  }
 
   // pass on params to GP
   Eigen::VectorXd hparams(lh_gp);
@@ -2141,6 +2176,15 @@ bool GP::runHPOptimization(size_t nr_iterations)
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: "
               << (lock_time2 - lock_time1) << std::endl;
+
+  if ( m_cancel_hpo )
+  {
+    hp_lock.unlock();
+    if ( m_verbose )
+      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-update lock" << std::endl;
+    m_cancel_hpo = false;
+    return false;
+  }
 
   m_gp->covf().set_loghyper(hparams);
   // just update hyperparams. Call for f and var should init re-compute.
@@ -2878,7 +2922,13 @@ void GP::tdsReceiveData()
           clearTDSStateVars();
         }
         else
+        {
+          if ( m_debug )
+            std::cout << GetAppName() << " :: m_final_hp_optim && m_veh_is_shub && m_final_received_cnt < m_num_vehicles: "
+                      << m_final_hp_optim << ", " << m_veh_is_shub << ", " << (m_final_received_cnt < m_num_vehicles)
+                      << std::endl;
           m_mission_state = STATE_HPOPTIM;
+        }
         publishStates("tdsReceiveData");
       }
       // else, continue waiting

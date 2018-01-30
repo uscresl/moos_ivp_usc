@@ -331,6 +331,7 @@ class GP : public CMOOSApp
    bool m_use_surface_hub;
    size_t m_final_received_cnt;
    bool m_veh_is_shub;
+   bool m_cancel_hpo;
 };
 
 #endif
