@@ -2105,8 +2105,11 @@ bool GP::runHPOptimization(size_t nr_iterations)
   if ( m_debug )
     std::cout << GetAppName() << " :: start wait for data adding thread at: "
               << currentMOOSTime() << std::endl;
-  while ( m_queue_data_points_for_gp.size() > 10 ){}
-    // wait
+  while ( m_queue_data_points_for_gp.size() > 10 )
+  { // wait
+//    std::cout << GetAppName() << " :: m_queue_data_points_for_gp.size(): "
+//              << m_queue_data_points_for_gp.size() << std::endl;
+  }
   if ( m_debug )
     std::cout << GetAppName() << " :: waited for data adding until: "
               << currentMOOSTime() << std::endl;
@@ -2872,7 +2875,7 @@ void GP::tdsReceiveData()
           // for the final case, for shub,
           // we know that we are expecting data from all vehicles
           // so we want to wait for that, before we run HPOPTIM again.
-          m_mission_state = STATE_HANDSHAKE;
+          clearTDSStateVars();
         }
         else
           m_mission_state = STATE_HPOPTIM;
@@ -2924,6 +2927,11 @@ void GP::clearTDSStateVars()
 
   if ( m_timed_data_sharing || m_use_voronoi )
     clearHandshakeVars();
+
+  // for shub, at end, wait to receive data from both vehicles before running hpoptim
+  // this should be the only place where there is a transition RX -> HS
+  if ( m_final_hp_optim && m_veh_is_shub && m_final_received_cnt < m_num_vehicles )
+    m_mission_state = STATE_HANDSHAKE;
 }
 
 //---------------------------------------------------------
