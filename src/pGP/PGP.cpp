@@ -551,11 +551,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           // if already in HPOPTIM state, we want to discard this optimization,
           // surface for data sharing, and then re-run hp optimization
           // stop any active HPOPTIM thread
-          if ( m_mission_state == STATE_HPOPTIM )
-          {
+          if ( m_mission_state == STATE_HPOPTIM && m_hp_optim_running )
             m_cancel_hpo = true;
-            m_hp_optim_running = false;
-          }
 
           if ( m_use_voronoi )
             m_mission_state = STATE_REQ_SURF;
@@ -2020,7 +2017,8 @@ void GP::startAndCheckHPOptim()
     // TODO parameterize nr iterations
     m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100);
     if ( m_verbose )
-      std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: " << m_gp->get_sampleset_size() << std::endl;
+      std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: "
+                << m_gp->get_sampleset_size() << ", at: " << currentMOOSTime() << std::endl;
     m_hp_optim_running = true;
   }
   else
@@ -2142,11 +2140,14 @@ bool GP::runHPOptimization(size_t nr_iterations)
   if ( m_cancel_hpo )
   {
     if ( m_verbose )
-      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-optim" << std::endl;
+      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-optim, at "
+                << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
+    m_hp_optim_running = false;
     return false;
   }
-
+  else
+    std::cout << GetAppName() << " :: cont HPO pre-optim, at " << currentMOOSTime() << std::endl;
 
   Eigen::VectorXd lh_gp(m_gp->covf().get_loghyper()); // via param function
   runHPoptimizationOnDownsampledGP(lh_gp, nr_iterations);
@@ -2154,10 +2155,14 @@ bool GP::runHPOptimization(size_t nr_iterations)
   if ( m_cancel_hpo )
   {
     if ( m_verbose )
-      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, post-optim pre-set" << std::endl;
+      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, post-optim pre-set, at "
+                << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
+    m_hp_optim_running = false;
     return false;
   }
+  else
+    std::cout << GetAppName() << " :: cont HPO post-optim pre-set, at " << currentMOOSTime() << std::endl;
 
   // pass on params to GP
   Eigen::VectorXd hparams(lh_gp);
@@ -2181,10 +2186,14 @@ bool GP::runHPOptimization(size_t nr_iterations)
   {
     hp_lock.unlock();
     if ( m_verbose )
-      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-update lock" << std::endl;
+      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-update lock, at "
+                << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
+    m_hp_optim_running = false;
     return false;
   }
+  else
+    std::cout << GetAppName() << " :: cont HPO pre-update, at " << currentMOOSTime() << std::endl;
 
   m_gp->covf().set_loghyper(hparams);
   // just update hyperparams. Call for f and var should init re-compute.
@@ -2252,14 +2261,17 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
-  //// write new HP to file ////////////////////////////////////////////////////
-  begin = std::clock();
-  std::stringstream filenm;
-  filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
-  downsampled_gp.write(filenm.str().c_str());
-  end = std::clock();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  if ( ! m_cancel_hpo )
+  {
+    //// write new HP to file ////////////////////////////////////////////////////
+    begin = std::clock();
+    std::stringstream filenm;
+    filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
+    downsampled_gp.write(filenm.str().c_str());
+    end = std::clock();
+    if ( m_debug )
+      std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+  }
 
   // downsampled gp should be destroyed
   loghp = downsampled_gp.covf().get_loghyper();
