@@ -131,17 +131,16 @@ GP::GP() :
 
   // Set (log of) hyperparameters of the covariance function
   Eigen::VectorXd params(m_gp->covf().get_param_dim());
-  // hyperparameters: length scale l^2, signal variance s_f^2, noise variance s_n^2
+  // hyperparameters: length scale l, signal variance s_f^2, noise variance s_n^2
   // note, these will be optimized using cg or rprop
-  // length scale: avg lat/lon_deg_to_m is 10000, 10m range = 0.001
-  //               0.002^2=0.000004, ln() = -12.4292
-  // signal: from 0 to ca 30/40, log scale <0 to 1.5/1.6
-  //         stdev 1.5, ln() = 0.4055, ln() = -0.9
+  // length scale: avg lat/lon_deg_to_m is 100000, 10m range = 0.0001
+  //               20m: 0.00020, ln() = -8.5
+  //               55m: 0.00055, ln() = -7.5 <- similar to field results
+  // signal: from 0 to ca 30/40
+  //         stdev 4.0, ln() = 1.38
   // noise: let's set 10x smaller than signal
-  //        stdev 0.15, ln() = -1.8971, ln() = 0.64+3.141592654i
-  params << -12.4292, 0.4055, -1.8971;
-  //params << -12.4292, -0.9, 0.64;
-  //params << -8.927865292, 0.02335186099, -0.9098776951;
+  //        stdev 0.4, ln() = -0.91
+  params << -7.5, 1.38, -0.92;
   m_gp->covf().set_loghyper(params);
 
   // use a unique seed to initialize srand,
