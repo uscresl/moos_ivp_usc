@@ -365,7 +365,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             if ( !m_received_ready )
             {
               // for the AUVs, want to make sure that surface hub is ready
-              if ( (!m_veh_is_shub && veh_that_is_ready == "shub") ||
+              if ( (!m_veh_is_shub && veh_that_is_ready == "shub" &&
+                    (m_mission_state == STATE_SURFACING || m_mission_state == STATE_HANDSHAKE)) ||
                     m_veh_is_shub )
               {
                 // set var to continue with handshake
@@ -374,7 +375,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                 m_received_ready_from = veh_that_is_ready;
                 // this assumes only one vehicle surfaced
 
-                if ( m_mission_state == STATE_SAMPLE )
+                if ( m_veh_is_shub && m_mission_state == STATE_SAMPLE )
                 {
                   // get ready to receive and send data: go to handshake mode
                   m_mission_state = STATE_SURFACING;
@@ -2114,15 +2115,15 @@ bool GP::runHPOptimization(size_t nr_iterations)
   if ( m_debug )
     std::cout << GetAppName() << " :: start wait for data adding thread at: "
               << currentMOOSTime() << std::endl;
-  unsigned int iter = 0;
+  unsigned int cnt_iter = 0;
   while ( m_queue_data_points_for_gp.size() > 10 )
   { // wait
-    iter++;
-    if ( m_debug && iter % 10000 == 0)
+    cnt_iter++;
+    if ( m_debug && cnt_iter % 100000 == 0)
     {
       std::cout << GetAppName() << " :: m_queue_data_points_for_gp.size(): "
               << m_queue_data_points_for_gp.size() << std::endl;
-      std::cout << GetAppName() << " :: iter: " << iter << std::endl;
+      std::cout << GetAppName() << " :: cnt_iter: " << cnt_iter << std::endl;
     }
   }
   if ( m_debug )
