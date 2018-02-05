@@ -14,25 +14,27 @@ AREA="old"
 GUI="no"
 ADP_START="cross"
 BASE_PORT=9000
+WITH_SHUB="yes"
 
 function printHelp()
 {
 printf "%s [OPTIONS]  \n" $0
-      printf "  Options:  \n"
-      printf "  -j: just make (not running)    \n" 
-      printf "  -l: lawnmower (not adaptive)   \n"
-      printf "  -t: timed data sharing         \n"
-      printf "  -c: acomms data sharing        \n"
-      printf "  -v: use voronoi partitioning   \n"
-      printf "  -n: '1', '2' or '3' (nr of auvs)  \n"
-      printf "  -b: 'bigger1' or 'bigger2' areas  \n"
-      printf "  -g: use GUI                    \n"
-      printf "  -r: use rprop (default: conj. gradient)  \n"
-      printf "  -s: 'cross' or 'random' (adaptive start) \n"
-      printf "  -w: time warp (int)            \n"
-      printf "  -p: base port (default: 9000)  \n"
-      printf "  --help, -h         \n" 
-      exit 0;
+  printf "  Options:  \n"
+  printf "  -j: just make (not running)    \n" 
+  printf "  -l: lawnmower (not adaptive)   \n"
+  printf "  -t: timed data sharing         \n"
+  printf "  -c: acomms data sharing        \n"
+  printf "  -v: use voronoi partitioning   \n"
+  printf "  -n: '1', '2' or '3' (nr of auvs)  \n"
+  printf "  -b: 'bigger1' or 'bigger2' areas  \n"
+  printf "  -g: use GUI                    \n"
+  printf "  -r: use rprop (default: conj. gradient)  \n"
+  printf "  -s: 'cross' or 'random' (adaptive start) \n"
+  printf "  -d: completely decentralized, no surface hub \n"
+  printf "  -w: time warp (int)            \n"
+  printf "  -p: base port (default: 9000)  \n"
+  printf "  --help, -h         \n" 
+  exit 0;
 }
 
 while getopts jltcvn:b:gr:s:hw:p: option
@@ -48,6 +50,7 @@ do
   b) AREA=${OPTARG};;
   g) GUI="yes";;
   s) ADP_START=${OPTARG};;
+  d) WITH_SHUB="no";;
   h) printHelp;;
   w) TIME_WARP=${OPTARG};;
   p) BASE_PORT=${OPTARG};;
@@ -370,8 +373,9 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
-   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA    \
+   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS          \
+   USE_SHUB=$WITH_SHUB
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
     START_POS=$START_POS1 WAYPOINTS=$WAYPOINTS1                \
     START_DEPTH=$START_DEPTH1 VTYPE=$VTYPE1                    \
@@ -396,8 +400,9 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
-   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA    \
+   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS          \
+   USE_SHUB=$WITH_SHUB
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
     START_POS=$START_POS2 WAYPOINTS=$WAYPOINTS2                \
     START_DEPTH=$START_DEPTH2 VTYPE=$VTYPE2                    \
@@ -423,8 +428,9 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA               \
-   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
+   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA    \
+   DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS          \
+   USE_SHUB=$WITH_SHUB
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
     START_POS=$START_POS3 WAYPOINTS=$WAYPOINTS3                \
     START_DEPTH=$START_DEPTH3 VTYPE=$VTYPE3                    \
@@ -435,6 +441,7 @@ nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
 fi
 # TODO fix OTHER_VEHICLE
 
+if [ ${WITH_SHUB} = "yes" ] ; then
 # v4: surface hub
 SHAREGP2=$ANNA_LISTEN_GP
 SHAREGP3=$BERNARD_LISTEN_GP
@@ -449,13 +456,14 @@ nsplug meta_shub.moos targ_$SHUB.moos -f WARP=$TIME_WARP  \
    LAWNMOWER_CONFIG=$LAWNMOWER  PREDICTIONS_PREFIX=$PREDICTIONS_PREFIX_SHUB \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
-   USE_GUI=$GUI  SURVEY_AREA=$AREA  DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS
+   USE_GUI=$GUI  SURVEY_AREA=$AREA  DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS \
+   USE_SHUB=$WITH_SHUB
 nsplug meta_shub.bhv targ_shub.bhv -f VNAME=$SHUB      \
     START_POS=$START_POS_SHUB WAYPOINTS=$WAYPOINTS_SHUB                \
     START_DEPTH=$START_DEPTH_SHUB VTYPE=$VTYPE_SHUB                    \
     HP_LOITER=$HP_LOITER_CONFIG  ADAPTIVE_WPTS=$ADAPTIVE       \
     OTHER_VEHICLE=$VNAME2 OPREGION=$BHVOPREGION
-
+fi
 
 if [ ${JUST_MAKE} = "yes" ] ; then
   echo "Using option JUST_MAKE (-j), exiting."
@@ -486,10 +494,12 @@ pAntler targ_$VNAME3.moos > log_$VNAME3.log &
 sleep .25
 fi
 
+if [ ${WITH_SHUB} = "yes" ] ; then
 # surface hub
 printf "Launching $SHUB MOOS Community (WARP=%s) \n" $TIME_WARP
 pAntler targ_$SHUB.moos > log_$SHUB.log &
 sleep .25
+fi
 
 printf "Done \n"
 
