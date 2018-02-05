@@ -258,7 +258,7 @@ class GP : public CMOOSApp
    std::future<size_t> m_future_received_data_processed;
    bool m_waiting;
    bool m_received_ready;
-   std::string m_received_ready_from;
+   std::vector<std::string> m_received_ready_from;
    std::string m_input_var_handshake_data_sharing;
    std::string m_output_var_handshake_data_sharing;
    size_t m_last_ready_sent;
