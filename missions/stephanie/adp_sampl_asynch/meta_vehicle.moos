@@ -174,10 +174,14 @@ ProcessConfig = pGP
 #ifdef USE_TDS yes
   timed_data_sharing = true
   // interval between data sharing events (seconds)
-  #ifdef VNAME anna
-    data_sharing_interval = 500
+  #ifdef USE_SHUB yes
+    #ifdef VNAME anna
+      data_sharing_interval = 500
+    #else
+      data_sharing_interval = 650
+    #endif
   #else
-    data_sharing_interval = 650
+    data_sharing_interval = 600
   #endif
 #else
   timed_data_sharing = false
@@ -224,7 +228,11 @@ ProcessConfig = pGP
 #endif
 
   // work with surface hub? (true, false)
+#ifdef USE_SHUB yes
   surface_hub = true
+#else
+  surface_hub = false
+#endif
 }
 
 //--------------------------------------------------

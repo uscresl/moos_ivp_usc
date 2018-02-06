@@ -37,7 +37,7 @@ printf "%s [OPTIONS]  \n" $0
   exit 0;
 }
 
-while getopts jltcvn:b:gr:s:hw:p: option
+while getopts jltcvdn:b:gr:s:hw:p: option
 do
   case "${option}"
   in
@@ -66,6 +66,7 @@ echo "NUM_VEHICLES: " ${NUM_VEHICLES}
 echo "AREA: " ${AREA}
 echo "GUI: " ${GUI}
 echo "ADP_START: " ${ADP_START}
+echo "WITH_SHUB: " ${WITH_SHUB}
 echo "WARP: " ${TIME_WARP}
 echo "BASE_PORT: " ${BASE_PORT}
 
