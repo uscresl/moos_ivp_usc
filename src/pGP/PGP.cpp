@@ -350,6 +350,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
               std::cout << GetAppName() << " :: received ready from: " << veh << std::endl;
             if ( !m_received_ready )
               m_received_ready = true;
+            m_received_ready_from.push_back(veh_that_is_ready);
           }
           else if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
                     m_mission_state == STATE_REQ_SURF &&
@@ -362,6 +363,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             m_received_ready = true;
             m_mission_state = STATE_HANDSHAKE;
             publishStates("OnNewMail_m_input_var_handshake_data_sharing");
+            m_received_ready_from.push_back(veh_that_is_ready);
           }
           else if ( m_use_surface_hub &&
                     m_rec_ready_veh.size() > 0 )
@@ -1396,6 +1398,8 @@ void GP::handleMailDataAcomms(std::string css)
 //
 void GP::handleMailNodeReports(const std::string &input_string)
 {
+  if ( m_debug )
+    std::cout << GetAppName() << " :: parsing: " << input_string << std::endl;
   // eg. NAME=anna,LAT=0,LON=10
   std::vector<std::string> str_tok = parseString(input_string, ',');
 
@@ -1427,12 +1431,13 @@ void GP::handleMailNodeReports(const std::string &input_string)
       veh_lat = atof(val.c_str());
   }
 
-  if ( veh_nm != "" )
-  {
+  if ( veh_nm != "" && veh_nm != "shub" )
+  { // only store if not surface hub
+    if ( m_debug )
+      std::cout << GetAppName() << " :: storing node_report: "
+                << veh_nm << ", " << veh_lon << ", " << veh_lat << " at: " << currentMOOSTime() << std::endl;
     // store the vehicle info
     if ( m_other_vehicles.find(veh_nm) == m_other_vehicles.end() )
-      // only store if not surface hub
-      if ( veh_nm != "shub" )
         m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
     else
       m_other_vehicles[veh_nm] = std::pair<double,double>(veh_lon,veh_lat);
@@ -2329,7 +2334,7 @@ void GP::sendData()
     {
       // for the surface hub, we need to know who is ready, to know what data to send
       if ( m_verbose )
-        std::cout << GetAppName() << " :: received_ready_from: " << received_ready_from << std::endl;
+        std::cout << GetAppName() << " :: sendData: received_ready_from: " << received_ready_from << std::endl;
 
       // check what we last sent to this vehicle, index into data vector
       std::map<std::string, size_t>::iterator veh_itr = m_map_vehicle_idx_data_last_sent.find(received_ready_from);
@@ -2422,6 +2427,8 @@ void GP::sendData()
       m_data_to_send.clear();
       // reset counter
       m_data_pt_counter = 0;
+      // exit while loop
+      break;
     }
   }
 }
