@@ -138,7 +138,11 @@ ProcessConfig = pGP
   // data sharing through acomms
   acomms_sharing = false
 
+#ifdef USE_VORONOI yes
+  use_voronoi = true
+#else
   use_voronoi = false
+#endif
   
   // take one in X data points for HP optimization
 #ifdef SURVEY_AREA bigger2
