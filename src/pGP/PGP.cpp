@@ -563,7 +563,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           if ( m_mission_state == STATE_HPOPTIM && m_hp_optim_running )
             m_cancel_hpo = true;
 
-          if ( m_use_voronoi )
+          if ( m_use_voronoi && !m_veh_is_shub )
             m_mission_state = STATE_REQ_SURF;
           else
             m_mission_state = STATE_SURFACING;
@@ -578,7 +578,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         else if ( m_mission_state != STATE_IDLE || m_mission_state != STATE_DONE )
         {
           // in all other cases
-          if ( m_use_voronoi )
+          if ( m_use_voronoi && !m_veh_is_shub )
             m_Comms.Notify("REQ_SURFACING","final");
         }
 
@@ -638,7 +638,7 @@ bool GP::Iterate()
 
     // **** ACOMMS VORONOI PARTITIONING ************************************//
     if ( m_mission_state == STATE_SAMPLE && m_acomms_sharing &&
-         m_use_voronoi && m_voronoi_subset.size() > 0 )
+         m_use_voronoi && m_voronoi_subset.size() > 0 && !m_veh_is_shub )
     {
       #ifdef BUILD_VORONOI
       // check if we need to recalculate Voronoi region
@@ -701,7 +701,7 @@ bool GP::Iterate()
         // tds with voronoi, trigger for when to request data sharing
         else if ( m_use_voronoi && m_voronoi_subset.size() > 0 &&
                   ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) &&
-                  m_adp_state != "static" )
+                  m_adp_state != "static" && !m_veh_is_shub )
         {
           #ifdef BUILD_VORONOI
           if ( needToRecalculateVoronoi() )
@@ -1633,7 +1633,7 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
       // and remove it from the unvisited set
       m_sample_points_unvisited.erase(curr_loc_itr);
       // if using voronoi region, remove from that set, if it is in there
-      if ( m_use_voronoi )
+      if ( m_use_voronoi && !m_veh_is_shub )
       {
         if ( m_voronoi_subset.size() > 0 )
           m_voronoi_subset.erase( std::remove(m_voronoi_subset.begin(), m_voronoi_subset.end(), index), m_voronoi_subset.end() );
@@ -1712,7 +1712,7 @@ void GP::findNextSampleLocation()
 
     #ifdef BUILD_VORONOI
     // if m_voronoi, init voronoi subset to whole region
-    if ( m_use_voronoi )
+    if ( m_use_voronoi && !m_veh_is_shub )
     {
       std::cout << GetAppName() << " :: Initialize voronoi subset to whole region." << std::endl;
       // copy over all unvisited locations
@@ -1761,7 +1761,7 @@ void GP::greedyWptSelection(Eigen::Vector2d & best_location)
   size_t best_so_far_idx = -1;
 
   // greedy: pick best
-  if ( m_use_voronoi )
+  if ( m_use_voronoi && !m_veh_is_shub )
   {
     if ( m_voronoi_subset.size() > 0 )
     {
@@ -2059,7 +2059,7 @@ void GP::startAndCheckHPOptim()
             std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
 
           // after intermediary HP optim
-          if ( m_use_voronoi )
+          if ( m_use_voronoi && !m_veh_is_shub )
           {
             // after points received, need to run a round of predictions (unvisited set has changed!)
             m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
@@ -3005,12 +3005,13 @@ void GP::clearTDSStateVars()
     publishStates("clearTDSStateVars_else");
   }
 
-  if ( m_bhv_state != "survey" && (m_veh_is_shub && !m_final_hp_optim) )
+  if ( m_bhv_state != "survey" &&
+       ((m_veh_is_shub && !m_final_hp_optim) || !m_veh_is_shub ) )
     m_Comms.Notify("STAGE","survey");
 
   // reset surfacing/handshake vars
   m_waiting = false;
-  if ( m_use_voronoi )
+  if ( m_use_voronoi && !m_veh_is_shub )
   {
     // move to next step: voronoi calc & predictions done
     m_precalc_pred_voronoi_done = true;
