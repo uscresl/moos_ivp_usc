@@ -28,6 +28,7 @@ input = route=$(SERVER_HOST):$(SHARE_LISTEN_GP)
   // AUV shares only with surface hub
   output = src_name=SHARE_DATA, dest_name=INCOMING_DATA, route=$(SERVER_HOST):$(SHARE_GP_HUB)
   output = src_name=SEND_DATA_HANDSHAKE, dest_name=RECEIVE_DATA_HANDSHAKE, route=$(SERVER_HOST):$(SHARE_GP_HUB)
+  output = src_name=NODE_REPORT_LOCAL, dest_name=NODE_REPORT, route=$(SERVER_HOST):$(SHARE_GP_HUB)
 #endif //VNAME
 
 #else
