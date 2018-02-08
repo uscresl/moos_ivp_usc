@@ -342,15 +342,29 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                       << m_use_surface_hub << ", " << (m_rec_ready_veh.size() > 0) << std::endl;
           }
 
-          if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
-               (m_mission_state == STATE_HANDSHAKE || m_mission_state == STATE_HPOPTIM) &&
-               !m_use_surface_hub )
+          // cases:
+          // 1. no shub, not VOR (req_surf): if all received, set received_ready
+          // 2. no shub, VOR (req_surf): if all received, set received_ready
+          //                             and switch to HANDSHAKE
+          // 3. w/ shub, not VOR: set received_ready, store who is ready
+          // 4. w/ shub, VOR: if all received, set received_ready  (first if)
+          //
+          if ( ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
+                 (m_mission_state == STATE_HANDSHAKE || m_mission_state == STATE_HPOPTIM) &&
+                 !m_use_surface_hub ) ||
+               ( m_veh_is_shub && m_use_voronoi && m_rec_ready_veh.size() == m_other_vehicles.size() ) )
           {
             for ( auto veh : m_rec_ready_veh )
               std::cout << GetAppName() << " :: received ready from: " << veh << std::endl;
             if ( !m_received_ready )
               m_received_ready = true;
-            m_received_ready_from.push_back(veh_that_is_ready);
+//            if ( std::find(m_received_ready_from.begin(), m_received_ready_from.end(), veh_that_is_ready) == m_received_ready_from.end() )
+//              m_received_ready_from.push_back(veh_that_is_ready);
+            if ( m_veh_is_shub && m_use_voronoi )
+            { // continue!
+              m_mission_state = STATE_HANDSHAKE;
+              publishStates("OnNewMail_m_input_var_handshake_data_sharing_shub");
+            }
           }
           else if ( m_rec_ready_veh.size() == m_other_vehicles.size() &&
                     m_mission_state == STATE_REQ_SURF &&
@@ -363,10 +377,12 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             m_received_ready = true;
             m_mission_state = STATE_HANDSHAKE;
             publishStates("OnNewMail_m_input_var_handshake_data_sharing");
-            m_received_ready_from.push_back(veh_that_is_ready);
+//            if ( std::find(m_received_ready_from.begin(), m_received_ready_from.end(), veh_that_is_ready) == m_received_ready_from.end() )
+//              m_received_ready_from.push_back(veh_that_is_ready);
           }
           else if ( m_use_surface_hub &&
-                    m_rec_ready_veh.size() > 0 )
+                    m_rec_ready_veh.size() > 0 &&
+                    (!m_use_voronoi || !m_veh_is_shub) )
           {
             // surface hub case:
             // both shub and vehicle don't need to wait for all vehicles to be ready
@@ -381,8 +397,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                 // set var to continue with handshake
                 m_received_ready = true;
                 // store who we received data from
-                if ( std::find(m_received_ready_from.begin(), m_received_ready_from.end(), veh_that_is_ready) == m_received_ready_from.end() )
-                  m_received_ready_from.push_back(veh_that_is_ready);
+//                if ( std::find(m_received_ready_from.begin(), m_received_ready_from.end(), veh_that_is_ready) == m_received_ready_from.end() )
+//                  m_received_ready_from.push_back(veh_that_is_ready);
 
                 if ( m_veh_is_shub && m_mission_state == STATE_SAMPLE )
                 {
@@ -458,8 +474,13 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << '\n';
         std::cout << GetAppName() << " :: processing msg? "
-                  << ((m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF ) && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
-                  << std::endl;
+                  << ((m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF) && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) );
+        if ( !(m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF) || !((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
+          std::cout << GetAppName() << " :: because: (SAMPLE || CALCWPT || REQ_SURF)? " <<
+                    (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF)
+                    << ", or: (MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout? " <<
+                    ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout)
+                    << std::endl;
       }
       if ( m_adp_state == "static" )
         std::cout << GetAppName() << " :: REQ_SURFACING_REC - but running static pts, ignore for now" << std::endl;
@@ -801,7 +822,8 @@ bool GP::Iterate()
         {
           // if we waited > X min, continue
           m_mission_state = STATE_SURFACING;
-          std::cout << GetAppName() << " :: m_req_surf_timer_counter timeout" << std::endl;
+          std::cout << GetAppName() << " :: m_req_surf_timer_counter timeout @ "
+                    << currentMOOSTime() << std::endl;
           publishStates("Iterate_STATE_REQ_SURF_timeout");
           m_req_surf_timer_counter = 0;
         }
@@ -845,7 +867,8 @@ bool GP::Iterate()
           if ( m_tx_timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq()) )
           {
             m_received_shared_data = true;
-            std::cout << GetAppName() << " :: m_tx_timer_counter timeout" << std::endl;
+            std::cout << GetAppName() << " :: m_tx_timer_counter timeout @ "
+                      << currentMOOSTime() << std::endl;
             m_tx_timer_counter = 0;
           }
         }
@@ -2315,11 +2338,12 @@ void GP::sendData()
 {
   // there may be multiple vehicles waiting for data,
   // do this for all
-  while ( !m_received_ready_from.empty() )
+//  while ( !m_received_ready_from.empty() )
+  while ( !m_rec_ready_veh.empty() )
   {
     // grab one vehicle
-    std::string received_ready_from = m_received_ready_from.back();
-    m_received_ready_from.pop_back();
+    std::string received_ready_from = *m_rec_ready_veh.begin();
+    m_rec_ready_veh.erase(received_ready_from);
 
     // know what data to send, index into vector
     size_t index_start, index_end, index_last_sent;
@@ -2915,7 +2939,8 @@ void GP::tdsHandshake()
       {
         if ( (m_use_surface_hub && !m_final_hp_optim) || !m_use_surface_hub )
         m_received_ready = true;
-        std::cout << GetAppName() << " :: m_handshake_timer_counter timeout" << std::endl;
+        std::cout << GetAppName() << " :: m_handshake_timer_counter timeout @ "
+                  << currentMOOSTime() << std::endl;
         m_handshake_timer_counter = 0;
       }
     }
@@ -3029,7 +3054,7 @@ void GP::clearTDSStateVars()
   // to remove 'ready' that were erroneously added while already handled
   // (AUVs send 'ready' multiple times)
   // if this does not work, we could timestamp the received READY and send data only if recent
-  m_received_ready_from.clear();
+  m_rec_ready_veh.clear();
 }
 
 //---------------------------------------------------------
