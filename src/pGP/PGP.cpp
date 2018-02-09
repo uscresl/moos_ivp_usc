@@ -113,7 +113,8 @@ GP::GP() :
   m_use_surface_hub(false),
   m_final_received_cnt(0),
   m_veh_is_shub(false),
-  m_cancel_hpo(false)
+  m_cancel_hpo(false),
+  m_prev_length_scale(0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -141,6 +142,7 @@ GP::GP() :
   //        stdev 0.4, ln() = -0.91
   params << -7.5, 1.38, -0.92;
   m_gp->covf().set_loghyper(params);
+  m_prev_length_scale = params(0);
 
   // use a unique seed to initialize srand,
   // using milliseconds because vehicles can start within same second
@@ -1181,8 +1183,19 @@ void GP::handleMailDataFromSensor(double received_data)
     double veh_lat = m_lat;
 
     // pass into data adding queue
-    std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
-    m_queue_data_points_for_gp.push(nw_data_pt);
+    if ( (m_use_log_gp && received_data > 0) || !m_use_log_gp )
+    {
+      // pass into data adding queue
+      std::vector<double> nw_data_pt{veh_lon, veh_lat, received_data};
+      m_queue_data_points_for_gp.push(nw_data_pt);
+    }
+    else
+    {
+      if ( m_verbose )
+        std::cout << GetAppName() << " :: "
+                  << "Error: using log_gp and received data <= 0: "
+                  << received_data << std::endl;
+    }
 
     // if we need to exchange data, then store for this purpose
     if ( m_num_vehicles > 1 )
@@ -2236,8 +2249,26 @@ bool GP::runHPOptimization(size_t nr_iterations)
   else
     std::cout << GetAppName() << " :: cont HPO pre-update, at " << currentMOOSTime() << std::endl;
 
-  m_gp->covf().set_loghyper(hparams);
+  // update the hyperparameters if the new ones are not too far removed
+  // from the initial, to avoid messing up GP due to misestimations
+  // most important factor is length scale
+  //
+  double length_scale = hparams(0);
+  if ( m_debug )
+    std::cout << GetAppName()
+              << " :: ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < 50 )? "
+              << ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < 50 )
+              << " difference: " << std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale)
+              << std::endl;
+
+  if ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < 50 )
+  {
+    m_gp->covf().set_loghyper(hparams);
+    m_prev_length_scale = length_scale;
+  }
+
   // just update hyperparams. Call for f and var should init re-compute.
+
   hp_lock.unlock();
   if ( m_debug )
     std::cout << GetAppName() << " :: lock released by: runHPOptimization" << std::endl;
