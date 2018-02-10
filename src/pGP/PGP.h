@@ -221,6 +221,7 @@ class GP : public CMOOSApp
    bool m_final_hp_optim;
    size_t m_hp_optim_iterations;
    bool m_hp_optim_cg;
+   double m_hp_dev_ratio;
    size_t m_last_hp_optim_done;
 
    // future for result MI criterion calculations

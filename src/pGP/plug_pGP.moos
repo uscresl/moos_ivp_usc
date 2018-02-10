@@ -61,6 +61,9 @@ ProcessConfig = pGP
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 50
+  
+  // accepted deviation ratio from last hyper parameters
+  hp_accepted_deviation_ratio = 0.25
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
   max_wait_for_other_vehicles = 180

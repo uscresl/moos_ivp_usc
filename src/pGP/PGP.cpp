@@ -79,6 +79,7 @@ GP::GP() :
   m_final_hp_optim(false),
   m_hp_optim_iterations(50),
   m_hp_optim_cg(false),
+  m_hp_dev_ratio(0.25),
   m_last_hp_optim_done(0),
   m_data_mail_counter(1),
   m_finished(false),
@@ -1006,6 +1007,8 @@ bool GP::OnStartUp()
       // default: rprop
       m_hp_optim_cg = ( value == "cg" ) ? true : false;
     }
+    else if ( param == "hp_accepted_deviation_ratio" )
+      m_hp_dev_ratio = (double)atof(value.c_str());
     else if ( param == "max_wait_for_other_vehicles" )
       m_max_wait_for_other_vehicles = (size_t)atoi(value.c_str());
     else if ( param == "surface_hub" )
@@ -1536,12 +1539,8 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   // get the lock for GP
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
   double lock_time1 = currentMOOSTime();
-//  if ( m_debug )
-//    std::cout << GetAppName() << " :: trying to obtain lock, addPatternToGP, at " << lock_time1 << std::endl;
   while ( !ap_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
-//  if ( m_debug )
-//    std::cout << GetAppName() << " :: obtained lock, owner: addPatternToGP, at " << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
@@ -2091,8 +2090,6 @@ void GP::startAndCheckHPOptim()
         else
         {
           m_last_hp_optim_done = (size_t)std::floor(MOOSTime());
-          if ( m_verbose )
-            std::cout << GetAppName() << " :: Done with hyperparameter optimization. New HPs: " << m_gp->covf().get_loghyper() << std::endl;
 
           // after intermediary HP optim
           if ( m_use_voronoi && !m_veh_is_shub )
@@ -2123,8 +2120,9 @@ void GP::startAndCheckHPOptim()
     }
     catch (const std::future_error& ex)
     {
-            std::cout << GetAppName() << " :: Caught a future_error with code: " << ex.code()
-                      << " and message: " << ex.what() << "in startAndCheckHPOptim() checking m_future_hp_optim." << std::endl;
+      std::cout << GetAppName() << " :: Caught a future_error with code: " << ex.code()
+                << " and message: " << ex.what()
+                << "in startAndCheckHPOptim() checking m_future_hp_optim." << std::endl;
     }
   }
 }
@@ -2218,20 +2216,11 @@ bool GP::runHPOptimization(size_t nr_iterations)
   else
     std::cout << GetAppName() << " :: cont HPO post-optim pre-set, at " << currentMOOSTime() << std::endl;
 
-  // pass on params to GP
-  Eigen::VectorXd hparams(lh_gp);
-
   // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
   double lock_time1 = currentMOOSTime();
-//  if ( m_debug )
-//    std::cout << GetAppName() << " :: trying to obtain lock, runHPOptimization, at "
-//              << lock_time1 << std::endl;
   while ( !hp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
-//  if ( m_debug )
-//    std::cout << GetAppName() << " :: obtained lock, owner: runHPOptimization, at "
-//              << lock_time2 << std::endl;
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: "
               << (lock_time2 - lock_time1) << std::endl;
@@ -2249,32 +2238,54 @@ bool GP::runHPOptimization(size_t nr_iterations)
   else
     std::cout << GetAppName() << " :: cont HPO pre-update, at " << currentMOOSTime() << std::endl;
 
+  if ( m_verbose )
+  {
+    Eigen::VectorXd current_hps = m_gp->covf().get_loghyper();
+    std::cout << GetAppName() << " :: m_GP hyper params before update: " << current_hps(0)
+              << ", " << current_hps(1) << "," << current_hps(2) << std::endl;
+  }
+
   // update the hyperparameters if the new ones are not too far removed
   // from the initial, to avoid messing up GP due to misestimations
   // most important factor is length scale
   //
-  double length_scale = hparams(0);
+  double length_scale = lh_gp(0);
   if ( m_debug )
     std::cout << GetAppName()
-              << " :: ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < 50 )? "
-              << ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < 50 )
+              << " :: ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < "
+              << m_hp_dev_ratio << " )? "
+              << ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < m_hp_dev_ratio )
               << " difference: " << std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale)
               << std::endl;
 
-  if ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < 50 )
+  if ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < m_hp_dev_ratio )
   {
-    m_gp->covf().set_loghyper(hparams);
+    if ( m_debug )
+      std::cout << GetAppName() << " :: updating hyper params!" << std::endl;
+    m_gp->covf().set_loghyper(lh_gp);
     m_prev_length_scale = length_scale;
+    // just update hyperparams. Call for f and var should init re-compute.
   }
 
-  // just update hyperparams. Call for f and var should init re-compute.
+  //// write new HP to file ////////////////////////////////////////////////////
+  std::clock_t begin = std::clock();
+  std::stringstream filenm;
+  filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
+  m_gp->write(filenm.str().c_str());
+  std::clock_t end = std::clock();
+  if ( m_debug )
+    std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   hp_lock.unlock();
   if ( m_debug )
     std::cout << GetAppName() << " :: lock released by: runHPOptimization" << std::endl;
 
   if ( m_verbose )
-    std::cout << GetAppName() << " :: new m_GP hyper params: " << m_gp->covf().get_loghyper() << std::endl;
+  {
+    Eigen::VectorXd current_hps = m_gp->covf().get_loghyper();
+    std::cout << GetAppName() << " :: new m_GP hyper params: " << current_hps(0)
+              << ", " << current_hps(1) << "," << current_hps(2) << std::endl;
+  }
 
   return true;
 }
@@ -2333,20 +2344,14 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
-  if ( ! m_cancel_hpo )
-  {
-    //// write new HP to file ////////////////////////////////////////////////////
-    begin = std::clock();
-    std::stringstream filenm;
-    filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
-    downsampled_gp.write(filenm.str().c_str());
-    end = std::clock();
-    if ( m_debug )
-      std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-  }
-
-  // downsampled gp should be destroyed
+  // downsampled gp should be destroyed upon exiting function
   loghp = downsampled_gp.covf().get_loghyper();
+
+  if ( m_verbose )
+  {
+    std::cout << GetAppName() << " :: downsampled GP hyper params: "
+              << loghp(0) << ", " << loghp(1) << "," << loghp(2) << std::endl;
+  }
 }
 
 //---------------------------------------------------------
