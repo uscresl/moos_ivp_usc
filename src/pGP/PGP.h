@@ -335,6 +335,11 @@ class GP : public CMOOSApp
    bool m_cancel_hpo;
 
    double m_prev_length_scale;
+
+   // choose method that is used for surfacing trigger in async surfacing scenario
+   std::string m_async_trigger_method;
+   double m_async_threshold;
+   double m_async_prev_sum_var;
 };
 
 #endif

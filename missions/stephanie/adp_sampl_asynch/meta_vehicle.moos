@@ -230,6 +230,16 @@ ProcessConfig = pGP
   // work with surface hub? (true, false)
 #ifdef USE_SHUB yes
   surface_hub = true
+  
+  #ifdef VNAME shub
+  async_trigger_method = ""
+  #else
+  // for async surfacing (w/ shub)
+  // choose what trigger method to use (var_reduction, ...)
+  async_trigger_method = "var_reduction"
+  // if difference from previous is > T, then surface
+  async_threshold = 0.4
+  #endif
 #else
   surface_hub = false
 #endif

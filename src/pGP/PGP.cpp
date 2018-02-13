@@ -115,7 +115,10 @@ GP::GP() :
   m_final_received_cnt(0),
   m_veh_is_shub(false),
   m_cancel_hpo(false),
-  m_prev_length_scale(0)
+  m_prev_length_scale(0),
+  m_async_trigger_method("timed"),
+  m_async_threshold(0.3),
+  m_async_prev_sum_var(0.0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -291,9 +294,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         }
         else if ( m_on_surface ) // avoid adding data meant for other vehicles while underwater
         {
-          // TODO? if we are on the surface and shub sends data for other vehicle, we still receive it
-          // we should look at directed communications
-
           // extract actual data
           // if we are working with the surface hub, pass on the name as well
           std::string incoming_data;
@@ -423,7 +423,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                 std::cout << GetAppName() << " :: received ready from: " << veh_that_is_ready
                           << ", but m_received_ready, skipping message." << std::endl;
               }
-              // TODO? if shub, always send at least one 'READY' ?
             }
           }
         }
@@ -489,46 +488,48 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         std::cout << GetAppName() << " :: REQ_SURFACING_REC - but running static pts, ignore for now" << std::endl;
 
 
-      if ( !own_msg && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) && m_adp_state != "static" )
+      if ( !own_msg && m_adp_state != "static" )
       {
         bool final_surface = finalSurface(sval);
         std::cout << GetAppName() << " :: Received surface request for final surface? " << final_surface << std::endl;
 
-        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT )
+        if ( ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) || final_surface )
         {
-          // start to surface (bhv)
-          if ( m_bhv_state != "data_sharing" )
-            Notify("STAGE","data_sharing");
-        }
-        if ( m_mission_state == STATE_REQ_SURF )
-        {
-          // start to surface (bhv)
-          if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
-            Notify("STAGE","data_sharing");
-        }
-        if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
-        {
-          // prep for surfacing
-          // send ack, do actual sending in Iterate so we send until surface handshake
-          m_mission_state = STATE_ACK_SURF;
-          publishStates("OnNewMail_REQ_SURFACING_REC");
-        }
-
-        if ( final_surface ) //m_mission_state == STATE_HPOPTIM &&
-        {
-          m_final_hp_optim = true;
-
-          if ( m_mission_state == STATE_HPOPTIM )
+          if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT )
           {
-            if ( m_debug )
-              std::cout << GetAppName() << " :: REQ_SURF finale surface, resetting m_calc_prevoronoi" << std::endl;
-            m_calc_prevoronoi = false;
+            // start to surface (bhv)
+            if ( m_bhv_state != "data_sharing" )
+              Notify("STAGE","data_sharing");
           }
-          if ( m_mission_state == STATE_HPOPTIM ||  m_mission_state == STATE_SAMPLE ||
-               m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+          if ( m_mission_state == STATE_REQ_SURF )
           {
-            if ( m_bhv_state != "hpoptim" )
-              m_Comms.Notify("STAGE","hpoptim");
+            // start to surface (bhv)
+            if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
+              Notify("STAGE","data_sharing");
+          }
+          if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+          {
+            // prep for surfacing
+            // send ack, do actual sending in Iterate so we send until surface handshake
+            m_mission_state = STATE_ACK_SURF;
+            publishStates("OnNewMail_REQ_SURFACING_REC");
+          }
+          if ( final_surface ) //m_mission_state == STATE_HPOPTIM &&
+          {
+            m_final_hp_optim = true;
+
+            if ( m_mission_state == STATE_HPOPTIM )
+            {
+              if ( m_debug )
+                std::cout << GetAppName() << " :: REQ_SURF finale surface, resetting m_calc_prevoronoi" << std::endl;
+              m_calc_prevoronoi = false;
+            }
+            if ( m_mission_state == STATE_HPOPTIM ||  m_mission_state == STATE_SAMPLE ||
+                 m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+            {
+              if ( m_bhv_state != "hpoptim" )
+                m_Comms.Notify("STAGE","hpoptim");
+            }
           }
         }
       }
@@ -708,7 +709,7 @@ bool GP::Iterate()
     {
       case STATE_SAMPLE :
         if ( m_timed_data_sharing && !m_use_voronoi && m_adp_state != "static" &&
-             !m_veh_is_shub && m_num_vehicles > 1 )
+             !m_veh_is_shub && m_num_vehicles > 1 && m_async_trigger_method == "timed" )
         {
           // TDS
           // let's time this based on MOOSTime(), and assume that clocks are
@@ -1013,6 +1014,10 @@ bool GP::OnStartUp()
       m_max_wait_for_other_vehicles = (size_t)atoi(value.c_str());
     else if ( param == "surface_hub" )
       m_use_surface_hub = (value == "true" ? true : false);
+    else if ( param == "async_trigger_method" )
+      m_async_trigger_method = value;
+    else if ( param == "async_threshold" )
+      m_async_threshold = (double)atof(value.c_str());
     else
       handled = false;
 
@@ -1437,8 +1442,8 @@ void GP::handleMailDataAcomms(std::string css)
 //
 void GP::handleMailNodeReports(const std::string &input_string)
 {
-  if ( m_debug )
-    std::cout << GetAppName() << " :: parsing: " << input_string << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: parsing: " << input_string << std::endl;
   // eg. NAME=anna,LAT=0,LON=10
   std::vector<std::string> str_tok = parseString(input_string, ',');
 
@@ -1969,6 +1974,7 @@ size_t GP::calcMECriterion()
   if ( m_debug )
     std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
 
+  double sum_var = 0;
   // for each unvisited location
   for ( auto y_itr : unvisited_map_copy )
   {
@@ -1985,6 +1991,8 @@ size_t GP::calcMECriterion()
     double pred_cov;
     gp_copy->f_and_var(y_loc, pred_mean, pred_cov);
 
+    sum_var += pred_cov;
+
     // normal distribution
     //  1/2 ln ( 2*pi*e*sigma^2 )
     double post_entropy;
@@ -1998,6 +2006,39 @@ size_t GP::calcMECriterion()
     }
 
     m_unvisited_pred_metric.insert(std::pair<size_t, double>(y_itr.first, post_entropy));
+  }
+
+  // for 'altruistic' surfacing trigger,
+  // compare sum_var to sum_var at previous surfacing
+  // and the threshold, to see whether or not to surface
+  // TODO
+  if ( m_async_trigger_method == "var_reduction" && m_timed_data_sharing && !m_use_voronoi && !m_veh_is_shub )
+  {
+    if ( m_async_prev_sum_var == 0.0 )
+    {
+      m_async_prev_sum_var = sum_var;
+      if ( m_debug )
+        std::cout << GetAppName() << " :: new sum_var: " << m_async_prev_sum_var << std::endl;
+    }
+    else
+    {
+      // initial sum_var = 0, decrease = 1
+      double decrease = 1.0 - (sum_var / m_async_prev_sum_var);
+      if ( m_debug )
+        std::cout << GetAppName() << " :: var_decrease: " << decrease << std::endl;
+      if ( decrease > m_async_threshold || decrease < 0.0 )
+      {
+        if ( m_debug )
+          std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
+        //TODO switch to surfacing
+        m_mission_state = STATE_SURFACING;
+        publishStates("calcMECriterion_Async_var_reduction");
+        // update 'prev' var
+        m_async_prev_sum_var = sum_var;
+        if ( m_debug )
+          std::cout << GetAppName() << " :: new sum_var: " << m_async_prev_sum_var << std::endl;
+      }
+    }
   }
 
   // stop calculations if we are surfacing suddenly
@@ -2067,8 +2108,7 @@ void GP::startAndCheckHPOptim()
   {
     // start thread for hyperparameter optimization,
     // because this will take a while..
-    // TODO parameterize nr iterations
-    m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, 100);
+    m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, m_hp_optim_iterations);
     if ( m_verbose )
       std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: "
                 << m_gp->get_sampleset_size() << ", at: " << currentMOOSTime() << std::endl;
