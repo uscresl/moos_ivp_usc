@@ -136,8 +136,6 @@ class GP : public CMOOSApp
 
    void printCoutPrefix();
 
-   double currentMOOSTime() const;
-
    // Configuration variables
    bool m_verbose;
 
