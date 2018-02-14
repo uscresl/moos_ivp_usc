@@ -1139,7 +1139,8 @@ void GP_AUV::dynamicWptSelection(std::string & next_waypoint)
 // Procedure: maxPath()
 //            helper function to help find the largest sum path
 //            publish waypoints as they are selected
-std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes, std::vector<const GraphNode *>& toPublish, int steps)
+std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector<const GraphNode *> nodes,
+                                               std::vector<const GraphNode *>& toPublish, int steps)
 {
   // do not visit same location within single path
   int repeat = std::count(nodes.begin(), nodes.end(), loc);
@@ -1159,8 +1160,8 @@ std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector
   {
     nodes.push_back(loc);
 
-    return max(maxPath(loc->get_left_neighbour(), nodes, toPublish, steps+1),
-               maxPath(loc->get_right_neighbour(), nodes, toPublish, steps+1),
+    return max(maxPath(loc->get_right_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_left_neighbour(), nodes, toPublish, steps+1),
                maxPath(loc->get_front_neighbour(), nodes, toPublish, steps+1),
                maxPath(loc->get_back_neighbour(), nodes, toPublish, steps+1)
     );
@@ -2000,20 +2001,51 @@ void GP_AUV::publishStates(std::string const calling_method)
 
 std::vector<const GraphNode*> GP_AUV::max(std::vector<const GraphNode*> a, std::vector<const GraphNode*> b, std::vector<const GraphNode*> c, std::vector<const GraphNode*> d)
 {
-  double aSum = pathSum(a), bSum = pathSum(b), cSum = pathSum(c), dSum = pathSum(d);
+//  double aSum = pathSum(a), bSum = pathSum(b), cSum = pathSum(c), dSum = pathSum(d);
+  std::vector<std::vector<const GraphNode* > > allPathOptions;
+  std::vector<std::vector<const GraphNode*> > bestPaths;
 
-  if(aSum >= bSum && aSum >= cSum && aSum >= dSum) {
-    return a;
+  allPathOptions.push_back(a);
+  allPathOptions.push_back(b);
+  allPathOptions.push_back(c);
+  allPathOptions.push_back(d);
+
+  bestPaths.push_back(a);
+
+  for(int i = 1; i < allPathOptions.size(); i++)
+  {
+    if(pathSum(bestPaths[0]) < pathSum(allPathOptions[i]))
+    {
+      //delete bestpaths, add allpathoptions[i]
+      bestPaths.clear();
+      bestPaths.push_back(allPathOptions[i]);
+    }
+    else if(pathSum(bestPaths[0]) == pathSum(allPathOptions[i]))
+    {
+      bestPaths.push_back(allPathOptions[i]);
+    }
   }
-  else if(bSum >= aSum && bSum >= cSum && bSum >= dSum) {
-    return b;
-  }
-  else if(cSum >= aSum && cSum >= aSum && cSum >= dSum) {
-    return c;
-  }
-  else if(dSum >= aSum && dSum >= bSum && dSum >= cSum) {
-      return d;
-  }
+  int indexToReturn = (int)(rand() % bestPaths.size());
+
+  return bestPaths[indexToReturn];
+
+
+//  if(aSum >= bSum && aSum >= cSum && aSum >= dSum) {
+//      std::cout << GetAppName() << " :: selecting right node\n";
+//      return a;
+//  }
+//  else if(bSum >= aSum && bSum >= cSum && bSum >= dSum) {
+//      std::cout << GetAppName() << " :: selecting left node\n";
+//      return b;
+//  }
+//  else if(cSum >= aSum && cSum >= aSum && cSum >= dSum) {
+//      std::cout << GetAppName() << " :: selecting front node\n";
+//      return c;
+//  }
+//  else if(dSum >= aSum && dSum >= bSum && dSum >= cSum) {
+//      std::cout << GetAppName() << " :: selecting back node\n";
+//      return d;
+//  }
 }
 
 double GP_AUV::pathSum(std::vector<const GraphNode *> nodes)
