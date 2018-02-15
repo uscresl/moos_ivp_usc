@@ -111,6 +111,7 @@ GP::GP() :
   m_area_buffer(5.0),
   m_bhv_state(""),
   m_adp_state(""),
+  m_db_uptime(0.0),
   m_use_surface_hub(false),
   m_final_received_cnt(0),
   m_veh_is_shub(false),
@@ -692,7 +693,7 @@ bool GP::Iterate()
     else
     {
       // start with a hyperparameter optimization
-      if ( m_db_uptime < 1.0 )
+      if ( (MOOSTime() - m_start_time) < 1.0 ) //
       {
         if ( m_mission_state == STATE_IDLE )
         {
@@ -1477,9 +1478,9 @@ void GP::handleMailNodeReports(const std::string &input_string)
 
   if ( veh_nm != "" && veh_nm != "shub" )
   { // only store if not surface hub
-    if ( m_debug )
-      std::cout << GetAppName() << " :: storing node_report: "
-                << veh_nm << ", " << veh_lon << ", " << veh_lat << " at: " << m_db_uptime << std::endl;
+//    if ( m_debug )
+//      std::cout << GetAppName() << " :: storing node_report: "
+//                << veh_nm << ", " << veh_lon << ", " << veh_lat << " at: " << m_db_uptime << std::endl;
     // store the vehicle info
     if ( m_other_vehicles.find(veh_nm) == m_other_vehicles.end() )
         m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
