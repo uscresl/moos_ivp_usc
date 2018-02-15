@@ -36,7 +36,7 @@ ProcessConfig = ANTLER
   Run = pMarinePID         @ NewConsole = false
 
   // behaviors
-  Run = pHelmIvP           @ NewConsole = true
+  Run = pHelmIvP           @ NewConsole = false
 
   // generate 'node reports'
   Run = pNodeReporter      @ NewConsole = false
@@ -155,6 +155,8 @@ ProcessConfig = pGP
   hp_optim_method = cg
   // number of iterations for CG/RProp
   hp_optim_iterations = 100
+  // accepted deviation ratio from last hyper parameters
+  hp_accepted_deviation_ratio = 0.25
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
   // use default -- shouldn't matter for surface hub
