@@ -3064,8 +3064,8 @@ void GP::tdsReceiveData()
                       << (m_final_sent_to.size() < m_num_vehicles)
                       << std::endl;
           m_mission_state = STATE_HPOPTIM;
+          publishStates("tdsReceiveData");
         }
-        publishStates("tdsReceiveData");
       }
       // else, continue waiting
     }
@@ -3117,8 +3117,19 @@ void GP::clearTDSStateVars()
 
   // for shub, at end, wait to receive data from both vehicles before running hpoptim
   // this should be the only place where there is a transition RX -> HS
-  if ( m_final_hp_optim && m_veh_is_shub && m_final_received_cnt < m_num_vehicles )
+  //
+  // also, to avoid the case where things get stuck because
+  // one of the vehicles is already in RX_DATA,
+  // (because READY is undirected and can advance HS)
+  // switch to STATE_HANDSHAKE
+  //
+  if ( m_final_hp_optim && m_veh_is_shub &&
+       (m_final_received_cnt < m_num_vehicles || m_final_sent_to.size() < m_num_vehicles) )
+  {
     m_mission_state = STATE_HANDSHAKE;
+    if ( m_final_received_cnt == m_num_vehicles && m_final_sent_to.size() < m_num_vehicles )
+      m_received_ready = true;
+  }
 
   // clear out the 'received ready' list,
   // to remove 'ready' that were erroneously added while already handled
