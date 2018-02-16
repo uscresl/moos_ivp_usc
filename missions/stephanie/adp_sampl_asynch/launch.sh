@@ -100,43 +100,43 @@ fi
 # config for lawnmower for actual GP model building
 if [ ${AREA} = "bigger1" ] ; then
 # bigger1
-LX=900
-LY=1100
+LM_CTR_X=900
+LM_CTR_Y=1100
 AREA_WIDTH=600
 AREA_HEIGHT=400
 elif [ ${AREA} = "bigger2" ] ; then
 # bigger2
-LX=950
-LY=1000
+LM_CTR_X=950
+LM_CTR_Y=1000
 AREA_WIDTH=500
 AREA_HEIGHT=600
 else
 # old area
-LX=700
-LY=1100
+LM_CTR_X=700
+LM_CTR_Y=1100
 AREA_WIDTH=400
 AREA_HEIGHT=200
 fi
 
-LAWNMOWER="format=lawnmower,x=${LX},y=${LY},width=${AREA_WIDTH},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER="format=lawnmower,x=${LM_CTR_X},y=${LM_CTR_Y},width=${AREA_WIDTH},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
 if [ $NUM_VEHICLES -eq 2 ] ; then
 AREA_WIDTH2v=$[AREA_WIDTH/2]
-LX1=$[LX-AREA_WIDTH/4]
-LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${AREA_WIDTH2v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
-LX2=$[LX+AREA_WIDTH/4]
-LAWNMOWER2="format=lawnmower,x=${LX2},y=${LY},width=${AREA_WIDTH2v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+LM_CTR_X1=$[LM_CTR_X-AREA_WIDTH/4]
+LAWNMOWER1="format=lawnmower,x=${LM_CTR_X1},y=${LM_CTR_Y},width=${AREA_WIDTH2v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+LM_CTR_X2=$[LM_CTR_X+AREA_WIDTH/4]
+LAWNMOWER2="format=lawnmower,x=${LM_CTR_X2},y=${LM_CTR_Y},width=${AREA_WIDTH2v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
 elif [ $NUM_VEHICLES -ge 3 ] ; then
 AREA_WIDTH3v=$[AREA_WIDTH/3]
-LX1=$[LX-AREA_WIDTH/3]
-LX3=$[LX+AREA_WIDTH/3]
+LM_CTR_X1=$[LM_CTR_X-AREA_WIDTH/3]
+LM_CTR_X3=$[LM_CTR_X+AREA_WIDTH/3]
   if [ ${AREA} = "bigger2" ] ; then
-    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
-    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
-    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER1="format=lawnmower,x=${LM_CTR_X1},y=${LM_CTR_Y},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER2="format=lawnmower,x=${LM_CTR_X},y=${LM_CTR_Y},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER3="format=lawnmower,x=${LM_CTR_X3},y=${LM_CTR_Y},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
   else
-    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
-    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
-    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER1="format=lawnmower,x=${LM_CTR_X1},y=${LM_CTR_Y},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER2="format=lawnmower,x=${LM_CTR_X},y=${LM_CTR_Y},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER3="format=lawnmower,x=${LM_CTR_X3},y=${LM_CTR_Y},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
   fi
 else
 LAWNMOWER1=$LAWNMOWER
