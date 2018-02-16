@@ -2471,6 +2471,9 @@ void GP::sendData()
 
       if ( m_verbose )
         std::cout << GetAppName() << " :: **sending " << m_data_pt_counter << " points to " << received_ready_from << std::endl;
+      if ( m_final_hp_optim && m_veh_is_shub &&
+           std::find(m_final_sent_to.begin(), m_final_sent_to.end(), received_ready_from) != m_final_sent_to.end() )
+        m_final_sent_to.push_back(received_ready_from);
 
       while ( m_data_pt_counter != 0 )
       {
@@ -3041,7 +3044,9 @@ void GP::tdsReceiveData()
         // run HP optimization
         if ( m_first_surface )
           m_first_surface = false;
-        if ( m_final_hp_optim && m_veh_is_shub && m_final_received_cnt < m_num_vehicles )
+        if ( m_final_hp_optim && m_veh_is_shub &&
+             m_final_received_cnt < m_num_vehicles &&
+             m_final_sent_to.size() < m_num_vehicles )
         {
           // for the final case, for shub,
           // we know that we are expecting data from all vehicles
@@ -3051,8 +3056,12 @@ void GP::tdsReceiveData()
         else
         {
           if ( m_debug )
-            std::cout << GetAppName() << " :: m_final_hp_optim && m_veh_is_shub && m_final_received_cnt < m_num_vehicles: "
-                      << m_final_hp_optim << ", " << m_veh_is_shub << ", " << (m_final_received_cnt < m_num_vehicles)
+            std::cout << GetAppName() << " :: m_final_hp_optim && m_veh_is_shub && "
+                      << "m_final_received_cnt < m_num_vehicles && "
+                      << "m_final_sent_to.size() < m_num_vehicles: "
+                      << m_final_hp_optim << ", " << m_veh_is_shub << ", "
+                      << (m_final_received_cnt < m_num_vehicles)
+                      << (m_final_sent_to.size() < m_num_vehicles)
                       << std::endl;
           m_mission_state = STATE_HPOPTIM;
         }

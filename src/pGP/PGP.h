@@ -329,6 +329,7 @@ class GP : public CMOOSApp
    // surface hub addition: use a surface hub? (true, false)
    bool m_use_surface_hub;
    size_t m_final_received_cnt;
+   std::vector<std::string> m_final_sent_to;
    bool m_veh_is_shub;
    bool m_cancel_hpo;
 
