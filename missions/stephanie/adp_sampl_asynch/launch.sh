@@ -167,16 +167,17 @@ if [ "${ADAPTIVE}" = "yes" ] ; then
 
   # create_sample_path(temp, offset_x, offset_y, max_x, max_y, grid_resolution, 
   #                    do_plot, run_nr, max_wpts, max_length, output)
-  SOFTMAX_TEMP=6
+  SOFTMAX_TEMP=0.6 # 6 from paper, div by 10 for distance scaling
+
+  echo "Calling Matlab to find initial waypts (this may take a while..)"
 
   if [ ${AREA} = "bigger1" ] ; then
-    echo "bigger1"
     OFFSET_Y=900
+    OFFSET_X1=600
   elif [ ${AREA} = "bigger2" ] ; then
-    echo "bigger2"
     OFFSET_Y=700
+    OFFSET_X1=700
   else
-    echo "orig area"
     OFFSET_Y=1000
     OFFSET_X1=500
   fi
