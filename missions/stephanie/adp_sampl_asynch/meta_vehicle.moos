@@ -73,10 +73,6 @@ ProcessConfig = ANTLER
   Run = pPublishAfterX @ NewConsole = false
   #endif
 
-  #ifdef ADP_START_PILOT random
-  Run = uTimerScript @ NewConsole = false
-  #endif
-
   #ifdef USE_ACOMMS yes
   Run = pRePublishDataPtWithNav @ NewConsole = false
   #endif
@@ -378,37 +374,5 @@ ProcessConfig = pRePublishDataPtWithNav
   // potential process parameters would go here
   data_var_name = "SIM_DATA"
   nr_data_points = 2
-}
-#endif
-
-// stop the random waypoints in the static state
-#ifdef ADP_START_PILOT random
-ProcessConfig = uTimerScript
-{
-  AppTick = 4
-  CommsTick = 4
-
-  verbose = true
-
-#ifdef NR_VEHICLES 1
-  event = var=ADP_PTS,val="adaptive",time=986:987
-  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
-#endif
-//#ifdef NR_VEHICLES 2
-//// TODO update times
-//  event = var=ADP_PTS,val="adaptive",time=550:600
-//  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
-//#endif
-//#ifdef NR_VEHICLES 3
-//// TODO update times
-//  event = var=ADP_PTS,val="adaptive",time=350:400
-//  event = var=ADAPTIVE_WPT_UPDATES,val="points=700,1100",time=996:997
-//#endif
-
-  reset_max = 0
-//  reset_time = all-posted
-  reset_var = UTS_RESET
-
-  status_var = UTS_STATUS
 }
 #endif

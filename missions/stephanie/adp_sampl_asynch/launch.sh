@@ -12,7 +12,6 @@ RUN_SIMULATION="yes"
 VORONOI_PARTITIONING="no"
 AREA="old"
 GUI="no"
-ADP_START="cross"
 BASE_PORT=9000
 WITH_SHUB="yes"
 
@@ -29,7 +28,6 @@ printf "%s [OPTIONS]  \n" $0
   printf "  -b: 'bigger1' or 'bigger2' areas  \n"
   printf "  -g: use GUI                    \n"
   printf "  -r: use rprop (default: conj. gradient)  \n"
-  printf "  -s: 'cross' or 'random' (adaptive start) \n"
   printf "  -d: completely decentralized, no surface hub \n"
   printf "  -w: time warp (int)            \n"
   printf "  -p: base port (default: 9000)  \n"
@@ -49,7 +47,6 @@ do
   n) NUM_VEHICLES=${OPTARG};;
   b) AREA=${OPTARG};;
   g) GUI="yes";;
-  s) ADP_START=${OPTARG};;
   d) WITH_SHUB="no";;
   h) printHelp;;
   w) TIME_WARP=${OPTARG};;
@@ -65,7 +62,6 @@ echo "VORONOI_PARTITIONING: " ${VORONOI_PARTITIONING}
 echo "NUM_VEHICLES: " ${NUM_VEHICLES}
 echo "AREA: " ${AREA}
 echo "GUI: " ${GUI}
-echo "ADP_START: " ${ADP_START}
 echo "WITH_SHUB: " ${WITH_SHUB}
 echo "WARP: " ${TIME_WARP}
 echo "BASE_PORT: " ${BASE_PORT}
@@ -106,41 +102,41 @@ if [ ${AREA} = "bigger1" ] ; then
 # bigger1
 LX=900
 LY=1100
-LW=600
-LH=400
+AREA_WIDTH=600
+AREA_HEIGHT=400
 elif [ ${AREA} = "bigger2" ] ; then
 # bigger2
 LX=950
 LY=1000
-LW=500
-LH=600
+AREA_WIDTH=500
+AREA_HEIGHT=600
 else
 # old area
 LX=700
 LY=1100
-LW=400
-LH=200
+AREA_WIDTH=400
+AREA_HEIGHT=200
 fi
 
-LAWNMOWER="format=lawnmower,x=${LX},y=${LY},width=${LW},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+LAWNMOWER="format=lawnmower,x=${LX},y=${LY},width=${AREA_WIDTH},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
 if [ $NUM_VEHICLES -eq 2 ] ; then
-LW2v=$[LW/2]
-LX1=$[LX-LW/4]
-LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW2v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
-LX2=$[LX+LW/4]
-LAWNMOWER2="format=lawnmower,x=${LX2},y=${LY},width=${LW2v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+AREA_WIDTH2v=$[AREA_WIDTH/2]
+LX1=$[LX-AREA_WIDTH/4]
+LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${AREA_WIDTH2v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+LX2=$[LX+AREA_WIDTH/4]
+LAWNMOWER2="format=lawnmower,x=${LX2},y=${LY},width=${AREA_WIDTH2v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
 elif [ $NUM_VEHICLES -ge 3 ] ; then
-LW3v=$[LW/3]
-LX1=$[LX-LW/3]
-LX3=$[LX+LW/3]
+AREA_WIDTH3v=$[AREA_WIDTH/3]
+LX1=$[LX-AREA_WIDTH/3]
+LX3=$[LX+AREA_WIDTH/3]
   if [ ${AREA} = "bigger2" ] ; then
-    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
-    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
-    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
+    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=40,degs=0,startx=0,starty=0"
   else
-    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
-    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
-    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${LW3v},height=${LH},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER1="format=lawnmower,x=${LX1},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER2="format=lawnmower,x=${LX},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
+    LAWNMOWER3="format=lawnmower,x=${LX3},y=${LY},width=${AREA_WIDTH3v},height=${AREA_HEIGHT},lane_width=20,degs=0,startx=0,starty=0"
   fi
 else
 LAWNMOWER1=$LAWNMOWER
@@ -161,98 +157,69 @@ if [ "${ADAPTIVE}" = "no" ] ; then
 fi
 
 ##### specify for adaptive whether to use integrated cross or random pilot #####
-if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "cross" ] ; then
-  if [ ${AREA} = "bigger1" ] ; then
-    # 1auv cross
-    PILOT_PTS1=600,900:1200,1300:600,1300:1200,900
-    CROSS_END1=1200,900 # last wpt
-    if [ $NUM_VEHICLES -ge 2 ] ; then
-      # 2auv cross
-      PILOT_PTS1=600,900:900,1300:600,1300:900,900
-      CROSS_END1=900,900
-      PILOT_PTS2=900,900:1200,1300:900,1300:1200,900
-      CROSS_END2=1200,900
-    fi
-    if [ $NUM_VEHICLES -ge 3 ] ; then
-      # 3auv cross
-      PILOT_PTS1=600,900:800,1300:600,1300:800,900
-      CROSS_END1=800,900
-      PILOT_PTS2=800,900:1000,1300:800,1300:1000,900
-      CROSS_END2=1000,900
-      PILOT_PTS3=1000,900:1200,1300:1000,1300:1200,900  
-      CROSS_END3=1200,900
-    fi
-  elif [ ${AREA} = "bigger2" ] ; then
-    # 1auv cross
-    PILOT_PTS1=700,700:1200,1300:700,1300:1200,700
-    CROSS_END1=1200,700 # last wpt
-    if [ $NUM_VEHICLES -ge 2 ] ; then
-      # 2auv cross
-      PILOT_PTS1=700,700:1200,1000:700,1000:1200,700
-      CROSS_END1=1200,700
-      PILOT_PTS2=700,1000:1200,1300:700,1300:1200,1000
-      CROSS_END2=1200,1000
-    fi
-    if [ $NUM_VEHICLES -ge 3 ] ; then
-      # 3auv cross
-      PILOT_PTS1=700,700:1200,900:700,900:1200,700
-      CROSS_END1=1200,700
-      PILOT_PTS2=700,900:1200,1100:700,1100:1200,900
-      CROSS_END2=1200,900
-      PILOT_PTS3=700,1100:1200,1300:700,1300:1200,1100  
-      CROSS_END3=1200,1100
-    fi
-  else
-    # 1auv cross
-    PILOT_PTS1=500,1000:900,1200:500,1200:900,1000
-    CROSS_END1=900,1000
-    if [ $NUM_VEHICLES -ge 2 ] ; then
-      # 2auv cross
-      PILOT_PTS1=500,1000:700,1200:500,1200:700,1000
-      CROSS_END1=700,1000
-      PILOT_PTS2=700,1000:900,1200:700,1200:900,1000
-      CROSS_END2=900,1000
-    fi
-    if [ $NUM_VEHICLES -ge 3 ] ; then
-      # 3auv cross
-      PILOT_PTS1=500,1000:633,1200:500,1200:633,1000
-      CROSS_END1=633,1000
-      PILOT_PTS2=634,1000:767,1200:634,1200:767,1000
-      CROSS_END2=767,1000
-      PILOT_PTS3=768,1000:900,1200:768,1200:900,1000  
-      CROSS_END3=900,1000
-    fi
+if [ "${ADAPTIVE}" = "yes" ] ; then
+  script_location=`locate create_sample_path.m`
+  if [ -z $script_location ] ; # if string length zero
+  then
+    echo "Cannot find create_sample_path.m, exiting"
+    exit 0
   fi
-fi
 
-if [ "${ADAPTIVE}" = "yes" ] && [ "${ADP_START}" = "random" ] ; then
-  # 1auv random
-  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..10 + ","')
-  echo " 10 random points: " $randpts
-  PILOT_PTS1=${randpts}
-  if [ $NUM_VEHICLES -ge 2 ] ; then
-  # 2auv random
-  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..5 + ","')
-  echo " 5 random points: " $randpts
-  PILOT_PTS1=${randpts}
-  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..5 + ","')
-  echo " 5 random points: " $randpts
-  PILOT_PTS2=${randpts}
+  # create_sample_path(temp, offset_x, offset_y, max_x, max_y, grid_resolution, 
+  #                    do_plot, run_nr, max_wpts, max_length, output)
+  SOFTMAX_TEMP=6
+
+  if [ ${AREA} = "bigger1" ] ; then
+    echo "bigger1"
+    OFFSET_Y=900
+  elif [ ${AREA} = "bigger2" ] ; then
+    echo "bigger2"
+    OFFSET_Y=700
+  else
+    echo "orig area"
+    OFFSET_Y=1000
+    OFFSET_X1=500
   fi
-  if [ $NUM_VEHICLES -ge 3 ] ; then
-  # 3auv random
-  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..3 + ","')
-  echo " 3 random points: " $randpts
-  PILOT_PTS1=${randpts}
-  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..3 + ","')
-  echo " 3 random points: " $randpts
-  PILOT_PTS2=${randpts}
-  randpts=$(perl -le 'print map { 500+int(rand(400)), ",", 1000+int(rand(200)), ":" } 1..3 + ","')
-  echo " 3 random points: " $randpts
-  PILOT_PTS3=${randpts}
+
+  if [ $NUM_VEHICLES -eq 1 ]; then
+    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X1,$OFFSET_Y,$AREA_WIDTH,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
+    PILOT_PTS1=${waypts}
+    echo " softmax waypoints auv1: " $PILOT_PTS1
+    CROSS_END1=$(echo ${waypts##*:})
+
+  elif [ $NUM_VEHICLES -eq 2 ] ; then
+    OFFSET_X2=$[OFFSET_X1+AREA_WIDTH2v]
+
+    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X1,$OFFSET_Y,$AREA_WIDTH2v,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
+    PILOT_PTS1=${waypts}
+    echo " softmax waypoints auv1: " $PILOT_PTS1
+    CROSS_END1=$(echo ${waypts##*:})
+
+    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X2,$OFFSET_Y,$AREA_WIDTH2v,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
+    PILOT_PTS2=${waypts}
+    echo " softmax waypoints auv2: " $PILOT_PTS2
+    CROSS_END2=$(echo ${waypts##*:})
+    
+  elif [ $NUM_VEHICLES -eq 3 ] ; then
+    OFFSET_X2=$[OFFSET_X1+AREA_WIDTH3v]
+    OFFSET_X3=$[OFFSET_X1+2*AREA_WIDTH3v]
+
+    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X1,$OFFSET_Y,$AREA_WIDTH3v,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
+    PILOT_PTS1=${waypts}
+    echo " softmax waypoints auv1: " $PILOT_PTS1
+    CROSS_END1=$(echo ${waypts##*:})
+
+    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path(1,$OFFSET_X2,$OFFSET_Y,$AREA_WIDTH3v,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
+    PILOT_PTS2=${waypts}
+    echo " softmax waypoints auv2: " $PILOT_PTS2
+    CROSS_END2=$(echo ${waypts##*:})
+    
+    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X3,$OFFSET_Y,$AREA_WIDTH3v,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
+    PILOT_PTS3=${waypts}
+    echo " softmax waypoints auv3: " $PILOT_PTS3
+    CROSS_END3=$(echo ${waypts##*:})
   fi
 fi
-#####
 
 # ports
 SHORE_VPORT=$(($BASE_PORT))
@@ -287,7 +254,7 @@ SHAREGP_HUB=$SHUB_LISTEN_GP
 # percentage of messages to drop in uFldNodeComms (acomms)
 DROP_PCT=25
 
-SERVERHOST="localhost" #"localhost"
+SERVERHOST="localhost"
 nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    VNAME="shoreside" USC_DATA_DIR="../../../data"        \
    SHARE_LISTEN=$SHORE_LISTEN VPORT=$SHORE_VPORT SERVER_HOST=$SERVERHOST       \
@@ -374,7 +341,7 @@ nsplug meta_vehicle.moos targ_$VNAME1.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA    \
+   SURVEY_AREA=$AREA    \
    DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS          \
    USE_SHUB=$WITH_SHUB
 nsplug meta_vehicle.bhv targ_$VNAME1.bhv -f VNAME=$VNAME1      \
@@ -401,7 +368,7 @@ nsplug meta_vehicle.moos targ_$VNAME2.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA    \
+   SURVEY_AREA=$AREA    \
    DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS          \
    USE_SHUB=$WITH_SHUB
 nsplug meta_vehicle.bhv targ_$VNAME2.bhv -f VNAME=$VNAME2      \
@@ -429,7 +396,7 @@ nsplug meta_vehicle.moos targ_$VNAME3.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_VORONOI=$VORONOI_PARTITIONING  USE_GUI=$GUI  \
-   ADP_START_PILOT=$ADP_START  SURVEY_AREA=$AREA    \
+   SURVEY_AREA=$AREA    \
    DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS          \
    USE_SHUB=$WITH_SHUB
 nsplug meta_vehicle.bhv targ_$VNAME3.bhv -f VNAME=$VNAME3      \
