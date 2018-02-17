@@ -72,7 +72,11 @@ if [ ! -f 'test.csv' ] ; then
   echo 'ERROR: No simulated data file presented. Copied two_depths.csv';
 fi
 # most scenario files have 3D data in them
-DATA_NR_DIMENSIONS=3
+if [ ${AREA} = "bigger2" ] ; then
+  DATA_NR_DIMENSIONS=2
+else
+  DATA_NR_DIMENSIONS=3
+fi
 
 #-------------------------------------------------------
 #  Part 2: Create the .moos and .bhv files. 
