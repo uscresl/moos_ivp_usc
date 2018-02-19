@@ -119,7 +119,8 @@ GP::GP() :
   m_prev_length_scale(0),
   m_async_trigger_method("timed"),
   m_async_threshold(0.3),
-  m_async_prev_sum_var(0.0)
+  m_async_prev_sum_var(0.0),
+  m_need_to_run_hpo(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -359,11 +360,11 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                ( m_veh_is_shub && m_use_voronoi && m_rec_ready_veh.size() == m_other_vehicles.size() ) )
           {
             for ( auto veh : m_rec_ready_veh )
-              std::cout << GetAppName() << " :: received ready from: " << veh << std::endl;
+              std::cout << GetAppName() << " :: received ready from: "
+                        << veh << " at: " << m_db_uptime << std::endl;
             if ( !m_received_ready )
               m_received_ready = true;
-//            if ( std::find(m_received_ready_from.begin(), m_received_ready_from.end(), veh_that_is_ready) == m_received_ready_from.end() )
-//              m_received_ready_from.push_back(veh_that_is_ready);
+
             if ( m_veh_is_shub && m_use_voronoi )
             { // continue!
               m_mission_state = STATE_HANDSHAKE;
@@ -381,8 +382,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             m_received_ready = true;
             m_mission_state = STATE_HANDSHAKE;
             publishStates("OnNewMail_m_input_var_handshake_data_sharing");
-//            if ( std::find(m_received_ready_from.begin(), m_received_ready_from.end(), veh_that_is_ready) == m_received_ready_from.end() )
-//              m_received_ready_from.push_back(veh_that_is_ready);
           }
           else if ( m_use_surface_hub &&
                     m_rec_ready_veh.size() > 0 &&
@@ -400,9 +399,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
               {
                 // set var to continue with handshake
                 m_received_ready = true;
-                // store who we received data from
-//                if ( std::find(m_received_ready_from.begin(), m_received_ready_from.end(), veh_that_is_ready) == m_received_ready_from.end() )
-//                  m_received_ready_from.push_back(veh_that_is_ready);
 
                 if ( m_veh_is_shub && m_mission_state == STATE_SAMPLE )
                 {
@@ -414,7 +410,9 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
               else
               {
                 if ( m_debug )
-                  std::cout << GetAppName() << " :: received ready from: " << veh_that_is_ready << ", skipping." << std::endl;
+                  std::cout << GetAppName() << " :: received ready from: "
+                            << veh_that_is_ready << ", at: " << m_db_uptime
+                            << " skipping." << std::endl;
               }
             }
             else
@@ -703,6 +701,45 @@ bool GP::Iterate()
       }
     }
 
+    // *** SHUB checks, run data adding and hp optim in background ***********//
+    // for shub, check if done adding data,
+    // if so, then kick off hpoptim
+    if ( m_veh_is_shub && !m_first_surface &&
+         m_need_to_run_hpo && m_queue_data_points_for_gp.size() == 1 &&
+         !m_hp_optim_running )
+    {
+      // TODO: make this check more watertight?
+      // presumably, we just processed a bunch of data
+      // so now, kick off hpoptim
+      m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization,
+                                       this, m_hp_optim_iterations);
+      m_hp_optim_running = true;
+      m_need_to_run_hpo = false;
+      // Nb. m_hp_optim_running is set to false when done in Iterate.
+    }
+
+    // for shub, reset hp_optim var when done
+    if ( m_veh_is_shub && m_hp_optim_running )
+    {
+      try
+      {
+        if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
+        {
+          if ( m_verbose )
+            std::cout << GetAppName() << " :: done running hp optim shub, at: "
+                      << m_db_uptime << std::endl;
+          m_hp_optim_running = false;
+        }
+      }
+      catch ( const std::future_error& ex )
+      {
+        std::cout << GetAppName() << " :: future_error at Iterate hpoptim check shub: "
+                  << ex.code() << ": " << ex.what()
+                  << "at: " << m_db_uptime << std::endl;
+        m_hp_optim_running = false;
+      }
+    }
+
     // **** MAIN STATE MACHINE *********************************************//
     if ( m_debug )
       std::cout << GetAppName() << " :: Current state: " << currentMissionStateString() << std::endl;
@@ -763,7 +800,8 @@ bool GP::Iterate()
           startAndCheckHPOptim();
         else
         {
-          try {
+          try
+          {
             // check if future ready. If so, then redirect to sample
             if ( m_future_calc_prevoronoi.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
             {
@@ -1277,6 +1315,11 @@ size_t GP::handleMailReceivedDataPts(std::string incoming_data)
     m_queue_data_points_for_gp.push(nw_data_pt);
     // rest is handled by data adding thread
   }
+
+  // wait until most data has been added
+  if ( m_verbose )
+    std::cout << GetAppName() << " :: current size queue data points: "
+              << m_queue_data_points_for_gp.size() << std::endl;
 
   return pts_added;
 }
@@ -2000,7 +2043,6 @@ size_t GP::calcMECriterion()
   // for 'altruistic' surfacing trigger,
   // compare sum_var to sum_var at previous surfacing
   // and the threshold, to see whether or not to surface
-  // TODO
   if ( m_async_trigger_method == "var_reduction" && m_timed_data_sharing && !m_use_voronoi && !m_veh_is_shub )
   {
     if ( m_async_prev_sum_var == 0.0 )
@@ -2019,7 +2061,7 @@ size_t GP::calcMECriterion()
       {
         if ( m_debug )
           std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
-        //TODO switch to surfacing
+        // switch to surfacing
         m_mission_state = STATE_SURFACING;
         publishStates("calcMECriterion_Async_var_reduction");
         // update 'prev' var
@@ -2064,11 +2106,28 @@ bool GP::checkGPHasData()
 //
 size_t GP::processReceivedData()
 {
+  // avoid getting stuck at end, after extra send phase
+  if ( m_final_hp_optim && m_final_received_cnt == m_num_vehicles && m_veh_is_shub )
+    return 0;
+
   size_t pts_added = 0;
-  while ( m_incoming_data_to_be_added.empty() )
+  unsigned int timer_counter =  0;
+  while ( m_incoming_data_to_be_added.empty() &&
+          timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq()) )
   {
     if ( m_debug )
       std::cout << GetAppName() << " :: waiting to receive data .. " << std::endl;
+
+    // wait for calculations to be done
+    // run timer to avoid being stuck waiting for data
+    if ( (unsigned int)std::round(m_db_uptime) % 2 == 0 )
+      timer_counter++;
+    // if waited for X min, continue
+    if ( timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq())/2 )
+    {
+      std::cout << GetAppName() << " :: RX_DATA timer_counter timeout @ "
+                << m_db_uptime << std::endl;
+    }
   }
 
   if ( m_debug )
@@ -2186,31 +2245,6 @@ void GP::endMission()
 //
 bool GP::runHPOptimization(size_t nr_iterations)
 {
-  bool data_processed = false;
-
-  // wait until most data has been added
-  if ( m_verbose )
-    std::cout << GetAppName() << " :: current size queue data points: "
-              << m_queue_data_points_for_gp.size() << std::endl;
-
-  if ( m_debug )
-    std::cout << GetAppName() << " :: start wait for data adding thread at: "
-              << m_db_uptime << std::endl;
-  unsigned int cnt_iter = 0;
-  while ( m_queue_data_points_for_gp.size() > 10 )
-  { // wait
-    cnt_iter++;
-    if ( m_debug && cnt_iter % 100000 == 0)
-    {
-      std::cout << GetAppName() << " :: m_queue_data_points_for_gp.size(): "
-              << m_queue_data_points_for_gp.size() << std::endl;
-      std::cout << GetAppName() << " :: cnt_iter: " << cnt_iter << std::endl;
-    }
-  }
-  if ( m_debug )
-    std::cout << GetAppName() << " :: waited for data adding until: "
-              << m_db_uptime << std::endl;
-
   // run hyperparameter optimization
   if ( m_verbose)
   {
@@ -2303,7 +2337,8 @@ bool GP::runHPOptimization(size_t nr_iterations)
   m_gp->write(filenm.str().c_str());
   std::clock_t end = std::clock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: HP param write to file time: " <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+    std::cout << GetAppName() << " :: HP param write to file time: "
+              <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
 
   hp_lock.unlock();
   if ( m_debug )
@@ -2403,12 +2438,26 @@ void GP::sendData()
 {
   // there may be multiple vehicles waiting for data,
   // do this for all
-//  while ( !m_received_ready_from.empty() )
   while ( !m_rec_ready_veh.empty() )
   {
     // grab one vehicle
     std::string received_ready_from = *m_rec_ready_veh.begin();
     m_rec_ready_veh.erase(received_ready_from);
+
+    if ( m_final_hp_optim )
+    {
+      while ( std::find(m_final_sent_to.begin(), m_final_sent_to.end(), received_ready_from) != m_final_sent_to.end() )
+      {
+        if ( m_debug )
+          std::cout << GetAppName() << " :: already sent data to: "
+                    << received_ready_from << ", skipping." << std::endl;
+        // data already sent to this vehicle, skip
+        received_ready_from = *m_rec_ready_veh.begin();
+        m_rec_ready_veh.erase(received_ready_from);
+      }
+    }
+    if ( m_debug )
+      std::cout << GetAppName() << " :: sending data to: " << received_ready_from << std::endl;
 
     // know what data to send, index into vector
     size_t index_start, index_end, index_last_sent;
@@ -3034,7 +3083,8 @@ void GP::tdsReceiveData()
       std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
 
     try {
-      if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) == std::future_status::ready )
+      if ( m_future_received_data_processed.wait_for(std::chrono::milliseconds(1)) ==
+           std::future_status::ready )
       {
         size_t pts_added = m_future_received_data_processed.get();
 
@@ -3044,35 +3094,58 @@ void GP::tdsReceiveData()
         // run HP optimization
         if ( m_first_surface )
           m_first_surface = false;
-        if ( m_final_hp_optim && m_veh_is_shub &&
-             (m_final_received_cnt < m_num_vehicles ||
-              m_final_sent_to.size() < m_num_vehicles) )
+
+//        if ( m_final_hp_optim && m_veh_is_shub &&
+//             (m_final_received_cnt < m_num_vehicles ||
+//              m_final_sent_to.size() < m_num_vehicles) )
+//        {
+//          // for the final case, for shub,
+//          // we know that we are expecting data from all vehicles
+//          // so we want to wait for that, before we run HPOPTIM again.
+//          clearTDSStateVars();
+//        }
+//        else
+//        {
+//          if ( m_debug )
+//            std::cout << GetAppName() << " :: m_final_hp_optim && m_veh_is_shub && "
+//                      << "(m_final_received_cnt < m_num_vehicles || "
+//                      << "m_final_sent_to.size() < m_num_vehicles): "
+//                      << m_final_hp_optim << ", " << m_veh_is_shub << ", "
+//                      << (m_final_received_cnt < m_num_vehicles) << ", "
+//                      << (m_final_sent_to.size() < m_num_vehicles)
+//                      << std::endl;
+//          m_mission_state = STATE_HPOPTIM;
+//          publishStates("tdsReceiveData");
+//        }
+
+        // for the surface hub, be ready to send/receive more data,
+        // and run hp optimization in the background.
+        if ( !m_veh_is_shub )
         {
-          // for the final case, for shub,
-          // we know that we are expecting data from all vehicles
-          // so we want to wait for that, before we run HPOPTIM again.
-          clearTDSStateVars();
+          m_mission_state = STATE_HPOPTIM;
+          publishStates("tdsReceiveData");
         }
         else
         {
           if ( m_debug )
-            std::cout << GetAppName() << " :: m_final_hp_optim && m_veh_is_shub && "
-                      << "(m_final_received_cnt < m_num_vehicles || "
-                      << "m_final_sent_to.size() < m_num_vehicles): "
-                      << m_final_hp_optim << ", " << m_veh_is_shub << ", "
-                      << (m_final_received_cnt < m_num_vehicles) << ", "
-                      << (m_final_sent_to.size() < m_num_vehicles)
-                      << std::endl;
-          m_mission_state = STATE_HPOPTIM;
-          publishStates("tdsReceiveData");
+            std::cout << GetAppName() << " :: shub, be ready to send/receive data, "
+                      << "processing data in the background" << std::endl;
+
+          // Nb. check if data processed, and kick off hpoptim in Iterate
+          m_need_to_run_hpo = true;
+
+          // continue to wait for more data
+          clearTDSStateVars();
         }
       }
       // else, continue waiting
     }
     catch (const std::future_error& ex)
     {
-      std::cout << GetAppName() << " :: Caught a future_error with code: " << ex.code()
-                << " and message: " << ex.what() << "in tdsReceiveData() checking m_future_received_data_processed." << std::endl;
+      std::cout << GetAppName() << " :: Caught a future_error with code: "
+                << ex.code() << " and message: " << ex.what()
+                << "in tdsReceiveData() checking m_future_received_data_processed."
+                << std::endl;
     }
   }
 }
@@ -3123,19 +3196,25 @@ void GP::clearTDSStateVars()
   // (because READY is undirected and can advance HS)
   // switch to STATE_HANDSHAKE
   //
-  if ( m_final_hp_optim && m_veh_is_shub &&
-       (m_final_received_cnt < m_num_vehicles || m_final_sent_to.size() < m_num_vehicles) )
+//  if ( m_final_hp_optim && m_veh_is_shub &&
+//       (m_final_received_cnt < m_num_vehicles || m_final_sent_to.size() < m_num_vehicles) )
+//  {
+  if ( m_veh_is_shub )
   {
     m_mission_state = STATE_HANDSHAKE;
     if ( m_final_received_cnt == m_num_vehicles && m_final_sent_to.size() < m_num_vehicles )
       m_received_ready = true;
+    else
+      m_rec_ready_veh.clear();
   }
-
-  // clear out the 'received ready' list,
-  // to remove 'ready' that were erroneously added while already handled
-  // (AUVs send 'ready' multiple times)
-  // if this does not work, we could timestamp the received READY and send data only if recent
-  m_rec_ready_veh.clear();
+  else
+  {
+    // clear out the 'received ready' list,
+    // to remove 'ready' that were erroneously added while already handled
+    // (AUVs send 'ready' multiple times)
+    // if this does not work, we could timestamp the received READY and send data only if recent
+    m_rec_ready_veh.clear();
+  }
 }
 
 //---------------------------------------------------------
@@ -3198,23 +3277,23 @@ void GP::findAndPublishNextWpt()
         }
         else
         {
-          if ( m_debug )
-          {
-            std::cout << GetAppName() << " :: m_timed_data_sharing, !m_use_voronoi, m_veh_name: "
-                      << m_timed_data_sharing << ", " << m_use_voronoi << ", " << m_veh_name << std::endl;
-          }
+//          if ( m_debug )
+//          {
+//            std::cout << GetAppName() << " :: m_timed_data_sharing, !m_use_voronoi, m_veh_name: "
+//                      << m_timed_data_sharing << ", " << m_use_voronoi << ", " << m_veh_name << std::endl;
+//          }
           if ( m_timed_data_sharing && !m_use_voronoi && !m_veh_is_shub )
           {
             // for TDS, we need to make sure we initiate surfacing,
             // even if we were finding a new waypoint,
             // such that we keep all vehicles synched
             if ( m_num_vehicles > 1 &&
-                 ( (size_t)std::floor(m_db_uptime) % m_data_sharing_interval ) == 0 &&
+                 ((size_t)std::floor(m_db_uptime) % m_data_sharing_interval) == 0 &&
                  (size_t)std::floor(m_db_uptime) > 60 )
             {
               // switch to data sharing mode, to switch bhv to surface
               m_mission_state = STATE_SURFACING;
-              publishStates("Iterate_STATE_SAMPLE_TDS");
+              publishStates("findAndPublishNextWpt");
             }
           }
         } // else future check

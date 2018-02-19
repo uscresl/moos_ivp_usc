@@ -339,6 +339,8 @@ class GP : public CMOOSApp
    std::string m_async_trigger_method;
    double m_async_threshold;
    double m_async_prev_sum_var;
+
+   bool m_need_to_run_hpo;
 };
 
 #endif
