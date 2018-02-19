@@ -693,9 +693,14 @@ bool GP::Iterate()
       // start with a hyperparameter optimization
       if ( (MOOSTime() - m_start_time) < 1.0 ) //
       {
-        if ( m_mission_state == STATE_IDLE )
+        if ( m_mission_state == STATE_IDLE && !m_veh_is_shub )
         {
           m_mission_state = STATE_HPOPTIM;
+          publishStates("Iterate_hpoptim_1+AUV_start");
+        }
+        else if ( m_veh_is_shub )
+        {
+          m_mission_state = STATE_SAMPLE;
           publishStates("Iterate_hpoptim_1+AUV_start");
         }
       }
