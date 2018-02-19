@@ -282,7 +282,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                   << "), but for: " << destination_veh << std::endl;
       else
       {
-        m_received_shared_data = true;
         if ( m_verbose )
           std::cout << GetAppName() << " :: received data from " << veh_nm << std::endl;
         if ( !m_on_surface && m_verbose )
@@ -296,6 +295,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         }
         else if ( m_on_surface ) // avoid adding data meant for other vehicles while underwater
         {
+          m_received_shared_data = true;
+
           // extract actual data
           // if we are working with the surface hub, pass on the name as well
           std::string incoming_data;
@@ -1596,7 +1597,8 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   while ( !ap_lock.try_lock() ){}
   double lock_time2 = m_db_uptime;
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: "
+              << (lock_time2 - lock_time1) << ", at: " << m_db_uptime << std::endl;
 
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
@@ -2204,6 +2206,9 @@ void GP::startAndCheckHPOptim()
               endMission();
           else if ( m_final_hp_optim )
             std::cout << GetAppName() << " :: m_final_received_cnt = " << m_final_received_cnt << std::endl;
+          else if ( m_veh_is_shub && m_final_received_cnt == m_num_vehicles &&
+                    m_final_sent_to.size() == m_num_vehicles )
+            endMission();
 
           m_hp_optim_running = false;
         }
@@ -2449,16 +2454,22 @@ void GP::sendData()
     std::string received_ready_from = *m_rec_ready_veh.begin();
     m_rec_ready_veh.erase(received_ready_from);
 
-    if ( m_final_hp_optim )
+    if ( m_final_hp_optim && m_veh_is_shub )
     {
+      if ( m_debug )
+        std::cout << GetAppName()
+                  << " :: in sendData: m_final_received_cnt, m_final_sent_to.size(): "
+                  << m_final_received_cnt << ", " << m_final_sent_to.size()
+                  << std::endl;
       while ( std::find(m_final_sent_to.begin(), m_final_sent_to.end(), received_ready_from) != m_final_sent_to.end() )
       {
         if ( m_debug )
           std::cout << GetAppName() << " :: already sent data to: "
                     << received_ready_from << ", skipping." << std::endl;
         // data already sent to this vehicle, skip
-        received_ready_from = *m_rec_ready_veh.begin();
         m_rec_ready_veh.erase(received_ready_from);
+        // get next one
+        received_ready_from = *m_rec_ready_veh.begin();
       }
     }
     if ( m_debug )
@@ -2524,10 +2535,16 @@ void GP::sendData()
       size_t nr_points_per_msg = 1500;
 
       if ( m_verbose )
-        std::cout << GetAppName() << " :: **sending " << m_data_pt_counter << " points to " << received_ready_from << std::endl;
+        std::cout << GetAppName() << " :: **sending " << m_data_pt_counter
+                  << " points to " << received_ready_from << std::endl;
       if ( m_final_hp_optim && m_veh_is_shub &&
            std::find(m_final_sent_to.begin(), m_final_sent_to.end(), received_ready_from) != m_final_sent_to.end() )
+      {
         m_final_sent_to.push_back(received_ready_from);
+        if ( m_debug )
+          std::cout << GetAppName() << " :: adding: " << received_ready_from << " to m_final_sent_to."
+                    << " Size: " << m_final_sent_to.size() << ", at: " << m_db_uptime << std::endl;
+      }
 
       while ( m_data_pt_counter != 0 )
       {
@@ -3207,10 +3224,20 @@ void GP::clearTDSStateVars()
   if ( m_veh_is_shub )
   {
     m_mission_state = STATE_HANDSHAKE;
+    publishStates("clearTDSStateVars shub");
     if ( m_final_received_cnt == m_num_vehicles && m_final_sent_to.size() < m_num_vehicles )
       m_received_ready = true;
     else
+    {
       m_rec_ready_veh.clear();
+      if ( m_final_received_cnt == m_num_vehicles &&
+           m_final_sent_to.size() == m_num_vehicles )
+      {
+        // ending
+        m_mission_state = STATE_HPOPTIM; // check if this is proper state to go into, ending
+        publishStates("clearTDSStateVars shub");
+      }
+    }
   }
   else
   {
