@@ -326,16 +326,14 @@ ProcessConfig = pPublishAfterX
 
   // how many seconds after above var/val should we publish?
   // you can give either a number, or a range (eg. 10:20)
-//  publish_after_secs = 
-
 #ifdef SURVEY_AREA bigger2
   // area bigger2
-  // old area
   #ifdef NR_VEHICLES 1
     publish_after_secs = 22250:22270 //TODO check from more LM sims
   #endif
   #ifdef NR_VEHICLES 2
     publish_after_secs = 12030:12236 // from b22b lm sims (luna)
+    // checked 20180217 -- 1200/12262 -- ok!
   #endif
   #ifdef NR_VEHICLES 3
     publish_after_secs = 5387:5617 // from b25g lm sims
@@ -346,7 +344,8 @@ ProcessConfig = pPublishAfterX
     publish_after_secs = 6400:6450  // from FSR 1 AUV sims
   #endif
   #ifdef NR_VEHICLES 2
-    publish_after_secs = 3359:3531 
+    publish_after_secs = 3359:3531
+    // checked 20180217 -- 3415/3539 -- ok!
   #endif
   #ifdef NR_VEHICLES 3
     publish_after_secs = 2641:2818 //2552:2756
