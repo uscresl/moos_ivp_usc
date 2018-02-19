@@ -111,7 +111,6 @@ GP::GP() :
   m_area_buffer(5.0),
   m_bhv_state(""),
   m_adp_state(""),
-  m_db_uptime(0.0),
   m_use_surface_hub(false),
   m_final_received_cnt(0),
   m_veh_is_shub(false),
@@ -316,7 +315,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           {
             m_final_received_cnt++;
             std::cout << GetAppName() << " :: m_final_received_cnt = " << m_final_received_cnt << std::endl;
-            std::cout << GetAppName() << " :: increased by data from: " << veh_nm << " at: " << m_db_uptime << std::endl;
+            std::cout << GetAppName() << " :: increased by data from: " << veh_nm << " at: " << currentMOOSTime() << std::endl;
           }
         }
       }
@@ -331,7 +330,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
         if ( m_on_surface ) // simulate that we only receive on surface
         {
           if ( m_verbose )
-            std::cout << GetAppName() << " :: received READY at: " << m_db_uptime << " from: " << sval << std::endl;
+            std::cout << GetAppName() << " :: received READY at: " << currentMOOSTime() << " from: " << sval << std::endl;
 
           // check if vehicle not in list yet, if so, add
           if ( m_rec_ready_veh.find(sval) == m_rec_ready_veh.end() )
@@ -362,7 +361,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           {
             for ( auto veh : m_rec_ready_veh )
               std::cout << GetAppName() << " :: received ready from: "
-                        << veh << " at: " << m_db_uptime << std::endl;
+                        << veh << " at: " << currentMOOSTime() << std::endl;
             if ( !m_received_ready )
               m_received_ready = true;
 
@@ -412,7 +411,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
               {
                 if ( m_debug )
                   std::cout << GetAppName() << " :: received ready from: "
-                            << veh_that_is_ready << ", at: " << m_db_uptime
+                            << veh_that_is_ready << ", at: " << currentMOOSTime()
                             << " skipping." << std::endl;
               }
             }
@@ -609,10 +608,6 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
       }
     }
-    else if ( key == "DB_UPTIME" )
-    {
-      m_db_uptime = dval;
-    }
     else
       std::cout << GetAppName() << " :: Unhandled Mail: " << key << std::endl;
 
@@ -646,18 +641,29 @@ bool GP::Iterate()
     {
       // periodically (every X s), store all GP predictions
       // if we did not do so in the last second (apptick)
-      if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(m_db_uptime) % m_prediction_interval == 10) &&
+      if ( (std::abs(m_last_pred_save - MOOSTime()) > 1.0) &&
+           ((size_t)std::floor(currentMOOSTime()) % m_prediction_interval == 10) &&
            !m_final_hp_optim )
       {
+        m_last_pred_save = MOOSTime();
+        if ( m_debug )
+          std::cout << GetAppName() << " :: updating m_last_pred_save to: "
+                    << m_last_pred_save << std::endl;
         if ( m_verbose )
         {
-          std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
-                    << m_db_uptime << std::endl;
+          std::cout << GetAppName() << " :: creating thread to save state at: "
+                    << currentMOOSTime() << std::endl;
         }
         std::thread pred_store(&GP::makeAndStorePredictions, this, false);
         pred_store.detach();
-        m_last_pred_save = MOOSTime();
+      }
+      else
+      {
+        if ( m_debug )
+          std::cout << GetAppName()
+                    << " :: ((size_t)std::floor(currentMOOSTime()) % m_prediction_interval): "
+                    << ((size_t)std::floor(MOOSTime()) % m_prediction_interval)
+                    << ", at: " << MOOSTime() << std::endl;
       }
     }
 
@@ -680,7 +686,7 @@ bool GP::Iterate()
     {
       // run hpoptim every .. 500 seconds ..
       if ( (std::abs(m_last_hp_optim_done - MOOSTime()) > 1.0 ) &&
-           ((size_t)std::floor(m_db_uptime) % 500 == 10) )
+           ((size_t)std::floor(currentMOOSTime()) % 500 == 10) )
       {
         if ( m_mission_state != STATE_DONE )
         {
@@ -733,7 +739,7 @@ bool GP::Iterate()
         {
           if ( m_verbose )
             std::cout << GetAppName() << " :: done running hp optim shub, at: "
-                      << m_db_uptime << std::endl;
+                      << currentMOOSTime() << std::endl;
           m_hp_optim_running = false;
         }
       }
@@ -741,7 +747,7 @@ bool GP::Iterate()
       {
         std::cout << GetAppName() << " :: future_error at Iterate hpoptim check shub: "
                   << ex.code() << ": " << ex.what()
-                  << "at: " << m_db_uptime << std::endl;
+                  << "at: " << currentMOOSTime() << std::endl;
         m_hp_optim_running = false;
       }
     }
@@ -759,8 +765,8 @@ bool GP::Iterate()
           // let's time this based on MOOSTime(), and assume that clocks are
           // synchronised (to be verified in field tests)
           // note; add 60s buffer to block out x seconds at beginning
-          if ( ((size_t)std::floor(m_db_uptime) % m_data_sharing_interval) == 0 &&
-               (size_t)std::floor(m_db_uptime) > 60 )
+          if ( ((size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval) == 0 &&
+               (size_t)std::floor(currentMOOSTime()) > 60 )
           {
             // switch to data sharing mode, to switch bhv to surface
             m_mission_state = STATE_SURFACING;
@@ -818,9 +824,9 @@ bool GP::Iterate()
                 endMission();
               else
               {
-                if ( m_db_uptime < 10.0 )
+                if ( currentMOOSTime() < 10.0 )
                 {
-                  std::cout << GetAppName() << " :: currentMOOSTime()" << m_db_uptime << std::endl;
+                  std::cout << GetAppName() << " :: currentMOOSTime()" << currentMOOSTime() << std::endl;
                   m_mission_state = STATE_CALCWPT;
                   publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
                 }
@@ -872,7 +878,7 @@ bool GP::Iterate()
           // if we waited > X min, continue
           m_mission_state = STATE_SURFACING;
           std::cout << GetAppName() << " :: m_req_surf_timer_counter timeout @ "
-                    << m_db_uptime << std::endl;
+                    << currentMOOSTime() << std::endl;
           publishStates("Iterate_STATE_REQ_SURF_timeout");
           m_req_surf_timer_counter = 0;
         }
@@ -917,7 +923,7 @@ bool GP::Iterate()
           {
             m_received_shared_data = true;
             std::cout << GetAppName() << " :: m_tx_timer_counter timeout @ "
-                      << m_db_uptime << std::endl;
+                      << currentMOOSTime() << std::endl;
             m_tx_timer_counter = 0;
           }
         }
@@ -1094,7 +1100,6 @@ bool GP::OnStartUp()
       m_veh_is_shub = true;
   }
 
-
   registerVariables();
 
   std::thread data_thread(&GP::dataAddingThread, this);
@@ -1110,10 +1115,16 @@ bool GP::OnStartUp()
 
   if ( m_debug )
   {
-    std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
     std::cout << GetAppName() << " :: AppTick: " << GetAppFreq() << std::endl;
+    std::cout << GetAppName() << " :: m_prediction_interval: " << m_prediction_interval << std::endl;
+    std::cout << GetAppName() << " :: m_use_voronoi: " << m_use_voronoi << std::endl;
+    std::cout << GetAppName() << " :: m_timed_data_sharing: " << m_timed_data_sharing << std::endl;
+    std::cout << GetAppName() << " :: m_data_sharing_interval: " << m_data_sharing_interval << std::endl;
+    std::cout << GetAppName() << " :: m_acomms_sharing: " << m_acomms_sharing << std::endl;
+    std::cout << GetAppName() << " :: m_use_surface_hub: " << m_use_surface_hub << std::endl;
+    std::cout << GetAppName() << " :: m_async_trigger_method: " << m_async_trigger_method << std::endl;
+    std::cout << GetAppName() << " :: m_async_threshold: " << m_async_threshold << std::endl;
   }
-
 
   return(true);
 }
@@ -1202,9 +1213,6 @@ void GP::registerVariables()
   // surfacing requests
   m_Comms.Register("REQ_SURFACING_REC", 0); // receive surfacing request from other vehicle
   m_Comms.Register("REQ_SURFACING_ACK_REC", 0); // receive surfacing req ack from other vehicle
-
-  // db uptime for debugging
-  m_Comms.Register("DB_UPTIME", 0);
 
   if ( m_verbose )
   {
@@ -1527,9 +1535,6 @@ void GP::handleMailNodeReports(const std::string &input_string)
 
   if ( veh_nm != "" && veh_nm != "shub" )
   { // only store if not surface hub
-//    if ( m_debug )
-//      std::cout << GetAppName() << " :: storing node_report: "
-//                << veh_nm << ", " << veh_lon << ", " << veh_lat << " at: " << m_db_uptime << std::endl;
     // store the vehicle info
     if ( m_other_vehicles.find(veh_nm) == m_other_vehicles.end() )
         m_other_vehicles.insert(std::pair<std::string, std::pair<double, double> >(veh_nm,std::pair<double,double>(veh_lon, veh_lat)));
@@ -1593,12 +1598,12 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
 
   // get the lock for GP
   std::unique_lock<std::mutex> ap_lock(m_gp_mutex, std::defer_lock);
-  double lock_time1 = m_db_uptime;
+  double lock_time1 = currentMOOSTime();
   while ( !ap_lock.try_lock() ){}
-  double lock_time2 = m_db_uptime;
+  double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: "
-              << (lock_time2 - lock_time1) << ", at: " << m_db_uptime << std::endl;
+              << (lock_time2 - lock_time1) << ", at: " << currentMOOSTime() << std::endl;
 
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
@@ -1606,7 +1611,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   // release mutex
   ap_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by addPatternToGP" << std::endl;
+    std::cout << GetAppName() << " :: lock released by addPatternToGP, at: " << currentMOOSTime() << std::endl;
 
   // update visited set if needed
   if ( !m_veh_is_shub )
@@ -1684,9 +1689,9 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   // add mutex for changing of global maps
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
 
-  double lock_time1 = m_db_uptime;
+  double lock_time1 = currentMOOSTime();
   while ( !map_lock.try_lock() ){}
-  double lock_time2 = m_db_uptime;
+  double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
@@ -1967,14 +1972,15 @@ size_t GP::calcMECriterion()
   // lock for access to m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
-  double lock_time1 = m_db_uptime;
+  double lock_time1 = currentMOOSTime();
   while ( !gp_lock.try_lock() ){}
-  double lock_time2 = m_db_uptime;
+  double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
   if ( m_debug )
     std::cout << GetAppName() << " :: make copy GP" << std::endl;
+  // make a copy: reduce need for lock, but this does impact memory use
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   // release lock
   gp_lock.unlock();
@@ -1991,9 +1997,9 @@ size_t GP::calcMECriterion()
   if ( m_debug )
     std::cout << GetAppName() << " :: try for lock map" << std::endl;
   std::unique_lock<std::mutex> map_lock(m_sample_maps_mutex, std::defer_lock);
-  lock_time1 = m_db_uptime;
+  lock_time1 = currentMOOSTime();
   while ( !map_lock.try_lock() ){}
-  lock_time2 = m_db_uptime;
+  lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
   // make copy of map to use instead of map,
@@ -2127,13 +2133,13 @@ size_t GP::processReceivedData()
 
     // wait for calculations to be done
     // run timer to avoid being stuck waiting for data
-    if ( (unsigned int)std::round(m_db_uptime) % 2 == 0 )
+    if ( (unsigned int)std::round(currentMOOSTime()) % 2 == 0 )
       timer_counter++;
     // if waited for X min, continue
     if ( timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq())/2 )
     {
       std::cout << GetAppName() << " :: RX_DATA timer_counter timeout @ "
-                << m_db_uptime << std::endl;
+                << currentMOOSTime() << std::endl;
     }
   }
 
@@ -2166,7 +2172,7 @@ void GP::startAndCheckHPOptim()
     m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization, this, m_hp_optim_iterations);
     if ( m_verbose )
       std::cout << GetAppName() << " :: Starting hyperparameter optimization, current size GP: "
-                << m_gp->get_sampleset_size() << ", at: " << m_db_uptime << std::endl;
+                << m_gp->get_sampleset_size() << ", at: " << currentMOOSTime() << std::endl;
     m_hp_optim_running = true;
   }
   else
@@ -2242,7 +2248,7 @@ void GP::endMission()
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
-              << m_db_uptime << std::endl;
+              << currentMOOSTime() << std::endl;
   }
   std::thread pred_store(&GP::makeAndStorePredictions, this, true);
   pred_store.detach();
@@ -2258,7 +2264,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
   // run hyperparameter optimization
   if ( m_verbose)
   {
-    std::cout << GetAppName() << " :: continuing HP optimization" << std::endl; //obtained lock,
+    std::cout << GetAppName() << " :: continuing HP optimization, at: " << currentMOOSTime() << std::endl; //obtained lock,
     std::cout << GetAppName() << " :: current size GP: " << m_gp->get_sampleset_size() << std::endl;
   }
 
@@ -2266,13 +2272,13 @@ bool GP::runHPOptimization(size_t nr_iterations)
   {
     if ( m_verbose )
       std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-optim, at "
-                << m_db_uptime << std::endl;
+                << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
     return false;
   }
   else
-    std::cout << GetAppName() << " :: cont HPO pre-optim, at " << m_db_uptime << std::endl;
+    std::cout << GetAppName() << " :: cont HPO pre-optim, at " << currentMOOSTime() << std::endl;
 
   Eigen::VectorXd lh_gp(m_gp->covf().get_loghyper()); // via param function
   runHPoptimizationOnDownsampledGP(lh_gp, nr_iterations);
@@ -2281,19 +2287,19 @@ bool GP::runHPOptimization(size_t nr_iterations)
   {
     if ( m_verbose )
       std::cout << GetAppName() << " :: premature exit from HPO because of mission end, post-optim pre-set, at "
-                << m_db_uptime << std::endl;
+                << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
     return false;
   }
   else
-    std::cout << GetAppName() << " :: cont HPO post-optim pre-set, at " << m_db_uptime << std::endl;
+    std::cout << GetAppName() << " :: cont HPO post-optim pre-set, at " << currentMOOSTime() << std::endl;
 
   // protect GP access with mutex
   std::unique_lock<std::mutex> hp_lock(m_gp_mutex, std::defer_lock);
-  double lock_time1 = m_db_uptime;
+  double lock_time1 = currentMOOSTime();
   while ( !hp_lock.try_lock() ){}
-  double lock_time2 = m_db_uptime;
+  double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: "
               << (lock_time2 - lock_time1) << std::endl;
@@ -2303,13 +2309,13 @@ bool GP::runHPOptimization(size_t nr_iterations)
     hp_lock.unlock();
     if ( m_verbose )
       std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-update lock, at "
-                << m_db_uptime << std::endl;
+                << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
     return false;
   }
   else
-    std::cout << GetAppName() << " :: cont HPO pre-update, at " << m_db_uptime << std::endl;
+    std::cout << GetAppName() << " :: cont HPO pre-update, at " << currentMOOSTime() << std::endl;
 
   if ( m_verbose )
   {
@@ -2343,7 +2349,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
   //// write new HP to file ////////////////////////////////////////////////////
   std::clock_t begin = std::clock();
   std::stringstream filenm;
-  filenm << "hp_optim_" << m_db_uptime << "_" << m_veh_name << "_" << nr_iterations;
+  filenm << "hp_optim_" << std::floor(currentMOOSTime()) << "_" << m_veh_name << "_" << nr_iterations;
   m_gp->write(filenm.str().c_str());
   std::clock_t end = std::clock();
   if ( m_debug )
@@ -2543,7 +2549,7 @@ void GP::sendData()
         m_final_sent_to.push_back(received_ready_from);
         if ( m_debug )
           std::cout << GetAppName() << " :: adding: " << received_ready_from << " to m_final_sent_to."
-                    << " Size: " << m_final_sent_to.size() << ", at: " << m_db_uptime << std::endl;
+                    << " Size: " << m_final_sent_to.size() << ", at: " << currentMOOSTime() << std::endl;
       }
 
       while ( m_data_pt_counter != 0 )
@@ -2616,14 +2622,15 @@ void GP::makeAndStorePredictions(bool finished)
   std::clock_t begin = std::clock();
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
-  double lock_time1 = m_db_uptime;
+  double lock_time1 = currentMOOSTime();
   while ( !gp_lock.try_lock() ){}
-  double lock_time2 = m_db_uptime;
+  double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
     std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
 
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
+  // make a copy: reduce need for lock, but this does impact memory use
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   gp_lock.unlock();
   if ( m_debug )
@@ -2632,7 +2639,7 @@ void GP::makeAndStorePredictions(bool finished)
   std::clock_t end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(m_db_uptime) << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::clock();
   std::vector< std::pair<double, double> >::iterator loc_itr;
@@ -2649,7 +2656,9 @@ void GP::makeAndStorePredictions(bool finished)
   all_pred_sigma2_GP.reserve(nr_sample_locations);
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: size GP: " << gp_copy->get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: size GP: "
+              << gp_copy->get_sampleset_size()
+              << ", at: " << currentMOOSTime() << std::endl;
 
   // make predictions for all sample locations
   for ( loc_itr = m_sample_locations.begin(); loc_itr < m_sample_locations.end(); loc_itr++ )
@@ -2684,7 +2693,7 @@ void GP::makeAndStorePredictions(bool finished)
   end = std::clock();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(m_db_uptime) << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::clock();
 
@@ -2721,7 +2730,7 @@ void GP::makeAndStorePredictions(bool finished)
   if ( finished )
   {
     if ( m_debug )
-      std::cout << GetAppName() << " :: " << m_db_uptime << " :: closing files." << std::endl;
+      std::cout << GetAppName() << " :: " << currentMOOSTime() << " :: closing files." << std::endl;
     m_ofstream_pm_lGP.close();
     m_ofstream_pv_lGP.close();
     if ( m_use_log_gp )
@@ -2735,7 +2744,7 @@ void GP::makeAndStorePredictions(bool finished)
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: runtime save to file [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(m_db_uptime)  << std::endl;
+              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime())  << std::endl;
   }
 
   // copy of GP gets destroyed when this function exits
@@ -3075,7 +3084,7 @@ void GP::tdsHandshake()
         if ( (m_use_surface_hub && !m_final_hp_optim) || !m_use_surface_hub )
         m_received_ready = true;
         std::cout << GetAppName() << " :: m_handshake_timer_counter timeout @ "
-                  << m_db_uptime << std::endl;
+                  << currentMOOSTime() << std::endl;
         m_handshake_timer_counter = 0;
       }
     }
@@ -3101,7 +3110,7 @@ void GP::tdsReceiveData()
   }
   else if ( m_waiting && !m_calc_prevoronoi )
   {
-    if ( m_debug && (size_t)std::floor(m_db_uptime) % 2 == 0 )
+    if ( m_debug && (size_t)std::floor(currentMOOSTime()) % 2 == 0 )
       std::cout << GetAppName() << " :: checking future m_future_received_data_processed" << std::endl;
 
     try {
@@ -3320,8 +3329,8 @@ void GP::findAndPublishNextWpt()
             // even if we were finding a new waypoint,
             // such that we keep all vehicles synched
             if ( m_num_vehicles > 1 &&
-                 ((size_t)std::floor(m_db_uptime) % m_data_sharing_interval) == 0 &&
-                 (size_t)std::floor(m_db_uptime) > 60 )
+                 ((size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval) == 0 &&
+                 (size_t)std::floor(currentMOOSTime()) > 60 )
             {
               // switch to data sharing mode, to switch bhv to surface
               m_mission_state = STATE_SURFACING;
@@ -3639,7 +3648,12 @@ void GP::printVoronoiPartitions()
 void GP::publishStates(std::string const calling_method)
 {
   if ( m_verbose )
-    std::cout << GetAppName() << " :: ** " << m_db_uptime << " switch to: " << currentMissionStateString() << " from " << calling_method << " **\n";
+    std::cout << GetAppName() << " :: ** " << currentMOOSTime() << " switch to: " << currentMissionStateString() << " from " << calling_method << " **\n";
 
   m_Comms.Notify("STATE_MISSION", currentMissionStateString());
+}
+
+double GP::currentMOOSTime() const
+{
+  return MOOSTime() - m_start_time;
 }

@@ -136,6 +136,8 @@ class GP : public CMOOSApp
 
    void printCoutPrefix();
 
+   double currentMOOSTime() const;
+
    // Configuration variables
    bool m_verbose;
 
@@ -322,9 +324,6 @@ class GP : public CMOOSApp
 
    // surface hub, track vehicle surfacing event
    std::map<std::string, size_t> m_map_vehicle_idx_data_last_sent;
-
-   // debugging
-   double m_db_uptime;
 
    // surface hub addition: use a surface hub? (true, false)
    bool m_use_surface_hub;
