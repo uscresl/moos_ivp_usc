@@ -112,7 +112,7 @@ GP::GP() :
   m_bhv_state(""),
   m_adp_state(""),
   m_use_surface_hub(false),
-  m_final_received_cnt(0),
+//  m_final_received_cnt(0),
   m_veh_is_shub(false),
   m_cancel_hpo(false),
   m_prev_length_scale(0),
@@ -313,9 +313,17 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
           if ( m_final_hp_optim && m_veh_is_shub )
           {
-            m_final_received_cnt++;
-            std::cout << GetAppName() << " :: m_final_received_cnt = " << m_final_received_cnt << std::endl;
-            std::cout << GetAppName() << " :: increased by data from: " << veh_nm << " at: " << currentMOOSTime() << std::endl;
+            if ( std::find(m_final_received_from.begin(), m_final_received_from.end(), veh_nm) == m_final_received_from.end() )
+            {
+              m_final_received_from.push_back(veh_nm);
+              std::cout << GetAppName() << " :: m_final_received_cnt = "
+                        << m_final_received_from.size() << std::endl;
+              std::cout << GetAppName() << " :: increased by data from: "
+                        << veh_nm << " at: " << currentMOOSTime() << std::endl;
+            }
+            else
+              std::cout << GetAppName() << " :: already counted: " << veh_nm
+                        << " at: " << currentMOOSTime() << std::endl;
           }
         }
       }
@@ -522,6 +530,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
               if ( m_debug )
                 std::cout << GetAppName() << " :: REQ_SURF finale surface, resetting m_calc_prevoronoi" << std::endl;
               m_calc_prevoronoi = false;
+              if ( m_debug )
+                std::cout << GetAppName() << " :: setting m_calc_prevoronoi to false, final surface req msg" << std::endl;
             }
             if ( m_mission_state == STATE_HPOPTIM ||  m_mission_state == STATE_SAMPLE ||
                  m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
@@ -597,6 +607,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           clearHandshakeVars();
           m_waiting = false;
           m_calc_prevoronoi = false;
+          if ( m_debug )
+            std::cout << GetAppName() << " :: setting m_calc_prevoronoi to false, MISSION_TIME msg" << std::endl;
 
         }
         else if ( m_mission_state != STATE_IDLE || m_mission_state != STATE_DONE )
@@ -657,14 +669,14 @@ bool GP::Iterate()
         std::thread pred_store(&GP::makeAndStorePredictions, this, false);
         pred_store.detach();
       }
-      else
-      {
-        if ( m_debug )
-          std::cout << GetAppName()
-                    << " :: ((size_t)std::floor(currentMOOSTime()) % m_prediction_interval): "
-                    << ((size_t)std::floor(MOOSTime()) % m_prediction_interval)
-                    << ", at: " << MOOSTime() << std::endl;
-      }
+//      else
+//      {
+//        if ( m_debug )
+//          std::cout << GetAppName()
+//                    << " :: ((size_t)std::floor(currentMOOSTime()) % m_prediction_interval): "
+//                    << ((size_t)std::floor(MOOSTime()) % m_prediction_interval)
+//                    << ", at: " << MOOSTime() << std::endl;
+//      }
     }
 
     // **** ACOMMS VORONOI PARTITIONING ************************************//
@@ -836,6 +848,8 @@ bool GP::Iterate()
                   publishStates("Iterate_STATE_HPOPTIM_precalc_done_not_final");
                 }
                 m_calc_prevoronoi = false;
+                if ( m_debug )
+                  std::cout << GetAppName() << " :: setting m_calc_prevoronoi to false, STATE_HPOPTIM" << std::endl;
               }
               // reset var
               m_data_received = false;
@@ -2069,8 +2083,13 @@ size_t GP::calcMECriterion()
       // initial sum_var = 0, decrease = 1
       double decrease = 1.0 - (sum_var / m_async_prev_sum_var);
       if ( m_debug )
-        std::cout << GetAppName() << " :: var_decrease: " << decrease << std::endl;
-      if ( decrease > m_async_threshold || decrease < 0.0 )
+      {
+        std::cout << GetAppName() << " :: var_decrease: " << decrease << '\n';
+        std::cout << GetAppName() << " :: m_calc_prevoronoi: " << m_calc_prevoronoi << '\n';
+        std::cout << GetAppName() << " :: current state: " << currentMissionStateString() << std::endl;
+      }
+
+      if ( (std::abs(decrease) > m_async_threshold) && !m_calc_prevoronoi && !m_final_hp_optim )
       {
         if ( m_debug )
           std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
@@ -2120,7 +2139,7 @@ bool GP::checkGPHasData()
 size_t GP::processReceivedData()
 {
   // avoid getting stuck at end, after extra send phase
-  if ( m_final_hp_optim && m_final_received_cnt == m_num_vehicles && m_veh_is_shub )
+  if ( m_final_hp_optim && m_final_received_from.size() == m_num_vehicles && m_veh_is_shub )
     return 0;
 
   size_t pts_added = 0;
@@ -2198,6 +2217,8 @@ void GP::startAndCheckHPOptim()
             // after points received, need to run a round of predictions (unvisited set has changed!)
             m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
             m_calc_prevoronoi = true;
+            if ( m_debug )
+              std::cout << GetAppName() << " :: setting m_calc_prevoronoi to true, startAndCheckHPOptim" << std::endl;
           }
           else
           {
@@ -2208,11 +2229,11 @@ void GP::startAndCheckHPOptim()
           // after final HP optim
           // for shub, wait to end until we have received data from all vehicles
           if ( m_final_hp_optim &&
-              (!m_veh_is_shub || (m_final_received_cnt == m_num_vehicles)) )
+              (!m_veh_is_shub || (m_final_received_from.size() == m_num_vehicles)) )
               endMission();
           else if ( m_final_hp_optim )
-            std::cout << GetAppName() << " :: m_final_received_cnt = " << m_final_received_cnt << std::endl;
-          else if ( m_veh_is_shub && m_final_received_cnt == m_num_vehicles &&
+            std::cout << GetAppName() << " :: m_final_received_from size: " << m_final_received_from.size() << std::endl;
+          else if ( m_veh_is_shub && m_final_received_from.size() == m_num_vehicles &&
                     m_final_sent_to.size() == m_num_vehicles )
             endMission();
 
@@ -2275,6 +2296,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
                 << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
+    clearHandshakeVars();
     return false;
   }
   else
@@ -2290,6 +2312,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
                 << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
+    clearHandshakeVars();
     return false;
   }
   else
@@ -2312,6 +2335,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
                 << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
+    clearHandshakeVars();
     return false;
   }
   else
@@ -2452,6 +2476,17 @@ void GP::sendReady()
 //
 void GP::sendData()
 {
+  if ( m_debug )
+  {
+    std::cout << GetAppName() << " :: entering sendData, at " << currentMOOSTime() << '\n';
+    std::cout << GetAppName() << " :: m_rec_ready_veh.size(): " << m_rec_ready_veh.size() << '\n';
+
+    std::cout << GetAppName() << " :: m_rec_ready_veh: ";
+    for ( auto veh_idx = m_rec_ready_veh.begin(); veh_idx != m_rec_ready_veh.end(); ++veh_idx )
+      std::cout << *veh_idx << ", ";
+    std::cout << std::endl;
+  }
+
   // there may be multiple vehicles waiting for data,
   // do this for all
   while ( !m_rec_ready_veh.empty() )
@@ -2464,8 +2499,8 @@ void GP::sendData()
     {
       if ( m_debug )
         std::cout << GetAppName()
-                  << " :: in sendData: m_final_received_cnt, m_final_sent_to.size(): "
-                  << m_final_received_cnt << ", " << m_final_sent_to.size()
+                  << " :: in sendData: m_final_received_from.size(), m_final_sent_to.size(): "
+                  << m_final_received_from.size() << ", " << m_final_sent_to.size()
                   << std::endl;
       while ( std::find(m_final_sent_to.begin(), m_final_sent_to.end(), received_ready_from) != m_final_sent_to.end() )
       {
@@ -2517,6 +2552,15 @@ void GP::sendData()
         m_map_vehicle_idx_data_last_sent.insert(std::pair<std::string, double>(received_ready_from, nr_stored_data_pts));
       else if ( index_end > index_last_sent )
         veh_itr->second = nr_stored_data_pts; // update only if changed since prev.
+
+      if ( m_final_hp_optim &&
+           std::find(m_final_sent_to.begin(), m_final_sent_to.end(), received_ready_from) == m_final_sent_to.end() )
+      {
+        m_final_sent_to.push_back(received_ready_from);
+        if ( m_debug )
+          std::cout << GetAppName() << " :: adding: " << received_ready_from << " to m_final_sent_to."
+                    << " Size: " << m_final_sent_to.size() << ", at: " << currentMOOSTime() << std::endl;
+      }
     }
 
     if ( m_data_pt_counter == 0 || nr_stored_data_pts == 0 )
@@ -2543,14 +2587,6 @@ void GP::sendData()
       if ( m_verbose )
         std::cout << GetAppName() << " :: **sending " << m_data_pt_counter
                   << " points to " << received_ready_from << std::endl;
-      if ( m_final_hp_optim && m_veh_is_shub &&
-           std::find(m_final_sent_to.begin(), m_final_sent_to.end(), received_ready_from) != m_final_sent_to.end() )
-      {
-        m_final_sent_to.push_back(received_ready_from);
-        if ( m_debug )
-          std::cout << GetAppName() << " :: adding: " << received_ready_from << " to m_final_sent_to."
-                    << " Size: " << m_final_sent_to.size() << ", at: " << currentMOOSTime() << std::endl;
-      }
 
       while ( m_data_pt_counter != 0 )
       {
@@ -2565,7 +2601,7 @@ void GP::sendData()
 
         // send data in batches,
         // use msg_cnt to figure out indices (starts at 0)
-        // and check if all has been sent via m_data_pt_counter
+        // and check if alltdsHandhake_received_ready has been sent via m_data_pt_counter
         index_start = msg_cnt*1500;
 
         // for the surface hub, start where we last left off
@@ -3159,8 +3195,12 @@ void GP::tdsReceiveData()
         else
         {
           if ( m_debug )
+          {
             std::cout << GetAppName() << " :: shub, be ready to send/receive data, "
-                      << "processing data in the background" << std::endl;
+                      << "processing data in the background" << '\n';
+            std::cout << GetAppName() << " :: m_final_received_from.size(), m_final_sent_to.size(): "
+                      << m_final_received_from.size() << ", " << m_final_sent_to.size() << std::endl;
+          }
 
           // Nb. check if data processed, and kick off hpoptim in Iterate
           m_need_to_run_hpo = true;
@@ -3234,17 +3274,24 @@ void GP::clearTDSStateVars()
   {
     m_mission_state = STATE_HANDSHAKE;
     publishStates("clearTDSStateVars shub");
-    if ( m_final_received_cnt == m_num_vehicles && m_final_sent_to.size() < m_num_vehicles )
+    if ( m_final_received_from.size() == m_num_vehicles && m_final_sent_to.size() < m_num_vehicles )
       m_received_ready = true;
     else
     {
       m_rec_ready_veh.clear();
-      if ( m_final_received_cnt == m_num_vehicles &&
+      if ( m_final_received_from.size() == m_num_vehicles &&
            m_final_sent_to.size() == m_num_vehicles )
       {
         // ending
         m_mission_state = STATE_HPOPTIM; // check if this is proper state to go into, ending
         publishStates("clearTDSStateVars shub");
+      }
+      else
+      {
+        if ( m_debug )
+          std::cout << GetAppName() << " :: m_final_received_from.size(), m_final_sent_to.size(): "
+                    << m_final_received_from.size() << ", " << m_final_sent_to.size()
+                    << std::endl;
       }
     }
   }
@@ -3330,7 +3377,8 @@ void GP::findAndPublishNextWpt()
             // such that we keep all vehicles synched
             if ( m_num_vehicles > 1 &&
                  ((size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval) == 0 &&
-                 (size_t)std::floor(currentMOOSTime()) > 60 )
+                 (size_t)std::floor(currentMOOSTime()) > 60 &&
+                 m_async_trigger_method == "timed" )
             {
               // switch to data sharing mode, to switch bhv to surface
               m_mission_state = STATE_SURFACING;
