@@ -214,7 +214,7 @@ ProcessConfig = pGP
   // specify method of hyperparameter optimization ('cg' vs 'rprop')
   hp_optim_method = cg
   // number of iterations for CG/RProp
-  hp_optim_iterations = 100
+  hp_optim_iterations = 50
   // accepted deviation ratio from last hyper parameters
   hp_accepted_deviation_ratio = 0.25
 
