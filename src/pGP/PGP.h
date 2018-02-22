@@ -71,7 +71,6 @@ class GP : public CMOOSApp
    void addPatternToGP(double veh_lon, double veh_lat, double value);
    void dataAddingThread();
 
-   void startAndCheckHPOptim();
    bool runHPOptimization(size_t nr_iterations);
    void runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations);
 
@@ -259,7 +258,6 @@ class GP : public CMOOSApp
    std::future<size_t> m_future_received_data_processed;
    bool m_waiting;
    bool m_received_ready;
-//   std::vector<std::string> m_received_ready_from;
    std::string m_input_var_handshake_data_sharing;
    std::string m_output_var_handshake_data_sharing;
    size_t m_last_ready_sent;
@@ -327,7 +325,6 @@ class GP : public CMOOSApp
 
    // surface hub addition: use a surface hub? (true, false)
    bool m_use_surface_hub;
-//   size_t m_final_received_cnt;
    std::vector<std::string> m_final_sent_to;
    std::vector<std::string> m_final_received_from;
    bool m_veh_is_shub;
