@@ -271,19 +271,19 @@ ProcessConfig = pAcommsHandler
       role { type: DESTINATION_ID  field: "destination" }
       role { type: TIMESTAMP  field: "_time" }
     }
-    // prev: value base 1.5, ttl 300, blackout_time 10
-    message_entry { protobuf_name: "Status" ack: false blackout_time: 0 max_queue: 1 ttl: 300 value_base: 1.5
+    // prev: value base 1.5, ttl 300, blackout_time 2
+    message_entry { protobuf_name: "Status" ack: false blackout_time: 2 max_queue: 1 ttl: 300 value_base: 1.5
       role { type: SOURCE_ID field: "Node" }
       role { type: DESTINATION_ID field: "_dest_id" }
       role { type: TIMESTAMP field: "Timestamp" }
       manipulator: ON_DEMAND	manipulator: LOOPBACK
     }
-    message_entry { protobuf_name: "SurfacingRequest"  ack: true  max_queue: 1  ttl: 100  value_base: 1.5  newest_first: true
+    message_entry { protobuf_name: "SurfacingRequest" ack: false  blackout_time: 0  max_queue: 1  ttl: 100  value_base: 2.0  newest_first: true
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "_dest_id" }
       role { type: TIMESTAMP  field: "_time" }
     }
-    message_entry { protobuf_name: "SurfacingRequestAck"  ack: true  max_queue: 1  ttl: 100  value_base: 1.5  newest_first: true
+    message_entry { protobuf_name: "SurfacingRequestAck" ack: false  blackout_time: 0  max_queue: 1  ttl: 100  value_base: 2.0  newest_first: true
       role { type: SOURCE_ID  field: "_src_id" }
       role { type: DESTINATION_ID  field: "_dest_id" }
       role { type: TIMESTAMP  field: "_time" }
