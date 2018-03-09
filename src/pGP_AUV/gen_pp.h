@@ -15,11 +15,11 @@ std::vector<std::vector<GraphNode *> > initial_seed;
 std::vector<std::vector<GraphNode *> > current_population;
 std::unordered_map< std::vector<GraphNode *>, double> current_pop_fitness;
 
-void run_genetic_pp(std::vector< GraphNode*> * grid_pts);
-void generate_initial_paths(std::vector< GraphNode*> grid_pts);
-std::vector<GraphNode> generate_path(std::vector< GraphNode*> grid_pts, std::mt19937& gen);
-double calc_path_entropy(std::vector< GraphNode*> path);
-void crossover();
+void run_genetic_pp(std::vector< GraphNode* > * grid_pts);
+void generate_initial_paths(std::vector< GraphNode* > grid_pts);
+std::vector<GraphNode> generate_path(std::vector< GraphNode* > grid_pts, std::mt19937& gen);
+double calc_path_entropy(std::vector< GraphNode* > path);
+void crossover(const GraphNode *a, const GraphNode *b, std::mt19937 &generator);
 void mutate(); //not sure if necessary
 void select_parents(std::vector<double> &probability_dist,
                     std::uniform_real_distribution<double> dist,

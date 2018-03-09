@@ -33,6 +33,7 @@ void run_genetic_pp(std::vector<GraphNode *> * grid_pts)
     parentB = nullptr;
     select_parents(probability_dist, dist, parentA, parentB);
 
+    crossover(parentA, parentB, generator());
 
 
     //crossover from two random parents
@@ -122,6 +123,11 @@ std::vector<double> create_prob_dist(std::vector<double> &probability_dist)
   return probability_dist;
 }
 
+// ---------------------------------------------------------
+// Procedure: select_parents()
+//            using a uniform distribution between 0-1,
+//            generates a random probability and sets the
+//            corresponding parent to that GraphNode //not the best function descriptor
 void select_parents(std::vector<double> &probability_dist,
                     std::uniform_real_distribution<double> dist,
                     std::mt19937 &generator,
@@ -133,7 +139,7 @@ void select_parents(std::vector<double> &probability_dist,
 
 void select_parent(std::vector<double> &probability_dist,
                    std::uniform_real_distribution<double> dist,
-                   std::mt19937 &generator, GraphNode *parent)
+                   std::mt19937 &generator, GraphNode *parent) //is this the right way to pass it
 {
   double parent;
   parent = dist(generator);
@@ -144,6 +150,20 @@ void select_parent(std::vector<double> &probability_dist,
     total_prob += probability_dist[i++];
   }
   parent = probability_dist[i];
+}
+
+
+void crossover(std::vector<GraphNode *> &a, std::vector<GraphNode*> &b, std::mt19937 &generator)
+{
+  std::uniform_int_distribution<int> dist(0, PATH_LENGTH);
+  int crossover_pt = dist(generator);
+  std::vector<GraphNode *> child;
+  std::copy_n(a.begin(), crossover_pt, std::back_inserter(child));
+  //find point in b closest to last node of child
+  // complete path from that point onward
+  // if path length is < actual path
+  // if path length is > actual path
+  // if path length is == actual path hallelujah
 }
 
 
