@@ -758,11 +758,20 @@ bool GP::Iterate()
               clearTDSStateVars();
           else if ( !m_veh_is_shub )
           { // use voronoi
-            if ( m_verbose )
-              std::cout << GetAppName()
-                        << " :: starting calcMECriterion, m_future_calc_prevoronoi"
-                        << std::endl;
-            m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+            if ( m_mission_state == STATE_IDLE )
+            {
+              // start of mission, no data yet, skip calcvor
+              m_mission_state = STATE_SAMPLE;
+              publishStates("Iterate_m_hp_optim_running");
+            }
+            else
+            {
+              if ( m_verbose )
+                std::cout << GetAppName()
+                          << " :: starting calcMECriterion, m_future_calc_prevoronoi"
+                          << std::endl;
+              m_future_calc_prevoronoi = std::async(std::launch::async, &GP::calcMECriterion, this);
+            }
           }
         }
       }
