@@ -265,7 +265,7 @@ class GP : public CMOOSApp
    size_t m_handshake_timer_counter;
    size_t m_tx_timer_counter;
    size_t m_req_surf_timer_counter;
-   double m_last_tds_surface;
+   double m_last_surface;
 
    // acomms data sharing
    bool m_acomms_sharing;
@@ -338,6 +338,10 @@ class GP : public CMOOSApp
    double m_async_prev_sum_var;
 
    bool m_need_to_run_hpo;
+   double m_survey_depth;
+   double m_survey_speed;
+   double m_dive_pitch_angle;
+   double m_time_to_surf;
 };
 
 #endif

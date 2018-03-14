@@ -72,8 +72,16 @@ ProcessConfig = pGP
   surface_hub = false
   
   // for async surfacing (w/ shub)
-  // choose what trigger method to use (var_reduction, timed (tds), ..)
+  // choose what trigger method to use:
+  // var_reduction, timed (tds), num_other_samples, ..
   async_trigger_method = "var_reduction"
   // if difference from previous is > T, then surface
   async_threshold = 0.4
+  
+  // specify survey depth for num_other_samples calculation
+  survey_depth = 5
+  // specify survey speed for num_other_samples calculation
+  survey_speed = 1.5
+  // specify pitch angle for diving/surfacing
+  dive_pitch_angle = 20.0
 }

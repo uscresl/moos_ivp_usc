@@ -97,7 +97,7 @@ GP::GP() :
   m_handshake_timer_counter(0),
   m_tx_timer_counter(0),
   m_req_surf_timer_counter(0),
-  m_last_tds_surface(0),
+  m_last_surface(0),
   m_acomms_sharing(false),
   m_last_acomms_string(""),
   m_use_voronoi(false),
@@ -118,7 +118,11 @@ GP::GP() :
   m_async_trigger_method("timed"),
   m_async_threshold(0.3),
   m_async_prev_sum_var(0.0),
-  m_need_to_run_hpo(false)
+  m_need_to_run_hpo(false),
+  m_survey_depth(0.0),
+  m_survey_speed(0.0),
+  m_dive_pitch_angle(0.0),
+  m_time_to_surf(0.0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -211,6 +215,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       // (we do not want to add when in hp optim, or on surface etc)
       m_data_mail_counter++;
 
+      // downsample data, published at frequency of 2 Hz
       if ( (m_data_mail_counter % 2 == 0) &&
             m_mission_state == STATE_SAMPLE )
         handleMailDataFromSensor(dval);
@@ -409,6 +414,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
                 if ( m_veh_is_shub && m_mission_state == STATE_SAMPLE )
                 {
                   // get ready to receive and send data: go to handshake mode
+                  m_last_surface = MOOSTime();
                   m_mission_state = STATE_SURFACING;
                   publishStates("Incoming_handshake_all_received_surface_hub");
                 }
@@ -468,7 +474,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         std::cout << GetAppName() << " :: done with static survey, initiate surfacing for TDS" << std::endl;
         // switch to surface
-        m_last_tds_surface = MOOSTime();
+        m_last_surface = MOOSTime();
         m_mission_state = STATE_SURFACING;
         publishStates("OnNewMail_ADP_PTS");
       }
@@ -584,6 +590,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       {
         // prep for surfacing
         // ack received, start surfacing
+        m_last_surface = MOOSTime();
         m_mission_state = STATE_SURFACING;
         publishStates("OnNewMail_REQ_SURFACING_ACK_REC");
       }
@@ -614,7 +621,10 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
           if ( m_use_voronoi && !m_veh_is_shub )
             m_mission_state = STATE_REQ_SURF;
           else
+          {
+            m_last_surface = MOOSTime();
             m_mission_state = STATE_SURFACING;
+          }
           publishStates("OnNewMail_MISSION_TIME");
 
           // reset other vars to make sure we can go over procedure again
@@ -758,7 +768,7 @@ bool GP::Iterate()
               clearTDSStateVars();
           else if ( !m_veh_is_shub )
           { // use voronoi
-            if ( m_mission_state == STATE_IDLE )
+            if ( m_mission_state == STATE_IDLE && !m_final_hp_optim )
             {
               // start of mission, no data yet, skip calcvor
               m_mission_state = STATE_SAMPLE;
@@ -801,6 +811,7 @@ bool GP::Iterate()
                (size_t)std::floor(currentMOOSTime()) > 60 )
           {
             // switch to data sharing mode, to switch bhv to surface
+            m_last_surface = MOOSTime();
             m_mission_state = STATE_SURFACING;
             publishStates("Iterate_STATE_SAMPLE_TDS");
           }
@@ -820,8 +831,32 @@ bool GP::Iterate()
           }
           #endif
         }
+        else if ( m_timed_data_sharing && !m_use_voronoi &&
+                  m_async_trigger_method == "num_other_samples" )
+        { // trigger for async surfacing
+          // calculate nr of other samples
+          // sample frequency assumed to be 1 Hz
+          // note that m_last_surface is set at the start of a surfacing event,
+          //   and therefore we should subtract surfacing time to find how much
+          //   data vehicles may have collected
+          unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - 2*m_time_to_surf);
+          unsigned int other_samples = time_since_last_surf * m_num_vehicles;
+
+          // conditions:
+          // 1. make sure we can gather more data than it costs to surface
+          // 2. TODO
+          if ( other_samples > (2*m_time_to_surf) &&
+               true ) //TODO add other threshold
+          {
+            if ( m_debug )
+              std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
+            // switch to surfacing
+            m_last_surface = MOOSTime();
+            m_mission_state = STATE_SURFACING;
+            publishStates("Iterate_num_other_samples");
+          }
+        }
         // else just sampling, don't do anything else
-        // TODO add in timed? trigger hp optim for parallel sampling?
 
         break;
       case STATE_CALCWPT :
@@ -1070,6 +1105,12 @@ bool GP::OnStartUp()
       m_async_trigger_method = value;
     else if ( param == "async_threshold" )
       m_async_threshold = (double)atof(value.c_str());
+    else if ( param == "survey_depth" )
+      m_survey_depth = (double)atof(value.c_str());
+    else if ( param == "survey_speed" )
+      m_survey_speed = (double)atof(value.c_str());
+    else if ( param == "dive_pitch_angle" )
+      m_dive_pitch_angle = (double)atof(value.c_str());
     else
       handled = false;
 
@@ -1112,7 +1153,15 @@ bool GP::OnStartUp()
   m_last_published_req_surf = MOOSTime();
   m_last_published_req_surf_ack = MOOSTime();
   m_last_published = MOOSTime();
-  m_last_tds_surface = MOOSTime();
+  m_last_surface = MOOSTime();
+
+  // calculate once how long it approximately takes us to surface
+  if ( m_survey_depth > 0 && m_dive_pitch_angle > 0 )
+  {
+    // calculate time to surface
+    double surf_dist = m_survey_depth / sin(m_dive_pitch_angle * PI/180);
+    m_time_to_surf = surf_dist / m_survey_speed;
+  }
 
   if ( m_debug )
   {
