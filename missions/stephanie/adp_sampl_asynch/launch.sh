@@ -85,6 +85,8 @@ fi
 EXP_LOCATION="puddingstone" # puddingstone, santafe, arrowhead
 PLUGDIR="../../../plugs" # no leading slash
 MSGDIR="${MOOSIVP_USC_HOME}/proto"
+# specify comms range
+COMMUNICATION_RANGE=1000
 
 # paint survey area on pMarineViewer
 if [ ${AREA} = "bigger1" ] ; then
@@ -186,7 +188,7 @@ if [ "${ADAPTIVE}" = "yes" ] ; then
     OFFSET_X1=500
   fi
 
-  if [ $NUM_VEHICLES -eq 1 ]; then
+  if [ $NUM_VEHICLES -eq 1 ] ; then
     waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X1,$OFFSET_Y,$AREA_WIDTH,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
     PILOT_PTS1=${waypts}
     echo " softmax waypoints auv1: " $PILOT_PTS1
@@ -199,6 +201,8 @@ if [ "${ADAPTIVE}" = "yes" ] ; then
     PILOT_PTS1=${waypts}
     echo " softmax waypoints auv1: " $PILOT_PTS1
     CROSS_END1=$(echo ${waypts##*:})
+    
+    sleep 1
 
     waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X2,$OFFSET_Y,$AREA_WIDTH2v,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
     PILOT_PTS2=${waypts}
@@ -265,7 +269,7 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
    SHARE_LISTEN=$SHORE_LISTEN VPORT=$SHORE_VPORT SERVER_HOST=$SERVERHOST       \
    LOCATION=$EXP_LOCATION  PLUG_DIR=$PLUGDIR  MSG_DIR=$MSGDIR   \
    PAINT_SEGLIST=$PAINTSEGLIST   SIMULATION=$RUN_SIMULATION     \
-   DROP_PERCENTAGE=$DROP_PCT  USE_GUI=$GUI
+   DROP_PERCENTAGE=$DROP_PCT  USE_GUI=$GUI  COMMS_RANGE=$COMMUNICATION_RANGE
 
 # START HEADING same for all vehicles - can be customized (not needed here)
 START_HEADING="230"
@@ -430,7 +434,7 @@ nsplug meta_shub.moos targ_$SHUB.moos -f WARP=$TIME_WARP  \
    NR_VEHICLES=$NUM_VEHICLES  MISSION_FILE_PSHARE=$PSHARE_MISSIONFILE  \
    ADAPTIVE_WPTS=$ADAPTIVE  USE_TDS=$TDS  USE_ACOMMS=$ACOMMS   \
    USE_GUI=$GUI  SURVEY_AREA=$AREA  DATA_NUM_DIMENSIONS=$DATA_NR_DIMENSIONS \
-   USE_SHUB=$WITH_SHUB  USE_VORONOI=$VORONOI_PARTITIONING  
+   USE_SHUB=$WITH_SHUB  USE_VORONOI=$VORONOI_PARTITIONING
 nsplug meta_shub.bhv targ_shub.bhv -f VNAME=$SHUB      \
     START_POS=$START_POS_SHUB WAYPOINTS=$WAYPOINTS_SHUB                \
     START_DEPTH=$START_DEPTH_SHUB VTYPE=$VTYPE_SHUB                    \
