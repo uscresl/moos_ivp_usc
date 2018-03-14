@@ -479,10 +479,17 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       bool own_msg = ownMessage(sval);
       if ( m_debug )
       {
-        std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? " << own_msg << '\n';
+        std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? "
+                  << own_msg << currentMOOSTime() <<  '\n';
         std::cout << GetAppName() << " :: processing msg? "
-                  << ((m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF) && ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) );
-        if ( !(m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF) || !((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
+                  << ( (m_mission_state == STATE_SAMPLE ||
+                        m_mission_state == STATE_CALCWPT ||
+                        m_mission_state == STATE_REQ_SURF) &&
+                       ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) );
+        if ( !(m_mission_state == STATE_SAMPLE ||
+               m_mission_state == STATE_CALCWPT ||
+               m_mission_state == STATE_REQ_SURF) ||
+             !((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) )
           std::cout << GetAppName() << " :: because: (SAMPLE || CALCWPT || REQ_SURF)? " <<
                     (m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF)
                     << ", or: (MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout? " <<
@@ -500,7 +507,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
 
         if ( ((MOOSTime()-m_last_voronoi_calc_time) > m_vor_timeout) || final_surface )
         {
-          if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT )
+          if ( m_mission_state == STATE_SAMPLE ||
+               m_mission_state == STATE_CALCWPT )
           {
             // start to surface (bhv)
             if ( m_bhv_state != "data_sharing" )
@@ -512,7 +520,9 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             if ( m_bhv_state != "data_sharing" && !m_final_hp_optim )
               Notify("STAGE","data_sharing");
           }
-          if ( m_mission_state == STATE_SAMPLE || m_mission_state == STATE_CALCWPT || m_mission_state == STATE_REQ_SURF )
+          if ( m_mission_state == STATE_SAMPLE ||
+               m_mission_state == STATE_CALCWPT ||
+               m_mission_state == STATE_REQ_SURF )
           {
             // prep for surfacing
             // send ack, do actual sending in Iterate so we send until surface handshake
@@ -526,11 +536,13 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
             if ( m_hp_optim_running )
             {
               if ( m_debug )
-                std::cout << GetAppName() << " :: REQ_SURF finale surface, resetting m_calc_prevoronoi" << std::endl;
+                std::cout << GetAppName() << " :: REQ_SURF finale surface,"
+                          << " resetting m_calc_prevoronoi" << std::endl;
               m_calc_prevoronoi = false;
               m_cancel_hpo = true;
               if ( m_debug )
-                std::cout << GetAppName() << " :: setting m_calc_prevoronoi to false, final surface req msg" << std::endl;
+                std::cout << GetAppName() << " :: setting m_calc_prevoronoi "
+                          << "to false, final surface req msg" << std::endl;
             }
             if ( m_mission_state == STATE_SAMPLE ||
                  m_mission_state == STATE_CALCWPT ||
@@ -547,7 +559,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     { // receive surfacing req ack from other vehicle
       bool own_msg = ownMessage(sval);
       if ( m_debug )
-        std::cout << GetAppName() << " :: REQ_SURFACING_ACK_REC own msg? " << own_msg << '\n';
+        std::cout << GetAppName() << " :: REQ_SURFACING_ACK_REC own msg? "
+                  << own_msg << '\n';
 
       std::string vname;
       bool getval = MOOSValFromString(vname, sval, "veh", true);
@@ -720,7 +733,8 @@ bool GP::Iterate()
     // if so, then kick off hpoptim
     if ( m_need_to_run_hpo && !m_hp_optim_running )
     {
-      if ( (m_veh_is_shub && !m_first_surface && m_queue_data_points_for_gp.size() <= 1) ||
+      // && !m_first_surface
+      if ( (m_veh_is_shub && m_queue_data_points_for_gp.size() <= 1) ||
            !m_veh_is_shub )
       {
         m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization,
@@ -2235,7 +2249,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
               << m_hp_dev_ratio << " )? "
               << ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < m_hp_dev_ratio )
               << " difference: " << std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale)
-              << std::endl;
+              << '\n';
 
   if ( std::abs((length_scale - m_prev_length_scale) / m_prev_length_scale) < m_hp_dev_ratio )
   {
@@ -2244,6 +2258,12 @@ bool GP::runHPOptimization(size_t nr_iterations)
     m_gp->covf().set_loghyper(lh_gp);
     m_prev_length_scale = length_scale;
     // just update hyperparams. Call for f and var should init re-compute.
+  }
+  else
+  {
+    if ( m_debug )
+      std::cout << GetAppName() << " :: don't update hyper params! at "
+                << currentMOOSTime() << std::endl;
   }
 
   //// write new HP to file ////////////////////////////////////////////////////
@@ -2254,11 +2274,11 @@ bool GP::runHPOptimization(size_t nr_iterations)
   std::clock_t end = std::clock();
   if ( m_debug )
     std::cout << GetAppName() << " :: HP param write to file time: "
-              <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+              <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n';
 
   hp_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by: runHPOptimization" << std::endl;
+    std::cout << GetAppName() << " :: lock released by: runHPOptimization" << '\n';
 
   if ( m_verbose )
   {
@@ -2639,7 +2659,7 @@ void GP::makeAndStorePredictions(bool finished)
     m_ofstream_psigma2_GP << '\n';
   }
 
-  if ( finished )
+  if ( m_finished )
   {
     if ( m_debug )
       std::cout << GetAppName() << " :: " << currentMOOSTime() << " :: closing files." << std::endl;
@@ -3048,11 +3068,19 @@ void GP::tdsReceiveData()
             m_mission_state = STATE_CALCWPT;
             publishStates("tdsReceiveData");
           }
-          else
+          else if ( !m_final_hp_optim )
           {
             m_calc_prevoronoi = true; // wait for HP optim and calcMECriterion
             m_mission_state = STATE_CALCVOR;
-            publishStates("tdsReceiveData");
+            publishStates("tdsReceiveData_vor_not_final");
+          }
+          else
+          {
+            // skip voronoi calculation on final data exchange
+            m_mission_state = STATE_IDLE;
+            publishStates("tdsReceiveData_vor_final");
+            // wait for HPO to be done,
+            // which calls clearTDSStateVars and ends mission
           }
         }
         else
