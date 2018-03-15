@@ -891,7 +891,7 @@ bool GP::Iterate()
         break;
       #ifdef BUILD_VORONOI
       case STATE_CALCVOR :
-        if ( m_calc_prevoronoi )
+        if ( m_calc_prevoronoi && !m_hp_optim_running )
         {
           // check if done calculating the predictions, this is waiting
           // for both HP optimization and calcMECriterion
