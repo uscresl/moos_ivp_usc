@@ -773,6 +773,21 @@ bool GP::Iterate()
               // start of mission, no data yet, skip calcvor
               m_mission_state = STATE_SAMPLE;
               publishStates("Iterate_m_hp_optim_running");
+
+              // init voronoi subset to whole region
+              #ifdef BUILD_VORONOI
+              if ( m_use_voronoi && !m_veh_is_shub )
+              {
+                std::cout << GetAppName() << " :: Initialize voronoi subset to whole region." << std::endl;
+                // copy over all unvisited locations
+                for ( auto map_item : m_sample_points_unvisited )
+                  m_voronoi_subset.push_back(map_item.first);
+                // calculate the convex hull
+                voronoiConvexHull();
+                // print convex hull
+                printVoronoi();
+              }
+              #endif
             }
             else
             {
