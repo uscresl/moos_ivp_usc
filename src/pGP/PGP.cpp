@@ -486,7 +486,7 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
       if ( m_debug )
       {
         std::cout << GetAppName() << " :: REQ_SURFACING_REC own msg? "
-                  << own_msg << currentMOOSTime() <<  '\n';
+                  << own_msg << " at: " << currentMOOSTime() <<  '\n';
         std::cout << GetAppName() << " :: processing msg? "
                   << ( (m_mission_state == STATE_SAMPLE ||
                         m_mission_state == STATE_CALCWPT ||
@@ -597,7 +597,8 @@ bool GP::OnNewMail(MOOSMSG_LIST &NewMail)
     }
     else if ( key == "MISSION_TIME" )
     {
-      std::cout << GetAppName() << " :: MISSION_TIME: " << sval << std::endl;
+      std::cout << GetAppName() << " :: MISSION_TIME: " << sval
+                << " at: " << currentMOOSTime() << std::endl;
       if ( sval == "end" && !m_final_hp_optim )
       {
         // end of adaptive mission, switch to final hp optimization
@@ -747,9 +748,15 @@ bool GP::Iterate()
       if ( (m_veh_is_shub && m_queue_data_points_for_gp.size() <= 1) ||
            !m_veh_is_shub )
       {
+        if ( m_verbose )
+          std::cout << GetAppName() << " :: starting runHPOptimization, Iterate"
+                    << std::endl;
         m_future_hp_optim = std::async(std::launch::async, &GP::runHPOptimization,
                                        this, m_hp_optim_iterations);
         m_hp_optim_running = true;
+        if ( m_debug )
+          std::cout << GetAppName() << " :: m_hp_optim_running = true, at: "
+                    << currentMOOSTime() << std::endl;
         m_need_to_run_hpo = false;
       }
     }
@@ -760,9 +767,12 @@ bool GP::Iterate()
         if ( m_future_hp_optim.wait_for(std::chrono::microseconds(1)) == std::future_status::ready )
         {
           if ( m_verbose )
-            std::cout << GetAppName() << " :: done running hp optim shub, at: "
+            std::cout << GetAppName() << " :: done running hp optim, at: "
                       << currentMOOSTime() << std::endl;
           m_hp_optim_running = false;
+          if ( m_debug )
+            std::cout << GetAppName() << " :: m_hp_optim_running = false, at: "
+                      << currentMOOSTime() << std::endl;
 
           if ( !m_use_voronoi && !m_veh_is_shub )
               clearTDSStateVars();
@@ -789,6 +799,14 @@ bool GP::Iterate()
               }
               #endif
             }
+            else if ( m_mission_state == STATE_IDLE && m_final_hp_optim )
+            {
+              if ( m_verbose )
+                std::cout << GetAppName() << " :: done with final HPO, at: "
+                          << currentMOOSTime()
+                          << " calling clearTDSStateVars()" << std::endl;
+              clearTDSStateVars();
+            }
             else
             {
               if ( m_verbose )
@@ -806,6 +824,9 @@ bool GP::Iterate()
                   << ex.code() << ": " << ex.what()
                   << "at: " << currentMOOSTime() << std::endl;
         m_hp_optim_running = false;
+        if ( m_debug )
+          std::cout << GetAppName() << " :: m_hp_optim_running = false, at: "
+                    << currentMOOSTime() << std::endl;
       }
     }
 
@@ -887,7 +908,6 @@ bool GP::Iterate()
           m_mission_state = STATE_HANDSHAKE;
           publishStates("Iterate_STATE_SURFACING_on_surface");
         }
-
         break;
       #ifdef BUILD_VORONOI
       case STATE_CALCVOR :
@@ -900,7 +920,7 @@ bool GP::Iterate()
             m_calc_prevoronoi = false;
           }
         }
-        else if ( !m_running_voronoi_routine )
+        else if ( !m_calc_prevoronoi && !m_running_voronoi_routine )
         {
           m_running_voronoi_routine = true;
           runVoronoiRoutine();
@@ -2265,6 +2285,9 @@ bool GP::runHPOptimization(size_t nr_iterations)
                 << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
+    if ( m_debug )
+      std::cout << GetAppName() << " :: m_hp_optim_running = false, at: "
+                << currentMOOSTime() << std::endl;
     clearHandshakeVars();
     return false;
   }
@@ -2279,6 +2302,9 @@ bool GP::runHPOptimization(size_t nr_iterations)
                 << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
+    if ( m_debug )
+      std::cout << GetAppName() << " :: m_hp_optim_running = false, at: "
+                << currentMOOSTime() << std::endl;
     clearHandshakeVars();
     return false;
   }
@@ -2300,6 +2326,9 @@ bool GP::runHPOptimization(size_t nr_iterations)
                 << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
+    if ( m_debug )
+      std::cout << GetAppName() << " :: m_hp_optim_running = false, at: "
+                << currentMOOSTime() << std::endl;
     clearHandshakeVars();
     return false;
   }
@@ -2393,9 +2422,13 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   std::clock_t end = std::clock();
   if ( m_verbose )
   {
-    std::cout << GetAppName() << " :: runtime putting data into downsampled_gp: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
-    std::cout << GetAppName() << " :: size downsampled GP: " << downsampled_gp.get_sampleset_size() << std::endl;
-    std::cout << GetAppName() << " :: size orig GP: " << m_gp->get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: runtime putting data into downsampled_gp: "
+                              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+                              << " at: " << currentMOOSTime() << std::endl;
+    std::cout << GetAppName() << " :: size downsampled GP: "
+                              << downsampled_gp.get_sampleset_size() << std::endl;
+    std::cout << GetAppName() << " :: size orig GP: "
+                              << m_gp->get_sampleset_size() << std::endl;
   }
 
   //// actual HP optimization /////////////////////////////////////
@@ -2415,7 +2448,9 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   }
   end = std::clock();
   if ( m_verbose )
-    std::cout << GetAppName() << " :: runtime hyperparam optimization: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+    std::cout << GetAppName() << " :: runtime hyperparam optimization: "
+              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << " at: " << currentMOOSTime() << std::endl;
 
   // downsampled gp should be destroyed upon exiting function
   loghp = downsampled_gp.covf().get_loghyper();
@@ -2643,8 +2678,9 @@ void GP::makeAndStorePredictions(bool finished)
 
   std::clock_t end = std::clock();
   if ( m_verbose )
-    std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime()) << std::endl;
+    std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions]: "
+              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::clock();
   std::vector< std::pair<double, double> >::iterator loc_itr;
@@ -2697,8 +2733,9 @@ void GP::makeAndStorePredictions(bool finished)
   }
   end = std::clock();
   if ( m_verbose )
-    std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime()) << std::endl;
+    std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions]: "
+              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::clock();
 
@@ -2748,8 +2785,9 @@ void GP::makeAndStorePredictions(bool finished)
   end = std::clock();
   if ( m_verbose )
   {
-    std::cout << GetAppName() << " :: runtime save to file [makeAndStorePredictions], at MOOSTime: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) ) << " at: " << std::floor(currentMOOSTime())  << std::endl;
+    std::cout << GetAppName() << " :: runtime save to file [makeAndStorePredictions]: "
+              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << " at: " << std::floor(currentMOOSTime())  << std::endl;
   }
 
   // copy of GP gets destroyed when this function exits
@@ -3484,11 +3522,16 @@ bool GP::centroidConvergence ( double old_lon, double old_lat, std::map<std::str
   // degrees = meters / {lat,long}_deg_to_m
   double threshold = 1.0 / (m_lon_deg_to_m + m_lat_deg_to_m / 2.0) ;
 
-  if ( old_centr.size() != new_centr.size() || old_centr.empty() )
+  if ( old_centr.empty() )
+  {
+    std::cout << GetAppName() << " :: old_centr is empty, no convergence yet."
+              << std::endl;
+  }
+  else if ( old_centr.size() != new_centr.size() )
   {
     std::cout << GetAppName() << " :: ERROR, incorrect map sizes." << std::endl;
-    std::cout << GetAppName() << " :: old_centr_size, new_centr_size: " << old_centr.size() << ", " << new_centr.size() << std::endl;
-    return false;
+    std::cout << GetAppName() << " :: old_centr_size, new_centr_size: "
+              << old_centr.size() << ", " << new_centr.size() << std::endl;
   }
   else
   {
@@ -3602,7 +3645,11 @@ void GP::calcVoronoiPartitionCentroid( std::vector<size_t> voronoi_partition, do
     double wt;
     if ( pred_itr == m_unvisited_pred_metric.end() )
     {
-      std::cout << GetAppName() << " :: Error: prediction not found" << std::endl;
+      // item from voronoi_partition not found in m_unvisited_pred_metric
+      // note; should we change it to calc metric for all locations (not just unvisited?)
+      std::cout << GetAppName() << " :: Prediction not found, mismatch "
+                << "m_unvisited_pred_metric and voronoi_partition, add zero."
+                << std::endl;
       wt = 0.0;
     }
     else
