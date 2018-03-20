@@ -837,19 +837,54 @@ bool GP::Iterate()
     {
       case STATE_SAMPLE :
         if ( m_timed_data_sharing && !m_use_voronoi && m_adp_state != "static" &&
-             !m_veh_is_shub && m_num_vehicles > 1 && m_async_trigger_method == "timed" )
+             !m_veh_is_shub && m_num_vehicles > 1 )
         {
-          // TDS
-          // let's time this based on MOOSTime(), and assume that clocks are
-          // synchronised (to be verified in field tests)
-          // note; add 60s buffer to block out x seconds at beginning
-          if ( ((size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval) == 0 &&
-               (size_t)std::floor(currentMOOSTime()) > 60 )
+          if ( m_async_trigger_method == "timed" )
           {
-            // switch to data sharing mode, to switch bhv to surface
-            m_last_surface = MOOSTime();
-            m_mission_state = STATE_SURFACING;
-            publishStates("Iterate_STATE_SAMPLE_TDS");
+            // TDS
+            // let's time this based on MOOSTime(), and assume that clocks are
+            // synchronised (to be verified in field tests)
+            // note; add 60s buffer to block out x seconds at beginning
+            if ( ((size_t)std::floor(currentMOOSTime()) % m_data_sharing_interval) == 0 &&
+                 (size_t)std::floor(currentMOOSTime()) > 60 )
+            {
+              // switch to data sharing mode, to switch bhv to surface
+              m_last_surface = MOOSTime();
+              m_mission_state = STATE_SURFACING;
+              publishStates("Iterate_STATE_SAMPLE_TDS");
+            }
+          }
+          else if ( m_async_trigger_method == "num_other_samples" )
+          {
+            // trigger for async surfacing
+            // calculate nr of other samples
+            // sample frequency assumed to be 1 Hz
+            // note that m_last_surface is set at the start of a surfacing event,
+            //   and therefore we should subtract surfacing time to find how much
+            //   data vehicles may have collected
+            unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - 2*m_time_to_surf);
+            unsigned int other_samples = time_since_last_surf * m_num_vehicles;
+            double more_with_time = currentMOOSTime() / 3445.0; // TODO param
+            if ( m_debug )
+              std::cout << GetAppName() << " :: num_other_samples calc: "
+                        << " time_since_last_surf: " << time_since_last_surf
+                        << ", other_samples: " << other_samples
+                        << ", m_time_to_surf: " << m_time_to_surf
+                        << ", more_with_time: " << more_with_time
+                        << std::endl;
+            // conditions:
+            // 1. make sure we can gather more data than it costs to surface
+            // 2. and decrease surfacing frequency with mission length (linear decrease?)
+            // 3. don't surface too often, multiply by 5? //TODO figure this out
+            if ( other_samples > ((2*m_time_to_surf)*(1+more_with_time)*5) )
+            {
+              if ( m_debug )
+                std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
+              // switch to surfacing
+              m_last_surface = MOOSTime();
+              m_mission_state = STATE_SURFACING;
+              publishStates("Iterate_num_other_samples");
+            }
           }
         }
         // tds with voronoi, trigger for when to request data sharing
@@ -866,31 +901,6 @@ bool GP::Iterate()
             clearHandshakeVars();
           }
           #endif
-        }
-        else if ( m_timed_data_sharing && !m_use_voronoi &&
-                  m_async_trigger_method == "num_other_samples" )
-        { // trigger for async surfacing
-          // calculate nr of other samples
-          // sample frequency assumed to be 1 Hz
-          // note that m_last_surface is set at the start of a surfacing event,
-          //   and therefore we should subtract surfacing time to find how much
-          //   data vehicles may have collected
-          unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - 2*m_time_to_surf);
-          unsigned int other_samples = time_since_last_surf * m_num_vehicles;
-
-          // conditions:
-          // 1. make sure we can gather more data than it costs to surface
-          // 2. TODO
-          if ( other_samples > (2*m_time_to_surf) &&
-               true ) //TODO add other threshold
-          {
-            if ( m_debug )
-              std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
-            // switch to surfacing
-            m_last_surface = MOOSTime();
-            m_mission_state = STATE_SURFACING;
-            publishStates("Iterate_num_other_samples");
-          }
         }
         // else just sampling, don't do anything else
 
