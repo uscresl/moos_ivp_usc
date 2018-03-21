@@ -9,6 +9,7 @@ SET(SRC
   GP_AUV.cpp
   main.cpp
   GraphNode.cpp
+  gen_pp.cpp
 )
 
 ADD_EXECUTABLE(pGP_AUV ${SRC})
