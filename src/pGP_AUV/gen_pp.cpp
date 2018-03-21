@@ -25,10 +25,34 @@ void select_parent(std::vector<double> &probability_dist,
                    std::uniform_real_distribution<double> dist,
                    std::mt19937 &generator, std::vector<GraphNode *> parent);
 
+double normalize_entropy(GraphNode *a);
+double normalize_graph_node_distance(GraphNode* a, GraphNode* b);
+bool in_current_path(std::vector<GraphNode *> path, GraphNode * mutation);
+
+void genetic_pp_init(double max_lon, double min_lon, double max_lat, double min_lat,
+                    double min_ent, double max_ent)
+{
+  //set normalizing variables
+  m_lon_max = max_lon;
+  m_lon_min = min_lon;
+  m_lat_max = max_lat;
+  m_lat_min = min_lat;
+  min_entropy = min_ent;
+  max_entropy = max_ent;
+
+  entropy_normalizing_factor = 1.0 / (max_entropy - min_entropy);
+
+  end_pt = NULL;
+
+  //TODO track end of given path, not current location: we want to build path from where we WILL BE in the end
+  //is this something relevant?
+}
+
 void run_genetic_pp(std::vector<GraphNode *> grid_pts)
 {
   std::random_device rd;
   std::mt19937 generator(rd());
+  set_end_pt(grid_pts);
   generate_initial_paths(grid_pts, generator);
 
   for(int i = 0; i < NUM_GENERATIONS; i++)
@@ -50,7 +74,7 @@ void run_genetic_pp(std::vector<GraphNode *> grid_pts)
     {
       std::vector<GraphNode *> child;
       std::uniform_real_distribution<double> crossover_mutate_dist(0.0, 1.0);
-      double crossover_is = crossover_mutate_dist(generator());
+      double crossover_is = crossover_mutate_dist(generator);
       if(crossover_is < CROSSOVER_PROBABILITY)
       {
         std::uniform_real_distribution<double> dist(0.0, 1.0);
@@ -60,14 +84,20 @@ void run_genetic_pp(std::vector<GraphNode *> grid_pts)
 
         crossover(parentA, parentB, generator, child);
       }
-      double mutation_is = crossover_mutate_dist(generator());
+      double mutation_is = crossover_mutate_dist(generator);
       if(mutation_is < MUTATION_PROBABILITY)
       {
         //mutate child
-        //select node to replace
-
         //select graph node to replace it with
-        //later: add neighborhood qualifier
+        std::uniform_int_distribution<int> mutate(0, grid_pts.size() - 1);
+        //select node to replace
+        std::uniform_int_distribution<int> mutation_pt(1, PATH_LENGTH - 2);
+        int mutation_index = mutate(generator);
+        while(in_current_path(child, grid_pts[mutation_index]))
+        {}
+        child[mutation_pt(generator)] = grid_pts[mutation_index];
+
+        //TODO later: add neighborhood qualifier
       }
 
       //store child paths
@@ -97,9 +127,14 @@ void generate_initial_paths(std::vector<GraphNode* > grid_pts, std::mt19937 &gen
 
 std::vector<GraphNode *> generate_path(std::vector<GraphNode* > grid_pts, std::mt19937& gen)
 {
-  std::uniform_int_distribution<int> dist(0, grid_pts.size()-1);
+  int max_grid_pt = grid_pts.size() - 1;
+  std::uniform_int_distribution<int> dist(0, max_grid_pt);
 
-  std::unordered_map<std::pair<int, GraphNode> > added_nodes;
+  //set beginning pt to currect location
+  //set end pt to last location
+//  GraphNode * end_pt =
+
+  std::unordered_map<int, GraphNode * > added_nodes;
   std::vector<GraphNode *> path;
   int i = 0;
   while(i < PATH_LENGTH)
@@ -108,7 +143,7 @@ std::vector<GraphNode *> generate_path(std::vector<GraphNode* > grid_pts, std::m
     if(added_nodes.find(grid_index) == added_nodes.end())
     {
       //add element to path
-      added_nodes.insert(std::pair<int, GraphNode*>(grid_index, grid_pts[grid_index]));
+      added_nodes.insert( std::make_pair< int, GraphNode* >(grid_index, grid_pts[grid_index]) );
       path.push_back(grid_pts[grid_index]);
       i++;
     }
@@ -127,11 +162,11 @@ double calc_path_entropy(const std::vector<GraphNode* > path)
   for(int i = 0; i < path.size(); i++)
   {
     GraphNode *node = path[i];
-    entropy += node->get_value();
+    entropy += normalize_entropy(node);
   }
   for(int i = 0; i < path.size()-1; i++)
   {
-    entropy += 1000 /*some multiplier*/ * distance_between(path[i], path[i+1]);
+    entropy += 1000 /*some multiplier*/ * normalize_graph_node_distance(path[i], path[i+1]);
   }
   return entropy;
 }
@@ -193,7 +228,7 @@ void select_parent(std::vector<double> &probability_dist,
 void crossover(std::vector<GraphNode *> &a, std::vector<GraphNode*> &b, std::mt19937 &generator,
                std::vector<GraphNode *> &child)
 {
-  std::uniform_int_distribution<int> dist(0, PATH_LENGTH);
+  std::uniform_int_distribution<int> dist(1, PATH_LENGTH-1); //don't want to change beginning and end node
   std::uniform_int_distribution<int> parent(0, 1);
 
   int crossover_pt = dist(generator);
@@ -212,8 +247,8 @@ void crossover(std::vector<GraphNode *> &a, std::vector<GraphNode*> &b, std::mt1
 
 double distance_between(const GraphNode* a, const GraphNode* b)
 {
-  return sqrt(((a->get_location())(0) - (b->get_location())(0))^2 +
-      (((a->get_location())(1) - (b->get_location())(1))^2));
+  return sqrt(pow((a->get_location())(0) - (b->get_location())(0), 2) +
+      (pow((a->get_location())(1) - (b->get_location())(1), 2)));
 }
 
 // f = entropy + alpha * (1 - L where L is distance, scaled from 0 to 1)
@@ -221,14 +256,24 @@ double distance_between(const GraphNode* a, const GraphNode* b)
 // f = sum( entropy + alpha *(1-L))
 
 
-double normalize_graph_node(GraphNode* a, GraphNode* b)
+double normalize_graph_node_distance(GraphNode* a, GraphNode* b)
 {
 
   //take m_min_lon, m_max_lon etc from GP_AUV.h
   //weigh converting this to meters
   //using manhattan distance?
   //
-  return 1;
+  double lon_delta = m_lon_max - m_lon_min;
+  double lat_delta = m_lat_max - m_lat_min;
+  double max_dist_to_travel = sqrt(pow(lon_delta, 2) + pow(lat_delta, 2));
+  double normalizing_factor = 1.0 / max_dist_to_travel;
+
+  double a_b_lon_delta, a_b_lat_delta;
+  a_b_lon_delta = abs(a->get_location()(1) - b->get_location()(1));
+  a_b_lat_delta = abs(a->get_location()(0) - b->get_location()(0));
+  double dist_to_travel = sqrt(pow(a_b_lon_delta, 2) + pow(a_b_lat_delta, 2));
+
+  return 1.0 - dist_to_travel * normalizing_factor; //maximize the lower distance
 }
 
 double normalize_entropy(GraphNode *a)
@@ -239,6 +284,35 @@ double normalize_entropy(GraphNode *a)
   // size of area doesn't matter
   // if data is in different range, then it could cause problems
 
-  return 1;
+  return 1.0 - (a->get_value() * entropy_normalizing_factor); //maximize lower entropy
+}
+
+void set_end_pt(std::vector<GraphNode *> grid_pts)
+{
+  double max_entropy = (double)INT16_MIN;
+
+  for(int i = 0; i < grid_pts.size(); i++)
+  {
+    if(grid_pts[i]->get_value() > max_entropy)
+    {
+      max_entropy = grid_pts[i]->get_value();
+      end_pt = grid_pts[i];
+    }
+  }
+
+  if(end_pt == NULL)
+  {
+    //error, grid is empty;
+  }
+}
+
+bool in_current_path(std::vector<GraphNode *> path, GraphNode * mutation)
+{
+  for(int i = 0; i < path.size(); i++)
+  {
+    if(path[i] == mutation)
+      return true;
+  }
+  return false;
 }
 
