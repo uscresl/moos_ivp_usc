@@ -2260,9 +2260,11 @@ size_t GP::processReceivedData()
 //
 void GP::endMission()
 {
+  // finish state machine
   m_mission_state = STATE_DONE;
   publishStates("endMission");
 
+  // switch to final bhv
   m_Comms.Notify("STAGE","return");
 
   // store predictions after HP optim
@@ -2270,8 +2272,9 @@ void GP::endMission()
 
   if ( m_verbose )
   {
-    std::cout << GetAppName() << " :: creating thread to save state at mission time (MOOSTime): "
-              << currentMOOSTime() << std::endl;
+    std::cout << GetAppName()
+              << " :: creating thread to save state at mission time (MOOSTime): "
+              << currentMOOSTime() << ", finished." << std::endl;
   }
   std::thread pred_store(&GP::makeAndStorePredictions, this, true);
   pred_store.detach();
@@ -2788,7 +2791,7 @@ void GP::makeAndStorePredictions(bool finished)
     m_ofstream_psigma2_GP << '\n';
   }
 
-  if ( m_finished )
+  if ( finished )
   {
     if ( m_debug )
       std::cout << GetAppName() << " :: " << currentMOOSTime() << " :: closing files." << std::endl;
@@ -3193,24 +3196,24 @@ void GP::tdsReceiveData()
         if ( !m_veh_is_shub )
         {
           m_need_to_run_hpo = true;
-          if ( !m_use_voronoi )
-          {
-            m_mission_state = STATE_CALCWPT;
-            publishStates("tdsReceiveData");
-          }
-          else if ( !m_final_hp_optim )
-          {
-            m_calc_prevoronoi = true; // wait for HP optim and calcMECriterion
-            m_mission_state = STATE_CALCVOR;
-            publishStates("tdsReceiveData_vor_not_final");
-          }
-          else
+          if ( m_final_hp_optim )
           {
             // skip voronoi calculation on final data exchange
             m_mission_state = STATE_IDLE;
             publishStates("tdsReceiveData_vor_final");
             // wait for HPO to be done,
             // which calls clearTDSStateVars and ends mission
+          }
+          else if ( !m_use_voronoi )
+          {
+            m_mission_state = STATE_CALCWPT;
+            publishStates("tdsReceiveData");
+          }
+          else
+          { // m_use_voronoi
+            m_calc_prevoronoi = true; // wait for HP optim and calcMECriterion
+            m_mission_state = STATE_CALCVOR;
+            publishStates("tdsReceiveData_vor_not_final");
           }
         }
         else
