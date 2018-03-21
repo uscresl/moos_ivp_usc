@@ -2225,7 +2225,7 @@ size_t GP::processReceivedData()
   size_t pts_added = 0;
   unsigned int timer_counter =  0;
   while ( m_incoming_data_to_be_added.empty() &&
-          timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq()) )
+          timer_counter < (m_max_wait_for_other_vehicles*GetAppFreq())/2 )
   {
     if ( m_debug )
       std::cout << GetAppName() << " :: waiting to receive data .. " << std::endl;
@@ -2234,12 +2234,13 @@ size_t GP::processReceivedData()
     // run timer to avoid being stuck waiting for data
     if ( (unsigned int)std::round(currentMOOSTime()) % 2 == 0 )
       timer_counter++;
-    // if waited for X min, continue
-    if ( timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq())/2 )
-    {
-      std::cout << GetAppName() << " :: RX_DATA timer_counter timeout @ "
-                << currentMOOSTime() << std::endl;
-    }
+  }
+  // if waited for X min, continue
+  if ( timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq())/2 )
+  {
+    std::cout << GetAppName() << " :: RX_DATA timer_counter timeout @ "
+              << currentMOOSTime() << std::endl;
+    return 0;
   }
 
   if ( m_debug )
@@ -2522,9 +2523,17 @@ void GP::sendData()
           std::cout << GetAppName() << " :: already sent data to: "
                     << received_ready_from << ", skipping." << std::endl;
         // data already sent to this vehicle, skip
-        // get next one
-        received_ready_from = *m_rec_ready_veh.begin();
-        m_rec_ready_veh.erase(received_ready_from);
+        if ( m_rec_ready_veh.size() != 0 )
+        { // get next one
+          received_ready_from = *m_rec_ready_veh.begin();
+          m_rec_ready_veh.erase(received_ready_from);
+        }
+        else
+        {
+          if ( m_verbose )
+            std::cout << "No more vehicles are ready, exiting" << std::endl;
+          return;
+        }
       }
     }
     if ( m_debug )
@@ -3313,11 +3322,12 @@ void GP::clearTDSStateVars()
 void GP::clearHandshakeVars()
 {
   // reset surfacing/handshake other vehicles sets
-  m_rec_ready_veh.clear();
+//  m_rec_ready_veh.clear();
   m_rec_ack_veh.clear();
   if ( m_debug )
-    std::cout << GetAppName() << " :: m_rec_ready_veh reset in clearHandshakeVars"
-              << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << GetAppName() << " :: m_rec_ack_veh, m_rec_shared_data, m_rec_ready"
+              << " reset in clearHandshakeVars, at: " << currentMOOSTime()
+              << std::endl;
 
   m_received_shared_data = false;
   m_received_ready = false;
@@ -3448,7 +3458,8 @@ bool GP::finalSurface(std::string input)
 void GP::runVoronoiRoutine()
 {
   if ( m_debug )
-    std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (1)." << std::endl;
+    std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (1)."
+              << "at: " << currentMOOSTime() << std::endl;
   calcVoronoi(m_lon, m_lat, m_other_vehicles);
 
   // got initial voronoi partitioning
@@ -3507,7 +3518,8 @@ void GP::runVoronoiRoutine()
     if ( std::abs(own_centroid_lon - own_centroid_lat) > 1 )
     {
       if ( m_debug )
-        std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2).\n";
+        std::cout << GetAppName() << " :: calcVoronoi requested by runVoronoiRoutine (2),"
+                  << " at: " << currentMOOSTime() << '\n';
       calcVoronoi(own_centroid_lon, own_centroid_lat, other_vehicle_centroids);
     }
 
