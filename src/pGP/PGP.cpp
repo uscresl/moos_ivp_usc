@@ -1697,8 +1697,9 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   while ( !ap_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: "
-              << (lock_time2 - lock_time1) << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << GetAppName() << " :: ARGH: obtaining lock by addPatternToGP "
+              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+              << ", at: " << currentMOOSTime() << std::endl;
 
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
@@ -1706,7 +1707,8 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   // release mutex
   ap_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by addPatternToGP, at: " << currentMOOSTime() << std::endl;
+    std::cout << GetAppName() << " :: lock released by addPatternToGP"
+              << ", at: " << currentMOOSTime() << std::endl;
 
   // update visited set if needed
   if ( !m_veh_is_shub )
@@ -1788,7 +1790,9 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   while ( !map_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+    std::cout << GetAppName() << " :: ARGH: obtaining lock by updateVisitedSet "
+              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+              << ", at: " << currentMOOSTime() << std::endl;
 
   std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
   if ( curr_loc_itr != m_sample_points_unvisited.end() )
@@ -1797,6 +1801,9 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   if ( !need_to_update_maps )
   {
     map_lock.unlock();
+    if ( m_debug )
+      std::cout << GetAppName() << " :: map lock released by: updateVisitedSet"
+                << ", at: " << currentMOOSTime() << std::endl;
     return;
   }
   else
@@ -1844,6 +1851,9 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
     }
   }
   map_lock.unlock();
+  if ( m_debug )
+      std::cout << GetAppName() << " :: map lock released by: updateVisitedSet"
+                << ", at: " << currentMOOSTime() << std::endl;
 }
 
 //---------------------------------------------------------
@@ -2070,7 +2080,9 @@ size_t GP::calcMECriterion()
   while ( !gp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+    std::cout << GetAppName() << " :: ARGH: obtaining lock by calcMECriterion "
+              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+              << ", at: " << currentMOOSTime() << std::endl;
 
   if ( m_debug )
     std::cout << GetAppName() << " :: make copy GP" << std::endl;
@@ -2079,7 +2091,8 @@ size_t GP::calcMECriterion()
   // release lock
   gp_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by: calcMECriterion" << std::endl;
+    std::cout << GetAppName() << " :: gp lock released by: calcMECriterion"
+              << ", at: " << currentMOOSTime() << std::endl;
 
   // stop calculations if we are surfacing suddenly
   if ( m_mission_state == STATE_SURFACING )
@@ -2095,13 +2108,19 @@ size_t GP::calcMECriterion()
   while ( !map_lock.try_lock() ){}
   lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+    std::cout << GetAppName() << " :: ARGH: obtaining lock by calcMECriterion "
+              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+              << ", at: " << currentMOOSTime() << std::endl;
+
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
   std::unordered_map<size_t, Eigen::Vector2d> unvisited_map_copy;
   // calculate for all, because we need it for density voronoi calc for other vehicles
   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
+  if ( m_debug )
+    std::cout << GetAppName() << " :: map lock released by: calcMECriterion"
+              << ", at: " << currentMOOSTime() << std::endl;
 
   // stop calculations if we are surfacing suddenly
   if ( m_mission_state == STATE_SURFACING )
@@ -2329,14 +2348,16 @@ bool GP::runHPOptimization(size_t nr_iterations)
   while ( !hp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: "
-              << (lock_time2 - lock_time1) << std::endl;
+    std::cout << GetAppName() << " :: ARGH: obtaining lock by runHPOptimization "
+              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+              << ", at: " << currentMOOSTime() << std::endl;
 
   if ( m_cancel_hpo )
   {
     hp_lock.unlock();
     if ( m_verbose )
-      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, pre-update lock, at "
+      std::cout << GetAppName() << " :: premature exit from HPO because of "
+                << "mission end, pre-update lock (release gp lock), at "
                 << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
@@ -2394,7 +2415,8 @@ bool GP::runHPOptimization(size_t nr_iterations)
 
   hp_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by: runHPOptimization" << '\n';
+    std::cout << GetAppName() << " :: lock released by: runHPOptimization"
+              << ", at: " << currentMOOSTime() << '\n';
 
   if ( m_verbose )
   {
@@ -2688,7 +2710,9 @@ void GP::makeAndStorePredictions(bool finished)
   while ( !gp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock took more than 120 seconds: " << (lock_time2 - lock_time1) << std::endl;
+    std::cout << GetAppName() << " :: ARGH: obtaining lock by makeAndStorePredictions "
+              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+              << ", at: " << currentMOOSTime() << std::endl;
 
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
@@ -2696,7 +2720,8 @@ void GP::makeAndStorePredictions(bool finished)
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   gp_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by: makeAndStorePredictions" << std::endl;
+    std::cout << GetAppName() << " :: lock released by: makeAndStorePredictions"
+              << ", at: " << currentMOOSTime() << '\n';
 
   std::clock_t end = std::clock();
   if ( m_verbose )
@@ -3325,7 +3350,14 @@ void GP::clearTDSStateVars()
 void GP::clearHandshakeVars()
 {
   // reset surfacing/handshake other vehicles sets
-//  m_rec_ready_veh.clear();
+  if ( !m_veh_is_shub && !m_final_received_from.size() > 0 )
+  {
+    // we clear the vector here in case 'ready' is received again while
+    // we are sending the data, which seems to happen, but I removed it before
+    // to avoid problems at the end for the shub, so adding that condition
+    m_rec_ready_veh.clear();
+  }
+
   m_rec_ack_veh.clear();
   if ( m_debug )
     std::cout << GetAppName() << " :: m_rec_ack_veh, m_rec_shared_data, m_rec_ready"
