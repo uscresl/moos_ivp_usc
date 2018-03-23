@@ -23,7 +23,7 @@
 double distance_between(const GraphNode* a, const GraphNode* b);
 void select_parent(std::vector<double> &probability_dist,
                    std::uniform_real_distribution<double> dist,
-                   std::mt19937 &generator, std::vector<GraphNode *> parent);
+                   std::mt19937 &generator, std::vector<GraphNode *> &parent);
 
 double normalize_entropy(GraphNode *a);
 double normalize_graph_node_distance(GraphNode* a, GraphNode* b);
@@ -78,9 +78,9 @@ void run_genetic_pp(std::vector<GraphNode *> grid_pts)
       if(crossover_is < CROSSOVER_PROBABILITY)
       {
         std::uniform_real_distribution<double> dist(0.0, 1.0);
-        std::vector<GraphNode *> parentA, parentB;
+        std::vector<GraphNode *> parentA;
+        std::vector<GraphNode *> parentB;
         select_parents(probability_dist, dist, generator, parentA, parentB);
-
 
         crossover(parentA, parentB, generator, child);
       }
@@ -143,7 +143,7 @@ std::vector<GraphNode *> generate_path(std::vector<GraphNode* > grid_pts, std::m
     if(added_nodes.find(grid_index) == added_nodes.end())
     {
       //add element to path
-      added_nodes.insert( std::make_pair< int, GraphNode* >(grid_index, grid_pts[grid_index]) );
+      added_nodes.insert( std::pair< int, GraphNode* >(grid_index, grid_pts[grid_index]) );
       path.push_back(grid_pts[grid_index]);
       i++;
     }
@@ -181,7 +181,7 @@ std::vector<double> create_prob_dist(std::vector<double> &probability_dist)
   //create probability distribution
   static int n = 0;
   std::generate(probability_dist.begin(), probability_dist.end(),
-                [&current_population]()
+                [&]()
                 {
                   return calc_path_entropy(current_population[n++]);
                 });
@@ -203,7 +203,7 @@ std::vector<double> create_prob_dist(std::vector<double> &probability_dist)
 void select_parents(std::vector<double> &probability_dist,
                     std::uniform_real_distribution<double> dist,
                     std::mt19937 &generator,
-                    std::vector<GraphNode *> parentA, std::vector<GraphNode *> parentB)
+                    std::vector<GraphNode *> &parentA, std::vector<GraphNode *> &parentB)
 {
   select_parent(probability_dist, dist, generator, parentA);
   select_parent(probability_dist, dist, generator, parentB);
@@ -211,7 +211,7 @@ void select_parents(std::vector<double> &probability_dist,
 
 void select_parent(std::vector<double> &probability_dist,
                    std::uniform_real_distribution<double> dist,
-                   std::mt19937 &generator, std::vector<GraphNode *> parent) //is this the right way to pass it
+                   std::mt19937 &generator, std::vector<GraphNode *> &parent) //is this the right way to pass it
 {
   double prob;
   prob = dist(generator);
@@ -225,7 +225,7 @@ void select_parent(std::vector<double> &probability_dist,
 }
 
 
-void crossover(std::vector<GraphNode *> &a, std::vector<GraphNode*> &b, std::mt19937 &generator,
+void crossover(const std::vector<GraphNode *> &a, const std::vector<GraphNode*> &b, std::mt19937& generator,
                std::vector<GraphNode *> &child)
 {
   std::uniform_int_distribution<int> dist(1, PATH_LENGTH-1); //don't want to change beginning and end node
