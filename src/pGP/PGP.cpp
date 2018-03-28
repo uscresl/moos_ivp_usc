@@ -96,6 +96,7 @@ GP::GP() :
   m_last_ready_sent(0),
   m_handshake_timer_counter(0),
   m_tx_timer_counter(0),
+  m_rx_timer_counter(0),
   m_req_surf_timer_counter(0),
   m_last_surface(0),
   m_acomms_sharing(false),
@@ -118,6 +119,7 @@ GP::GP() :
   m_async_trigger_method("timed"),
   m_async_threshold(0.3),
   m_async_prev_sum_var(0.0),
+  m_async_prev_sum_var_reset(true),
   m_need_to_run_hpo(false),
   m_survey_depth(0.0),
   m_survey_speed(0.0),
@@ -862,7 +864,7 @@ bool GP::Iterate()
             // note that m_last_surface is set at the start of a surfacing event,
             //   and therefore we should subtract surfacing time to find how much
             //   data vehicles may have collected
-            unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - 2*m_time_to_surf);
+            unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - m_time_to_surf);
             unsigned int other_samples = time_since_last_surf * m_num_vehicles;
             double more_with_time = currentMOOSTime() / 3445.0; // TODO param
             if ( m_debug )
@@ -876,7 +878,7 @@ bool GP::Iterate()
             // 1. make sure we can gather more data than it costs to surface
             // 2. and decrease surfacing frequency with mission length (linear decrease?)
             // 3. don't surface too often, multiply by 5? //TODO figure this out
-            if ( other_samples > ((2*m_time_to_surf)*(1+more_with_time)*5) )
+            if ( other_samples > ((m_time_to_surf)*(1+more_with_time)*5) )
             {
               if ( m_debug )
                 std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
@@ -1021,7 +1023,21 @@ bool GP::Iterate()
           tdsReceiveData();
         else
         {
-          std::cout << GetAppName() << " :: STATE_RX_DATA waiting .. m_calc_prevoronoi: " << m_calc_prevoronoi << ", m_data_received: " << m_data_received << std::endl;
+          // 20180326 put in fix to not hang on rx_data indefinitely (!m_data_received)
+          // wait for data until timeout
+          m_rx_timer_counter++;
+          std::cout << GetAppName() << " :: STATE_RX_DATA waiting .. m_calc_prevoronoi: "
+                    << m_calc_prevoronoi << ", m_data_received: " << m_data_received
+                    << std::endl;
+          if ( m_rx_timer_counter > (m_max_wait_for_other_vehicles*GetAppFreq()) )
+          {
+            std::cout << GetAppName() << " :: m_rx_timer_counter timeout @ "
+                      << currentMOOSTime() << std::endl;
+            m_rx_timer_counter = 0;
+
+            // continue to wait for more data
+            clearTDSStateVars();
+          }
         }
       default :
         break;
@@ -1205,7 +1221,7 @@ bool GP::OnStartUp()
   {
     // calculate time to surface
     double surf_dist = m_survey_depth / sin(m_dive_pitch_angle * PI/180);
-    m_time_to_surf = surf_dist / m_survey_speed;
+    m_time_to_surf = 2 * surf_dist / m_survey_speed;
   }
 
   if ( m_debug )
@@ -1697,9 +1713,13 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   while ( !ap_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock by addPatternToGP "
-              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-              << ", at: " << currentMOOSTime() << std::endl;
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: ARGH: obtaining gp lock by addPatternToGP "
+                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+                << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
 
   // Input vectors x must be provided as double[] and targets y as double.
   // add new data point to GP
@@ -1707,7 +1727,7 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   // release mutex
   ap_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by addPatternToGP"
+    std::cout << GetAppName() << " :: gp lock released by addPatternToGP"
               << ", at: " << currentMOOSTime() << std::endl;
 
   // update visited set if needed
@@ -1790,9 +1810,13 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   while ( !map_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock by updateVisitedSet "
-              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-              << ", at: " << currentMOOSTime() << std::endl;
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: ARGH: obtaining map lock by updateVisitedSet "
+                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+                << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
 
   std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
   if ( curr_loc_itr != m_sample_points_unvisited.end() )
@@ -1802,8 +1826,12 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   {
     map_lock.unlock();
     if ( m_debug )
-      std::cout << GetAppName() << " :: map lock released by: updateVisitedSet"
-                << ", at: " << currentMOOSTime() << std::endl;
+    {
+      std::ostringstream prep_output;
+      prep_output << GetAppName() << " :: map lock released by: updateVisitedSet"
+                  << ", at: " << currentMOOSTime() << std::endl;
+      std::cout << prep_output.str();
+    }
     return;
   }
   else
@@ -1852,8 +1880,12 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   }
   map_lock.unlock();
   if ( m_debug )
-      std::cout << GetAppName() << " :: map lock released by: updateVisitedSet"
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: map lock released by: updateVisitedSet"
                 << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
 }
 
 //---------------------------------------------------------
@@ -2071,8 +2103,9 @@ size_t GP::calcMECriterion()
     return 0;
 
   std::clock_t begin = std::clock();
+
   if ( m_debug )
-    std::cout << GetAppName() << " :: try for lock gp" << std::endl;
+    std::cout << GetAppName() << " :: try for lock gp, calcMECriterion" << std::endl;
   // lock for access to m_gp
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   // use unique_lock here, such that we can release mutex after m_gp operation
@@ -2080,9 +2113,14 @@ size_t GP::calcMECriterion()
   while ( !gp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock by calcMECriterion "
-              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-              << ", at: " << currentMOOSTime() << std::endl;
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: ARGH: obtaining gp lock by calcMECriterion "
+                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+                << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
+
 
   if ( m_debug )
     std::cout << GetAppName() << " :: make copy GP" << std::endl;
@@ -2091,8 +2129,12 @@ size_t GP::calcMECriterion()
   // release lock
   gp_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: gp lock released by: calcMECriterion"
-              << ", at: " << currentMOOSTime() << std::endl;
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: gp lock released by: calcMECriterion"
+                << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
 
   // stop calculations if we are surfacing suddenly
   if ( m_mission_state == STATE_SURFACING )
@@ -2108,9 +2150,14 @@ size_t GP::calcMECriterion()
   while ( !map_lock.try_lock() ){}
   lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock by calcMECriterion "
-              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-              << ", at: " << currentMOOSTime() << std::endl;
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: ARGH: obtaining map lock by calcMECriterion "
+                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+                << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
+
 
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
@@ -2119,8 +2166,12 @@ size_t GP::calcMECriterion()
   unvisited_map_copy.insert(m_sample_points_unvisited.begin(), m_sample_points_unvisited.end());
   map_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: map lock released by: calcMECriterion"
-              << ", at: " << currentMOOSTime() << std::endl;
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: map lock released by: calcMECriterion"
+                << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
 
   // stop calculations if we are surfacing suddenly
   if ( m_mission_state == STATE_SURFACING )
@@ -2130,7 +2181,8 @@ size_t GP::calcMECriterion()
   }
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: calc max entropy, size map: " << unvisited_map_copy.size() << std::endl;
+    std::cout << GetAppName() << " :: calc max entropy, size map: "
+              << unvisited_map_copy.size() << std::endl;
 
   double sum_var = 0;
   // for each unvisited location
@@ -2169,13 +2221,15 @@ size_t GP::calcMECriterion()
   // for 'altruistic' surfacing trigger,
   // compare sum_var to sum_var at previous surfacing
   // and the threshold, to see whether or not to surface
-  if ( m_async_trigger_method == "var_reduction" && m_timed_data_sharing && !m_use_voronoi && !m_veh_is_shub )
+  if ( m_async_trigger_method == "var_reduction" && m_timed_data_sharing &&
+       !m_use_voronoi && !m_veh_is_shub )
   {
-    if ( m_async_prev_sum_var == 0.0 )
+    if ( m_async_prev_sum_var_reset )
     {
       m_async_prev_sum_var = sum_var;
       if ( m_debug )
         std::cout << GetAppName() << " :: new sum_var: " << m_async_prev_sum_var << std::endl;
+      m_async_prev_sum_var_reset = false;
     }
     else
     {
@@ -2183,9 +2237,12 @@ size_t GP::calcMECriterion()
       double decrease = 1.0 - (sum_var / m_async_prev_sum_var);
       if ( m_debug )
       {
-        std::cout << GetAppName() << " :: var_decrease: " << decrease << '\n';
-        std::cout << GetAppName() << " :: m_calc_prevoronoi: " << m_calc_prevoronoi << '\n';
-        std::cout << GetAppName() << " :: current state: " << currentMissionStateString() << std::endl;
+        std::cout << GetAppName() << " :: var_decrease: "
+                  << decrease << '\n';
+        std::cout << GetAppName() << " :: m_calc_prevoronoi: "
+                  << m_calc_prevoronoi << '\n';
+        std::cout << GetAppName() << " :: current state: "
+                  << currentMissionStateString() << std::endl;
       }
 
       if ( (std::abs(decrease) > m_async_threshold) && !m_calc_prevoronoi && !m_final_hp_optim )
@@ -2212,7 +2269,11 @@ size_t GP::calcMECriterion()
 
   std::clock_t end = std::clock();
   if ( m_verbose )
-    std::cout << GetAppName() << " :: Max Entropy calc time: " << ( (double(end-begin) / CLOCKS_PER_SEC) ) << std::endl;
+    std::cout << GetAppName() << " :: Max Entropy calc time: "
+              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << " at: " << currentMOOSTime()
+              << " MapSize: " << unvisited_map_copy.size()
+              << std::endl;
 
   // copy of GP and unvisited_map get destroyed when this function exits
   delete gp_copy;
@@ -2238,7 +2299,8 @@ bool GP::checkGPHasData()
 size_t GP::processReceivedData()
 {
   // avoid getting stuck at end, after extra send phase
-  if ( m_final_hp_optim && m_final_received_from.size() == m_num_vehicles && m_veh_is_shub )
+  if ( m_final_hp_optim && m_final_received_from.size() == m_num_vehicles &&
+       m_veh_is_shub && m_incoming_data_to_be_added.empty() )
     return 0;
 
   size_t pts_added = 0;
@@ -2263,7 +2325,9 @@ size_t GP::processReceivedData()
   }
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: going to add " << m_incoming_data_to_be_added.size() << " sets of data points." << std::endl;
+    std::cout << GetAppName() << " :: going to add "
+              << m_incoming_data_to_be_added.size()
+              << " sets of data points." << std::endl;
   while ( !m_incoming_data_to_be_added.empty() )
   {
     std::string data = m_incoming_data_to_be_added.back();
@@ -2331,7 +2395,8 @@ bool GP::runHPOptimization(size_t nr_iterations)
   if ( m_cancel_hpo )
   {
     if ( m_verbose )
-      std::cout << GetAppName() << " :: premature exit from HPO because of mission end, post-optim pre-set, at "
+      std::cout << GetAppName() << " :: premature exit from HPO because of "
+                << "mission end, post-optim pre-set, at "
                 << currentMOOSTime() << std::endl;
     m_cancel_hpo = false;
     m_hp_optim_running = false;
@@ -2348,9 +2413,14 @@ bool GP::runHPOptimization(size_t nr_iterations)
   while ( !hp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock by runHPOptimization "
-              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-              << ", at: " << currentMOOSTime() << std::endl;
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: ARGH: obtaining gp lock by runHPOptimization "
+                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+                << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
+
 
   if ( m_cancel_hpo )
   {
@@ -2415,7 +2485,7 @@ bool GP::runHPOptimization(size_t nr_iterations)
 
   hp_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by: runHPOptimization"
+    std::cout << GetAppName() << " :: gp lock released by: runHPOptimization"
               << ", at: " << currentMOOSTime() << '\n';
 
   if ( m_verbose )
@@ -2710,9 +2780,14 @@ void GP::makeAndStorePredictions(bool finished)
   while ( !gp_lock.try_lock() ){}
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
-    std::cout << GetAppName() << " :: ARGH: obtaining lock by makeAndStorePredictions "
-              << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-              << ", at: " << currentMOOSTime() << std::endl;
+  {
+    std::ostringstream prep_output;
+    prep_output << GetAppName() << " :: ARGH: obtaining gp lock by makeAndStorePredictions "
+                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+                << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << prep_output.str();
+  }
+
 
   if ( m_verbose )
     std::cout << GetAppName() << " :: store predictions" << std::endl;
@@ -2720,7 +2795,7 @@ void GP::makeAndStorePredictions(bool finished)
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   gp_lock.unlock();
   if ( m_debug )
-    std::cout << GetAppName() << " :: lock released by: makeAndStorePredictions"
+    std::cout << GetAppName() << " :: gp lock released by: makeAndStorePredictions"
               << ", at: " << currentMOOSTime() << '\n';
 
   std::clock_t end = std::clock();
@@ -3211,6 +3286,12 @@ void GP::tdsReceiveData()
 
         if ( m_verbose )
           std::cout << GetAppName() << " ::  added: " << pts_added << " data points" << std::endl;
+
+        // for the var_reduction approach, we want to not trigger based on
+        // information gathered by other vehicle, so set a flag here such that
+        // in calcMECriterion we know not to trigger
+        if ( m_async_trigger_method == "var_reduction" )
+          m_async_prev_sum_var_reset = true;
 
         // run HP optimization
         if ( m_first_surface )

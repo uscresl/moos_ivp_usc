@@ -264,6 +264,7 @@ class GP : public CMOOSApp
    std::unordered_set<std::string> m_rec_ready_veh;
    size_t m_handshake_timer_counter;
    size_t m_tx_timer_counter;
+   size_t m_rx_timer_counter;
    size_t m_req_surf_timer_counter;
    double m_last_surface;
 
@@ -336,6 +337,7 @@ class GP : public CMOOSApp
    std::string m_async_trigger_method;
    double m_async_threshold;
    double m_async_prev_sum_var;
+   bool m_async_prev_sum_var_reset;
 
    bool m_need_to_run_hpo;
    double m_survey_depth;
