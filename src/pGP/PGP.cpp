@@ -20,7 +20,7 @@
 #include <cov_se_iso.h>
 
 // check running time
-#include <ctime>
+#include <time.h>
 
 // GPLib Rprop
 #include "rprop.h"
@@ -31,6 +31,7 @@
 
 // init srand
 #include <chrono>
+
 
 //---------------------------------------------------------
 // Constructor
@@ -124,7 +125,7 @@ GP::GP() :
   m_survey_depth(0.0),
   m_survey_speed(0.0),
   m_dive_pitch_angle(0.0),
-  m_time_to_surf(0.0)
+  m_twoway_time_to_surf(0.0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -864,22 +865,26 @@ bool GP::Iterate()
             // note that m_last_surface is set at the start of a surfacing event,
             //   and therefore we should subtract surfacing time to find how much
             //   data vehicles may have collected
-            unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - m_time_to_surf);
+            unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - m_twoway_time_to_surf);
             unsigned int other_samples = time_since_last_surf * m_num_vehicles;
             double more_with_time = currentMOOSTime() / 3445.0; // TODO param
+            double calc_time = 3*pow(10,-9)*pow(m_gp->get_sampleset_size()-2500, 3) + 10;
             if ( m_debug )
               std::cout << GetAppName() << " :: num_other_samples calc: "
                         << " time_since_last_surf: " << time_since_last_surf
                         << ", other_samples: " << other_samples
-                        << ", m_time_to_surf: " << m_time_to_surf
+                        << ", m_time_to_surf: " << m_twoway_time_to_surf
                         << ", more_with_time: " << more_with_time
+                        << ", calc_time: " << calc_time
                         << std::endl;
+
             // conditions:
             // 1. make sure we can gather more data than it costs to surface
             // 2. and decrease surfacing frequency with mission length (linear decrease?)
             // 3. don't surface too often, multiply by 5? //TODO figure this out
-            if ( other_samples > ((m_time_to_surf)*(1+more_with_time)*5) )
-            {
+            if ( other_samples >
+                 ((1 + more_with_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
+            { //   1 + _t_i / t_e          2*d_s              + d_b + d_e
               if ( m_debug )
                 std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
               // switch to surfacing
@@ -1221,7 +1226,7 @@ bool GP::OnStartUp()
   {
     // calculate time to surface
     double surf_dist = m_survey_depth / sin(m_dive_pitch_angle * PI/180);
-    m_time_to_surf = 2 * surf_dist / m_survey_speed;
+    m_twoway_time_to_surf = 2 * surf_dist / m_survey_speed;
   }
 
   if ( m_debug )
@@ -1714,11 +1719,11 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
   {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: ARGH: obtaining gp lock by addPatternToGP "
-                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: ARGH: obtaining gp lock by addPatternToGP "
+             << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+             << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << cout_msg.str();
   }
 
   // Input vectors x must be provided as double[] and targets y as double.
@@ -1726,9 +1731,9 @@ void GP::addPatternToGP(double veh_lon, double veh_lat, double data_value)
   m_gp->add_pattern(location, save_val);
   // release mutex
   ap_lock.unlock();
-  if ( m_debug )
-    std::cout << GetAppName() << " :: gp lock released by addPatternToGP"
-              << ", at: " << currentMOOSTime() << std::endl;
+//  if ( m_debug )
+//    std::cout << GetAppName() << " :: gp lock released by addPatternToGP"
+//              << ", at: " << currentMOOSTime() << std::endl;
 
   // update visited set if needed
   if ( !m_veh_is_shub )
@@ -1811,11 +1816,11 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
   {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: ARGH: obtaining map lock by updateVisitedSet "
-                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: ARGH: obtaining map lock by updateVisitedSet "
+             << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+             << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << cout_msg.str();
   }
 
   std::unordered_map<size_t, Eigen::Vector2d>::iterator curr_loc_itr = m_sample_points_unvisited.find(index);
@@ -1825,13 +1830,13 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
   if ( !need_to_update_maps )
   {
     map_lock.unlock();
-    if ( m_debug )
-    {
-      std::ostringstream prep_output;
-      prep_output << GetAppName() << " :: map lock released by: updateVisitedSet"
-                  << ", at: " << currentMOOSTime() << std::endl;
-      std::cout << prep_output.str();
-    }
+//    if ( m_debug )
+//    {
+//      std::ostringstream cout_msg;
+//      cout_msg << GetAppName() << " :: map lock released by: updateVisitedSet"
+//                  << ", at: " << currentMOOSTime() << std::endl;
+//      std::cout << cout_msg.str();
+//    }
     return;
   }
   else
@@ -1867,25 +1872,25 @@ void GP::updateVisitedSet(double veh_lon, double veh_lat, size_t index )
           }
         }
       }
-
-      // report
-      if ( m_verbose )
-      {
-        std::cout << '\n' << GetAppName() << " :: moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
-        std::cout << " from unvisited to visited.\n";
-        std::cout << GetAppName() << " :: Unvisited size: " << m_sample_points_unvisited.size() << '\n';
-        std::cout << GetAppName() << " :: Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
-      }
+//
+//      // report
+//      if ( m_verbose )
+//      {
+//        std::cout << '\n' << GetAppName() << " :: moved pt: " << std::setprecision(10) << move_pt(0) << ", " << move_pt(1);
+//        std::cout << " from unvisited to visited.\n";
+//        std::cout << GetAppName() << " :: Unvisited size: " << m_sample_points_unvisited.size() << '\n';
+//        std::cout << GetAppName() << " :: Visited size: " << m_sample_points_visited.size() << '\n' << std::endl;
+//      }
     }
   }
   map_lock.unlock();
-  if ( m_debug )
-  {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: map lock released by: updateVisitedSet"
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
-  }
+//  if ( m_debug )
+//  {
+//    std::ostringstream cout_msg;
+//    cout_msg << GetAppName() << " :: map lock released by: updateVisitedSet"
+//                << ", at: " << currentMOOSTime() << std::endl;
+//    std::cout << cout_msg.str();
+//  }
 }
 
 //---------------------------------------------------------
@@ -2102,7 +2107,8 @@ size_t GP::calcMECriterion()
   if ( m_mission_state == STATE_SURFACING )
     return 0;
 
-  std::clock_t begin = std::clock();
+  std::time_t begin = std::time(0);
+  double begin_moos_time = currentMOOSTime();
 
   if ( m_debug )
     std::cout << GetAppName() << " :: try for lock gp, calcMECriterion" << std::endl;
@@ -2114,11 +2120,11 @@ size_t GP::calcMECriterion()
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
   {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: ARGH: obtaining gp lock by calcMECriterion "
-                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: ARGH: obtaining gp lock by calcMECriterion "
+             << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+             << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << cout_msg.str();
   }
 
 
@@ -2130,10 +2136,10 @@ size_t GP::calcMECriterion()
   gp_lock.unlock();
   if ( m_debug )
   {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: gp lock released by: calcMECriterion"
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: gp lock released by: calcMECriterion"
+             << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << cout_msg.str();
   }
 
   // stop calculations if we are surfacing suddenly
@@ -2151,13 +2157,12 @@ size_t GP::calcMECriterion()
   lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
   {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: ARGH: obtaining map lock by calcMECriterion "
-                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: ARGH: obtaining map lock by calcMECriterion "
+             << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+             << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << cout_msg.str();
   }
-
 
   // make copy of map to use instead of map,
   // such that we do not have to lock it for long
@@ -2167,10 +2172,10 @@ size_t GP::calcMECriterion()
   map_lock.unlock();
   if ( m_debug )
   {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: map lock released by: calcMECriterion"
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: map lock released by: calcMECriterion"
+             << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << cout_msg.str();
   }
 
   // stop calculations if we are surfacing suddenly
@@ -2181,8 +2186,11 @@ size_t GP::calcMECriterion()
   }
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: calc max entropy, size map: "
-              << unvisited_map_copy.size() << std::endl;
+    std::cout << GetAppName() << " :: calc max entropy"
+              << ", size map: " << unvisited_map_copy.size()
+              << ", size GP: " << gp_copy->get_sampleset_size()
+              << ", size queue: " << m_queue_data_points_for_gp.size()
+              << std::endl;
 
   double sum_var = 0;
   // for each unvisited location
@@ -2260,19 +2268,15 @@ size_t GP::calcMECriterion()
     }
   }
 
-  // stop calculations if we are surfacing suddenly
-  if ( m_mission_state == STATE_SURFACING )
-  {
-    delete gp_copy;
-    return 0;
-  }
-
-  std::clock_t end = std::clock();
+  std::time_t end = std::time(0);
+  double end_moos_time = currentMOOSTime();
   if ( m_verbose )
     std::cout << GetAppName() << " :: Max Entropy calc time: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << std::difftime(end, begin)
+              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
               << " at: " << currentMOOSTime()
               << " MapSize: " << unvisited_map_copy.size()
+              << " GPSize: " <<  gp_copy->get_sampleset_size()
               << std::endl;
 
   // copy of GP and unvisited_map get destroyed when this function exits
@@ -2414,11 +2418,11 @@ bool GP::runHPOptimization(size_t nr_iterations)
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
   {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: ARGH: obtaining gp lock by runHPOptimization "
-                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: ARGH: obtaining gp lock by runHPOptimization "
+             << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+             << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << cout_msg.str();
   }
 
 
@@ -2474,14 +2478,14 @@ bool GP::runHPOptimization(size_t nr_iterations)
   }
 
   //// write new HP to file ////////////////////////////////////////////////////
-  std::clock_t begin = std::clock();
+  std::time_t begin = std::time(0);
   std::stringstream filenm;
   filenm << "hp_optim_" << std::floor(currentMOOSTime()) << "_" << m_veh_name << "_" << nr_iterations;
   m_gp->write(filenm.str().c_str());
-  std::clock_t end = std::clock();
+  std::time_t end = std::time(0);
   if ( m_debug )
     std::cout << GetAppName() << " :: HP param write to file time: "
-              <<  ( (double(end-begin) / CLOCKS_PER_SEC) ) << '\n';
+              << std::difftime(end, begin) << '\n';
 
   hp_lock.unlock();
   if ( m_debug )
@@ -2501,7 +2505,8 @@ bool GP::runHPOptimization(size_t nr_iterations)
 void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations)
 {
   //// downsample data for HP optimization /////////////////////////////////////
-  std::clock_t begin = std::clock();
+  std::time_t begin = std::time(0);
+  double begin_moos_time = currentMOOSTime();
 
   // make GP from downsampled data
   libgp::GaussianProcess downsampled_gp(2, "CovSum(CovSEiso, CovNoise)");
@@ -2525,11 +2530,14 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     double dval = pt[2];
     downsampled_gp.add_pattern(loc, dval);
   }
-  std::clock_t end = std::clock();
+  std::time_t end = std::time(0);
+  double end_moos_time = currentMOOSTime();
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: runtime putting data into downsampled_gp: "
-                              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+                              << std::difftime(end, begin)
+                              << " (MOOSTime: " << (end_moos_time-begin_moos_time)
+                              << "), "
                               << " at: " << currentMOOSTime() << std::endl;
     std::cout << GetAppName() << " :: size downsampled GP: "
                               << downsampled_gp.get_sampleset_size() << std::endl;
@@ -2538,7 +2546,8 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   }
 
   //// actual HP optimization /////////////////////////////////////
-  begin = std::clock();
+  begin = std::time(0);
+  begin_moos_time = currentMOOSTime();
   // there are 2 methods in gplib, conjugate gradient and RProp,
   // the latter should be more efficient
   if ( m_hp_optim_cg )
@@ -2552,10 +2561,12 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
     // RProp arguments: GP, 'n' (nr iterations), verbose
     rprop.maximize(&downsampled_gp, nr_iterations, 1);
   }
-  end = std::clock();
+  end = std::time(0);
+  end_moos_time = currentMOOSTime();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << std::difftime(end, begin)
+              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
               << " at: " << currentMOOSTime() << std::endl;
 
   // downsampled gp should be destroyed upon exiting function
@@ -2687,9 +2698,13 @@ void GP::sendData()
       std::string empty_msg = m_veh_name + ':' + received_ready_from + ':';
       m_Comms.Notify(m_output_var_share_data, empty_msg);
       if ( m_verbose )
-        std::cout << GetAppName() << " :: **no data stored, sending 0 points! "
-                  << " (m_data_pt_counter, nr_stored_data_pts)" << m_data_pt_counter
-                  << ", " << nr_stored_data_pts << std::endl;
+      {
+        std::ostringstream cout_msg;
+        cout_msg << GetAppName() << " :: **no data stored, sending 0 points! "
+                 << " (m_data_pt_counter, nr_stored_data_pts)" << m_data_pt_counter
+                 << ", " << nr_stored_data_pts << std::endl;
+        std::cout << cout_msg.str();
+      }
     }
     else
     {
@@ -2703,8 +2718,15 @@ void GP::sendData()
       size_t nr_points_per_msg = 1500;
 
       if ( m_verbose )
-        std::cout << GetAppName() << " :: **sending " << m_data_pt_counter
-                  << " points to " << received_ready_from << std::endl;
+      {
+        std::ostringstream cout_msg;
+        cout_msg << GetAppName() << " :: **sending " << m_data_pt_counter
+                 << " points to " << received_ready_from
+                 << ", current size GP: " << m_gp->get_sampleset_size()
+                 << std::endl;
+
+        std::cout << cout_msg.str();
+      }
 
       while ( m_data_pt_counter != 0 )
       {
@@ -2773,7 +2795,8 @@ void GP::getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double 
 //
 void GP::makeAndStorePredictions(bool finished)
 {
-  std::clock_t begin = std::clock();
+  std::time_t begin = std::time(0);
+  double begin_moos_time = currentMOOSTime();
   // make a copy of the GP and use that below, to limit lock time
   std::unique_lock<std::mutex> gp_lock(m_gp_mutex, std::defer_lock);
   double lock_time1 = currentMOOSTime();
@@ -2781,11 +2804,11 @@ void GP::makeAndStorePredictions(bool finished)
   double lock_time2 = currentMOOSTime();
   if ( lock_time2 - lock_time1 > 120.0 )
   {
-    std::ostringstream prep_output;
-    prep_output << GetAppName() << " :: ARGH: obtaining gp lock by makeAndStorePredictions "
-                << "took more than 120 seconds: " << (lock_time2 - lock_time1)
-                << ", at: " << currentMOOSTime() << std::endl;
-    std::cout << prep_output.str();
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: ARGH: obtaining gp lock by makeAndStorePredictions "
+             << "took more than 120 seconds: " << (lock_time2 - lock_time1)
+             << ", at: " << currentMOOSTime() << std::endl;
+    std::cout << cout_msg.str();
   }
 
 
@@ -2798,13 +2821,16 @@ void GP::makeAndStorePredictions(bool finished)
     std::cout << GetAppName() << " :: gp lock released by: makeAndStorePredictions"
               << ", at: " << currentMOOSTime() << '\n';
 
-  std::clock_t end = std::clock();
+  std::time_t end = std::time(0);
+  double end_moos_time = currentMOOSTime();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions]: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << std::difftime(end, begin)
+              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
               << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
-  begin = std::clock();
+  begin = std::time(0);
+  begin_moos_time = currentMOOSTime();
   std::vector< std::pair<double, double> >::iterator loc_itr;
   // get the predictive mean and var values for all sample locations
   std::vector<double> all_pred_means_lGP;
@@ -2853,14 +2879,16 @@ void GP::makeAndStorePredictions(bool finished)
       all_pred_vars_lGP.push_back(pred_var_GP);
     }
   }
-  end = std::clock();
+  end = std::time(0);
+  end_moos_time = currentMOOSTime();
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions]: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) )
+              << std::difftime(end, begin)
+              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
               << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
-  begin = std::clock();
-
+  begin = std::time(0);
+  begin_moos_time = currentMOOSTime();
   // write to file
   for ( size_t vector_idx = 0; vector_idx < nr_sample_locations; ++vector_idx )
   {
@@ -2904,12 +2932,14 @@ void GP::makeAndStorePredictions(bool finished)
     }
   }
 
-  end = std::clock();
+  end = std::time(0);
+  end_moos_time = currentMOOSTime();
   if ( m_verbose )
   {
     std::cout << GetAppName() << " :: runtime save to file [makeAndStorePredictions]: "
-              << ( (double(end-begin) / CLOCKS_PER_SEC) )
-              << " at: " << std::floor(currentMOOSTime())  << std::endl;
+              << std::difftime(end, begin)
+              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
+              << " at: " << std::floor(currentMOOSTime()) << std::endl;
   }
 
   // copy of GP gets destroyed when this function exits
