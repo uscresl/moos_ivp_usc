@@ -2281,7 +2281,7 @@ size_t GP::calcMECriterion()
     std::ostringstream cout_msg;
     cout_msg << GetAppName() << " :: Max Entropy calc time: "
               << std::difftime(end, begin)
-              << " MOOSTime: " << (end_moos_time-begin_moos_time)
+              << " MOOSCalcTime: " << (end_moos_time-begin_moos_time)
               << " at: " << currentMOOSTime()
               << " MapSize: " << unvisited_map_copy.size()
               << " GPSize: " <<  gp_copy->get_sampleset_size()
