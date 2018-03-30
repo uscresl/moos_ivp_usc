@@ -2186,11 +2186,17 @@ size_t GP::calcMECriterion()
   }
 
   if ( m_debug )
-    std::cout << GetAppName() << " :: calc max entropy"
+  {
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: calc max entropy"
               << ", size map: " << unvisited_map_copy.size()
               << ", size GP: " << gp_copy->get_sampleset_size()
               << ", size queue: " << m_queue_data_points_for_gp.size()
+              << ", at: " << currentMOOSTime()
               << std::endl;
+    std::cout << cout_msg.str();
+  }
+
 
   double sum_var = 0;
   // for each unvisited location
@@ -2271,13 +2277,18 @@ size_t GP::calcMECriterion()
   std::time_t end = std::time(0);
   double end_moos_time = currentMOOSTime();
   if ( m_verbose )
-    std::cout << GetAppName() << " :: Max Entropy calc time: "
+  {
+    std::ostringstream cout_msg;
+    cout_msg << GetAppName() << " :: Max Entropy calc time: "
               << std::difftime(end, begin)
-              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
+              << " MOOSTime: " << (end_moos_time-begin_moos_time)
               << " at: " << currentMOOSTime()
               << " MapSize: " << unvisited_map_copy.size()
               << " GPSize: " <<  gp_copy->get_sampleset_size()
               << std::endl;
+    std::cout << cout_msg.str();
+  }
+
 
   // copy of GP and unvisited_map get destroyed when this function exits
   delete gp_copy;
@@ -2536,8 +2547,7 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   {
     std::cout << GetAppName() << " :: runtime putting data into downsampled_gp: "
                               << std::difftime(end, begin)
-                              << " (MOOSTime: " << (end_moos_time-begin_moos_time)
-                              << "), "
+                              << " MOOSTime: " << (end_moos_time-begin_moos_time)
                               << " at: " << currentMOOSTime() << std::endl;
     std::cout << GetAppName() << " :: size downsampled GP: "
                               << downsampled_gp.get_sampleset_size() << std::endl;
@@ -2566,7 +2576,7 @@ void GP::runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_ite
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime hyperparam optimization: "
               << std::difftime(end, begin)
-              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
+              << " MOOSTime: " << (end_moos_time-begin_moos_time)
               << " at: " << currentMOOSTime() << std::endl;
 
   // downsampled gp should be destroyed upon exiting function
@@ -2722,7 +2732,9 @@ void GP::sendData()
         std::ostringstream cout_msg;
         cout_msg << GetAppName() << " :: **sending " << m_data_pt_counter
                  << " points to " << received_ready_from
-                 << ", current size GP: " << m_gp->get_sampleset_size()
+                 << ", size GP: " << m_gp->get_sampleset_size()
+                 << ", size queue:" << m_queue_data_points_for_gp.size()
+                 << ", at: " << currentMOOSTime()
                  << std::endl;
 
         std::cout << cout_msg.str();
@@ -2826,7 +2838,7 @@ void GP::makeAndStorePredictions(bool finished)
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime mutex [makeAndStorePredictions]: "
               << std::difftime(end, begin)
-              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
+              << " MOOSTime: " << (end_moos_time-begin_moos_time)
               << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::time(0);
@@ -2884,7 +2896,7 @@ void GP::makeAndStorePredictions(bool finished)
   if ( m_verbose )
     std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions]: "
               << std::difftime(end, begin)
-              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
+              << " MOOSTime: " << (end_moos_time-begin_moos_time)
               << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
   begin = std::time(0);
@@ -2938,7 +2950,7 @@ void GP::makeAndStorePredictions(bool finished)
   {
     std::cout << GetAppName() << " :: runtime save to file [makeAndStorePredictions]: "
               << std::difftime(end, begin)
-              << " (MOOSTime: " << (end_moos_time-begin_moos_time) << "),"
+              << " MOOSTime: " << (end_moos_time-begin_moos_time)
               << " at: " << std::floor(currentMOOSTime()) << std::endl;
   }
 
