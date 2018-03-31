@@ -84,4 +84,6 @@ ProcessConfig = pGP
   survey_speed = 1.5
   // specify pitch angle for diving/surfacing
   dive_pitch_angle = 20.0
+  // specify the total mission duration for num_other_samples surfacing
+  mission_duration = 12236 // b2 max, uTimerScript, 2 AUVs
 }
