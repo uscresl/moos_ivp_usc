@@ -125,7 +125,8 @@ GP::GP() :
   m_survey_depth(0.0),
   m_survey_speed(0.0),
   m_dive_pitch_angle(0.0),
-  m_twoway_time_to_surf(0.0)
+  m_twoway_time_to_surf(0.0),
+  m_mission_duration(3600.0)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -866,24 +867,24 @@ bool GP::Iterate()
             //   and therefore we should subtract surfacing time to find how much
             //   data vehicles may have collected
             unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - m_twoway_time_to_surf);
-            unsigned int other_samples = time_since_last_surf * m_num_vehicles;
-            double more_with_time = currentMOOSTime() / 3445.0; // TODO param
+            unsigned int other_samples = time_since_last_surf * (m_num_vehicles-1);
+            double pct_total_time = currentMOOSTime() / m_mission_duration;
             double calc_time = 3*pow(10,-9)*pow(m_gp->get_sampleset_size()-2500, 3) + 10;
             if ( m_debug )
               std::cout << GetAppName() << " :: num_other_samples calc: "
                         << " time_since_last_surf: " << time_since_last_surf
                         << ", other_samples: " << other_samples
                         << ", m_time_to_surf: " << m_twoway_time_to_surf
-                        << ", more_with_time: " << more_with_time
+                        << ", pct_total_time: " << pct_total_time
                         << ", calc_time: " << calc_time
                         << std::endl;
 
-            // conditions:
+            // conditions: // TODO make sampling frequency explicit? assume now 1 Hz
             // 1. make sure we can gather more data than it costs to surface
             // 2. and decrease surfacing frequency with mission length (linear decrease?)
-            // 3. don't surface too often, multiply by 5? //TODO figure this out
+            // 3. don't surface too often, multiply by ? //TODO figure this out
             if ( other_samples >
-                 ((1 + more_with_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
+                 ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
             { //   1 + _t_i / t_e          2*d_s              + d_b + d_e
               if ( m_debug )
                 std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
@@ -1177,6 +1178,8 @@ bool GP::OnStartUp()
       m_survey_speed = (double)atof(value.c_str());
     else if ( param == "dive_pitch_angle" )
       m_dive_pitch_angle = (double)atof(value.c_str());
+    else if ( param == "mission_duration" )
+      m_mission_duration = (double)atof(value.c_str());
     else
       handled = false;
 
@@ -1240,6 +1243,7 @@ bool GP::OnStartUp()
     std::cout << GetAppName() << " :: m_use_surface_hub: " << m_use_surface_hub << std::endl;
     std::cout << GetAppName() << " :: m_async_trigger_method: " << m_async_trigger_method << std::endl;
     std::cout << GetAppName() << " :: m_async_threshold: " << m_async_threshold << std::endl;
+    std::cout << GetAppName() << " :: m_mission_duration: " << m_mission_duration << std::endl;
   }
 
   return(true);
@@ -2288,6 +2292,12 @@ size_t GP::calcMECriterion()
               << std::endl;
     std::cout << cout_msg.str();
   }
+  if ( m_async_trigger_method == "num_other_samples" )
+  {
+    // set 'm_last_surface' to the end time of the surfacing event
+    // to make sure we do not immediately surface again
+    m_last_surface = MOOSTime();
+  }
 
 
   // copy of GP and unvisited_map get destroyed when this function exits
@@ -3309,7 +3319,6 @@ void GP::tdsReceiveData()
   if ( !m_waiting )
   {
     // data received, need to add
-    // TODO make sure we only kick this off once
     m_future_received_data_processed = std::async(std::launch::async, &GP::processReceivedData, this);
     if ( m_debug )
       std::cout << GetAppName() << " :: kicking off processReceivedData" << std::endl;
