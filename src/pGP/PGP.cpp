@@ -126,7 +126,8 @@ GP::GP() :
   m_survey_speed(0.0),
   m_dive_pitch_angle(0.0),
   m_twoway_time_to_surf(0.0),
-  m_mission_duration(3600.0)
+  m_mission_duration(3600.0),
+  m_calcwpt_from_data_sharing(false)
 {
   // class variable instantiations can go here
   // as much as possible as function level initialization
@@ -778,9 +779,15 @@ bool GP::Iterate()
             std::cout << GetAppName() << " :: m_hp_optim_running = false, at: "
                       << currentMOOSTime() << std::endl;
 
-          if ( !m_use_voronoi && !m_veh_is_shub )
-              clearTDSStateVars();
-          else if ( !m_veh_is_shub )
+          /*if ( !m_use_voronoi && !m_veh_is_shub )
+          {
+            clearTDSStateVars(); // TODO should we do this still? if hp in bg?
+            if ( m_debug )
+              std::cout << GetAppName() << " :: resetting from hp_optim done"
+                        << std::endl;
+          }
+          else */
+          if ( !m_veh_is_shub )
           { // use voronoi
             if ( m_mission_state == STATE_IDLE && !m_final_hp_optim )
             {
@@ -866,32 +873,40 @@ bool GP::Iterate()
             // note that m_last_surface is set at the start of a surfacing event,
             //   and therefore we should subtract surfacing time to find how much
             //   data vehicles may have collected
-            unsigned int time_since_last_surf = std::round(MOOSTime() - m_last_surface - m_twoway_time_to_surf);
-            unsigned int other_samples = time_since_last_surf * (m_num_vehicles-1);
-            double pct_total_time = currentMOOSTime() / m_mission_duration;
-            double calc_time = 3*pow(10,-9)*pow(m_gp->get_sampleset_size()-2500, 3) + 10;
-            if ( m_debug )
-              std::cout << GetAppName() << " :: num_other_samples calc: "
-                        << " time_since_last_surf: " << time_since_last_surf
-                        << ", other_samples: " << other_samples
-                        << ", m_time_to_surf: " << m_twoway_time_to_surf
-                        << ", pct_total_time: " << pct_total_time
-                        << ", calc_time: " << calc_time
-                        << std::endl;
-
-            // conditions: // TODO make sampling frequency explicit? assume now 1 Hz
-            // 1. make sure we can gather more data than it costs to surface
-            // 2. and decrease surfacing frequency with mission length (linear decrease?)
-            // 3. don't surface too often, multiply by ? //TODO figure this out
-            if ( other_samples >
-                 ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
-            { //   1 + _t_i / t_e          2*d_s              + d_b + d_e
+            std::cout << GetAppName() << " :: MOOSTime(): " << MOOSTime()
+                      << ", m_last_surface: " << m_last_surface
+                      << ", m_twoway_time_to_surf: " << m_twoway_time_to_surf
+                      << " combined: " << std::round(MOOSTime() - m_last_surface - m_twoway_time_to_surf)
+                      << std::endl;
+            int time_since_last_surf = std::round(MOOSTime() - m_last_surface - m_twoway_time_to_surf);
+            if ( time_since_last_surf > 0 )
+            {
+              unsigned int other_samples = time_since_last_surf * (m_num_vehicles-1);
+              double pct_total_time = currentMOOSTime() / m_mission_duration;
+              double calc_time = 3*pow(10,-9)*pow(m_gp->get_sampleset_size()-2500, 3) + 10;
               if ( m_debug )
-                std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
-              // switch to surfacing
-              m_last_surface = MOOSTime();
-              m_mission_state = STATE_SURFACING;
-              publishStates("Iterate_num_other_samples");
+                std::cout << GetAppName() << " :: num_other_samples calc: "
+                          << " time_since_last_surf: " << time_since_last_surf
+                          << ", other_samples: " << other_samples
+                          << ", m_time_to_surf: " << m_twoway_time_to_surf
+                          << ", pct_total_time: " << pct_total_time
+                          << ", calc_time: " << calc_time
+                          << std::endl;
+
+              // conditions: // TODO make sampling frequency explicit? assume now 1 Hz
+              // 1. make sure we can gather more data than it costs to surface
+              // 2. and decrease surfacing frequency with mission length (linear decrease?)
+              // 3. don't surface too often, multiply by ? //TODO figure this out
+              if ( other_samples >
+                   ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
+              { //   1 + _t_i / t_e          2*d_s              + d_b + d_e
+                if ( m_debug )
+                  std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
+                // switch to surfacing
+                m_last_surface = MOOSTime();
+                m_mission_state = STATE_SURFACING;
+                publishStates("Iterate_num_other_samples");
+              }
             }
           }
         }
@@ -2266,7 +2281,8 @@ size_t GP::calcMECriterion()
       if ( (std::abs(decrease) > m_async_threshold) && !m_calc_prevoronoi && !m_final_hp_optim )
       {
         if ( m_debug )
-          std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
+          std::cout << GetAppName() << " :: Time to Surface!"
+                    << ", at: " << currentMOOSTime() << std::endl;
         // switch to surfacing
         m_mission_state = STATE_SURFACING;
         publishStates("calcMECriterion_Async_var_reduction");
@@ -2292,13 +2308,22 @@ size_t GP::calcMECriterion()
               << std::endl;
     std::cout << cout_msg.str();
   }
-  if ( m_async_trigger_method == "num_other_samples" )
+  if ( m_async_trigger_method == "num_other_samples" &&
+       m_calcwpt_from_data_sharing )
   {
     // set 'm_last_surface' to the end time of the surfacing event
     // to make sure we do not immediately surface again
+    // (only if we came in CALCWPT from tdsReceiveData)
     m_last_surface = MOOSTime();
+    m_calcwpt_from_data_sharing = false;
+    if ( m_debug )
+    {
+      std::ostringstream cout_msg;
+      cout_msg << GetAppName() << " :: reset m_last_surface, at: "
+               << currentMOOSTime() << std::endl;
+      std::cout << cout_msg.str();
+    }
   }
-
 
   // copy of GP and unvisited_map get destroyed when this function exits
   delete gp_copy;
@@ -3365,6 +3390,7 @@ void GP::tdsReceiveData()
           {
             m_mission_state = STATE_CALCWPT;
             publishStates("tdsReceiveData");
+            m_calcwpt_from_data_sharing = true;
           }
           else
           { // m_use_voronoi
@@ -3413,13 +3439,16 @@ void GP::clearTDSStateVars()
     std::cout << GetAppName() << " :: reset state vars" << std::endl;
 
   // move to next step; need wpt
-  if ( m_adaptive && m_num_vehicles > 1 && !m_final_hp_optim )
+  if ( m_adaptive && m_num_vehicles > 1 && !m_final_hp_optim &&
+       m_mission_state != STATE_CALCWPT )
   {
     std::cout << GetAppName() << " :: STATE_CALCWPT via clearTDSStateVars" << std::endl;
     m_mission_state = STATE_CALCWPT;
     publishStates("clearTDSStateVars_adp_nrveh_gt_1");
   }
-  else if ( !m_final_hp_optim )
+  else if ( !m_final_hp_optim &&
+            m_mission_state != STATE_SAMPLE &&
+            m_mission_state != STATE_CALCWPT )
   {
     m_mission_state = STATE_SAMPLE;
     publishStates("clearTDSStateVars_else");

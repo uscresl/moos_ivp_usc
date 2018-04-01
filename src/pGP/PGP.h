@@ -345,6 +345,7 @@ class GP : public CMOOSApp
    double m_dive_pitch_angle;
    double m_twoway_time_to_surf;
    double m_mission_duration;
+   bool m_calcwpt_from_data_sharing;
 };
 
 #endif
