@@ -779,15 +779,14 @@ bool GP::Iterate()
             std::cout << GetAppName() << " :: m_hp_optim_running = false, at: "
                       << currentMOOSTime() << std::endl;
 
-          /*if ( !m_use_voronoi && !m_veh_is_shub )
+          if ( !m_use_voronoi && !m_veh_is_shub )
           {
-            clearTDSStateVars(); // TODO should we do this still? if hp in bg?
+            clearTDSStateVars();
             if ( m_debug )
               std::cout << GetAppName() << " :: resetting from hp_optim done"
                         << std::endl;
           }
-          else */
-          if ( !m_veh_is_shub )
+          else if ( !m_veh_is_shub )
           { // use voronoi
             if ( m_mission_state == STATE_IDLE && !m_final_hp_optim )
             {
