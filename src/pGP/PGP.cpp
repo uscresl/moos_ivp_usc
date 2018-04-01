@@ -873,11 +873,16 @@ bool GP::Iterate()
             // note that m_last_surface is set at the start of a surfacing event,
             //   and therefore we should subtract surfacing time to find how much
             //   data vehicles may have collected
-            std::cout << GetAppName() << " :: MOOSTime(): " << MOOSTime()
-                      << ", m_last_surface: " << m_last_surface
-                      << ", m_twoway_time_to_surf: " << m_twoway_time_to_surf
-                      << " combined: " << std::round(MOOSTime() - m_last_surface - m_twoway_time_to_surf)
-                      << std::endl;
+            if ( m_debug )
+            {
+              std::ostringstream cout_msg;
+              cout_msg << GetAppName() << " :: MOOSTime(): " << MOOSTime()
+                       << ", m_last_surface: " << m_last_surface
+                       << ", m_twoway_time_to_surf: " << m_twoway_time_to_surf
+                       << " combined: " << std::round(MOOSTime() - m_last_surface - m_twoway_time_to_surf)
+                       << std::endl;
+              std::cout << cout_msg.str();
+            }
             int time_since_last_surf = std::round(MOOSTime() - m_last_surface - m_twoway_time_to_surf);
             if ( time_since_last_surf > 0 )
             {
@@ -885,13 +890,24 @@ bool GP::Iterate()
               double pct_total_time = currentMOOSTime() / m_mission_duration;
               double calc_time = 3*pow(10,-9)*pow(m_gp->get_sampleset_size()-2500, 3) + 10;
               if ( m_debug )
-                std::cout << GetAppName() << " :: num_other_samples calc: "
-                          << " time_since_last_surf: " << time_since_last_surf
-                          << ", other_samples: " << other_samples
-                          << ", m_time_to_surf: " << m_twoway_time_to_surf
-                          << ", pct_total_time: " << pct_total_time
-                          << ", calc_time: " << calc_time
-                          << std::endl;
+              {
+                std::ostringstream cout_msg;
+                cout_msg << GetAppName() << " :: num_other_samples calc: "
+                         << " time_since_last_surf: " << time_since_last_surf
+                         << ", other_samples: " << other_samples
+                         << ", m_time_to_surf: " << m_twoway_time_to_surf
+                         << ", pct_total_time: " << pct_total_time
+                         << ", calc_time: " << calc_time
+                         << std::endl;
+                std::cout << cout_msg.str();
+                cout_msg.clear();
+                cout_msg << GetAppName() << " :: num_other_samples condition: "
+                         << "( other_samples > ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) ): "
+                         << ( other_samples > ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
+                         << std::endl;
+                std::cout << cout_msg.str();
+              }
+
 
               // conditions: // TODO make sampling frequency explicit? assume now 1 Hz
               // 1. make sure we can gather more data than it costs to surface
@@ -901,7 +917,8 @@ bool GP::Iterate()
                    ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
               { //   1 + _t_i / t_e          2*d_s              + d_b + d_e
                 if ( m_debug )
-                  std::cout << GetAppName() << " :: Time to Surface!" << std::endl;
+                  std::cout << GetAppName() << " :: Time to Surface!"
+                            << " at: " << currentMOOSTime() << std::endl;
                 // switch to surfacing
                 m_last_surface = MOOSTime();
                 m_mission_state = STATE_SURFACING;
@@ -2282,7 +2299,7 @@ size_t GP::calcMECriterion()
       {
         if ( m_debug )
           std::cout << GetAppName() << " :: Time to Surface!"
-                    << ", at: " << currentMOOSTime() << std::endl;
+                    << " at: " << currentMOOSTime() << std::endl;
         // switch to surfacing
         m_mission_state = STATE_SURFACING;
         publishStates("calcMECriterion_Async_var_reduction");
