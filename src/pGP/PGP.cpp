@@ -887,10 +887,22 @@ bool GP::Iterate()
             {
               unsigned int other_samples = time_since_last_surf * (m_num_vehicles-1);
               double pct_total_time = currentMOOSTime() / m_mission_duration;
-              double calc_time = 3*pow(10,-9)*pow(m_gp->get_sampleset_size()-2500, 3) + 10;
+              size_t size_gp = m_gp->get_sampleset_size();
+              double p39 = 3*pow(10,-9);
+              signed int size_25k = size_gp-2500;
+              double ps3 = pow(size_25k, 3);
+              double calc_time = (p39 * ps3) + 10;
               if ( m_debug )
               {
                 std::ostringstream cout_msg;
+                cout_msg << GetAppName() << " :: size_gp: " << size_gp
+                         << " p39: " << p39
+                         << " size_25k: " << size_25k
+                         << " ps3: " << ps3
+                         << " calc_time: " << calc_time
+                         << std::endl;
+                std::cout << cout_msg.str();
+                cout_msg.clear();
                 cout_msg << GetAppName() << " :: num_other_samples calc: "
                          << " time_since_last_surf: " << time_since_last_surf
                          << ", other_samples: " << other_samples
@@ -901,19 +913,32 @@ bool GP::Iterate()
                 std::cout << cout_msg.str();
                 cout_msg.clear();
                 cout_msg << GetAppName() << " :: num_other_samples condition: "
-                         << "( other_samples > ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) ): "
-                         << ( other_samples > ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
+                         << "( other_samples > 2*((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) ): "
+                         << ( other_samples > 2*((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
                          << std::endl;
                 std::cout << cout_msg.str();
               }
 
-
-              // conditions: // TODO make sampling frequency explicit? assume now 1 Hz
+              // conditions:
               // 1. make sure we can gather more data than it costs to surface
               // 2. and decrease surfacing frequency with mission length (linear decrease?)
-              // 3. don't surface too often, multiply by ? //TODO figure this out
+              // 3. consider that other vehicles may surface as well,
+              //    require at least twice the amount lost in surfacing
+              //
+              // considering:
+              // (a) when the vehicle last surfaced,
+              //     other_samples
+              // (b) how much time is lost in surfacing ~ nr of missed samples,
+              //     (m_twoway_time_to_surf + 5 + 1 + calc_time)
+              // (c) whether other vehicles have surfaced,
+              //     2*()()
+              // (d) the value of samples with time,
+              //     (1 + pct_total_time)
+              //
+              // // TODO make sampling frequency explicit? assumed now = 1 Hz
+              //
               if ( other_samples >
-                   ((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
+                   2*((1 + pct_total_time) * (m_twoway_time_to_surf + 5 + 1 + calc_time)) )
               { //   1 + _t_i / t_e          2*d_s              + d_b + d_e
                 if ( m_debug )
                   std::cout << GetAppName() << " :: Time to Surface!"
@@ -3527,7 +3552,7 @@ void GP::clearTDSStateVars()
 void GP::clearHandshakeVars()
 {
   // reset surfacing/handshake other vehicles sets
-  if ( !m_veh_is_shub && !m_final_received_from.size() > 0 )
+  if ( !m_veh_is_shub || !(m_final_received_from.size() > 0) )
   {
     // we clear the vector here in case 'ready' is received again while
     // we are sending the data, which seems to happen, but I removed it before
