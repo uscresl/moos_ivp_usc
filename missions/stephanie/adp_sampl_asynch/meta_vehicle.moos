@@ -234,7 +234,7 @@ ProcessConfig = pGP
   #else
   // for async surfacing (w/ shub)
   // choose what trigger method to use (timed, var_reduction, num_other_samples)
-  async_trigger_method = "num_other_samples"
+  async_trigger_method = "var_reduction"
   // var_reduction: if difference from previous is > T, then surface
   async_threshold = 0.4
   // specify survey depth for num_other_samples calculation
