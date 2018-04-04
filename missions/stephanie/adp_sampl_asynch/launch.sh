@@ -230,6 +230,8 @@ if [ "${ADAPTIVE}" = "yes" ] ; then
   fi
 fi
 
+sleep 10
+
 # ports
 SHORE_VPORT=$(($BASE_PORT))
 SHORE_LISTEN=$(($BASE_PORT+300))
