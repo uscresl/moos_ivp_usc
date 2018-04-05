@@ -195,16 +195,18 @@ if [ "${ADAPTIVE}" = "yes" ] ; then
     CROSS_END1=$(echo ${waypts##*:})
 
   elif [ $NUM_VEHICLES -eq 2 ] ; then
-    OFFSET_X2=$[OFFSET_X1+AREA_WIDTH2v]
+    #OFFSET_X2=$[OFFSET_X1+AREA_WIDTH2v]
+    AREA_HEIGHT_V2=$[AREA_HEIGHT/2]
+    OFFSET_Y2=$[OFFSET_Y+AREA_HEIGHT_V2]
 
-    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X1,$OFFSET_Y,$AREA_WIDTH2v,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
+    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X1,$OFFSET_Y,$AREA_WIDTH,$AREA_HEIGHT_V2,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
     PILOT_PTS1=${waypts}
     echo " softmax waypoints auv1: " $PILOT_PTS1
     CROSS_END1=$(echo ${waypts##*:})
     
     sleep 1
 
-    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X2,$OFFSET_Y,$AREA_WIDTH2v,$AREA_HEIGHT,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
+    waypts=$(matlab -nodesktop -nosplash -r "[stat,result] = system('locate create_sample_path.m'); addpath(result(1:length(result)-21)); answ=create_sample_path($SOFTMAX_TEMP,$OFFSET_X1,$OFFSET_Y2,$AREA_WIDTH,$AREA_HEIGHT_V2,10); disp(answ); quit" |  cut -d= -f2 | sed 's/ //g' | tail -n2 | head -n1)
     PILOT_PTS2=${waypts}
     echo " softmax waypoints auv2: " $PILOT_PTS2
     CROSS_END2=$(echo ${waypts##*:})
@@ -277,18 +279,18 @@ nsplug meta_shoreside.moos targ_shoreside.moos -f WARP=$TIME_WARP \
 START_HEADING="230"
 
 if [ ${AREA} = "bigger2" ] ; then
-  START_POS1="635,790"
-  START_POS2="635,770"
-  START_POS3="635,750"
+  START_POS1="650,1020"
+  START_POS2="650,980"
+  START_POS3="650,960"
   START_POS_SHUB="1000,1000"
   WAYPOINTS_SHUB="1000,1000"
 
-  HP_LOITER_CONFIG="format=radial,x=655,y=720,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  HP_LOITER_CONFIG="format=radial,x=650,y=1030,radius=10,pts=4,snap=1,label=hp_optim_loiter"
   if [ $NUM_VEHICLES -ge 2 ] ; then
-  HP_LOITER_CONFIG2="format=radial,x=655,y=750,radius=10,pts=4,snap=1,label=hp_optim_loiter"
+  HP_LOITER_CONFIG2="format=radial,x=650,y=970,radius=10,pts=4,snap=1,label=hp_optim_loiter"
   fi
   if [ $NUM_VEHICLES -ge 3 ] ; then
-  HP_LOITER_CONFIG3="format=radial,x=655,y=780,radius=10,pts=4,snap=1,label=hp_optimloiter"
+  HP_LOITER_CONFIG3="format=radial,x=650,y=950,radius=10,pts=4,snap=1,label=hp_optimloiter"
   fi
   HP_LOITER_CONFIG_SHUB="format=radial,x=1000,y=1000,radius=10,pts=4,snap=1,label=hp_optim_loiter"
 else
