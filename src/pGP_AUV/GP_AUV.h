@@ -62,6 +62,7 @@ class GP_AUV : public CMOOSApp
    void handleMailSamplePoints(std::string input_string);
    void handleMailSamplePointsSpecs(std::string input_string);
    void handleMailSamplePointsPredict(std::string input_string);
+   void setUpGridPoints(int lanes_x, int lanes_y, std::vector<GraphNode> points);
 
    //// methods for handling sampled data /////////////////////////////////////
    void updateVisitedSet(double veh_lon, double veh_lat, size_t index );
@@ -89,6 +90,8 @@ class GP_AUV : public CMOOSApp
    void recursiveGreedyWptSelection(std::string & next_waypoint);
    // dynamic programming
    void dynamicWptSelection(std::string & next_waypoint);
+   // FTC-A*
+   void ftcWptSelection(std::string & next_waypoint, GraphNode* goal);
    // passing on to behavior
    void publishNextWaypointLocations();
 
@@ -102,6 +105,10 @@ class GP_AUV : public CMOOSApp
    size_t getY(size_t id_pt);
    double manhattanDistance(size_t start_node_index, size_t end_node_index);
    double informativeValue(std::vector< size_t > cur_path);
+
+   // Helper functions for FTC-A*
+   bool max_graph_node(GraphNode* a, GraphNode* b);
+   void recalcUpperNodeEntropy(GraphNode* upper_node);
 
   // timed saving of GP  /////////////////////////////////////////////////////
    void makeAndStorePredictions();
@@ -204,6 +211,7 @@ class GP_AUV : public CMOOSApp
    std::unordered_map< size_t, GraphNode* > m_sample_points_visited;
    // vector for storing all sampling graph nodes
    std::vector< GraphNode > m_sample_graph_nodes;
+   std::vector<GraphNode* > m_upper_graph_nodes;
    // vector for storing all locations for which we will make predictions that are saved to file
    // this can be the same locations as used for path planning, or they can be different
    std::vector< std::pair<double,double> > m_predict_locations;

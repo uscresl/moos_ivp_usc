@@ -450,7 +450,7 @@ bool GP_AUV::OnStartUp()
     }
     else if ( param == "path_planning_method" )
     {
-      if ( value == "greedy" || value == "dynamic_programming" || value == "recursive_greedy")
+      if ( value == "greedy" || value == "dynamic_programming" || value == "recursive_greedy" || value == "ftc_a*")
       {
         m_path_planning_method = value;
         if ( m_verbose )
@@ -459,7 +459,7 @@ bool GP_AUV::OnStartUp()
       else
       {
         std::cout << GetAppName() << " :: Error, unknown method. Choose from: greedy, "
-                  << "dynamic_programming, recursive_greedy. Default: greedy." << std::endl;
+                  << "dynamic_programming, recursive_greedy, ftc_a*. Default: greedy." << std::endl;
         handled = false;
       }
     }
@@ -631,6 +631,8 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
 
   m_lanes_x = std::floor(m_pts_grid_width / m_pts_grid_spacing);
   m_lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
+  int upper_node_index = 0;
+  GraphNode* upper_node = NULL;
   for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
   {
     std::string location = sample_points.at(id_pt);
@@ -650,16 +652,26 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     m_sample_graph_nodes.emplace_back(loc_vec, 0.0);
 
     GraphNode* graph_node = &m_sample_graph_nodes.back();
-    long left_neighbour_index = id_pt - (m_lanes_y + 1);
-    long back_neighbour_index = id_pt - 1;
-    GraphNode* left_neighbour = left_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[left_neighbour_index];
-    GraphNode* back_neighbour = back_neighbour_index < 0 || id_pt % (m_lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[back_neighbour_index];
-    graph_node->set_left_neighbour(left_neighbour);
-    if ( left_neighbour )
-      left_neighbour->set_right_neighbour(graph_node);
-    graph_node->set_back_neighbour(back_neighbour);
-    if ( back_neighbour )
-      back_neighbour->set_front_neighbour(graph_node);
+
+    if (upper_node_index % 4 == 0) {
+        GraphNode* temp_node = upper_node;
+        upper_node = graph_node;
+        upper_node->set_west_neighbour(temp_node);
+    }
+    long west_neighbour_index = id_pt - (m_lanes_y + 1);
+    long south_neighbour_index = id_pt - 1;
+    GraphNode* west_neighbour = west_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[west_neighbour_index];
+    GraphNode* south_neighbour = south_neighbour_index < 0 || id_pt % (m_lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[south_neighbour_index];
+    graph_node->set_west_neighbour(west_neighbour);
+    if ( west_neighbour )
+      west_neighbour->set_east_neighbour(graph_node);
+    graph_node->set_south_neighbour(south_neighbour);
+    if ( south_neighbour )
+      south_neighbour->set_north_neighbour(graph_node);
+
+    if (upper_node) {
+        upper_node->set_children(graph_node);
+    }
 
     // Alternative would be to have objects in maps or allocating them dynamically.
     m_sample_points_unvisited.insert( std::pair<size_t, GraphNode*>(id_pt, graph_node) );
@@ -683,11 +695,22 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
       if ( m_debug )
         std::cout << GetAppName() << " :: NE Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
     }
+
+    upper_node_index++;
   }
   ofstream_loc.close();
   // check / communicate what we did
   if ( m_debug )
     std::cout << GetAppName() << " :: stored " << m_sample_points_unvisited.size() << " sample locations" << std::endl;
+}
+
+//---------------------------------------------------------
+// Procedure: setUpGridPoints
+//            set up grid points for FTC-A* algorithm
+//
+void GP_AUV::setUpGridPoints(int lanes_x, int lanes_y, std::vector<GraphNode> points)
+{
+
 }
 
 //---------------------------------------------------------
@@ -1160,10 +1183,10 @@ std::vector<const GraphNode *> GP_AUV::maxPath(const GraphNode* loc, std::vector
   {
     nodes.push_back(loc);
 
-    return max(maxPath(loc->get_right_neighbour(), nodes, toPublish, steps+1),
-               maxPath(loc->get_left_neighbour(), nodes, toPublish, steps+1),
-               maxPath(loc->get_front_neighbour(), nodes, toPublish, steps+1),
-               maxPath(loc->get_back_neighbour(), nodes, toPublish, steps+1)
+    return max(maxPath(loc->get_east_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_west_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_north_neighbour(), nodes, toPublish, steps+1),
+               maxPath(loc->get_south_neighbour(), nodes, toPublish, steps+1)
     );
   }
 }
@@ -1190,6 +1213,106 @@ double GP_AUV::manhattanDistance(size_t start_node_index, size_t end_node_index)
   size_t dx = std::max(start_x, end_x) - std::min(start_x, end_x);
   size_t dy = std::max(start_y, end_y) - std::min(start_y, end_y);
   return dx + dy;
+}
+
+//---------------------------------------------------------
+// Custom comparator for comparing Graph Nodes by entropy
+//
+bool GP_AUV::max_graph_node(GraphNode* a, GraphNode* b)
+{
+    return a->get_value() > b->get_value();
+}
+
+
+//---------------------------------------------------------
+// Procedure: FTC-A* algorithm
+//
+void GP_AUV::ftcWptSelection(std::string & next_waypoint, GraphNode* goal)
+{
+    std::cout << GetAppName() << " :: In ftcWptSelection " << m_path_planning_method << std::endl;
+
+    std::clock_t begin = std::clock();
+
+    std::vector<const GraphNode *> nextWaypoints;
+    std::ostringstream output_stream;
+    bool goal_exists = false;
+
+    // Get current index
+    int current_node_index = getIndexForMap(m_lon, m_lat);
+
+    std::unordered_map< size_t, GraphNode* >::iterator current_node_itr;
+    current_node_itr = m_sample_points_visited.find(current_node_index);
+
+    // See if goal is in this region
+    std::vector<GraphNode*> children = current_node_itr->second->get_children();
+    for (GraphNode* child : children) {
+        if (child = goal) goal_exists = true;
+    }
+
+    if (goal_exists) {
+        // Run path planning within region to reach the goal
+        GraphNode* next = current_node_itr->second;
+        while (next != goal) {
+            // Go to highest entropy upper level neighbour
+            for (GraphNode* child : current_node_itr->second->get_children()) {
+                if (child->get_value() > next->get_value()) {
+                    next = child;
+                }
+            }
+
+            nextWaypoints.push_back(next);
+        }
+    } else {
+        for (GraphNode* upper : m_upper_graph_nodes)
+        {
+            recalcUpperNodeEntropy(upper);
+        }
+
+        GraphNode* next_upper = current_node_itr->second;
+        // Go to highest entropy upper level neighbour
+        for (GraphNode* neighbour : current_node_itr->second->get_neighbours()) {
+            if (neighbour->get_value() > next_upper->get_value()) {
+                next_upper = neighbour;
+            }
+        }
+        nextWaypoints.push_back(next_upper);
+
+    }
+
+    // Publish waypoints
+    for (int i = 1; i < nextWaypoints.size(); i++)
+    {
+      Eigen::Vector2d nodeLoc = nextWaypoints[i]->get_location();
+      output_stream << std::setprecision(15) << nodeLoc(0) << "," << nodeLoc(1);
+      if ( i < (nextWaypoints.size() - 1) )
+        output_stream << ":";
+    }
+
+    next_waypoint = output_stream.str();
+
+    std::clock_t end = std::clock();
+    double path_selection_time = double(end-begin)/CLOCKS_PER_SEC;
+    if ( m_verbose )
+    {
+      std::cout << GetAppName() << " :: Path selected: " << next_waypoint << std::endl;
+      std::cout << GetAppName() << " :: Path selected in " << path_selection_time << std::endl;
+    }
+}
+
+//---------------------------------------------------------
+// Custom comparator for comparing Graph Nodes by entropy
+//
+void GP_AUV::recalcUpperNodeEntropy(GraphNode* upper_node)
+{
+    int average = 0;
+
+    for (GraphNode* child : upper_node->get_children())
+    {
+        average += child->get_value();
+    }
+
+    average /= upper_node->get_children().size();
+    upper_node->set_value(average);
 }
 
 //---------------------------------------------------------
@@ -1392,6 +1515,16 @@ void GP_AUV::publishNextWaypointLocations()
     dynamicWptSelection(next_wpts);
   else if ( m_path_planning_method == "recursive_greedy" )
     recursiveGreedyWptSelection(next_wpts);
+  else if ( m_path_planning_method == "ftc_a*") {
+      std::sort(m_sample_graph_nodes.begin(), m_sample_graph_nodes.end(), [] (GraphNode a, GraphNode b)
+      {
+          return a.get_value() > b.get_value();
+      });
+      GraphNode goal = m_sample_graph_nodes[0];
+      std::cout << GetAppName() << " :: Entering path planning function " << std::endl;
+
+    ftcWptSelection(next_wpts, &goal);
+  }
 
   if ( m_verbose )
   {

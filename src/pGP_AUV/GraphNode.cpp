@@ -10,12 +10,18 @@ GraphNode::GraphNode(Eigen::Vector2d location, double value) :
   }
 }
 
-GraphNode::GraphNode(Eigen::Vector2d location, double value, GraphNode *left_neighbour, GraphNode *right_neighbour, GraphNode *front_neighbour, GraphNode *back_neighbour):GraphNode(location,value)
+GraphNode::GraphNode(Eigen::Vector2d location, double value, GraphNode *west_neighbour, GraphNode *east_neighbour, GraphNode *north_neighbour, GraphNode *south_neighbour,
+    GraphNode *northwest_neighbour, GraphNode *northeast_neighbour, GraphNode *southwest_neighbour, GraphNode *southeast_neighbour):GraphNode(location,value)
 {
-  set_left_neighbour(left_neighbour);
-  set_right_neighbour(right_neighbour);
-  set_front_neighbour(front_neighbour);
-  set_back_neighbour(back_neighbour);
+  set_west_neighbour(west_neighbour);
+  set_east_neighbour(east_neighbour);
+  set_north_neighbour(north_neighbour);
+  set_south_neighbour(south_neighbour);
+  set_northwest_neighbour(northwest_neighbour);
+  set_northeast_neighbour(northeast_neighbour);
+  set_southwest_neighbour(southwest_neighbour);
+  set_southeast_neighbour(southeast_neighbour);
+ // m_children.reserve(4);
 }
 
 // The first four elements in vector are assigned as neighbours in the order: left, right, front and back.
@@ -40,44 +46,84 @@ std::vector<GraphNode*> GraphNode::get_neighbours_ahead() const
   return std::vector<GraphNode*>(m_neighbours.begin(), m_neighbours.begin() + MAX_NEIGHBOURS_AHEAD);
 }
 
-const GraphNode * GraphNode::get_left_neighbour() const
+const GraphNode * GraphNode::get_west_neighbour() const
 {
-  return m_neighbours[LEFT_NEIGHBOUR];
+  return m_neighbours[WEST_NEIGHBOUR];
 }
 
-void GraphNode::set_left_neighbour(GraphNode * left_neighbour)
+void GraphNode::set_west_neighbour(GraphNode * west_neighbour)
 {
-  m_neighbours[LEFT_NEIGHBOUR] = left_neighbour;
+  m_neighbours[WEST_NEIGHBOUR] = west_neighbour;
 }
 
-const GraphNode * GraphNode::get_right_neighbour() const
+const GraphNode * GraphNode::get_east_neighbour() const
 {
-  return m_neighbours[RIGHT_NEIGHBOUR];
+  return m_neighbours[EAST_NEIGHBOUR];
 }
 
-void GraphNode::set_right_neighbour(GraphNode * right_neighbour)
+void GraphNode::set_east_neighbour(GraphNode * east_neighbour)
 {
-  m_neighbours[RIGHT_NEIGHBOUR] = right_neighbour;
+  m_neighbours[EAST_NEIGHBOUR] = east_neighbour;
 }
 
-const GraphNode * GraphNode::get_front_neighbour() const
+const GraphNode * GraphNode::get_north_neighbour() const
 {
-  return m_neighbours[FRONT_NEIGHBOUR];
+  return m_neighbours[NORTH_NEIGHBOUR];
 }
 
-void GraphNode::set_front_neighbour(GraphNode * front_neighbour)
+void GraphNode::set_north_neighbour(GraphNode * north_neighbour)
 {
-  m_neighbours[FRONT_NEIGHBOUR] = front_neighbour;
+  m_neighbours[NORTH_NEIGHBOUR] = north_neighbour;
 }
 
-const GraphNode * GraphNode::get_back_neighbour() const
+const GraphNode * GraphNode::get_south_neighbour() const
 {
-  return m_neighbours[BACK_NEIGHBOUR];
+  return m_neighbours[SOUTH_NEIGHBOUR];
 }
 
-void GraphNode::set_back_neighbour(GraphNode * back_neighbour)
+void GraphNode::set_south_neighbour(GraphNode * south_neighbour)
 {
-  m_neighbours[BACK_NEIGHBOUR] = back_neighbour;
+  m_neighbours[SOUTH_NEIGHBOUR] = south_neighbour;
+}
+
+const GraphNode * GraphNode::get_northwest_neighbour() const
+{
+  return m_neighbours[NORTHWEST_NEIGHBOUR];
+}
+
+void GraphNode::set_northwest_neighbour(GraphNode * northwest_neighbour)
+{
+  m_neighbours[NORTHWEST_NEIGHBOUR] = northwest_neighbour;
+}
+
+const GraphNode * GraphNode::get_northeast_neighbour() const
+{
+  return m_neighbours[NORTHEAST_NEIGHBOUR];
+}
+
+void GraphNode::set_northeast_neighbour(GraphNode * northeast_neighbour)
+{
+  m_neighbours[NORTHEAST_NEIGHBOUR] = northeast_neighbour;
+}
+
+const GraphNode * GraphNode::get_southwest_neighbour() const
+{
+  return m_neighbours[SOUTHWEST_NEIGHBOUR];
+}
+
+void GraphNode::set_southwest_neighbour(GraphNode * southwest_neighbour)
+{
+  m_neighbours[SOUTHWEST_NEIGHBOUR] = southwest_neighbour;
+}
+
+const GraphNode * GraphNode::get_southeast_neighbour() const
+{
+  return m_neighbours[SOUTHEAST_NEIGHBOUR];
+}
+
+void GraphNode::set_southeast_neighbour(GraphNode * southeast_neighbour)
+{
+  m_neighbours[SOUTHEAST_NEIGHBOUR] = southeast_neighbour;
 }
 
 double GraphNode::get_value() const
@@ -98,4 +144,14 @@ void GraphNode::set_location(Eigen::Vector2d location)
 Eigen::Vector2d GraphNode::get_location() const
 {
   return m_location;
+}
+
+void GraphNode::set_children(GraphNode* child)
+{
+    m_children.push_back(child);
+}
+
+std::vector<GraphNode*> GraphNode::get_children() const
+{
+    return m_children;
 }
