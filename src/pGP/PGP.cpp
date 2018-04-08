@@ -2883,6 +2883,8 @@ void GP::getLogGPPredMeanVarFromGPMeanVar(double gp_mean, double gp_cov, double 
 //
 void GP::makeAndStorePredictions(bool finished)
 {
+  static size_t count_saves = 1;
+
   std::time_t begin = std::time(0);
   double begin_moos_time = currentMOOSTime();
   // make a copy of the GP and use that below, to limit lock time
@@ -2901,7 +2903,9 @@ void GP::makeAndStorePredictions(bool finished)
 
 
   if ( m_verbose )
-    std::cout << GetAppName() << " :: store predictions" << std::endl;
+    std::cout << GetAppName() << " :: store predictions " << count_saves
+              << "(finished?: " << finished << ")"
+              << ", at: " << currentMOOSTime() << std::endl;
   // make a copy: reduce need for lock, but this does impact memory use
   libgp::GaussianProcess * gp_copy = new libgp::GaussianProcess(*m_gp);
   gp_lock.unlock();
@@ -2970,8 +2974,8 @@ void GP::makeAndStorePredictions(bool finished)
   end = std::time(0);
   end_moos_time = currentMOOSTime();
   if ( m_verbose )
-    std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions]: "
-              << std::difftime(end, begin)
+    std::cout << GetAppName() << " :: runtime make predictions [makeAndStorePredictions] "
+              << count_saves << ": " << std::difftime(end, begin)
               << " MOOSTime: " << (end_moos_time-begin_moos_time)
               << " at: " << std::floor(currentMOOSTime()) << std::endl;
 
