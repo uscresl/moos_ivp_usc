@@ -3034,6 +3034,8 @@ void GP::makeAndStorePredictions(bool finished)
               << " at: " << std::floor(currentMOOSTime()) << std::endl;
   }
 
+  count_saves++;
+
   // copy of GP gets destroyed when this function exits
   delete gp_copy;
 }
