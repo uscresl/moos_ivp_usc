@@ -31,8 +31,8 @@ GraphNode *end_pt;
 //  { return std::hash<std::vector<GraphNode*> >(vec.begin(), vec.end()); }
 //};
 
-void genetic_pp_init(double max_lon, double min_lon, double max_lat, double min_lat);
-void run_genetic_pp(std::vector< GraphNode* > * grid_pts);
+void genetic_pp_init(double max_lon, double min_lon, double max_lat, double min_lat, double min_ent, double max_ent);
+void run_genetic_pp(std::vector< GraphNode* > grid_pts);
 void generate_initial_paths(std::vector< GraphNode* > grid_pts, std::mt19937 &generator);
 std::vector<GraphNode *> generate_path(std::vector< GraphNode* > grid_pts, std::mt19937& gen);
 double calc_path_entropy(std::vector< GraphNode* > path);
@@ -51,7 +51,7 @@ std::vector<std::vector<GraphNode *> > current_population;
 std::vector< std::vector< std::vector<GraphNode *> > > all_populations;
 //std::unordered_map< std::vector<GraphNode *>, double> current_pop_fitness;
 
-void print_population();
+void print_current_population();
 
 
 #endif //IVP_EXTEND_GEN_PP_H
