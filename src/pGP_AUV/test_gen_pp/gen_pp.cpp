@@ -19,6 +19,7 @@
 // other operations: .9
 
 #include "gen_pp.h"
+#include "GraphNode.h"
 
 #define INITPOP "INITIALIZE POPULATION \n\n"
 #define CROSSOVER "CROSSOVER PAIRS \n\n"
@@ -28,15 +29,8 @@
 #define PROBABILITYDIST "CREATE PROBABILITY DISTRIBUTION \n\n"
 
 double distance_between(const GraphNode* a, const GraphNode* b);
-void select_parent(std::vector<double> &probability_dist,
-                   std::uniform_real_distribution<double> dist,
-                   std::mt19937 &generator, std::vector<GraphNode *> &parent);
 
-double normalize_entropy(GraphNode *a);
-double normalize_graph_node_distance(GraphNode* a, GraphNode* b);
-bool in_current_path(std::vector<GraphNode *> path, GraphNode * mutation);
-
-void genetic_pp_init(double max_lon, double min_lon, double max_lat, double min_lat,
+void GenPP::genetic_pp_init(double max_lon, double min_lon, double max_lat, double min_lat,
                     double min_ent, double max_ent)
 {
   //set normalizing variables
@@ -55,7 +49,7 @@ void genetic_pp_init(double max_lon, double min_lon, double max_lat, double min_
   //is this something relevant?
 }
 
-void run_genetic_pp(std::vector<GraphNode *> grid_pts)
+void GenPP::run_genetic_pp(std::vector<GraphNode *> grid_pts)
 {
   std::random_device rd;
   std::mt19937 generator(rd());
@@ -65,14 +59,13 @@ void run_genetic_pp(std::vector<GraphNode *> grid_pts)
   for(int i = 0; i < NUM_GENERATIONS; i++)
   {
     // sort current population by fitness
-    std::sort(current_population.begin(), current_population.end(),
-              [](std::vector<GraphNode *> a, std::vector<GraphNode *> b) {
-      return calc_path_entropy(a) > calc_path_entropy(b);
-    });
+//    std::sort(current_population.begin(), current_population.end(),
+//              [&](std::vector<GraphNode *> a, std::vector<GraphNode *> b) {
+//      return calc_path_entropy(a) > calc_path_entropy(b);
+//    });
 
     // create probability distribution
-    std::vector<double> probability_dist(NUM_PATHS);
-    create_prob_dist(probability_dist);
+    std::vector<double> probability_dist = create_prob_dist();
 
 
     // select x pairs of parents & crossover
@@ -82,14 +75,19 @@ void run_genetic_pp(std::vector<GraphNode *> grid_pts)
       std::vector<GraphNode *> child;
       std::uniform_real_distribution<double> crossover_mutate_dist(0.0, 1.0);
       double crossover_is = crossover_mutate_dist(generator);
+      std::uniform_real_distribution<double> dist(0.0, 1.0);
       if(crossover_is < CROSSOVER_PROBABILITY)
       {
-        std::uniform_real_distribution<double> dist(0.0, 1.0);
+
         std::vector<GraphNode *> parentA;
         std::vector<GraphNode *> parentB;
         select_parents(probability_dist, dist, generator, parentA, parentB);
 
         crossover(parentA, parentB, generator, child);
+      }
+      else
+      {
+        select_parent(probability_dist, dist, generator, child);
       }
       double mutation_is = crossover_mutate_dist(generator);
       if(mutation_is < MUTATION_PROBABILITY)
@@ -112,10 +110,11 @@ void run_genetic_pp(std::vector<GraphNode *> grid_pts)
     }
     all_populations.push_back(new_population);
     current_population = new_population;
+    print_current_population();
   }
 }
 
-void generate_initial_paths(std::vector<GraphNode* > grid_pts, std::mt19937 &generator)
+void GenPP::generate_initial_paths(std::vector<GraphNode* > grid_pts, std::mt19937 &generator)
 {
   if(!grid_pts.size()) return;
 
@@ -133,7 +132,7 @@ void generate_initial_paths(std::vector<GraphNode* > grid_pts, std::mt19937 &gen
 //            go through a grid and select random points to
 //            create a path of length PATH_LENGTH
 
-std::vector<GraphNode *> generate_path(std::vector<GraphNode* > grid_pts, std::mt19937& gen)
+std::vector<GraphNode *> GenPP::generate_path(std::vector<GraphNode* > grid_pts, std::mt19937& gen)
 {
   int max_grid_pt = grid_pts.size() - 1;
   std::uniform_int_distribution<int> dist(0, max_grid_pt);
@@ -145,7 +144,8 @@ std::vector<GraphNode *> generate_path(std::vector<GraphNode* > grid_pts, std::m
   std::unordered_map<int, GraphNode * > added_nodes;
   std::vector<GraphNode *> path;
   int i = 0;
-  while(i < PATH_LENGTH)
+  path.push_back(grid_pts[0]);
+  while(i < PATH_LENGTH - 1)
   {
     int grid_index = dist(gen);
     if(added_nodes.find(grid_index) == added_nodes.end())
@@ -156,6 +156,7 @@ std::vector<GraphNode *> generate_path(std::vector<GraphNode* > grid_pts, std::m
       i++;
     }
   }
+  path.push_back(end_pt);
 
   return path;
 }
@@ -164,7 +165,7 @@ std::vector<GraphNode *> generate_path(std::vector<GraphNode* > grid_pts, std::m
 // Procedure: calc_path_entropy()
 //            go through a path and sum all normalized
 //            entropies, sum all normalized edge differences
-double calc_path_entropy(const std::vector<GraphNode* > path)
+double GenPP::calc_path_entropy(const std::vector<GraphNode* >& path)
 {
   double entropy = 0.0, distance = 0.0;
   for(int i = 0; i < path.size(); i++)
@@ -174,7 +175,7 @@ double calc_path_entropy(const std::vector<GraphNode* > path)
   }
   for(int i = 0; i < path.size()-1; i++)
   {
-    entropy += 1000 /*some multiplier*/ * normalize_graph_node_distance(path[i], path[i+1]);
+    entropy +=  /*some multiplier*/ normalize_graph_node_distance(path[i], path[i+1]);
   }
   return entropy;
 }
@@ -184,15 +185,26 @@ double calc_path_entropy(const std::vector<GraphNode* > path)
 //            for a given population, create a probability
 //            distribution depending on the fitness of each
 //            path
-std::vector<double> create_prob_dist(std::vector<double> &probability_dist)
+std::vector<double> GenPP::create_prob_dist()
 {
   //create probability distribution
+  std::vector<double> probability_dist(NUM_PATHS);
   static int n = 0;
-  std::generate(probability_dist.begin(), probability_dist.end(),
-                [&]()
-                {
-                  return calc_path_entropy(current_population[n++]);
-                });
+  for(int n = 0; n < current_population.size(); n++)
+  {
+    double entropy = 0.0, distance = 0.0;
+    for(int i = 0; i < current_population[n].size(); i++)
+    {
+      GraphNode *node = current_population[n][i];
+      entropy += normalize_entropy(node);
+    }
+    for(int i = 0; i < current_population[n].size()-1; i++)
+    {
+      entropy +=  /*some multiplier*/ normalize_graph_node_distance(current_population[n][i], current_population[n][i+1]);
+    }
+    n++;
+    probability_dist[n] = entropy;
+  }
   double entropy_normalizer = std::accumulate(probability_dist.begin(),
                                               probability_dist.end(), 0.0);
   std::transform(probability_dist.begin(), probability_dist.end(), probability_dist.begin(),
@@ -208,7 +220,7 @@ std::vector<double> create_prob_dist(std::vector<double> &probability_dist)
 //            using a uniform distribution between 0-1,
 //            generates a random probability and sets the
 //            corresponding parent to that GraphNode //not the best function descriptor
-void select_parents(std::vector<double> &probability_dist,
+void GenPP::select_parents(std::vector<double> &probability_dist,
                     std::uniform_real_distribution<double> dist,
                     std::mt19937 &generator,
                     std::vector<GraphNode *> &parentA, std::vector<GraphNode *> &parentB)
@@ -217,23 +229,24 @@ void select_parents(std::vector<double> &probability_dist,
   select_parent(probability_dist, dist, generator, parentB);
 }
 
-void select_parent(std::vector<double> &probability_dist,
+void GenPP::select_parent(std::vector<double> &probability_dist,
                    std::uniform_real_distribution<double> dist,
                    std::mt19937 &generator, std::vector<GraphNode *> &parent) //is this the right way to pass it
 {
   double prob;
   prob = dist(generator);
   double total_prob = 0.0;
-  int i = 0;
+  int i = -1;
   while(total_prob < prob)
   {
-    total_prob += probability_dist[i++];
+    i++;
+    total_prob += probability_dist[i];
   }
   parent = current_population[i];
 }
 
 
-void crossover(const std::vector<GraphNode *> &a, const std::vector<GraphNode*> &b, std::mt19937& generator,
+void GenPP::crossover(const std::vector<GraphNode *> &a, const std::vector<GraphNode*> &b, std::mt19937& generator,
                std::vector<GraphNode *> &child)
 {
   std::uniform_int_distribution<int> dist(1, PATH_LENGTH-1); //don't want to change beginning and end node
@@ -264,7 +277,7 @@ double distance_between(const GraphNode* a, const GraphNode* b)
 // f = sum( entropy + alpha *(1-L))
 
 
-double normalize_graph_node_distance(GraphNode* a, GraphNode* b)
+double GenPP::normalize_graph_node_distance(GraphNode* a, GraphNode* b)
 {
 
   //take m_min_lon, m_max_lon etc from GP_AUV.h
@@ -284,7 +297,7 @@ double normalize_graph_node_distance(GraphNode* a, GraphNode* b)
   return 1.0 - dist_to_travel * normalizing_factor; //maximize the lower distance
 }
 
-double normalize_entropy(GraphNode *a)
+double GenPP::normalize_entropy(GraphNode *a)
 {
   //minimum value: -1.3 (maybe -1.5)
   //maximum value: 5.3 (maybe 5.5 or 5.6)
@@ -295,7 +308,7 @@ double normalize_entropy(GraphNode *a)
   return 1.0 - (a->get_value() * entropy_normalizing_factor); //maximize lower entropy
 }
 
-void set_end_pt(std::vector<GraphNode *> grid_pts)
+void GenPP::set_end_pt(std::vector<GraphNode *> grid_pts)
 {
   double max_entropy = (double)INT16_MIN;
 
@@ -314,7 +327,7 @@ void set_end_pt(std::vector<GraphNode *> grid_pts)
   }
 }
 
-bool in_current_path(std::vector<GraphNode *> path, GraphNode * mutation)
+bool GenPP::in_current_path(std::vector<GraphNode *> path, GraphNode * mutation)
 {
   for(int i = 0; i < path.size(); i++)
   {
@@ -324,7 +337,7 @@ bool in_current_path(std::vector<GraphNode *> path, GraphNode * mutation)
   return false;
 }
 
-void print_current_population()
+void GenPP::print_current_population()
 {
   std::for_each(current_population.begin(), current_population.end(), [](std::vector<GraphNode *>&path) {
     std::for_each(path.begin(), path.end(), [](GraphNode* &node)

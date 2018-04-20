@@ -4,12 +4,14 @@
 # Note: this is a template dir, so you can copy to start
 #       making your MOOSApp
 #--------------------------------------------------------
+cmake_minimum_required(VERSION 3.4)
+
 
 SET(SRC
-  gen_pp_test.cpp
+        gen_pp_test.cpp
         gen_pp.cpp
-  GraphNode.cpp
-)
+        GraphNode.cpp
+        )
 
 ADD_EXECUTABLE(gen_pp_test ${SRC})
 
@@ -34,14 +36,16 @@ if ( EIGEN3_FOUND )
     include_directories( ${EIGEN3_INCLUDE_DIRS} )
 endif()
 
-TARGET_LINK_LIBRARIES(gen_pp_test
-   ${MOOS_LIBRARIES}
-   ${MOOSGeodesy_LIBRARIES}
-   geometry
-   apputil
-   mbutil
-   ${SYSTEM_LIBS}
-   # whatever other libs you need
-   ${LIBGP_LIBRARIES}
-   ${Boost_LIBRARIES}
-)
+add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+
+#TARGET_LINK_LIBRARIES(gen_pp_test
+#   ${MOOS_LIBRARIES}
+#   ${MOOSGeodesy_LIBRARIES}
+#   geometry
+#   apputil
+#   mbutil
+#   ${SYSTEM_LIBS}
+#   # whatever other libs you need
+#   ${LIBGP_LIBRARIES}
+#   ${Boost_LIBRARIES}
+#)

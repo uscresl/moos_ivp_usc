@@ -20,10 +20,12 @@
 #define MUTATION_PROBABILITY .2
 
 
-double m_lon_max, m_lon_min, m_lat_max, m_lat_min;
-double min_entropy, max_entropy;
-double entropy_normalizing_factor;
-GraphNode *end_pt;
+class GenPP {
+public:
+  double m_lon_max, m_lon_min, m_lat_max, m_lat_min;
+  double min_entropy, max_entropy;
+  double entropy_normalizing_factor;
+  GraphNode *end_pt;
 
 //struct char_seq_hash
 //{
@@ -31,27 +33,40 @@ GraphNode *end_pt;
 //  { return std::hash<std::vector<GraphNode*> >(vec.begin(), vec.end()); }
 //};
 
-void genetic_pp_init(double max_lon, double min_lon, double max_lat, double min_lat, double min_ent, double max_ent);
-void run_genetic_pp(std::vector< GraphNode* > grid_pts);
-void generate_initial_paths(std::vector< GraphNode* > grid_pts, std::mt19937 &generator);
-std::vector<GraphNode *> generate_path(std::vector< GraphNode* > grid_pts, std::mt19937& gen);
-double calc_path_entropy(std::vector< GraphNode* > path);
-void crossover(const std::vector<GraphNode *> &a, const std::vector<GraphNode *> &b, std::mt19937 &generator,
-               std::vector<GraphNode *> &child);
-void mutate();
-void select_parents(std::vector<double> &probability_dist,
-                    std::uniform_real_distribution<double> dist, std::mt19937 &generator,
-                    std::vector<GraphNode *> &parentA, std::vector<GraphNode *> &parentB);
-std::vector<double> create_prob_dist(std::vector<double> &probability_dist);
+  void genetic_pp_init(double max_lon, double min_lon, double max_lat, double min_lat, double min_ent, double max_ent);
+  void run_genetic_pp(std::vector< GraphNode* > grid_pts);
+  void generate_initial_paths(std::vector< GraphNode* > grid_pts, std::mt19937 &generator);
+  std::vector<GraphNode *> generate_path(std::vector< GraphNode* > grid_pts, std::mt19937& gen);
+  double calc_path_entropy(const std::vector< GraphNode* >& path);
+  void crossover(const std::vector<GraphNode *> &a, const std::vector<GraphNode *> &b, std::mt19937 &generator,
+                 std::vector<GraphNode *> &child);
+  void mutate();
+  void select_parents(std::vector<double> &probability_dist,
+                      std::uniform_real_distribution<double> dist, std::mt19937 &generator,
+                      std::vector<GraphNode *> &parentA, std::vector<GraphNode *> &parentB);
+  std::vector<double> create_prob_dist();
 
-void set_end_pt(std::vector<GraphNode *> grid_pts);
+  void set_end_pt(std::vector<GraphNode *> grid_pts);
 
-std::vector<std::vector<GraphNode *> > initial_seed;
-std::vector<std::vector<GraphNode *> > current_population;
-std::vector< std::vector< std::vector<GraphNode *> > > all_populations;
+  std::vector<std::vector<GraphNode *> > initial_seed;
+  std::vector<std::vector<GraphNode *> > current_population;
+  std::vector< std::vector< std::vector<GraphNode *> > > all_populations;
 //std::unordered_map< std::vector<GraphNode *>, double> current_pop_fitness;
 
-void print_current_population();
+  void print_current_population();
+
+  void select_parent(std::vector<double> &probability_dist,
+                     std::uniform_real_distribution<double> dist,
+                     std::mt19937 &generator, std::vector<GraphNode *> &parent);
+
+  double normalize_entropy(GraphNode *a);
+  double normalize_graph_node_distance(GraphNode* a, GraphNode* b);
+  bool in_current_path(std::vector<GraphNode *> path, GraphNode * mutation);
+
+
+};
+
+
 
 
 #endif //IVP_EXTEND_GEN_PP_H
