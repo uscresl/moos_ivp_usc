@@ -621,9 +621,48 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
 {
   // input: semicolon separated string of comma separated locations
   // separate by semicolon
+
   std::vector<std::string> sample_points = parseString(input_string, ';');
   // for each, add to vector
   m_sample_graph_nodes.reserve(sample_points.size());
+
+  // Use first sample point
+  std::string first_location = sample_points.at(0);
+  size_t comma_pos = first_location.find(',');
+  double lon = (double)atof(first_location.substr(0,comma_pos).c_str());
+  double lat = (double)atof(first_location.substr(comma_pos+1,first_location.length()).c_str());
+
+  // new storage:
+  // 1. assume ordered as per creation (if needed, we can recalculate the v_id)
+  // 2. store in a map; v_id is key, location is value
+  // 3. later on, we can easily retrieve from map / store in other
+  Eigen::Vector2d first_loc_vec;
+  first_loc_vec(0) = lon;
+  first_loc_vec(1) = lat;
+
+  // copy the points to have all sample points for easier processing for predictions
+  m_sample_graph_nodes.emplace_back(first_loc_vec, 0.0);
+
+  GraphNode* first_graph_node = &m_sample_graph_nodes.back();
+
+  // Use last sample point
+  std::string second_location = sample_points.at(sample_points.size());
+  comma_pos = second_location.find(',');
+  lon = (double)atof(second_location.substr(0,comma_pos).c_str());
+  lat = (double)atof(second_location.substr(comma_pos+1,second_location.length()).c_str());
+
+  // new storage:
+  // 1. assume ordered as per creation (if needed, we can recalculate the v_id)
+  // 2. store in a map; v_id is key, location is value
+  // 3. later on, we can easily retrieve from map / store in other
+  Eigen::Vector2d second_loc_vec;
+  second_loc_vec(0) = lon;
+  second_loc_vec(1) = lat;
+
+  // copy the points to have all sample points for easier processing for predictions
+  m_sample_graph_nodes.emplace_back(second_loc_vec, 0.0);
+
+  GraphNode* second_graph_node = &m_sample_graph_nodes.back();
 
   std::ofstream ofstream_loc;
   std::string m_file_loc = (m_output_filename_prefix + "_locations_plan.csv");
@@ -631,14 +670,14 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
 
   m_lanes_x = std::floor(m_pts_grid_width / m_pts_grid_spacing);
   m_lanes_y = std::floor(m_pts_grid_height / m_pts_grid_spacing);
-  int upper_node_index = 0;
   GraphNode* upper_node = NULL;
-  for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
+
+  for ( int id_pt = 0; id_pt < sample_points.size()/2; id_pt++ )
   {
     std::string location = sample_points.at(id_pt);
-    size_t comma_pos = location.find(',');
-    double lon = (double)atof(location.substr(0,comma_pos).c_str());
-    double lat = (double)atof(location.substr(comma_pos+1,location.length()).c_str());
+    comma_pos = location.find(',');
+    lon = (double)atof(location.substr(0,comma_pos).c_str());
+    lat = (double)atof(location.substr(comma_pos+1,location.length()).c_str());
 
     // new storage:
     // 1. assume ordered as per creation (if needed, we can recalculate the v_id)
@@ -653,11 +692,13 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
 
     GraphNode* graph_node = &m_sample_graph_nodes.back();
 
-    if (upper_node_index % 4 == 0) {
-        GraphNode* temp_node = upper_node;
-        upper_node = graph_node;
-        upper_node->set_west_neighbour(temp_node);
-    }
+
+    // if (upper_node_index % 4 == 0) {
+    //     GraphNode* temp_node = upper_node;
+    //     upper_node = graph_node;
+    //     upper_node->set_west_neighbour(temp_node);
+    //     m_upper_graph_nodes.push_back(upper_node);
+    // }
     long west_neighbour_index = id_pt - (m_lanes_y + 1);
     long south_neighbour_index = id_pt - 1;
     GraphNode* west_neighbour = west_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[west_neighbour_index];
@@ -669,9 +710,7 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
     if ( south_neighbour )
       south_neighbour->set_north_neighbour(graph_node);
 
-    if (upper_node) {
-        upper_node->set_children(graph_node);
-    }
+    first_graph_node->set_children(graph_node);
 
     // Alternative would be to have objects in maps or allocating them dynamically.
     m_sample_points_unvisited.insert( std::pair<size_t, GraphNode*>(id_pt, graph_node) );
@@ -696,8 +735,140 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
         std::cout << GetAppName() << " :: NE Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
     }
 
-    upper_node_index++;
   }
+
+  for ( int id_pt = sample_points.size()/2; id_pt < sample_points.size(); id_pt++ )
+  {
+    std::string location = sample_points.at(id_pt);
+    comma_pos = location.find(',');
+    lon = (double)atof(location.substr(0,comma_pos).c_str());
+    lat = (double)atof(location.substr(comma_pos+1,location.length()).c_str());
+
+    // new storage:
+    // 1. assume ordered as per creation (if needed, we can recalculate the v_id)
+    // 2. store in a map; v_id is key, location is value
+    // 3. later on, we can easily retrieve from map / store in other
+    Eigen::Vector2d loc_vec;
+    loc_vec(0) = lon;
+    loc_vec(1) = lat;
+
+    // copy the points to have all sample points for easier processing for predictions
+    m_sample_graph_nodes.emplace_back(loc_vec, 0.0);
+
+    GraphNode* graph_node = &m_sample_graph_nodes.back();
+
+
+    // if (upper_node_index % 4 == 0) {
+    //     GraphNode* temp_node = upper_node;
+    //     upper_node = graph_node;
+    //     upper_node->set_west_neighbour(temp_node);
+    //     m_upper_graph_nodes.push_back(upper_node);
+    // }
+    long west_neighbour_index = id_pt - (m_lanes_y + 1);
+    long south_neighbour_index = id_pt - 1;
+    GraphNode* west_neighbour = west_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[west_neighbour_index];
+    GraphNode* south_neighbour = south_neighbour_index < 0 || id_pt % (m_lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[south_neighbour_index];
+    graph_node->set_west_neighbour(west_neighbour);
+    if ( west_neighbour )
+      west_neighbour->set_east_neighbour(graph_node);
+    graph_node->set_south_neighbour(south_neighbour);
+    if ( south_neighbour )
+      south_neighbour->set_north_neighbour(graph_node);
+
+     second_graph_node->set_children(graph_node);
+
+    // Alternative would be to have objects in maps or allocating them dynamically.
+    m_sample_points_unvisited.insert( std::pair<size_t, GraphNode*>(id_pt, graph_node) );
+
+    // save to file
+    ofstream_loc << std::setprecision(15) << lon << ", " << lat << '\n';
+
+    // the first location should be bottom left corner, store as minima
+    if ( id_pt == 0 )
+    {
+      m_min_lon = lon;
+      m_min_lat = lat;
+      if ( m_debug )
+        std::cout << GetAppName() << " :: SW Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
+    }
+    if ( id_pt == sample_points.size()-1 )
+    {
+      // last location = top right corner, store as maxima
+      m_max_lon = lon;
+      m_max_lat = lat;
+      if ( m_debug )
+        std::cout << GetAppName() << " :: NE Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
+    }
+
+  }
+
+  // for ( size_t id_pt = 0; id_pt < sample_points.size(); id_pt++ )
+  // {
+  //   std::string location = sample_points.at(id_pt);
+  //   comma_pos = location.find(',');
+  //   lon = (double)atof(location.substr(0,comma_pos).c_str());
+  //   lat = (double)atof(location.substr(comma_pos+1,location.length()).c_str());
+  //
+  //   // new storage:
+  //   // 1. assume ordered as per creation (if needed, we can recalculate the v_id)
+  //   // 2. store in a map; v_id is key, location is value
+  //   // 3. later on, we can easily retrieve from map / store in other
+  //   Eigen::Vector2d loc_vec;
+  //   loc_vec(0) = lon;
+  //   loc_vec(1) = lat;
+  //
+  //   // copy the points to have all sample points for easier processing for predictions
+  //   m_sample_graph_nodes.emplace_back(loc_vec, 0.0);
+  //
+  //   GraphNode* graph_node = &m_sample_graph_nodes.back();
+  //
+  //
+  //   // if (upper_node_index % 4 == 0) {
+  //   //     GraphNode* temp_node = upper_node;
+  //   //     upper_node = graph_node;
+  //   //     upper_node->set_west_neighbour(temp_node);
+  //   //     m_upper_graph_nodes.push_back(upper_node);
+  //   // }
+  //   long west_neighbour_index = id_pt - (m_lanes_y + 1);
+  //   long south_neighbour_index = id_pt - 1;
+  //   GraphNode* west_neighbour = west_neighbour_index < 0 ? NULL : &m_sample_graph_nodes[west_neighbour_index];
+  //   GraphNode* south_neighbour = south_neighbour_index < 0 || id_pt % (m_lanes_y + 1) == 0? NULL : &m_sample_graph_nodes[south_neighbour_index];
+  //   graph_node->set_west_neighbour(west_neighbour);
+  //   if ( west_neighbour )
+  //     west_neighbour->set_east_neighbour(graph_node);
+  //   graph_node->set_south_neighbour(south_neighbour);
+  //   if ( south_neighbour )
+  //     south_neighbour->set_north_neighbour(graph_node);
+  //
+  //   // if (upper_node) {
+  //   //     upper_node->set_children(graph_node);
+  //   // }
+  //
+  //   // Alternative would be to have objects in maps or allocating them dynamically.
+  //   m_sample_points_unvisited.insert( std::pair<size_t, GraphNode*>(id_pt, graph_node) );
+  //
+  //   // save to file
+  //   ofstream_loc << std::setprecision(15) << lon << ", " << lat << '\n';
+  //
+  //   // the first location should be bottom left corner, store as minima
+  //   if ( id_pt == 0 )
+  //   {
+  //     m_min_lon = lon;
+  //     m_min_lat = lat;
+  //     if ( m_debug )
+  //       std::cout << GetAppName() << " :: SW Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
+  //   }
+  //   if ( id_pt == sample_points.size()-1 )
+  //   {
+  //     // last location = top right corner, store as maxima
+  //     m_max_lon = lon;
+  //     m_max_lat = lat;
+  //     if ( m_debug )
+  //       std::cout << GetAppName() << " :: NE Sample location: " << std::setprecision(10) << lon << " " << lat << std::endl;
+  //   }
+  //
+  //   upper_node_index++;
+  // }
   ofstream_loc.close();
   // check / communicate what we did
   if ( m_debug )
@@ -1240,6 +1411,8 @@ void GP_AUV::ftcWptSelection(std::string & next_waypoint, GraphNode* goal)
     // Get current index
     int current_node_index = getIndexForMap(m_lon, m_lat);
 
+    std::cout << GetAppName() << " :: In ftcWptSelection: found current node index " << current_node_index << std::endl;
+
     std::unordered_map< size_t, GraphNode* >::iterator current_node_itr;
     current_node_itr = m_sample_points_visited.find(current_node_index);
 
@@ -1250,6 +1423,8 @@ void GP_AUV::ftcWptSelection(std::string & next_waypoint, GraphNode* goal)
     }
 
     if (goal_exists) {
+        std::cout << GetAppName() << " :: In ftcWptSelection: goal exists in region " << std::endl;
+
         // Run path planning within region to reach the goal
         GraphNode* next = current_node_itr->second;
         while (next != goal) {
@@ -1263,10 +1438,14 @@ void GP_AUV::ftcWptSelection(std::string & next_waypoint, GraphNode* goal)
             nextWaypoints.push_back(next);
         }
     } else {
-        for (GraphNode* upper : m_upper_graph_nodes)
-        {
-            recalcUpperNodeEntropy(upper);
-        }
+        std::cout << GetAppName() << " :: In ftcWptSelection: goal doesn't exist in region " << std::endl;
+
+        // for (GraphNode* upper : m_upper_graph_nodes)
+        // {
+        //     recalcUpperNodeEntropy(upper);
+        // }
+
+        std::cout << GetAppName() << " :: In ftcWptSelection: recalculated upper graph nodes " << std::endl;
 
         GraphNode* next_upper = current_node_itr->second;
         // Go to highest entropy upper level neighbour
@@ -1278,6 +1457,8 @@ void GP_AUV::ftcWptSelection(std::string & next_waypoint, GraphNode* goal)
         nextWaypoints.push_back(next_upper);
 
     }
+
+    std::cout << GetAppName() << " :: In ftcWptSelection: publishing waypoints " << std::endl;
 
     // Publish waypoints
     for (int i = 1; i < nextWaypoints.size(); i++)
@@ -1516,11 +1697,18 @@ void GP_AUV::publishNextWaypointLocations()
   else if ( m_path_planning_method == "recursive_greedy" )
     recursiveGreedyWptSelection(next_wpts);
   else if ( m_path_planning_method == "ftc_a*") {
+      std::cout << GetAppName() << " :: Before sorting sample graph nodes" << std::endl;
+
       std::sort(m_sample_graph_nodes.begin(), m_sample_graph_nodes.end(), [] (GraphNode a, GraphNode b)
       {
           return a.get_value() > b.get_value();
       });
+
+      std::cout << GetAppName() << " :: Finished sample graph nodes" << std::endl;
+
       GraphNode goal = m_sample_graph_nodes[0];
+      std::cout << GetAppName() << " :: Goal graph node value: " << goal.get_value() << std::endl;
+
       std::cout << GetAppName() << " :: Entering path planning function " << std::endl;
 
     ftcWptSelection(next_wpts, &goal);

@@ -1,0 +1,52 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% LOG FILE:       ./LOG_ANNA_20_4_2018_____11_31_14/LOG_ANNA_20_4_2018_____11_31_14.ylog
+%% FILE OPENED ON  Wed Dec 31 16:00:00 1969
+%% LOGSTART               4572747223.14
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+2.572323   MOOS_DEBUG           pMarinePID           ** NEW CONTROLLER GAINS ARE ** 
+2.572362   MOOS_DEBUG           pMarinePID           YAW_PID_KP             = 0.400 
+2.572371   MOOS_DEBUG           pMarinePID           YAW_PID_KD             = 0.100 
+2.572383   MOOS_DEBUG           pMarinePID           YAW_PID_KI             = 0.000 
+2.572389   MOOS_DEBUG           pMarinePID           YAW_PID_INTEGRAL_LIMIT = 0.070 
+2.572401   MOOS_DEBUG           pMarinePID           MAXRUDDER              = 100.000 
+2.578587   MOOS_DEBUG           pMarinePID           SPEED_PID_KP           = 1.000 
+2.57862    MOOS_DEBUG           pMarinePID           SPEED_PID_KD           = 0.000 
+2.578629   MOOS_DEBUG           pMarinePID           SPEED_PID_KI           = 0.000 
+2.578638   MOOS_DEBUG           pMarinePID           SPEED_PID_INTEGRAL_LIMIT = 0.070 
+2.578644   MOOS_DEBUG           pMarinePID           MAXTHRUST              = 100.000 
+2.583957   MOOS_DEBUG           pMarinePID           Z_TO_PITCH_PID_KP      = 0.120 
+2.583993   MOOS_DEBUG           pMarinePID           Z_TO_PITCH_PID_KD      = 1.000 
+2.584002   MOOS_DEBUG           pMarinePID           Z_TO_PITCH_PID_KI      = 0.004 
+2.584011   MOOS_DEBUG           pMarinePID           Z_TO_PITCH_PID_KI_LIMIT= 0.050 
+2.584017   MOOS_DEBUG           pMarinePID           MAXELEVATOR            = 13.000 
+2.588445   MOOS_DEBUG           pMarinePID           PITCH_PID_KP           = 0.500 
+2.588459   MOOS_DEBUG           pMarinePID           PITCH_PID_KD           = 1.000 
+2.588466   MOOS_DEBUG           pMarinePID           PITCH_PID_KI           = 0.000 
+2.588471   MOOS_DEBUG           pMarinePID           PITCH_PID_KI_LIMIT     = 0.000 
+2.588481   MOOS_DEBUG           pMarinePID           MAXPITCH               = 0.262 
+2.700306   MOOS_DEBUG           pMarinePID           Paused Due To Tardy HELM Input: THRUST=0 
+3.46437    MOOS_DEBUG           pMarinePID           pMarinePID Control Is On 
+4.439382   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: NothingToDo 
+4.693188   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: NothingToDo 
+6.77718    MOOS_DEBUG           pMarinePID           Paused Due To Tardy HELM Input: THRUST=0 
+76.49129   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+268.6674   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+268.9196   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+297.7672   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+298.0333   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+324.0114   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+324.2754   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+350.1612   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+350.419    MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+376.3422   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+376.6018   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+402.4632   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+402.7215   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+428.6807   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+428.9386   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+454.9478   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+455.1987   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+481.0111   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+481.2622   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 
+507.1919   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: MissingDecVars:speed,course 
+507.4474   MOOS_DEBUG           pHelmIvP             pHelmIvP AllStop: clear 

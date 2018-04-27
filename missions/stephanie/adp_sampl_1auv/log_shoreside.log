@@ -1,0 +1,513 @@
+[32mpHostInfo launching as pHostInfo
+[0m
+[32muFldShoreBroker launching as: uFldShoreBroker
+[0m
+[32muFldNodeComms launching as uFldNodeComms
+[0m
+
+-------------- moos connect ----------------------
+  contacting a MOOS server localhost:9000 -  try 00001 
+  Handshaking as pHostInfo              [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mYingyus-MacBook-Pro.local
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+***************************************************
+*  pHostInfo starting ...
+***************************************************
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  TEMP_FILE_DIR
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  DEFAULT_HOSTIP
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  COMMSTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  APPTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+-------------- moos connect ----------------------
+  contacting a MOOS server localhost:9000 -  try 00001 
+  Handshaking as uFldShoreBroker        [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mYingyus-MacBook-Pro.local
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+***************************************************
+*  uFldShoreBroker starting ...
+***************************************************
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  QBRIDGE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  COMMSTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  APPTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+-------------- moos connect ----------------------
+  contacting a MOOS server localhost:9000 -  try 00001 
+  Handshaking as uFldNodeComms          [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mYingyus-MacBook-Pro.local
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+***************************************************
+*  uFldNodeComms starting ...
+***************************************************
+[32muTimerScript launching as uTimerScript
+[0m
+
+-------------- moos connect ----------------------
+  contacting a MOOS server localhost:9000 -  try 00001 
+  Handshaking as pShare                 [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mYingyus-MacBook-Pro.local
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m   none
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- localhost:9300      [udp]
+-------------------------------------------------------------------------------
+
+-------------- moos connect ----------------------
+  contacting a MOOS server localhost:9000 -  try 00001 
+  Handshaking as uTimerScript           [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mYingyus-MacBook-Pro.local
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+***************************************************
+*  uTimerScript starting ...
+***************************************************
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  TIME_WARP
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  STATUS_VAR
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  RESET_VAR
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  RESET_MAX
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  EVENT
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  VERBOSE
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  COMMSTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++
+param =  APPTICK
++++++++++++++++++++++++++++++++++++++++++++++++++
+[34mRandom Variable configurations: 
+[34mRandom Pair configurations: 
+[0m
+[35m
+The Raw Script: ========================================
+Total Elements: 1
+[0] VIEW_SEGLIST=pts={500,1200:500,1000:900,1000:900,1200:500,1200},label=survey_area,label_color=white,edge_color=yellow,vertex_color=yellow,vertex_size=3,edge_size=3, TIME:-1, RANGE=[10,10], POSTED=false
+====================================================
+[0m
+pShare is Running:
+ |-Baseline AppTick   @ 40.0 Hz
+ |--Comms is Full Duplex and Asynchronous
+ |--Iterate Mode 2 :
+   -Regular iterate at 40 Hz. 
+   |-Dynamic message delivery at an unlimited rate
+	|-Time Warp @ 3.0 
+	|-Time Warp delay @ 1.2 ms 
+
+
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m  routing for "NODE_BROKER_ACK_ANNA"
+  --> 10.9.9.98:9301       as NODE_BROKER_ACK [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_BROKER_ACK [udp] every notification 
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- localhost:9300      [udp]
+-------------------------------------------------------------------------------
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m  routing for "DEPLOY_ALL"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "NODE_BROKER_ACK_ANNA"
+  --> 10.9.9.98:9301       as NODE_BROKER_ACK [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_BROKER_ACK [udp] every notification 
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- localhost:9300      [udp]
+-------------------------------------------------------------------------------
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m  routing for "DEPLOY_ALL"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "DEPLOY_ANNA"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "NODE_BROKER_ACK_ANNA"
+  --> 10.9.9.98:9301       as NODE_BROKER_ACK [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_BROKER_ACK [udp] every notification 
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- localhost:9300      [udp]
+-------------------------------------------------------------------------------
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m  routing for "DEPLOY_ALL"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "DEPLOY_ANNA"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "NODE_BROKER_ACK_ANNA"
+  --> 10.9.9.98:9301       as NODE_BROKER_ACK [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_BROKER_ACK [udp] every notification 
+  routing for "RETURN_ALL"
+  --> 10.9.9.98:9301       as RETURN     [udp] every notification 
+  --> 10.9.9.98:9401       as RETURN     [udp] every notification 
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- localhost:9300      [udp]
+-------------------------------------------------------------------------------
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m  routing for "DEPLOY_ALL"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "DEPLOY_ANNA"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "NODE_BROKER_ACK_ANNA"
+  --> 10.9.9.98:9301       as NODE_BROKER_ACK [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_BROKER_ACK [udp] every notification 
+  routing for "RETURN_ALL"
+  --> 10.9.9.98:9301       as RETURN     [udp] every notification 
+  --> 10.9.9.98:9401       as RETURN     [udp] every notification 
+  routing for "RETURN_ANNA"
+  --> 10.9.9.98:9301       as RETURN     [udp] every notification 
+  --> 10.9.9.98:9401       as RETURN     [udp] every notification 
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- localhost:9300      [udp]
+-------------------------------------------------------------------------------
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m  routing for "DEPLOY_ALL"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "DEPLOY_ANNA"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "NODE_BROKER_ACK_ANNA"
+  --> 10.9.9.98:9301       as NODE_BROKER_ACK [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_BROKER_ACK [udp] every notification 
+  routing for "NODE_MESSAGE_ALL"
+  --> 10.9.9.98:9301       as NODE_MESSAGE [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_MESSAGE [udp] every notification 
+  routing for "RETURN_ALL"
+  --> 10.9.9.98:9301       as RETURN     [udp] every notification 
+  --> 10.9.9.98:9401       as RETURN     [udp] every notification 
+  routing for "RETURN_ANNA"
+  --> 10.9.9.98:9301       as RETURN     [udp] every notification 
+  --> 10.9.9.98:9401       as RETURN     [udp] every notification 
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- localhost:9300      [udp]
+-------------------------------------------------------------------------------
+---------------------- [1;33mROUTING INFORMATION[0m ------------------------------------
+[1;32mStandard Routes:
+[0m  routing for "DEPLOY_ALL"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "DEPLOY_ANNA"
+  --> 10.9.9.98:9301       as DEPLOY     [udp] every notification 
+  --> 10.9.9.98:9401       as DEPLOY     [udp] every notification 
+  routing for "NODE_BROKER_ACK_ANNA"
+  --> 10.9.9.98:9301       as NODE_BROKER_ACK [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_BROKER_ACK [udp] every notification 
+  routing for "NODE_MESSAGE_ALL"
+  --> 10.9.9.98:9301       as NODE_MESSAGE [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_MESSAGE [udp] every notification 
+  routing for "NODE_MESSAGE_ANNA"
+  --> 10.9.9.98:9301       as NODE_MESSAGE [udp] every notification 
+  --> 10.9.9.98:9401       as NODE_MESSAGE [udp] every notification 
+  routing for "RETURN_ALL"
+  --> 10.9.9.98:9301       as RETURN     [udp] every notification 
+  --> 10.9.9.98:9401       as RETURN     [udp] every notification 
+  routing for "RETURN_ANNA"
+  --> 10.9.9.98:9301       as RETURN     [udp] every notification 
+  --> 10.9.9.98:9401       as RETURN     [udp] every notification 
+[1;32mWildcard Routes:
+[0m   none
+[1;32mListening on:
+[0m  <-- localhost:9300      [udp]
+-------------------------------------------------------------------------------
+
+-------------- moos connect ----------------------
+  contacting a MOOS server localhost:9000 -  try 00001 
+  Handshaking as pLogger                [1;32m[ok]
+[0m  DB reports async support is           [1;32m[on]
+[0m  DB is running on                      [1;32mYingyus-MacBook-Pro.local
+[0m  Timing skew estimation is             [33m[off] (not needed)
+[0m--------------------------------------------------
+
+pLogger is Running:
+ |-Baseline AppTick   @ 5.0 Hz
+ |--Comms is Full Duplex and Asynchronous
+ -Iterate Mode 0 :
+   |-Regular iterate and message delivery at 5 Hz
+	|-Time Warp @ 3.0 
+	|-Time Warp delay @ 1.2 ms 
+
+
+  Added wildcard logging of APPCAST_REQ         
+  Added wildcard logging of DB_CLIENTS          
+  Added wildcard logging of DB_EVENT            
+  Added wildcard logging of DB_TIME             
+  Added wildcard logging of DB_UPTIME           
+  Added wildcard logging of HOST_INFO_REQUEST   
+  Added wildcard logging of LOGGER_DIRECTORY    
+  Added wildcard logging of LOGGER_RESTART      
+  Added wildcard logging of NODE_BROKER_PING    
+  Added wildcard logging of PHI_HOST_INFO       
+  Added wildcard logging of PLOGGER_CMD         
+  Added wildcard logging of PLOGGER_STATUS      
+  Added wildcard logging of PSHARE_INPUT_SUMMARY
+  Added wildcard logging of EXITED_NORMALLY     
+  Added wildcard logging of NODE_MESSAGE        
+  Added wildcard logging of NODE_REPORT         
+  Added wildcard logging of NODE_REPORT_LOCAL   
+  Added wildcard logging of PHOSTINFO_STATUS    
+  Added wildcard logging of PSHARE_CMD          
+  Added wildcard logging of PSHARE_STATUS       
+  Added wildcard logging of UFLDNODECOMMS_ITER_GAP
+  Added wildcard logging of UFLDNODECOMMS_ITER_LEN
+  Added wildcard logging of UFLDNODECOMMS_STATUS
+  Added wildcard logging of UNC_EARANGE         
+  Added wildcard logging of UNC_STEALTH         
+  Added wildcard logging of UNC_VIEW_NODE_RPT_PULSES
+  Added wildcard logging of UTS_FORWARD         
+  Added wildcard logging of UTS_PAUSE           
+  Added wildcard logging of UTS_RESET           
+  Added wildcard logging of PSHARE_OUTPUT_SUMMARY
+  Added wildcard logging of UFLDSHOREBROKER_ITER_GAP
+  Added wildcard logging of UFLDSHOREBROKER_ITER_LEN
+  Added wildcard logging of UFLDSHOREBROKER_STATUS
+  Added wildcard logging of UTIMERSCRIPT_ITER_GAP
+  Added wildcard logging of UTIMERSCRIPT_ITER_LEN
+  Added wildcard logging of UTIMERSCRIPT_STATUS 
+  Added wildcard logging of UTS_STATUS          
+  Added wildcard logging of GRID_CONFIG         
+  Added wildcard logging of GRID_DELTA          
+  Added wildcard logging of HELM_MAP_CLEAR      
+  Added wildcard logging of PHI_HOST_IP         
+  Added wildcard logging of PMARINEVIEWER_ITER_LEN
+  Added wildcard logging of PMARINEVIEWER_STATUS
+  Added wildcard logging of PMV_CLEAR           
+  Added wildcard logging of PMV_CONNECT         
+  Added wildcard logging of PMV_MENU_CONTEXT    
+  Added wildcard logging of TRAIL_RESET         
+  Added wildcard logging of VIEW_CIRCLE         
+  Added wildcard logging of VIEW_COMMS_PULSE    
+  Added wildcard logging of VIEW_GRID           
+  Added wildcard logging of VIEW_MARKER         
+  Added wildcard logging of VIEW_POINT          
+  Added wildcard logging of VIEW_POLYGON        
+  Added wildcard logging of VIEW_RANGE_PULSE    
+  Added wildcard logging of VIEW_SEGLIST        
+  Added wildcard logging of VIEW_SEGLR          
+  Added wildcard logging of VIEW_VECTOR         
+  Added wildcard logging of VIEW_WEDGE          
+  Added wildcard logging of PMARINEVIEWER_ITER_GAP
+  Added wildcard logging of APPCAST_REQ_ALL     
+  Added wildcard logging of PHI_HOST_IP_ALL     
+  Added wildcard logging of PHI_HOST_IP_VERBOSE 
+  Added wildcard logging of PHI_HOST_PORT_DB    
+  Added wildcard logging of PHOSTINFO_ITER_GAP  
+  Added wildcard logging of PHOSTINFO_ITER_LEN  
+  Added wildcard logging of DEPLOY_ALL          
+  Added wildcard logging of DEPLOY_ANNA         
+  Added wildcard logging of NODE_BROKER_ACK_ANNA
+  Added wildcard logging of NODE_BROKER_VACK    
+  Added wildcard logging of NODE_MESSAGE_ALL    
+  Added wil------------------- MOOSDB V10 -------------------
+  Hosting  community                [1;32m"shoreside"
+[0m  Name look up is                   [31moff
+[0m  Asynchronous support is           [1;32mon
+[0m  Connect to this server on port    [32m9000[0m
+--------------------------------------------------
+[1;33mnetwork performance data published on localhost:9020
+listen with "nc -u -lk 9020"
+[0m
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpLogger[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m1[0m
+--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpHostInfo[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m2[0m
+--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32muFldShoreBroker[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m3[0m
+--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32muFldNodeComms[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m4[0m
+--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpShare[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m5[0m
+--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32muTimerScript[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m6[0m
+--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpMarineViewer[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m7[0m
+--------------------------------
+WARNING : Message VIEW_POLYGON from pHelmIvP is 19831.7 ms delayed
+[1;31mDisconnecting "pMarineViewer" after 5 seconds of silence
+[0m
+----------[1;33mDISCONNECT[0m------------
+[33mpMarineViewer is leaving...           [1;32m[OK]
+[0m--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpMarineViewer[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m7[0m
+--------------------------------
+[1;31mDisconnecting "pMarineViewer" after 5 seconds of silence
+[0m
+----------[1;33mDISCONNECT[0m------------
+[33mpMarineViewer is leaving...           [1;32m[OK]
+[0m--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpMarineViewer[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m7[0m
+--------------------------------
+[1;31mDisconnecting "pMarineViewer" after 5 seconds of silence
+[0m
+----------[1;33mDISCONNECT[0m------------
+[33mpMarineViewer is leaving...           [1;32m[OK]
+[0m--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpMarineViewer[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m7[0m
+--------------------------------
+[1;31mDisconnecting "pMarineViewer" after 5 seconds of silence
+[0m
+----------[1;33mDISCONNECT[0m------------
+[33mpMarineViewer is leaving...           [1;32m[OK]
+[0m--------------------------------
+
+------------[1;32mCONNECT[0m-------------
+  Handshaking   :  [32mOK
+[0m  Client's name :  [32mpMarineViewer[0m
+  Type          :  [1;33mAsynchronous[0m
+  Priority      :  [32mnormal[0m
+  Total Clients :  [32m7[0m
+------dcard logging of NODE_MESSAGE_ANNA   
+  Added wildcard logging of RETURN_ALL          
+  Added wildcard logging of RETURN_ANNA         
+  Added wildcard logging of MOOS_MANUAL_OVERIDE_ALL
+*************************************
+*  This is Antler, head of MOOS...  *
+*  P. Newman 2008                   *
+*************************************
+
+
+|****** Launch ******|
+
+Unless directed otherwise using system path to locate binaries 
+   [000] Process: MOOSDB          ~ MOOSDB          launched successfully
+   [001] Process: pLogger         ~ pLogger         launched successfully
+   [002] Process: pHostInfo       ~ pHostInfo       launched successfully
+   [003] Process: uFldShoreBroker ~ uFldShoreBroker launched successfully
+   [004] Process: uFldNodeComms   ~ uFldNodeComms   launched successfully
+   [005] Process: pShare          ~ pShare          launched successfully
+   [007] Process: pMarineViewer   ~ pMarineViewer   launched successfully
+   [008] Process: uTimerScript    ~ uTimerScript    launched successfully
+
+
+|***** Shutdown *****|
+
+
+   Signalling uTimerScript    [OK]
+   Signalling pMarineViewer   [OK]
+   Signalling pShare          [OK]
+   Signalling uFldNodeComms   [OK]
+   Signalling uFldShoreBroker [OK]
+   Signalling pHostInfo       [OK]
+   Signalling pLogger         [OK]
+   Signalling MOOSDB          [OK]
+
+   All spawned processes shutdown.
+
+   That was the MOOS 
+

@@ -1,0 +1,12 @@
+# Wed Nov 29 09:43:35 2017
+
+# input dimensionality
+2
+
+# covariance function
+CovSum(CovSEiso, CovNoise)
+
+# log-hyperparameter
+-7.6 0.5 -1.8971 
+
+# data (target value in first column)
