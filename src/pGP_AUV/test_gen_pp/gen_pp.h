@@ -10,6 +10,7 @@
 #include <random>
 #include <unordered_map>
 #include <algorithm>
+#include <fstream>
 #include "GraphNode.h"
 
 
@@ -26,6 +27,7 @@ public:
   double min_entropy, max_entropy;
   double entropy_normalizing_factor;
   GraphNode *end_pt;
+
 
 //struct char_seq_hash
 //{

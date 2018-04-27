@@ -21,12 +21,15 @@
 #include "gen_pp.h"
 #include "GraphNode.h"
 
+std::ofstream filestream;
+
 #define INITPOP "INITIALIZE POPULATION \n\n"
 #define CROSSOVER "CROSSOVER PAIRS \n\n"
 #define SELECTPARENTS "SELECT PARENTS \n\n"
 #define MUTATE "MUTATE PATHS \n\n"
 #define SORTBYFITNESS "SORT PATHS BY FITNESS \n\n"
 #define PROBABILITYDIST "CREATE PROBABILITY DISTRIBUTION \n\n"
+#define PWD "/Users/prachinawathe/Documents/resl/moos_ivp_usc/src/pGP_AUV/test_gen_pp/data"
 
 double distance_between(const GraphNode* a, const GraphNode* b);
 
@@ -44,6 +47,13 @@ void GenPP::genetic_pp_init(double max_lon, double min_lon, double max_lat, doub
   entropy_normalizing_factor = 1.0 / (max_entropy - min_entropy);
 
   end_pt = NULL;
+  time_t _tm =time(NULL );
+  struct tm * curtime = localtime ( &_tm );
+  std::string time = PWD;
+  time += "/data";
+  time.append(asctime(curtime));
+  time += ".txt";
+  filestream.open(time);
 
   //TODO track end of given path, not current location: we want to build path from where we WILL BE in the end
   //is this something relevant?
@@ -113,6 +123,9 @@ void GenPP::run_genetic_pp(std::vector<GraphNode *> grid_pts)
     current_population = new_population;
     print_current_population("new population");
   }
+
+
+  filestream.close();
 }
 
 void GenPP::generate_initial_paths(std::vector<GraphNode* > grid_pts, std::mt19937 &generator)
@@ -341,12 +354,15 @@ bool GenPP::in_current_path(std::vector<GraphNode *> path, GraphNode * mutation)
 void GenPP::print_current_population(std::string printstring)
 {
   std::cout << printstring << std::endl;
+  filestream << std::endl;
   std::for_each(current_population.begin(), current_population.end(), [](std::vector<GraphNode *>&path) {
-    std::for_each(path.begin(), path.end(), [](GraphNode* &node)
+    std::for_each(path.begin(), path.end(), [&](GraphNode* &node)
     {
       std::cout << "(" << node->get_location()(0) << "," << node->get_location()(1) << ") ";
+      filestream << "(" << node->get_location()(0) << "," << node->get_location()(1) << ") ";
     });
     std::cout << std::endl;
+    filestream << std::endl;
   });
 }
 

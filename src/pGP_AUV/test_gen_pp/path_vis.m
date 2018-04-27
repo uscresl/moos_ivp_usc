@@ -22,7 +22,6 @@ for j = 1:510
     end
     X = str2num(char(x));
     Y = str2num(char(y));
-%     scatter(X,Y);
     plot(X,Y);
     drawnow
     F(j) = getframe(gcf);
