@@ -22,7 +22,14 @@ int main(int argc, char *argv[])
     for(int j = 0; j < 20; j++)
     {
       Eigen::Vector2d vector2d(i,j);
-      GraphNode* node = new GraphNode(vector2d, 1);
+      GraphNode* node;
+      if(j >= 10 && j < 15 && i >= 10 && j < 15) {
+        node = new GraphNode(vector2d, 1);
+      }
+      else
+      {
+        node = new GraphNode(vector2d, .5);
+      }
       grid_pts.push_back(node);
     }
   }

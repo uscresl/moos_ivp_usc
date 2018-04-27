@@ -78,7 +78,6 @@ void GenPP::run_genetic_pp(std::vector<GraphNode *> grid_pts)
       std::uniform_real_distribution<double> dist(0.0, 1.0);
       if(crossover_is < CROSSOVER_PROBABILITY)
       {
-
         std::vector<GraphNode *> parentA;
         std::vector<GraphNode *> parentB;
         select_parents(probability_dist, dist, generator, parentA, parentB);
@@ -99,7 +98,9 @@ void GenPP::run_genetic_pp(std::vector<GraphNode *> grid_pts)
         std::uniform_int_distribution<int> mutation_pt(1, PATH_LENGTH - 2);
         int mutation_index = mutate(generator);
         while(in_current_path(child, grid_pts[mutation_index]))
-        {}
+        {
+          mutation_index = mutate(generator);
+        }
         child[mutation_pt(generator)] = grid_pts[mutation_index];
 
         //TODO later: add neighborhood qualifier
@@ -110,7 +111,7 @@ void GenPP::run_genetic_pp(std::vector<GraphNode *> grid_pts)
     }
     all_populations.push_back(new_population);
     current_population = new_population;
-    print_current_population();
+    print_current_population("new population");
   }
 }
 
@@ -124,7 +125,7 @@ void GenPP::generate_initial_paths(std::vector<GraphNode* > grid_pts, std::mt199
     current_population.push_back(initial_seed[i]);
   }
   all_populations.push_back(current_population);
-  print_current_population();
+  print_current_population(INITPOP);
 }
 
 // ---------------------------------------------------------
@@ -143,7 +144,7 @@ std::vector<GraphNode *> GenPP::generate_path(std::vector<GraphNode* > grid_pts,
 
   std::unordered_map<int, GraphNode * > added_nodes;
   std::vector<GraphNode *> path;
-  int i = 0;
+  int i = 1;
   path.push_back(grid_pts[0]);
   while(i < PATH_LENGTH - 1)
   {
@@ -337,8 +338,9 @@ bool GenPP::in_current_path(std::vector<GraphNode *> path, GraphNode * mutation)
   return false;
 }
 
-void GenPP::print_current_population()
+void GenPP::print_current_population(std::string printstring)
 {
+  std::cout << printstring << std::endl;
   std::for_each(current_population.begin(), current_population.end(), [](std::vector<GraphNode *>&path) {
     std::for_each(path.begin(), path.end(), [](GraphNode* &node)
     {

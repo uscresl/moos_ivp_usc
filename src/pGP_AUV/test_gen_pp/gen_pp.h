@@ -15,7 +15,7 @@
 
 #define NUM_PATHS 10
 #define PATH_LENGTH 20
-#define NUM_GENERATIONS 5
+#define NUM_GENERATIONS 50
 #define CROSSOVER_PROBABILITY .9
 #define MUTATION_PROBABILITY .2
 
@@ -53,7 +53,7 @@ public:
   std::vector< std::vector< std::vector<GraphNode *> > > all_populations;
 //std::unordered_map< std::vector<GraphNode *>, double> current_pop_fitness;
 
-  void print_current_population();
+  void print_current_population(std::string printstring);
 
   void select_parent(std::vector<double> &probability_dist,
                      std::uniform_real_distribution<double> dist,
