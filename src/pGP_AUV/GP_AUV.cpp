@@ -646,7 +646,7 @@ void GP_AUV::handleMailSamplePoints(std::string input_string)
   GraphNode* first_graph_node = &m_sample_graph_nodes.back();
 
   // Use last sample point
-  std::string second_location = sample_points.at(sample_points.size());
+  std::string second_location = sample_points.at(sample_points.size()-1);
   comma_pos = second_location.find(',');
   lon = (double)atof(second_location.substr(0,comma_pos).c_str());
   lat = (double)atof(second_location.substr(comma_pos+1,second_location.length()).c_str());
