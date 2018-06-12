@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP.h                                                 */
-/*    DATE: 2015 - 2016                                          */
+/*    DATE: 2015 - 2018                                          */
 /*                                                               */
 /*****************************************************************/
 

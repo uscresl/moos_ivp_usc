@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP.cpp                                               */
-/*    DATE: 2015 - 2016                                          */
+/*    DATE: 2015 - 2018                                          */
 /*                                                               */
 /*****************************************************************/
 
@@ -998,7 +998,7 @@ bool GP::Iterate()
         {
           m_running_voronoi_routine = true;
           runVoronoiRoutine();
-          m_data_received = false; // TODO need this?
+          m_data_received = false;
         }
         break;
       #endif
