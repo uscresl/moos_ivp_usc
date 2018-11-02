@@ -9,7 +9,7 @@
 int main(int argc, char *argv[])
 {
   GenPP genPP;
-  genPP.genetic_pp_init(20, 0, 20, 0, -3, 6.5);
+  genPP.genetic_pp_init(20, 0, 20, 0, .5, 1);
 
   std::vector<int> test_vec;
   test_vec.push_back(0);

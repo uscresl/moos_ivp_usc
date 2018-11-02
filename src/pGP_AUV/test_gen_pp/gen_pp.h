@@ -14,8 +14,8 @@
 #include "GraphNode.h"
 
 
-#define NUM_PATHS 10
-#define PATH_LENGTH 20
+#define NUM_PATHS 20
+#define PATH_LENGTH 10
 #define NUM_GENERATIONS 50
 #define CROSSOVER_PROBABILITY .9
 #define MUTATION_PROBABILITY .2

@@ -20,6 +20,7 @@
 
 #include "gen_pp.h"
 #include "GraphNode.h"
+#include <vector>
 
 std::ofstream filestream;
 
@@ -29,7 +30,7 @@ std::ofstream filestream;
 #define MUTATE "MUTATE PATHS \n\n"
 #define SORTBYFITNESS "SORT PATHS BY FITNESS \n\n"
 #define PROBABILITYDIST "CREATE PROBABILITY DISTRIBUTION \n\n"
-#define PWD "/Users/prachinawathe/Documents/resl/moos_ivp_usc/src/pGP_AUV/test_gen_pp/data"
+#define PWD "/Users/prachinawathe/Documents/resl/moos_ivp_usc/src/pGP_AUV/test_gen_pp/data/"
 
 double distance_between(const GraphNode* a, const GraphNode* b);
 
@@ -49,11 +50,15 @@ void GenPP::genetic_pp_init(double max_lon, double min_lon, double max_lat, doub
   end_pt = NULL;
   time_t _tm =time(NULL );
   struct tm * curtime = localtime ( &_tm );
+
+  char buf[24];
+  strftime (buf,24,"%Y-%m-%d-%H-%M-%S.txt",curtime);
+
   std::string time = PWD;
-  time += "/data";
-  time.append(asctime(curtime));
-  time += ".txt";
+  time += "data";
+  time.append(buf);
   filestream.open(time);
+
 
   //TODO track end of given path, not current location: we want to build path from where we WILL BE in the end
   //is this something relevant?
@@ -63,7 +68,7 @@ void GenPP::run_genetic_pp(std::vector<GraphNode *> grid_pts)
 {
   std::random_device rd;
   std::mt19937 generator(rd());
-  set_end_pt(grid_pts);
+  end_pt = grid_pts[grid_pts.size() - 1];
   generate_initial_paths(grid_pts, generator);
 
   for(int i = 0; i < NUM_GENERATIONS; i++)
@@ -319,7 +324,7 @@ double GenPP::normalize_entropy(GraphNode *a)
   // size of area doesn't matter
   // if data is in different range, then it could cause problems
 
-  return 1.0 - (a->get_value() * entropy_normalizing_factor); //maximize lower entropy
+  return ((a->get_value()-min_entropy) * entropy_normalizing_factor); //maximize lower entropy
 }
 
 void GenPP::set_end_pt(std::vector<GraphNode *> grid_pts)
