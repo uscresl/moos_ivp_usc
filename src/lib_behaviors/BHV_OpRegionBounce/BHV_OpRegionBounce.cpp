@@ -11,6 +11,13 @@
 /*    nb. I tried to follow programming style of the document,   */
 /*        and included comments where I added stuff              */
 /*                                                               */
+/*                                                               */
+/*    Name: Stephanie Kemna (SK) <kemna@usc.edu>                 */
+/*    Organization: University of Southern California, LA, CA, US*/
+/*    Date: May .., 2017                                         */
+/*    Edits: make it possible to have concave polygons           */
+/*                                                               */
+/*                                                               */
 /* This program is free software; you can redistribute it and/or */
 /* modify it under the terms of the GNU General Public License   */
 /* as published by the Free Software Foundation; either version  */
@@ -40,7 +47,7 @@
 #pragma warning(disable : 4503)
 #endif
 #include <iostream>
-#include <math.h> 
+#include <math.h>
 #include <stdlib.h>
 #include "BHV_OpRegionBounce.h"
 #include "MBUtils.h"
@@ -67,7 +74,7 @@ BHV_OpRegionBounce::BHV_OpRegionBounce(IvPDomain gdomain) : IvPBehavior(gdomain)
   if(m_couple)
     m_domain = subDomain(m_domain, "course,speed,depth");
   else
-    m_domain = subDomain(m_domain, "course,speed");  
+    m_domain = subDomain(m_domain, "course,speed");
 
   m_max_depth    = 0;
   m_min_altitude = 0;
@@ -90,29 +97,29 @@ BHV_OpRegionBounce::BHV_OpRegionBounce(IvPDomain gdomain) : IvPBehavior(gdomain)
   m_delta_time    = 0;
   m_secs_in_poly  = 0;
   m_secs_out_poly = 0;
-  
+
   // Declare whether the polygon containment condition is effective
   // immediately (default) or triggered only when the vehicle has
   // first entered the polygon region. This is useful if the vehicle
-  // is being launched from a dock or area which is outside the 
+  // is being launched from a dock or area which is outside the
   // safe zone
   m_trigger_on_poly_entry = false;
 
   // Maintain a flag indicating whether the vehicle has entered
-  // the polygon region. This value is only relevant if the 
+  // the polygon region. This value is only relevant if the
   // trigger_on_poly_entry flag is set to be true.
   m_poly_entry_made = false;
 
-  // Declare the amount of time required for the vehicle to be 
-  // within the polygon region before the polygon containment 
-  // condition is enforced. This value is only relevant if the 
+  // Declare the amount of time required for the vehicle to be
+  // within the polygon region before the polygon containment
+  // condition is enforced. This value is only relevant if the
   // trigger_on_poly_entry flag is set to be true.
   m_trigger_entry_time = 1.0;
 
-  // Declare the amount of time required for the vehicle to be 
-  // outside the polygon region before the polygon containment 
+  // Declare the amount of time required for the vehicle to be
+  // outside the polygon region before the polygon containment
   // condition triggers a declaration of emergency. Setting this
-  // to be non-zero may be useful if the position sensor (GPS) 
+  // to be non-zero may be useful if the position sensor (GPS)
   // occasionally has a whacky single position reading outside
   // the polygon region.
   m_trigger_exit_time = 0.5;
@@ -142,7 +149,7 @@ BHV_OpRegionBounce::BHV_OpRegionBounce(IvPDomain gdomain) : IvPBehavior(gdomain)
 
   // 2011-04 SK: initialize dynamic weighting variable
   m_pwt = 0.0;
-  
+
   // 2011-04 SK: depth or perimeter emergency? initaliaze to false (all ok)
   m_depth_emergency = false;
   m_perimeter_emergency = false;
@@ -164,7 +171,7 @@ BHV_OpRegionBounce::BHV_OpRegionBounce(IvPDomain gdomain) : IvPBehavior(gdomain)
 //            The "radius" parameter indicates what it means to have
 //            arrived at the waypoint.
 
-bool BHV_OpRegionBounce::setParam(string param, string val) 
+bool BHV_OpRegionBounce::setParam(string param, string val)
 {
   if(IvPBehavior::setParam(param, val))
     return(true);
@@ -218,7 +225,7 @@ bool BHV_OpRegionBounce::setParam(string param, string val)
   else if(param == "visual_hints")  {
     vector<string> svector = parseStringQ(val, ',');
     unsigned int i, vsize = svector.size();
-    for(i=0; i<vsize; i++) 
+    for(i=0; i<vsize; i++)
       handleVisualHint(svector[i]);
     return(true);
   }
@@ -242,10 +249,10 @@ bool BHV_OpRegionBounce::setParam(string param, string val)
     if((dval > 0) && (isNumber(val)))
       m_no_zone_factor = dval;
     return(true);
-  }  
-  // 2011-03 SK: IvP params as parameters, possible to set, I did not 
-  // include these in the plug, because you should only change them if 
-  // you know what you're doing. The standard values are pretty 
+  }
+  // 2011-03 SK: IvP params as parameters, possible to set, I did not
+  // include these in the plug, because you should only change them if
+  // you know what you're doing. The standard values are pretty
   // reasonable for most purposes.
   else if(param == "peakwidth_course") {
     double dval = atof(val.c_str());
@@ -287,7 +294,7 @@ bool BHV_OpRegionBounce::setParam(string param, string val)
 //     Notes: Sets state_ok = false and posts an error message if
 //            any of the OpRegionBounce conditions are not met.
 
-IvPFunction *BHV_OpRegionBounce::onRunState() 
+IvPFunction *BHV_OpRegionBounce::onRunState()
 {
   // SK: initialize IvP functions to avoid crashing the helm
   m_headingIPFcounter = 0;
@@ -370,7 +377,7 @@ IvPFunction *BHV_OpRegionBounce::onRunState()
 //-----------------------------------------------------------
 // Procedure: polygonVerify()
 //      Note: Verify that polygon boundary hasn't been violated.
-//    Return: void - An error message is communicated by a call to 
+//    Return: void - An error message is communicated by a call to
 //            postEMessage().
 
 void BHV_OpRegionBounce::polygonVerify()
@@ -425,7 +432,7 @@ void BHV_OpRegionBounce::polygonVerify()
   }
 
   // Case 1: Vehicle in polygon. Check to see if its been
-  //         in the poly long enough to be considered an 
+  //         in the poly long enough to be considered an
   //         official entry into the polygon.
   if(contained) {
     if(m_secs_in_poly >= m_trigger_entry_time) {
@@ -436,7 +443,7 @@ void BHV_OpRegionBounce::polygonVerify()
       // * based on geometry polygon, give a big preference for a
       //   heading orthogonal to polygon vertex
       // * base weight on distance to polygon and buffer zone param
-      // all: only if still contained, keep BHV_ERROR for if not contained, 
+      // all: only if still contained, keep BHV_ERROR for if not contained,
       // hopefully this will never happen after setting up a buffer though.
       unsigned int i;
       unsigned int psize = m_polygons.size();
@@ -446,11 +453,11 @@ void BHV_OpRegionBounce::polygonVerify()
         if(m_debug)
           std::cout << std::endl << "For polygon: " << i << std::endl;
         if(m_polygons[i].contains(osX, osY)) {
-          // For the polygon that contains the vehicle 
+          // For the polygon that contains the vehicle
           //  (assuming for now that there is only one)
           // Check if the AUV is close to a vertex
           double distToPoly = m_polygons[i].dist_to_poly(osX, osY);
-          
+
           if(distToPoly < m_bounce_buffer) { // BOUNCE!
             m_perimeter_emergency = true;
             createCourseBounce(osX, osY, i);
@@ -523,7 +530,7 @@ void BHV_OpRegionBounce::createCourseBounce(double osX, double osY, unsigned int
     // if within buffer, create angle and weight for (later) zaic_peak construction
     if(idist < m_bounce_buffer) {
       // Line segment: x1, y1, x2, y2
-      // This segment requires opposing forces. 
+      // This segment requires opposing forces.
 
       // Calculate angle of line segment, from North
       m_course_angles[m_headingIPFcounter] = relAng(x1,y1,x2,y2);
@@ -563,7 +570,7 @@ void BHV_OpRegionBounce::combineCourseIPFs() {
     std::cout << std::endl << "** BHV_OpRegionBounce::combineCourseIPFs" << std::endl;
     std::cout << " m_headingIPFcounter: " << m_headingIPFcounter << std::endl;
   }
-  
+
   unsigned int ix;
   double maxWeight = 0.0;
   for(ix=0; ix<m_headingIPFcounter; ix++) {
@@ -571,9 +578,9 @@ void BHV_OpRegionBounce::combineCourseIPFs() {
     if(m_course_weights[ix] > maxWeight)
       maxWeight = m_course_weights[ix];
   }
-  
-  // Rescale all weights so that the max weight is 100 (maxutil), 
-  //  then with the inverse factor scale the pwt. 
+
+  // Rescale all weights so that the max weight is 100 (maxutil),
+  //  then with the inverse factor scale the pwt.
   // This will make it more clear what is going on in the pHelmIvP
   //  output, avoids the IvP plotter visualization problem, and seems
   //  to be the general approach to dynamic importance of bhv.
@@ -581,7 +588,7 @@ void BHV_OpRegionBounce::combineCourseIPFs() {
   //     what polygon they belong to, therefore of equal importance so
   //     they can be scaled and combined here without problems
   //     (for example as encountered with different initial scaling)
-  double factor = m_maxutil/maxWeight; 
+  double factor = m_maxutil/maxWeight;
   for(ix = 0; ix<m_headingIPFcounter; ix++) {
     m_course_weights[ix] *= factor;
   }
@@ -614,7 +621,7 @@ void BHV_OpRegionBounce::combineCourseIPFs() {
   // debug output
   if(m_debug) {
     std::string zaic_warnings = zaicCourse.getWarnings();
-    if(zaic_warnings != "") 
+    if(zaic_warnings != "")
       postWMessage(zaic_warnings);
 
     for(ix = 0; ix<m_headingIPFcounter; ix++) {
@@ -628,12 +635,12 @@ void BHV_OpRegionBounce::combineCourseIPFs() {
   // extractIvPFunction(false): combine using sum of values <- wanted
   //                   (true) : take the max value of all
   m_ipfHeading = zaicCourse.extractIvPFunction(false);
-  
+
   if(m_debug && m_ipfHeading)
     m_ipfHeading->getPDMap()->print();
 
   if(m_debug)
-    std::cout << "** BHV_OpRegionBounce::combineCourseIPFs finished" << std::endl;  
+    std::cout << "** BHV_OpRegionBounce::combineCourseIPFs finished" << std::endl;
 }
 
 
@@ -642,25 +649,25 @@ void BHV_OpRegionBounce::combineCourseIPFs() {
 //   Purpose: To calculate information about impending OpRegionBounce
 //            violations. It calculates and posts the following
 //            variables:
-//        (1) OPREG_TRAJECTORY_PERIM_ETA: (double) 
-//            The time in seconds until the vehicle exits the 
-//            polygon containment region if it stays on the 
+//        (1) OPREG_TRAJECTORY_PERIM_ETA: (double)
+//            The time in seconds until the vehicle exits the
+//            polygon containment region if it stays on the
 //            current trajectory.
 //        (2) OPREG_TRAJECTORY_PERIM_DIST: (double)
-//            Distance in meters until the vehicle exits the 
-//            polygon containment region if it stays on the 
+//            Distance in meters until the vehicle exits the
+//            polygon containment region if it stays on the
 //            current trajectory.
-//        (3) OPREG_ABSOLUTE_PERIM_ETA: (double) 
+//        (3) OPREG_ABSOLUTE_PERIM_ETA: (double)
 //            Time in seconds until the vehicle would exit the
 //            polygon if it were to take the shortest path at
 //            top vehicle speed.
-//        (4) OPREG_ABSOLUTE_PERIM_DIST: (double) 
-//            Distance in meters between the vehicle and the 
+//        (4) OPREG_ABSOLUTE_PERIM_DIST: (double)
+//            Distance in meters between the vehicle and the
 //            polygon perimeter regardless of current heading
 //        (5) OPREG_TIME_REMAINING: (double)
 //            Time in seconds before a OpRegionBounce timeout would
 //            occur. If max_time=0, then no such message posted.
-//   
+//
 //    Return: void
 
 void BHV_OpRegionBounce::postPolyStatus()
@@ -672,13 +679,13 @@ void BHV_OpRegionBounce::postPolyStatus()
   double osHDG = getBufferDoubleVal("NAV_HEADING", ok4);
 
   string msg;
-  if(!ok1) 
+  if(!ok1)
     msg = "No ownship NAV_X (" + m_us_name + ") in info_buffer";
-  if(!ok2) 
+  if(!ok2)
     msg = "No ownship NAV_Y (" + m_us_name + ") in info_buffer";
-  if(!ok3) 
+  if(!ok3)
     msg = "No ownship NAV_SPEED (" + m_us_name + ") in info_buffer";
-  if(!ok4) 
+  if(!ok4)
     msg = "No ownship NAV_HEADING (" + m_us_name + ") in info_buffer";
 
   // Must get ownship position from InfoBuffer
@@ -695,34 +702,34 @@ void BHV_OpRegionBounce::postPolyStatus()
     return;
   }
   double osTopSpeed = m_domain.getVarHigh(index);
-  
+
   // Calculate the time and the distance to the perimeter along the
   // current heading (CH).
   double trajectory_perim_dist = m_polygon.dist_to_poly(osX, osY, osHDG);
   double trajectory_perim_eta = 0;
   if(osSPD > 0)
     trajectory_perim_eta = trajectory_perim_dist / osSPD;
-  
+
   // post the distance at integer precision unless close to zero
   if(trajectory_perim_dist <= 1)
     postMessage("OPREG_TRAJECTORY_PERIM_DIST", trajectory_perim_dist);
-  else  
+  else
     postIntMessage("OPREG_TRAJECTORY_PERIM_DIST", trajectory_perim_dist);
   postIntMessage("OPREG_TRAJECTORY_PERIM_ETA",  trajectory_perim_eta);
-  
+
   // Calculate the absolute (ABS) distance and ETA to the perimeter.
   double absolute_perim_dist = m_polygon.dist_to_poly(osX, osY);
   double absolute_perim_eta  = 0;
   if(osTopSpeed > 0)
     absolute_perim_eta  = absolute_perim_dist / osTopSpeed;
-  
+
   // post the distance at integer precision unless close to zero
   if(absolute_perim_dist <= 1)
     postMessage("OPREG_ABSOLUTE_PERIM_DIST", absolute_perim_dist);
   else
     postIntMessage("OPREG_ABSOLUTE_PERIM_DIST", absolute_perim_dist);
   postIntMessage("OPREG_ABSOLUTE_PERIM_ETA",  absolute_perim_eta);
-  
+
   if(m_max_time > 0) {
     double remaining_time = m_max_time - m_elapsed_time;
     if(remaining_time < 0)
@@ -734,7 +741,7 @@ void BHV_OpRegionBounce::postPolyStatus()
 //-----------------------------------------------------------
 // Procedure: depthVerify()
 //      Note: Verify that the depth limit hasn't been violated.
-//    Return: void - An error message is communicated by a call to 
+//    Return: void - An error message is communicated by a call to
 //            postEMessage().
 
 void BHV_OpRegionBounce::depthVerify()
@@ -749,7 +756,7 @@ void BHV_OpRegionBounce::depthVerify()
   double no_zone = m_depth_buffer*m_no_zone_factor;
 
   // Must get ownship depth from info_buffer
-  if(!ok) { 
+  if(!ok) {
     //cout << "No NAV_DEPTH in info_buffer for vehicle: " << m_us_name << endl;
     postEMessage("No ownship depth in info_buffer.");
     //m_info_buffer->print();
@@ -782,7 +789,7 @@ void BHV_OpRegionBounce::depthVerify()
 //-----------------------------------------------------------
 // Procedure: altitudeVerify()
 //      Note: Verify that the altitude limit hasn't been violated.
-//    Return: void - An error message is communicated by a call to 
+//    Return: void - An error message is communicated by a call to
 //            postEMessage().
 
 void BHV_OpRegionBounce::altitudeVerify()
@@ -797,7 +804,7 @@ void BHV_OpRegionBounce::altitudeVerify()
   double no_zone = m_depth_buffer*m_no_zone_factor;
 
   // Must get ownship altitude from info_buffer
-  if(!ok) { 
+  if(!ok) {
     postEMessage("No ownship altitude in info_buffer.");
     return;
   }
@@ -836,18 +843,18 @@ void BHV_OpRegionBounce::altitudeVerify()
 //            a bounce
 //   Return:  void (saves to class var)
 void BHV_OpRegionBounce::createDepthBounce()
-{  
+{
   if(m_debug)
     std::cout << std::endl << "** BHV_OpRegionBounce::createDepthBounce" << std::endl;
-    
-  // there can only be two possible depth issues: 
+
+  // there can only be two possible depth issues:
   // through depthVerify() and altitudeVerify()
   ZAIC_PEAK zaicDepth(m_domain, "depth");
-  // ZAIC Params: summit, peakwidth, basewidth, summitdelta, minutil, maxutil, index=0 
+  // ZAIC Params: summit, peakwidth, basewidth, summitdelta, minutil, maxutil, index=0
 
   // if both are present, then scale smaller utility, set highest to 100
   if((m_safe_depth_weights[0] > 0.0) && (m_safe_depth_weights[1] > 0.0)) {
-    if(m_safe_depth_weights[0] > m_safe_depth_weights[1]) { 
+    if(m_safe_depth_weights[0] > m_safe_depth_weights[1]) {
       // depth calculated by depthVerify of higher importance
       zaicDepth.setParams(m_safe_depth[0], m_peakwidthDepth, m_basewidthDepth, m_summitdelta, m_minutil, m_maxutil);
       unsigned int index = zaicDepth.addComponent();
@@ -881,12 +888,12 @@ void BHV_OpRegionBounce::createDepthBounce()
 
   // scale the calculated utilities (range [0-100]) if the behaviour's
   // pwt was higher than standard (100, = m_maxutil)
-  if(m_priority_wt > m_maxutil) { 
+  if(m_priority_wt > m_maxutil) {
     m_safe_depth_weights[0] *= (m_priority_wt/100.0);
     m_safe_depth_weights[1] *= (m_priority_wt/100.0);
   }
   // determine behaviour weight: take highest individual weight.
-  // The above code will have properly rescaled the other weight if 
+  // The above code will have properly rescaled the other weight if
   // present, so that the final function has the right relation between
   // zaic components.
   if(m_safe_depth_weights[0] >= m_safe_depth_weights[1])
@@ -897,18 +904,18 @@ void BHV_OpRegionBounce::createDepthBounce()
   // debug output
   if(m_debug) {
     std::string zaic_warnings = zaicDepth.getWarnings();
-    if(zaic_warnings != "") 
+    if(zaic_warnings != "")
       postWMessage(zaic_warnings);
 
     std::cout << " Depth IPF: " << std::endl;
     std::cout << "  peakwidth: " << m_peakwidthDepth << std::endl;
     std::cout << "  basewidth: " << m_basewidthDepth << std::endl;
-    std::cout << "  m_summitdelta: " << m_summitdelta << std::endl; 
+    std::cout << "  m_summitdelta: " << m_summitdelta << std::endl;
     std::cout << "  m_minutil: " << m_minutil << std::endl;
     std::cout << "  m_safe_depth[0] " << m_safe_depth[0] << " @  " << m_safe_depth_weights[0] << std::endl;
     std::cout << "  m_safe_depth[1] " << m_safe_depth[1] << " @  " << m_safe_depth_weights[1] << std::endl;
   }
-  
+
   // save function
   zaicDepth.setSummitInsist(true);
   // extractIvPFunction(false): combine using sum of values <- wanted
@@ -919,13 +926,13 @@ void BHV_OpRegionBounce::createDepthBounce()
     m_ipfDepth->getPDMap()->print();
 
   if(m_debug)
-    std::cout << "** BHV_OpRegionBounce::createDepthBounce finished" << std::endl;  
+    std::cout << "** BHV_OpRegionBounce::createDepthBounce finished" << std::endl;
 }
 
 //-----------------------------------------------------------
 // Procedure: combineFunctions()
 // added 2011-04 SK
-//      Note: Calculate parameters for, and combine course and 
+//      Note: Calculate parameters for, and combine course and
 //            depth IvP functions.
 //    Return: resulting IvPFunction
 
@@ -958,7 +965,7 @@ IvPFunction* BHV_OpRegionBounce::combineFunctions() {
     final_pwt = m_depth_pwt;
   }
   else {
-    // if the same 
+    // if the same
     if(rel_course_pwt == rel_depth_pwt) {
       if(rel_course_pwt > m_maxutil) {
         // rescale both to maxutil
@@ -1003,7 +1010,7 @@ IvPFunction* BHV_OpRegionBounce::combineFunctions() {
 //-----------------------------------------------------------
 // Procedure: timeoutVerify()
 //      Note: Verify that the timeout limit hasn't been violated.
-//    Return: void - An error message is communicated by a call to 
+//    Return: void - An error message is communicated by a call to
 //            postEMessage().
 
 void BHV_OpRegionBounce::timeoutVerify()
@@ -1029,7 +1036,7 @@ void BHV_OpRegionBounce::setTimeStamps()
 {
   // Grab current time from Info Buffer
   m_current_time = getBufferCurrTime();
-  
+
   //cout << "Current Time -    " << delta_time << endl;
   //cout << "Previous Time -    " << delta_time << endl;
 
