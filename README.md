@@ -1,7 +1,10 @@
+# moos_ivp_usc
 This repository is an extension to the MOOS-IvP repositories. 
 You should install those first.
 
-Getting MOOS-IvP
+## How to get MOOS-IvP and test both that and this repo
+
+### Getting MOOS-IvP
 * Go to: http://moos-ivp.org/ -- Download
 * Do an svn checkout of the repositories
 * Get the libraries listed in README-LINUX.txt
@@ -10,7 +13,7 @@ Getting MOOS-IvP
 * add env vars to .bashrc (add bin dirs to PATH, add lib_behaviors* to IVP_BEHAVIOR_DIRS)
 * test that it works (e.g. run ivp/missions/m2_berta/, to quit: Ctrl+C)
 
-For this repo:
+### For this repo:
 * get the desired dependencies (see dependencies.txt)
 * run $ ./build.sh
 * add the bin dirs to your PATH and lib_behaviors* to IVP_BEHAVIOR_DIRS
@@ -20,7 +23,8 @@ For this repo:
         or run 
         $ pAntler simple-auv.moos )
 
-
+## Original README file from moos-ivp-extend
+```
 ##############################################################################
 # FILE:        moos-ivp-extend/README
 # DATE:        2011/09/07
@@ -105,4 +109,4 @@ variable.
 ##############################################################################
 #                               END of README
 ##############################################################################
-
+```
