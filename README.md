@@ -2,6 +2,21 @@
 This repository is an extension to the MOOS-IvP repositories. 
 You should install those first.
 
+## What this repo contains
+This is the full repository of moos_ivp_usc code tested between 2012 and 2018 at USC. 
+Some of the processes and behaviors in this repo have been more cleanly shared already at 
+* https://github.com/StephanieKemna/lib_behaviors-stephanie
+* https://github.com/StephanieKemna/moos-ivp_processes_stephanie
+
+I (Stephanie) refer to those for code that has been better tested to take stand-alone.
+
+This repo is being shared to give access to the pGP and pGP_AUV processes, that were used for the publications related to Stephanie's PhD thesis, see https://stephaniekemna.github.io/#Publications <br/>
+where:
+* pGP: was last tested for the async surfacing strategies for multi-robot adaptive informative sampling (ref. Stephanie Kemna and Gaurav S. Sukhatme. "Surfacing strategies for multi-robot adaptive informative sampling with a surface-based data hub". In MTS/IEEE Oceans (Oceans), https://doi.org/10.1109/OCEANS.2018.8604896 Oct 2018.)
+* pGP_AUV: was last tested on the EcoMapper AUV for the field testing (ref. Stephanie Kemna, Hordur K. Heidarsson and Gaurav S. Sukhatme. "On-board Adaptive Informative Sampling for AUVs: a Feasibility Study". In MTS/IEEE Oceans (Oceans), https://doi.org/10.1109/OCEANS.2018.8604838 Oct 2018.)
+
+This code has not been maintained since. Feel free to create an 'issue' (preferably here: https://github.com/StephanieKemna/moos_ivp_usc for faster response), though a response/fix cannot be guaranteed.
+
 ## How to get MOOS-IvP and test both that and this repo
 
 ### Getting MOOS-IvP
