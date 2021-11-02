@@ -18,9 +18,11 @@ ProcessConfig = uFldNodeComms
 {
   AppTick       = 2
   CommsTick     = 2
+  
+  verbose = true
 
   // range within which node_report and node_message are shared
-  comms_range      = 500 // m
+  comms_range      = $(COMMS_RANGE) // m
   // range within which node_report messages are always shared
   critical_range   = 0 // 25 // m
   // minimum wait time between successful sends from a given source node

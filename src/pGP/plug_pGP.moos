@@ -61,7 +61,29 @@ ProcessConfig = pGP
 
   // number of iterations for CG/RProp
   hp_optim_iterations = 50
+  
+  // accepted deviation ratio from last hyper parameters
+  hp_accepted_deviation_ratio = 0.25
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
-  m_max_wait_for_other_vehicles = 180
+  max_wait_for_other_vehicles = 180
+  
+  // work with surface hub? (true, false)
+  surface_hub = false
+  
+  // for async surfacing (w/ shub)
+  // choose what trigger method to use:
+  // var_reduction, timed (tds), num_other_samples, ..
+  async_trigger_method = "var_reduction"
+  // if difference from previous is > T, then surface
+  async_threshold = 0.4
+  
+  // specify survey depth for num_other_samples calculation
+  survey_depth = 5
+  // specify survey speed for num_other_samples calculation
+  survey_speed = 1.5
+  // specify pitch angle for diving/surfacing
+  dive_pitch_angle = 20.0
+  // specify the total mission duration for num_other_samples surfacing
+  mission_duration = 12236 // b2 max, uTimerScript, 2 AUVs
 }

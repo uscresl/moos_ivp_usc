@@ -2,7 +2,7 @@
 /*    NAME: Stephanie Kemna                                      */
 /*    ORGN: Robotic Embedded Systems Lab, CS, USC, CA, USA       */
 /*    FILE: GP.h                                                 */
-/*    DATE: 2015 - 2016                                          */
+/*    DATE: 2015 - 2018                                          */
 /*                                                               */
 /*****************************************************************/
 
@@ -61,7 +61,7 @@ class GP : public CMOOSApp
    // Own functions
    void initGeodesy();
 
-   void handleMailData(double received_data);
+   void handleMailDataFromSensor(double received_data);
    void handleMailSamplePoints(std::string input_string);
    void handleMailSamplePointsSpecs(std::string input_string);
    void handleMailNodeReports(std::string const & input_string);
@@ -71,7 +71,6 @@ class GP : public CMOOSApp
    void addPatternToGP(double veh_lon, double veh_lat, double value);
    void dataAddingThread();
 
-   void startAndCheckHPOptim();
    bool runHPOptimization(size_t nr_iterations);
    void runHPoptimizationOnDownsampledGP(Eigen::VectorXd & loghp, size_t nr_iterations);
 
@@ -112,7 +111,6 @@ class GP : public CMOOSApp
 #endif
 
    // helper/test functions
-   bool needToUpdateMaps(size_t grid_index);
    int getIndexForMap(double veh_lon, double veh_lat);
    bool checkDistanceToSampledPoint(double veh_lon, double veh_lat, Eigen::Vector2d move_pt);
    bool checkGPHasData();
@@ -136,6 +134,8 @@ class GP : public CMOOSApp
    void endMission();
 
    void printCoutPrefix();
+
+   double currentMOOSTime() const;
 
    // Configuration variables
    bool m_verbose;
@@ -163,6 +163,7 @@ class GP : public CMOOSApp
    double m_lon;
    double m_dep;
    size_t m_surf_cnt;
+   size_t m_at_depth_cnt;
    bool m_on_surface;
 
    bool m_adaptive;
@@ -208,7 +209,6 @@ class GP : public CMOOSApp
    libgp::GaussianProcess * m_gp;
    std::mutex m_gp_mutex;
    std::mutex m_sample_maps_mutex;
-   std::mutex m_file_writing_mutex;
 
    // create queue for adding of points to GP
    std::queue< std::vector<double> > m_queue_data_points_for_gp;
@@ -220,6 +220,7 @@ class GP : public CMOOSApp
    bool m_final_hp_optim;
    size_t m_hp_optim_iterations;
    bool m_hp_optim_cg;
+   double m_hp_dev_ratio;
    size_t m_last_hp_optim_done;
 
    // future for result MI criterion calculations
@@ -263,8 +264,9 @@ class GP : public CMOOSApp
    std::unordered_set<std::string> m_rec_ready_veh;
    size_t m_handshake_timer_counter;
    size_t m_tx_timer_counter;
+   size_t m_rx_timer_counter;
    size_t m_req_surf_timer_counter;
-   double m_last_tds_surface;
+   double m_last_surface;
 
    // acomms data sharing
    bool m_acomms_sharing;
@@ -319,8 +321,31 @@ class GP : public CMOOSApp
    std::string m_bhv_state;
    std::string m_adp_state;
 
-   // debugging
-   double m_db_uptime;
+   // surface hub, track vehicle surfacing event
+   std::map<std::string, size_t> m_map_vehicle_idx_data_last_sent;
+
+   // surface hub addition: use a surface hub? (true, false)
+   bool m_use_surface_hub;
+   std::vector<std::string> m_final_sent_to;
+   std::vector<std::string> m_final_received_from;
+   bool m_veh_is_shub;
+   bool m_cancel_hpo;
+
+   double m_prev_length_scale;
+
+   // choose method that is used for surfacing trigger in async surfacing scenario
+   std::string m_async_trigger_method;
+   double m_async_threshold;
+   double m_async_prev_sum_var;
+   bool m_async_prev_sum_var_reset;
+
+   bool m_need_to_run_hpo;
+   double m_survey_depth;
+   double m_survey_speed;
+   double m_dive_pitch_angle;
+   double m_twoway_time_to_surf;
+   double m_mission_duration;
+   bool m_calcwpt_from_data_sharing;
 };
 
 #endif

@@ -41,41 +41,18 @@ ProcessConfig = ANTLER
   // generate 'node reports'
   Run = pNodeReporter      @ NewConsole = false
 
-  // collision avoidance
-  Run = pBasicContactMgr   @ NewConsole = false
-
-  // acoustic communications
-#ifdef NR_VEHICLES 1
-#else
-  #ifdef USE_GUI yes
-  pAcommsHandlerConfig = -geometry,179x100+0+20
-  Run = pAcommsHandler @ NewConsole=true,XConfig=pAcommsHandlerConfig  
-  #else
-  Run = pAcommsHandler @ NewConsole=false
-  #endif
-#endif
-
-  Run = pHostInfo @ NewConsole = false ~ pHostInfo
+  // surface communications
+  Run = pHostInfo @ NewConsole = false
   Run = uFldNodeBroker @ NewConsole = false
   Run = uFldMessageHandler @ NewConsole = false
   Run = pShare @ NewConsole = false
 
   // add other processes here
-  Run = uSimBioSensor @ NewConsole = false
-
   Run = pGP @ NewConsole = false
-
   Run = pSamplePoints @ NewConsole = false
 
-  Run = pLonLatToWptUpdate @ NewConsole = false
-
-  #ifdef ADAPTIVE_WPTS yes
+  // end the mission
   Run = pPublishAfterX @ NewConsole = false
-  #endif
-
-  #ifdef USE_ACOMMS yes
-  Run = pRePublishDataPtWithNav @ NewConsole = false
-  #endif
 }
 //------------------------------------------------------------
 
@@ -92,28 +69,15 @@ ProcessConfig = ANTLER
 
 // generate 'node reports'
 #include $(PLUG_DIR)/plug_pNodeReporter.moos
-
-// collision avoidance
 // node_reports are passed via uFldNodeBroker and pShare through shoreside
-#include $(PLUG_DIR)/plug_pBasicContactMgr.moos
 
 // simulate acoustic communications
-#ifdef USE_ACOMMS yes
-#include plugs/plug_pAcommsHandler.moos
-#else
-  #ifdef USE_VORONOI yes
-    #include plugs/plug_pAcommsHandler_tds_voronoi.moos
-  #else
-    #include $(PLUG_DIR)/plug_pAcommsHandler.moos
-  #endif
-#endif
 #include $(PLUG_DIR)/plug_pHostInfo.moos
 #include $(PLUG_DIR)/plug_uFldNodeBroker.moos
 #include $(PLUG_DIR)/plug_uFldMessageHandler.moos
 #include $(PLUG_DIR)/plug_pShare.moos
 
 // add other processes here
-#include $(PLUG_DIR)/plug_uSimBioSensor.moos
 
 //--------------------------------------------------
 // pGP configuration block
@@ -149,9 +113,6 @@ ProcessConfig = pGP
   #ifdef NR_VEHICLES 2
   prediction_interval = 600 // every 10 min, reduce nr save moments for 2AUVs
   #endif
-  #ifdef NR_VEHICLES 1
-  prediction_interval = 600
-  #endif
 #else
   prediction_interval = 300
 #endif
@@ -160,25 +121,13 @@ ProcessConfig = pGP
   nr_vehicles = $(NR_VEHICLES)
 
   // run in adaptive mode?
-#ifdef ADAPTIVE_WPTS yes
-  adaptive = true
-#else
   adaptive = false
-#endif
 
   // elementary coordination (implicit): share data at set intervals
 #ifdef USE_TDS yes
   timed_data_sharing = true
   // interval between data sharing events (seconds)
-  #ifdef USE_SHUB yes
-    #ifdef VNAME anna
-      data_sharing_interval = 500
-    #else
-      data_sharing_interval = 650
-    #endif
-  #else
-    data_sharing_interval = 600
-  #endif
+  data_sharing_interval = 600
 #else
   timed_data_sharing = false
 #endif
@@ -187,23 +136,14 @@ ProcessConfig = pGP
   input_var_handshake_data_sharing = RECEIVE_DATA_HANDSHAKE
 
   // data sharing through acomms
-#ifdef USE_ACOMMS yes
-  acomms_sharing = true
-#else
   acomms_sharing = false
-#endif
 
 #ifdef USE_VORONOI yes
   use_voronoi = true
-  // minimum timeout between voronoi calculations (sec)
-  voronoi_timeout = 300
-  // buffer region outside sample area for which
-  // vehicle is still counted as inside, for voronoi partitioning
-  area_buffer = 20.0
 #else
   use_voronoi = false
 #endif
-
+  
   // take one in X data points for HP optimization
 #ifdef SURVEY_AREA bigger2
   downsample_factor = 6
@@ -214,40 +154,15 @@ ProcessConfig = pGP
   // specify method of hyperparameter optimization ('cg' vs 'rprop')
   hp_optim_method = cg
   // number of iterations for CG/RProp
-  hp_optim_iterations = 50
+  hp_optim_iterations = 100
   // accepted deviation ratio from last hyper parameters
   hp_accepted_deviation_ratio = 0.25
 
   // max nr seconds to wait for other vehicles (req, handshake, tx)
-#ifdef ADAPTIVE_WPTS yes
-  max_wait_for_other_vehicles = 180
-#else
-  max_wait_for_other_vehicles = 240
-#endif
-
-  // work with surface hub? (true, false)
-#ifdef USE_SHUB yes
-  surface_hub = true
+  // use default -- shouldn't matter for surface hub
   
-  #ifdef VNAME shub
-  async_trigger_method = ""
-  #else
-  // for async surfacing (w/ shub)
-  // choose what trigger method to use (timed, var_reduction, num_other_samples)
-  async_trigger_method = "var_reduction"
-  // var_reduction: if difference from previous is > T, then surface
-  async_threshold = 0.4
-  // specify survey depth for num_other_samples calculation
-  survey_depth = $(SURVEY_DEPTH)
-  // specify survey speed for num_other_samples calculation
-  survey_speed = $(BHV_SPEED)
-  // specify pitch angle for diving/surfacing
-  dive_pitch_angle = 15.0 // match pMarinePID max pitch
-  #endif
-  mission_duration = 12236 //TODO range? upper bound from uTimerScript
-#else
-  surface_hub = false
-#endif
+  // work with surface hub? (true, false)
+  surface_hub = true
 }
 
 //--------------------------------------------------
@@ -273,52 +188,8 @@ ProcessConfig = pSamplePoints
   output_var_specs = SAMPLE_POINTS_SPECS
 }
 
-//--------------------------------------------------
-// pLonLatToWptUpdate configuration block
-//
-ProcessConfig = pLonLatToWptUpdate
-{
-  AppTick   = 2
-  CommsTick = 2
+// end the mission
 
-  // specify variable names
-  input_var_lonlat = GP_PREDICTIONS
-  output_var_wpt_update = ADAPTIVE_WPT_UPDATES
-}
-
-//#ifdef ADAPTIVE_WPTS yes
-//ProcessConfig = uTimerScript
-//{
-//  AppTick = 4
-//  CommsTick = 4
-
-//  verbose = true
-
-//  // lawnmower duration ca 6362-6375
-//  // lawnmower start at 2339-2472, avg 2211
-//  // 2211+bnds = 8571-8586
-//#ifdef NR_VEHICLES 1
-//  event = var=STAGE,val="hpoptim",time=8571:8660
-//#endif
-//#ifdef NR_VEHICLES 2
-//  event = var=STAGE,val="hpoptim",time=4934:5167
-//#endif
-//// TODO: change duration 3 vehicles
-//#ifdef NR_VEHICLES 3
-//  event = var=STAGE,val="hpoptim",time=4840:5050
-//#endif
-
-//  reset_max = 0
-////  reset_time = all-posted
-//  reset_var = UTS_RESET
-
-//  status_var = UTS_STATUS
-
-////  time_warp=$(WARP)
-//}
-//#endif
-
-#ifdef ADAPTIVE_WPTS yes
 //--------------------------------------------------
 // pPublishAfterX configuration block
 //
@@ -333,26 +204,21 @@ ProcessConfig = pPublishAfterX
 
   // how many seconds after above var/val should we publish?
   // you can give either a number, or a range (eg. 10:20)
+//  publish_after_secs = 
+
 #ifdef SURVEY_AREA bigger2
   // area bigger2
-  #ifdef NR_VEHICLES 1
-    publish_after_secs = 22250:22270 //TODO check from more LM sims
-  #endif
+  // old area
   #ifdef NR_VEHICLES 2
     publish_after_secs = 12030:12236 // from b22b lm sims (luna)
-    // checked 20180217 -- 1200/12262 -- ok!
   #endif
   #ifdef NR_VEHICLES 3
     publish_after_secs = 5387:5617 // from b25g lm sims
   #endif
 #else  
   // old area
-  #ifdef NR_VEHICLES 1
-    publish_after_secs = 6400:6450  // from FSR 1 AUV sims
-  #endif
   #ifdef NR_VEHICLES 2
-    publish_after_secs = 3359:3531
-    // checked 20180217 -- 3415/3539 -- ok!
+    publish_after_secs = 3359:3531 
   #endif
   #ifdef NR_VEHICLES 3
     publish_after_secs = 2641:2818 //2552:2756
@@ -366,19 +232,3 @@ ProcessConfig = pPublishAfterX
   // skip first message?
   skip_first = false
 }
-#endif
-
-#ifdef USE_ACOMMS yes
-//--------------------------------------------------
-// pRePublishDataPtWithNav configuration block
-//
-ProcessConfig = pRePublishDataPtWithNav
-{
-  AppTick   = 2
-  CommsTick = 2
-
-  // potential process parameters would go here
-  data_var_name = "SIM_DATA"
-  nr_data_points = 2
-}
-#endif
